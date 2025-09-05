@@ -64,7 +64,7 @@ https://github.com/astrogon/astrogon
 
 I just copied over the files I needed using the command line and cleaned up some of the sample data.
 
-# Sample Astro Dedploy
+# Sample Astro Deploy
 
 The next step would be deploying the thing to my homelab to get closer to having it outside as a public site.
 
@@ -182,7 +182,7 @@ TODO: insert image
 
 We got an image so now we just need to deploy it and get things working on a proxmox instance.
 
-# Woodpecker Astro Dedploy
+# Woodpecker Astro Deploy
 
 We will continue this trend and use woodpecker to build the site and then deploy it.
 
@@ -278,8 +278,6 @@ Now it would be nice to test that it was deployed and is running ok using someth
       steps: build
 
 ```
-
-
 
 But before that will work we will need to edit our NGINX Proxy Manager.
 
