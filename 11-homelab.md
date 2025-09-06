@@ -1,7 +1,7 @@
 ---
 title: Day 11 HomeLab - I Fought the Mouse and the Mouse won...
 description: Part 2 of Creating a Vision AI system to detect rodents.
-date: 2025-09-04
+date: 2025-09-05
 categories: [Yolo, VisionAI, ]
 author: moses
 tags: [yolo]
@@ -151,3 +151,5 @@ Nothing beside remains. Round the decay
 Of that colossal Wreck, boundless and bare
 The lone and level sands stretch far away.
 ```
+
+Note: The tech is factual the other content is less serious.

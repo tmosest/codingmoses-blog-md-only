@@ -259,3 +259,5 @@ import (
 Really this was just a good experiment in learning a terraform plugin.
 
 They are interesting and remind me weirdly of GraphQL calls. Especially, after reading the tutorials where they teach you how to make API calls against a local docker instance using it. I'll continue to play aroud with writing terraform plugins for other purposes and integrating this into a simple homelab tool.
+
+Note: The tech is factual the other content is less serious.

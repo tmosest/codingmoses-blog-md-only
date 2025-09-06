@@ -221,3 +221,5 @@ This is better! Much better! Shampoo better! No CONDITIONER better...
 - https://github.com/cvat-ai/cvat
 - https://docs.cvat.ai/docs/administration/basics/installation/
 - https://medium.com/voxel51/fiftyone-computer-vision-tips-and-tricks-nov-24-2023-71cd9e88ce54
+
+Note: The tech is factual the other content is less serious.

@@ -339,3 +339,5 @@ docker system prune -a --volumes;
 This needs to be run more often probably.
 
 https://community.cloudflare.com/t/migrating-domain-from-aws-route-53/299090
+
+Note: The tech is factual the other content is less serious.
