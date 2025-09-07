@@ -1,8 +1,8 @@
 ---
-title: Day 11 HomeLab - I Fought the Mouse and the Mouse won...
-description: Part 2 of Creating a Vision AI system to detect rodents.
+title: Day 12 HomeLab - Saved By The Cat
+description: Simple Node, Express, NEST, MYSQL App
 date: 2025-09-06
-categories: [Yolo, VisionAI, ]
+categories: [Yolo, VisionAI, NEST]
 author: moses
 tags: [yolo]
 hideToc: true
@@ -237,7 +237,7 @@ That and a minor update to the `app.module.ts` file and we have working database
       password: process.env.MYSQL_PASSWORD,
       database: process.env.MYSQL_DATABASE,
       models: [Bible, BibleBook, BibleVersion],
-      logging: (...msg) => logger.error(msg),
+      logging: true,
       // socketPath: '/var/run/mysqld/mysqld.sock',
       autoLoadModels: true,                             // TODO turn off for production as well.
       synchronize: true,                                // TODO note need to turn this off for production.
