@@ -64,6 +64,14 @@ Just had to assignt the printer a static IP address and get the raspberry pi wor
 
 But then I ran into my first error. After installing several plugins I had before, I tried to home the device and a kill process is being outputted from the firmware. Might need to recompile the firmware as I was messing with this printer last time I used it.
 
+Instead we are going to go with the much easier option of just using a different printer that I was still working last time I touched it...
+That is not what I meant to break...
+
+Anyway, new used printer (aka just a different one from the closet) and we woot woot we are printing a raspberry pi case!
+I have a camera watching it as well so my house doesn't burn all the way down...
+
+I'll need to find the custom plugins I wrote and update one of them to be an auto 911. Have a temperature sensor attached to the pi or nearby and if that gets too hot it will ask the camera as well about a fire and then call 911 using Twillio. The plugin currently just uses a free dev account to text me about events on the printer... or well it did... I need to redown that one. I also wrote an auto upload to Google Drive and YouTube as well.
+
 ## Local Minimums
 
 There are some problems with the LeetCode generator.
@@ -80,3 +88,12 @@ Now it just uses the button on the LeetCode website to generate a random problem
 
 The other problems will get solved too. I have code to parse solutions and I have some other ideas about what to do with it as well. 
 I thought it might be interesting to use LeetCode problem data to train an LLM for solving AL problems.
+
+I was able to get solutions to non editorial questions as well now. It does assume the answer actually works though instead of searching until it gets one that does.
+
+That is something I could add later. First its time to learn about setting up another NAS.
+
+## NASTY NAS!
+
+First some tunes! Since a NAS is perfect for music and video storage :)
+- [I know I can NAS](https://youtu.be/RvVfgvHucRY?si=3ZTXZWaa4srMj00C&t=79)
