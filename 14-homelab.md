@@ -1,6 +1,6 @@
 ---
-title: Day 14 HomeLab - Back Again, LeetCode is back don't tell a friend...
-description: Solving over 100 Leetcode problems in one day without typing! Look mom no hands!
+title: Day 14 HomeLab - 
+description: 
 date: 2025-09-08
 categories: [octoprint, appleScript]
 author: moses
@@ -96,4 +96,23 @@ That is something I could add later. First its time to learn about setting up an
 ## NASTY NAS!
 
 First some tunes! Since a NAS is perfect for music and video storage :)
+
 - [I know I can NAS](https://youtu.be/RvVfgvHucRY?si=3ZTXZWaa4srMj00C&t=79)
+
+The homelab network currently has one "terrible" (as rated by the internet) that is only 1TB and prone to randomly crashing per the internet.
+
+So lets learn about setting up a multi-bay NAS and using RAID levels...
+
+- RAID 0: Stripes data across drives for speed but offers no redundancy. 
+- RAID 1: Mirrors data onto multiple drives, providing protection against a single drive failure. 
+- RAID 5: Stripes data with parity information, allowing for the fault tolerance of one drive. 
+- RAID 6: Uses dual parity, allowing for fault tolerance of two drives, but reducing write performance. 
+
+```
+Finally I stood there
+where no one has ever seen me.
+
+- “My heart and my flesh sing” by Sean Singer
+```
+
+Was able to get the NAS up and running. 3D Printer finished it's first print in a long time. About to have a PLEX server as well.
