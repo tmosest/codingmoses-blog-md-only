@@ -1,6 +1,6 @@
 ---
 title: Day 15 HomeLab - 
-description: 
+description: Placeholder
 date: 2025-09-09
 categories: []
 author: moses
