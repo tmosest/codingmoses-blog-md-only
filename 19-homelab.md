@@ -1,5 +1,5 @@
 ---
-title: Day 18 HomeLab - 
+title: Day 19 HomeLab - 
 description: Placeholder
 date: 2025-09-13
 categories: []
