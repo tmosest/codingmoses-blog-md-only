@@ -455,3 +455,21 @@ Configure a new voice assistant pipeline to use your custom wake word and the Wh
 - [How to Blog](https://www.xda-developers.com/raspberry-pi-voice-assistant-how/)
 
 Well that was more of an adventure than expected due to python version problems...
+
+Also Home Assistant wants a paid subscription to talk to Alexa and Google Home API... I might just be going back to my original python code...
+
+```
+There are two sides to integrating Alexa into Home Assistant.
+
+Controlling Home Assistant entities via Alexa:
+Amazon Alexa Smart Home Skill - Home Assistant
+Complicated initial setup, but easier to use day-to-day since the entities are “in” Alexa just like they are if you use HA Cloud.
+Emulated Hue - Home Assistant
+Easier initial setup, limited functionality, more follow-up to add entities to be controlled by Alexa
+Controlling Alexa devices via Home Assistant (making announcements, playing media, activating skills, running routines you already have in the Alexa app):
+Alexa Media Player
+
+Or simply use the ‘Matter Hub’ add-on. It works well.
+```
+
+We will continue to play around and find out.
