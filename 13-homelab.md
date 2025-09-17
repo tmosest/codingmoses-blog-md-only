@@ -1,5 +1,5 @@
 ---
-title: Day 13 HomeLab - Back Again, LeetCodeCount:749 is back don't tell a friend...
+title: Day 13 HomeLab - Back Again, LeetCodeCount:798 is back don't tell a friend...
 description: Solving over 100 Leetcode problems in one day without typing! Look mom no hands!
 date: 2025-09-07
 categories: [LeetCode, AppleScript]

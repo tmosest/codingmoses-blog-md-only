@@ -35,5 +35,53 @@ But I am going to time box this for now.
 Celebrimbor is still working great. However this one raspberry pi case refuses to print correctly so we are gonna move on from that as well and print some feet...
 Cause feet pics are where the money is at... You can find me on only fans if this doesn't work out as Big Foot.
 
+# Red Five / PiHawk / TurboPi
 
+Pi Hawk (Red Five) is getting closer to being done. The hardware is basically assembled now. Just figuring out the software and making it work with the controller.
 
+- https://docs.px4.io/main/en/flight_controller/pixhawk_series
+- https://www.youtube.com/watch?v=nIuoCYauW3s
+- https://ardupilot.org/dev/docs/apsync-intro.html#apsync-intro
+
+## Furby Five...
+
+Imagine a 90's furby on top of a quadcopter yelling "weee do it again" over and over again as it flies through the sky!
+
+Well if we can turn them into a [musical instrument](https://www.youtube.com/watch?v=GYLBjScgb7o) then we can do anything!
+
+// TODO coming soon... 44 Furby delivery drones!
+
+# Hot Wheels Spy Car
+
+A long time ago I took apart a hot wheels car to make a mini RC car. 
+
+The components: // TODO Amazon links etc.
+
+1. Small DC motor for back wheels.
+2. Small linear motor for turning the front wheels.
+3. Battery.
+4. ESP 32-C
+5. ... Missing male to male connectors for testing the prototype... well here is more money Amazon...
+
+# Pip Boy 
+
+Got voice detection working which is really cool. I can basically do a captains log now.
+
+We are going to run a small LLM on this thing and see how that goes.
+
+`ollama run llama2:13b`
+
+```
+With 16 GB of RAM, your Raspberry Pi can comfortably handle larger language models than the standard 8 GB model. Here are some options: 
+Llama2:13b: A robust model with 13 billion parameters that performs well on a 16 GB system.
+Phi-3 Mini (14b): A 14 billion parameter model that is efficient for its size.
+Smaller models: You can also run smaller, faster models like phi or tinyllama. 
+```
+
+Tested this out with the 7GB they both seem to work pretty well. 
+
+Got Kali linux working on it but needed to fork and update this repo to Python3.
+
+- https://github.com/tmosest/katoolin
+
+It ended up being smoother and better to just have the pipboy do the voice to text and then send that to the Ollama server for processing.
