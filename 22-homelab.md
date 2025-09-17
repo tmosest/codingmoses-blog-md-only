@@ -1,7 +1,7 @@
 ---
 title: Day 21 HomeLab - 
 description: Placeholder
-date: 2025-09-15
+date: 2025-09-16
 categories: []
 author: moses
 tags: []
