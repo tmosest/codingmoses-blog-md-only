@@ -85,4 +85,33 @@ def handle_options(opcion1):
 Code can always be cleaner. If GitHub doesn't want to show the code removed then you know it was a good refactor for that file... Hopefully lol... 
 This package didn't really have any tests...
 
+# Voice Clone
+
+There are several project ideas that focus on cloning a person's voice.
+
+I have a good amount of data of my voice with it tied to writted text that I am hoping can be used to do this.
+
+`pip install pip-upgrader` That was handy!
+
+```
+To all those that are struggling with Apple M1 installation, here is a working solution, specifically addressing the problem of installing the pixellib library that depends on PyQt5 but you can apply it equally to other libs:
+
+PyQt5 is not supported on Apple M1, it needs qt6: https://www.reddit.com/r/learnpython/comments/o4w1ut/comment/h2jele3/?utm_source=share&utm_medium=web2x&context=3 , https://www.qt.io/product/qt6
+this means you need to install PyQt6: python3 -m pip install PyQt6
+go to the lib you need, in my case pixellib: https://pypi.org/project/pixellib/#files and
+download the wheel file
+get the wheel tool: pip install wheel
+unpack the wheel wheel unpack pixellib-0.7.1-py3-none-any.whl
+Change its dependency of PyQt5 to PyQt6
+edit pixellib-0.7.1/pixellib-0.7.1.dist-info/METADATA
+pyQt5 => pyQt6
+pack it back wheel pack pixellib-0.7.1
+install it: pip install pixellib-0.7.1-py3-none-any.whl
+test in python: `
+# should work
+import pixellib
+P.S. thanks to Terra and ChaOS for supporting work on the project underlying this report.
+```
+
+- https://stackoverflow.com/questions/70961915/error-while-installing-pytq5-with-pip-preparing-metadata-pyproject-toml-did-n
 
