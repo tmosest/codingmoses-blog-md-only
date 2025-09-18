@@ -1,6 +1,6 @@
 ---
 title: Day 0 LeetCode
-description:
+description: test
 date: 2025-09-16
 categories: []
 author: moses
