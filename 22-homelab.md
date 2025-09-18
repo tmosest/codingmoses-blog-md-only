@@ -1,5 +1,5 @@
 ---
-title: Day 21 HomeLab - 
+title: Day 22 HomeLab - 
 description: Placeholder
 date: 2025-09-16
 categories: []

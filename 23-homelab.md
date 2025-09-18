@@ -1,5 +1,5 @@
 ---
-title: Day 21 HomeLab - 
+title: Day 23 HomeLab - 
 description: Placeholder
 date: 2025-09-17
 categories: []
@@ -10,9 +10,25 @@ hideToc: true
 
 # Upgrading Bezalel... 
 
-Well those feet pics got us now where. They didn't want to stick to the board...
+```
+23 The Lord is my shepherd; I shall not want.
 
-Come back to this later.
+2 He maketh me to lie down in green pastures: he leadeth me beside the still waters.
+
+3 He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake.
+
+4 Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me.
+
+5 Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over.
+
+6 Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the Lord for ever.
+```
+
+Well those feet pics got us no where now. They didn't want to stick to the board...
+
+Come back to this later. The Lord gives us feet and the lord takes away... which is why land mines are best to be avoided instead of ran into at full speed...
+
+10 rings... 5 rings.. idk something like that and a fortune cookie.
 
 # Kali Linux (katoolin) Massive Refactor
 
@@ -148,7 +164,7 @@ P.S. thanks to Terra and ChaOS for supporting work on the project underlying thi
 - https://github.com/IAHispano/Applio
 - https://mvsep.com/en
 
-That was really cool... the demo_cli.py works now with python 3.9... tried it with some sort chapter readings and then also about 1/3 of psalms.
+That was really cool... the demo_cli.py works now with python 3.9... tried it with some short chapter readings and then also about 1/3 of psalms.
 Seems like the demo eventually crashes from running out memory if you keep picking a file and generating a voice over and over again.
 
 It was still impressive for how little time it needed to train. It sounds much better when the text matches things in the source.
@@ -174,4 +190,27 @@ Hopefully have them talk to the server and detect other furbies with vision AI a
 
 Ok so it looks like I need to record some version of myself saying the wake phrase and then also have recordings of me just talking and background noise etc so it can learn the diff.
 
+# Upgrading Bezalel... Jesus... It's like all this guy does... 
 
+Finally the feet picks are coming! Something is up though cause the printer z offset is not consistent and needs to be tuned every build.
+
+Will need to look into this if I stand any chance of becoming the titan of feet...
+
+I still believe that Big Foots people are an alien species that grew out their hair to deal with hatred of mosquitoes...
+They were once hairless and tried to fit in with society but were shunned and bullied and strayed back out into the wilderness...
+The Geico commercials were the final straw...
+
+# Hot Wheels RC Spy Race Car POV ESP 32 Sense
+
+Made a new github repo and picked up where I left off here. 
+Fried this little power adapter I had for taking 12 V down to 5 V and 3.3 V no worries used a buck converter and made a new one basically.
+That was not as fun nor as delicious as frying a raspberry pi though.... lol...
+
+Now we have a light and the ESP 32 Controller being powered from two breadboards attached to each other. One is just a simple power rig and the other are the component for this RC car.
+
+Just need to get some software working... and like that we have wifi manager working...
+
+- https://randomnerdtutorials.com/micropython-wi-fi-manager-esp32-esp8266/
+- https://wiki.seeedstudio.com/xiao_esp32s3_with_micropython/
+
+Continue to next day...
