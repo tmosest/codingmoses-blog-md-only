@@ -24,3 +24,137 @@ Just need to get some software working... and like that we have wifi manager wor
 - https://wiki.seeedstudio.com/xiao_esp32s3_with_micropython/
 
 Continue to next day... and now we have recapped the last episode of DBZ... back to work...
+
+But taking a small break from that because it won't connect to my wifi but I can connect to it as an AP...
+
+# Vertical Farming
+
+This has been a long interest of mine and the dyson farm looks awesome.
+
+Previously, I created a Wordpress Plugin that added plants with the intentions of having a community maker space called Moses Makes to share the information with others.
+
+Given the droughts going on in America and food production shortages, I think this would be fun to attempt again.
+
+Previously:
+
+1. Automatic lights.
+2. QR Codes that open links to the plant's page in WP.
+3. Almost had a robot to take pictures of the plants and the QR code and automate the uploads.
+
+I would like to continue this plan along with upgrading this to a barge some day that can process salt water.
+
+Scale those up as disaster relief vessels.
+
+# Bezalel... Feet!!!
+
+Finally!!! We have feet pics! The printer looks much more handsome taller... ready to date super model printers like the Prusa...
+
+Still broken though... Pretty sure it is a simple problem... the CR touch has moved with the new print... therefore I must do the only thing worse than counting... 
+measuring... how long is the coast line again?... Idk but we are off to infinity and beyond now...
+
+```
+/**
+ * Nozzle-to-Probe offsets { X, Y, Z }
+ *
+ * X and Y offset
+ *   Use a caliper or ruler to measure the distance from the tip of
+ *   the Nozzle to the center-point of the Probe in the X and Y axes.
+ *
+ * Z offset
+ * - For the Z offset use your best known value and adjust at runtime.
+ * - Common probes trigger below the nozzle and have negative values for Z offset.
+ * - Probes triggering above the nozzle height are uncommon but do exist. When using
+ *   probes such as this, carefully set Z_CLEARANCE_DEPLOY_PROBE and Z_CLEARANCE_BETWEEN_PROBES
+ *   to avoid collisions during probing.
+ *
+ * Tune and Adjust
+ * -  Probe Offsets can be tuned at runtime with 'M851', LCD menus, babystepping, etc.
+ * -  PROBE_OFFSET_WIZARD (Configuration_adv.h) can be used for setting the Z offset.
+ *
+ * Assuming the typical work area orientation:
+ *  - Probe to RIGHT of the Nozzle has a Positive X offset
+ *  - Probe to LEFT  of the Nozzle has a Negative X offset
+ *  - Probe in BACK  of the Nozzle has a Positive Y offset
+ *  - Probe in FRONT of the Nozzle has a Negative Y offset
+ *
+ * Some examples:
+ *   #define NOZZLE_TO_PROBE_OFFSET { 10, 10, -1 }   // Example "1"
+ *   #define NOZZLE_TO_PROBE_OFFSET {-10,  5, -1 }   // Example "2"
+ *   #define NOZZLE_TO_PROBE_OFFSET {  5, -5, -1 }   // Example "3"
+ *   #define NOZZLE_TO_PROBE_OFFSET {-15,-10, -1 }   // Example "4"
+ *
+ *     +-- BACK ---+
+ *     |    [+]    |
+ *   L |        1  | R <-- Example "1" (right+,  back+)
+ *   E |  2        | I <-- Example "2" ( left-,  back+)
+ *   F |[-]  N  [+]| G <-- Nozzle
+ *   T |       3   | H <-- Example "3" (right+, front-)
+ *     | 4         | T <-- Example "4" ( left-, front-)
+ *     |    [-]    |
+ *     O-- FRONT --+
+ */
+#define NOZZLE_TO_PROBE_OFFSET { -53, -12, 0 }
+```
+
+These measurements `#define NOZZLE_TO_PROBE_OFFSET { -53, -12, 0 }` are no longer correct for this printer so we need to try again...
+
+#define NOZZLE_TO_PROBE_OFFSET { -53, -24, 0 }
+
+I reflashed the firmware and then played around with the values some more using the knobs and console while setting the z offset.
+
+That worked really well. The printer was able to start without halting again and now probes the bed still and not too far in one direction or the other.
+I probably need to play around with the Celebrimbor's more as that might be causing the uneven prints as it tries to compute the offset matrix using the wrong relative positions.
+A hypothesis anyway...
+
+It would also be good to update the printer to have the filament detector and to control the led lights. That way they can make them red if there are any errors etc.
+
+First we need to figure out what to print... and well that was canceled... noticed that the CR touch is too low...
+Need to break back out the CAD skills.
+
+# Hot Wheels Back to the Future.
+
+We did not let the WIFI issue stop us!!! Instead we go stuck trying to improve the project's platform.ini sync...
+
+Also, did some research into 3D printing a new under carrage or atleast arm bar if I break this one.
+
+- [Arm Bar Turning](https://www.thingiverse.com/thing:4709196)
+- [3d Printable RC Car](https://www.thingiverse.com/thing:4892947)
+- [Another RC Car](https://www.thingiverse.com/thing:19196)
+- [And another](https://www.thingiverse.com/thing:5768730)
+- [Porsche 911... just a sexy car... as Bill Gates would know... Elon Musk rolling in his nightmares](https://www.thingiverse.com/thing:4899043)
+- [Bond car...](https://www.thingiverse.com/thing:6890421)
+- [Actual parts we can probably use... aye theres the rub](https://www.thingiverse.com/thing:6858455/files)
+
+But yeah... platform ini is stubborn right now and I somehow managed to break uploading with PyMakr too... so wtf lol...
+
+Will figure this out again though....
+
+# Random Warp Review
+
+Warp is a newer terminal program made by ex Google employees. More specifically:
+
+```
+Warp was founded in June 2020 by Zach Lloyd, former Principal Engineer at Google and interim CTO at TIME.[5] Lloyd and an early engineering team decided to develop Warp as a modern version of the command line terminal. Warp was built natively in Rust.[6]
+
+In April 2023, Warp announced Warp AI, which integrated an OpenAI large language model chatbot into the terminal.[7] In June 2023, Warp introduced Warp Drive for collaboration on the command line, which allowed developers to create and share templated commands with their teams using inbuilt cloud storage.[8][9][10]
+```
+
+I haved used it since it came out but I haven't really needed it till lately and I really never tried out the AI part. 
+Installing it on the windoes computer was a completely different game! I'm more familar with Linux and Unix style commands and Mac processes for installing stuff.
+I haven't used windows much since I was a child on purpose... 
+
+The government gave me some scolarships and grants for college and I made sure to use that to teach myself to code as well.
+That's what you do when you're poor and abused (eating one meal a day, wearing the same clothes, while your father refuses to pay child support and your mom refuses to help...)
+You take any opportunities and you run with them...
+
+```
+You better lose yourself in the music, the moment, you own it, you better never let it go. (Go) You only get one shot, do not miss your chance to blow.
+
+- Eminem
+```
+
+Anyway, sorry for that rant... but Warp was really awesome on Windows it helped me fix my python environment with ease. I was able to walk away and check the 3D printer.
+However, on mac it seems to screw me over more than help most of the time. The AI part anyway. Like it just broke my platform ini file by adding the platform twice while removing something else that it wanted to try as a test. I still recommend it for Mac as it is really good at remembering your commands and recommending them based on simple pattern recognmition and it is surpirising how much time that saves alone. 
+
+
+
