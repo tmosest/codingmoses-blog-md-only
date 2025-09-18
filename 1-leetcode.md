@@ -1,3 +1,13 @@
+---
+title: Day 1 LeetCode
+description:
+date: 2025-09-16
+categories: []
+author: moses
+tags: []
+hideToc: true
+---
+
 ## 2. Add Two Numbers – A Medium‑Level Linked‑List Puzzle  
 *Solved – Medium* | *LeetCode*  
 

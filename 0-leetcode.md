@@ -1,3 +1,13 @@
+---
+title: Day 0 LeetCode
+description:
+date: 2025-09-16
+categories: []
+author: moses
+tags: []
+hideToc: true
+---
+
 # 1. Two‑Sum – The *Nice, Ugly, and (Un)pleasant* Side of a Classic Interview Problem
 
 > “One of the most common LeetCode problems.”  
