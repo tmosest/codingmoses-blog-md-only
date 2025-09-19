@@ -1,4 +1,13 @@
 ---
+title: Day 24 HomeLab - 
+description: Placeholder
+date: 2025-09-18
+categories: []
+author: moses
+tags: []
+hideToc: true
+---
+
 title: Day 24 HomeLab - HomeLab Adventures: ESP32, 3‑D Printing, and More
 description:  A deep dive into building an ESP32‑powered RC car, troubleshooting a 3‑D printer, and exploring Raspberry Pi UAV projects. Includes code snippets, hardware hacks, and SEO‑friendly tech insights.
 date: 2025-09-18
@@ -6,7 +15,6 @@ categories: ["HomeLab", "Embedded Systems", "3D Printing"]
 author: moses
 tags:  ["ESP32", "MicroPython", "Wi‑Fi Manager", "3D Printing", "Raspberry Pi", "Warp Terminal", "RC Car", "Vertical Farming"]
 hideToc: true
----
 
 # 🚗 Hot Wheels RC Spy Race Car POV – ESP32 & Sense HAT
 
@@ -185,5 +193,3 @@ I want a robot that can:
 - Outlined a practical Wall E‑inspired trash‑collecting robot.
 
 Happy hacking, and keep those code snippets clean! 🚀
-
-```
