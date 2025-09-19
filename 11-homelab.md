@@ -10,7 +10,8 @@ hideToc: true
 
 # Ozymandias
 
-Back to becoming the Hitler of Rodent detection...
+Back to becoming the Hitler of Rodent detection... the fact that the Chat GPT changed Hitler to Guru scares me...
+Note: I was just being sarcastic and "crazy" I'm just a spin off and Grok and Emimem lyrics but Chat GPT is planning the halocaust over there...
 
 ```
 I met a traveller from an antique land,

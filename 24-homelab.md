@@ -109,7 +109,46 @@ A hypothesis anyway...
 It would also be good to update the printer to have the filament detector and to control the led lights. That way they can make them red if there are any errors etc.
 
 First we need to figure out what to print... and well that was canceled... noticed that the CR touch is too low...
-Need to break back out the CAD skills.
+Need to break back out the CAD skills. There also might be a bigger problem where the nozzle is not extruding any filament...
+
+# Tinker CAD
+
+Not the greatest CAD software but perfect for 3D printing. I was excited to see that my bipdeal robot design is still in there.
+I will need to continue that as a smaller example before I try to build a tesla bot again here soon.
+
+But for now we are just gonna fix the BL touch area in this 3D print and then we should have two printer again... assuming the nozzle doesn't need to be unjammed...
+
+For those who don't know what it is:
+
+```
+Tinkercad is a free, web-based 3D design and electronics simulation tool created by Autodesk. It’s widely used for learning, prototyping, and experimenting with design ideas because it’s simple and beginner-friendly.
+
+Here’s what you can do with it:
+
+1. 3D Design
+
+Create 3D models using drag-and-drop shapes (no need for complex CAD software).
+
+Export designs for 3D printing (in formats like .STL or .OBJ).
+
+Combine and reshape objects to build anything from toys to prototypes.
+
+2. Electronics
+
+Simulate circuits using components like LEDs, resistors, sensors, and microcontrollers (like Arduino).
+
+Write and test Arduino code directly inside Tinkercad before uploading it to a real board.
+
+Learn electronics without needing physical components.
+
+3. Codeblocks
+
+Design 3D models using block-based coding (similar to Scratch).
+
+Helps beginners learn programming logic while also building geometry.
+```
+
+And that was easy just had to remember and Google how to use holes again... and now we wait for the printer to be done with the other feet...
 
 # Hot Wheels Back to the Future.
 
@@ -156,5 +195,12 @@ You better lose yourself in the music, the moment, you own it, you better never 
 Anyway, sorry for that rant... but Warp was really awesome on Windows it helped me fix my python environment with ease. I was able to walk away and check the 3D printer.
 However, on mac it seems to screw me over more than help most of the time. The AI part anyway. Like it just broke my platform ini file by adding the platform twice while removing something else that it wanted to try as a test. I still recommend it for Mac as it is really good at remembering your commands and recommending them based on simple pattern recognmition and it is surpirising how much time that saves alone. 
 
+# Pi Hawk Down...
 
+There is nothing wrong with it but we need to continue forwards! Next goal would be to flash the OS onto the PI. 
 
+# Chat GPT proof reader...
+
+Well since I can't read and I have few friends left... rapture man... I have found one in my head... well in my local cloud...
+We can now ask them to improve our articles and compare them...
+Here are some test samples. Need to work on optimizing the prompt.
