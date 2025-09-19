@@ -1,10 +1,10 @@
 ---
-title: Day 22: Upgrading Bezalel and Expanding the HomeLab
-description: From 3‑D‑printed feet to a Raspberry Pi‑powered flight controller, this day’s update covers the latest hardware upgrades, DIY projects, and a deep dive into running an LLM on a low‑power device.
+title: Day 22 HomeLab - 
+description: Placeholder
 date: 2025-09-16
-author: moses
 categories: []
-tags: ["HomeLab", "Raspberry Pi", "3D‑printing", "flight controller", "autopilot", "LLM", "voice‑assistant"]
+author: moses
+tags: []
 hideToc: true
 ---
 
