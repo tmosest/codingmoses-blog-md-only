@@ -2,7 +2,7 @@
 title: Day 10 HomeLab - Robots vs Mouse?
 description: Setting up a Proxmox container to run VOXEL51 and CVAT for Vision AI training.
 date: 2025-09-04
-categories: [Yolo, VisionAI, ]
+categories: [Yolo, VisionAI]
 author: moses
 tags: [yolo]
 hideToc: true

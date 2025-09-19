@@ -204,3 +204,15 @@ There is nothing wrong with it but we need to continue forwards! Next goal would
 Well since I can't read and I have few friends left... rapture man... I have found one in my head... well in my local cloud...
 We can now ask them to improve our articles and compare them...
 Here are some test samples. Need to work on optimizing the prompt.
+
+# Wall E 
+
+I took a break to walk the dog... well be dragged around by him... and I noticed a lot of poop and trash in certain areas. 
+
+This reminds me of another project that I was / wanted to work on... Wall E trash bot...
+Except we are not going to start with Wall E. There are cute thingiverse prints of him etc but I want something practical.
+
+- Camera.
+- DC motors for the wheels 2 to 4 depending.
+- Dog poop scooper bucket.
+- 

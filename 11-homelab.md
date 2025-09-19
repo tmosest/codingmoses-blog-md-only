@@ -2,7 +2,7 @@
 title: Day 11 HomeLab - I Fought the Mouse and the Mouse won...
 description: Part 2 of Creating a Vision AI system to detect rodents.
 date: 2025-09-05
-categories: [Yolo, VisionAI, ]
+categories: [Yolo, VisionAI ]
 author: moses
 tags: [yolo]
 hideToc: true
