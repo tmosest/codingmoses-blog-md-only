@@ -195,9 +195,25 @@ You better lose yourself in the music, the moment, you own it, you better never 
 Anyway, sorry for that rant... but Warp was really awesome on Windows it helped me fix my python environment with ease. I was able to walk away and check the 3D printer.
 However, on mac it seems to screw me over more than help most of the time. The AI part anyway. Like it just broke my platform ini file by adding the platform twice while removing something else that it wanted to try as a test. I still recommend it for Mac as it is really good at remembering your commands and recommending them based on simple pattern recognmition and it is surpirising how much time that saves alone. 
 
-# Pi Hawk Down...
+# Pi Hawk Down... down down baby...
 
-There is nothing wrong with it but we need to continue forwards! Next goal would be to flash the OS onto the PI. 
+```
+Hmmmmm
+I'm goin down down baby, yo' street in a Range Rover (c'mon)
+Street sweeper baby, cocked ready to let it go (HOT SHIT!)
+Shimmy shimmy cocoa what? Listen to it pound
+Light it up and take a puff, pass it to me now
+```
+
+There is nothing wrong with the UAV and we just need to continue forwards! Next goal would be to flash the OS onto the PI. 
+
+- https://ardupilot.org/dev/docs/raspberry-pi-via-mavlink.html
+- https://dronekit-python.readthedocs.io/en/latest/guide/quick_start.html
+- https://www.docs.rpanion.com/software/rpanion-server
+
+The easiest way to get started at the moment appears to be rpanion-server but we will probably try out all of the ones on that first list as we go.
+
+
 
 # Chat GPT proof reader...
 
@@ -216,3 +232,22 @@ Except we are not going to start with Wall E. There are cute thingiverse prints 
 - DC motors for the wheels 2 to 4 depending.
 - Dog poop scooper bucket.
 - 
+
+# Sonic Screw Driver 
+
+I have an old flash light that I took apart because I thought the battery had expired... but I was wrong and it was just locked...
+so now I need to fix a batter and I need to put that back together...
+
+or better yet...
+
+# Garage Golden Dome and Palantir Gotham...
+
+As I get closer and closer to having my own version of Palantir Gotham in my garage startup... I realize... I need way more money...
+Like come on baby give me some GPU servers please... we will figure something out... probably steal from Musk and sell not flame throwers to not kids...
+or from air bnb and sell cereal boxes with the president on them...
+
+or ... furbies with lasers... cause you know sharks with lazers... etc...
+
+# AI Hacker Bot... 
+
+Coming soon...
