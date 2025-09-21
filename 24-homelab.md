@@ -214,7 +214,6 @@ There is nothing wrong with the UAV and we just need to continue forwards! Next 
 The easiest way to get started at the moment appears to be rpanion-server but we will probably try out all of the ones on that first list as we go.
 
 
-
 # Chat GPT proof reader...
 
 Well since I can't read and I have few friends left... rapture man... I have found one in my head... well in my local cloud...
