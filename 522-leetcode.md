@@ -7,104 +7,87 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 522. Longest Uncommon Subsequence II – Three‑Way Solution (Java | Python | C++)  
-*Solve it in 30 seconds, explain the intuition, and get the interviewers excited!*
+        **Answer**
+
+Below you’ll find:
+
+| Language | Code |
+|----------|------|
+| **Java** | `Solution.java` |
+| **Python** | `solution.py` |
+| **C++** | `solution.cpp` |
+
+After the code, a full‑blown blog‑style article explains the problem, the algorithm, edge cases, pitfalls, and why this knowledge will make you a standout candidate in a software‑engineering interview. The article is SEO‑optimized around keywords like *“LeetCode 522”, “Longest Uncommon Subsequence II”, “Java solution”, “Python solution”, “C++ solution”, “software interview”*.
 
 ---
 
-### 1️⃣ Problem Recap
-
-> **Given an array of strings `strs`, find the length of the longest string that is a subsequence of **exactly one** element of `strs`.  
-> If no such string exists, return `-1`.**
-
-> *Subsequence* – a string that can be derived by deleting zero or more characters without changing the order.
-
-**Constraints**
-
-| | | |
-|---|---|---|
-| `2 ≤ strs.length ≤ 50` | `1 ≤ strs[i].length ≤ 10` | all lowercase letters |
-
-> Example  
-> `strs = ["aba","cdc","eae"]` → **3** (the string `"aba"` itself)  
-> `strs = ["aaa","aaa","aa"]` → **-1** (no string is unique)
-
----
-
-## 2️⃣ The “Aha!” Insight
-
-At first glance, the phrase “subsequence” might hint at dynamic programming or backtracking.  
-But a very simple observation turns the problem into a one‑liner:
-
-> **If a string appears only once in the array, it is *automatically* an uncommon subsequence.**  
-> Because every string is a subsequence of itself, but no other string contains it as a subsequence (otherwise the other string would be longer or equal, contradicting the uniqueness).
-
-Hence the **longest uncommon subsequence** is simply:
-
-1. **Find the longest string that occurs exactly once.**  
-2. If none exist, answer is `-1`.
-
-No DP, no pairwise comparison – just a frequency map.
-
-> *Why is this correct?*  
-> Suppose the longest uncommon subsequence `S` has length `L`.  
-> If `S` appears more than once, then it is a subsequence of at least two strings, violating the definition.  
-> So `S` must be unique.  
-> And because any other string `T` that contains `S` as a subsequence would have length ≥ `L`, `S` must be the longest unique string.
-
----
-
-## 3️⃣ Implementation in Three Languages
-
-> **All three solutions are O(n log n) due to sorting or map construction, but with `n ≤ 50` the runtime is negligible.**
-
----
-
-### 3.1 Java
+## 1️⃣ Java – `Solution.java`
 
 ```java
 import java.util.*;
 
 class Solution {
     public int findLUSlength(String[] strs) {
-        // Count frequencies
-        Map<String, Integer> freq = new HashMap<>();
-        for (String s : strs) freq.put(s, freq.getOrDefault(s, 0) + 1);
+        int n = strs.length;
+        // Sort by length descending
+        Arrays.sort(strs, (a, b) -> Integer.compare(b.length(), a.length()));
 
-        int maxLen = -1;
-        for (String s : strs) {
-            if (freq.get(s) == 1)          // unique string
-                maxLen = Math.max(maxLen, s.length());
+        for (int i = 0; i < n; i++) {
+            boolean isUnique = true;
+            for (int j = 0; j < n; j++) {
+                if (i == j) continue;
+                if (isSubsequence(strs[i], strs[j])) {
+                    isUnique = false;
+                    break;
+                }
+            }
+            if (isUnique) return strs[i].length();
         }
-        return maxLen;                      // -1 if none unique
+        return -1;
+    }
+
+    // Two‑pointer check: is s a subsequence of t ?
+    private boolean isSubsequence(String s, String t) {
+        if (s.length() > t.length()) return false;
+        int i = 0, j = 0;
+        while (i < s.length() && j < t.length()) {
+            if (s.charAt(i) == t.charAt(j)) i++;
+            j++;
+        }
+        return i == s.length();
     }
 }
 ```
 
-> **Complexity**  
-> Time: O(n)  
-> Space: O(n)
-
 ---
 
-### 3.2 Python
+## 2️⃣ Python – `solution.py`
 
 ```python
+from typing import List
+
 class Solution:
     def findLUSlength(self, strs: List[str]) -> int:
-        from collections import Counter
-        freq = Counter(strs)
-        max_len = max((len(s) for s in strs if freq[s] == 1), default=-1)
-        return max_len
-```
+        # Sort strings by length descending
+        strs.sort(key=len, reverse=True)
 
-> **Complexity**  
-> Time: O(n)  
-> Space: O(n)
+        for i, s in enumerate(strs):
+            if all(not self.is_subseq(s, t) for j, t in enumerate(strs) if i != j):
+                return len(s)
+        return -1
+
+    @staticmethod
+    def is_subseq(s: str, t: str) -> bool:
+        """Return True if s is a subsequence of t."""
+        if len(s) > len(t):
+            return False
+        it = iter(t)
+        return all(c in it for c in s)
+```
 
 ---
 
-### 3.3 C++
+## 3️⃣ C++ – `solution.cpp`
 
 ```cpp
 #include <bits/stdc++.h>
@@ -113,62 +96,135 @@ using namespace std;
 class Solution {
 public:
     int findLUSlength(vector<string>& strs) {
-        unordered_map<string,int> freq;
-        for (const string &s : strs) freq[s]++;
+        // Sort by length descending
+        sort(strs.begin(), strs.end(),
+             [](const string& a, const string& b){ return a.size() > b.size(); });
 
-        int ans = -1;
-        for (const string &s : strs)
-            if (freq[s] == 1)
-                ans = max(ans, (int)s.size());
-        return ans;
+        for (int i = 0; i < (int)strs.size(); ++i) {
+            bool unique = true;
+            for (int j = 0; j < (int)strs.size(); ++j) {
+                if (i == j) continue;
+                if (isSubsequence(strs[i], strs[j])) {
+                    unique = false;
+                    break;
+                }
+            }
+            if (unique) return strs[i].size();
+        }
+        return -1;
+    }
+
+private:
+    bool isSubsequence(const string& s, const string& t) {
+        if (s.size() > t.size()) return false;
+        size_t i = 0, j = 0;
+        while (i < s.size() && j < t.size()) {
+            if (s[i] == t[j]) ++i;
+            ++j;
+        }
+        return i == s.size();
     }
 };
 ```
 
-> **Complexity**  
-> Time: O(n)  
-> Space: O(n)
-
 ---
 
-## 4️⃣ Good, Bad, and Ugly
+## 📚 Blog Article – “Longest Uncommon Subsequence II: Good, Bad, & Ugly – A Job‑Ready Interview Guide”
 
-| Aspect | ✅ Good | ❌ Bad | ⚠️ Ugly |
-|--------|---------|--------|---------|
-| **Complexity** | O(n) with constant factor – super fast | N/A – no heavy algorithmic burden | Be careful of integer overflow with huge inputs (not an issue here) |
-| **Readability** | Extremely short, clear | Too short may look “magic” to some interviewers | Avoid relying on language‑specific tricks that are hard to understand |
-| **Edge Cases** | Handles duplicates, all unique, all identical | None | Empty string array (not in constraints), extremely long strings (not in constraints) |
-| **Proof** | Can give a one‑sentence proof in 10 seconds | None needed if you can explain | Over‑engineering (DP, LCS) can confuse |
+> **Keywords**: *LeetCode 522, Longest Uncommon Subsequence II, Java solution, Python solution, C++ solution, software engineering interview, algorithm interview question, job interview*
 
----
+### 1. The Problem in Plain English
 
-## 5️⃣ When to Use This Approach
+Given an array of lowercase strings `strs`, find the length of the **Longest Uncommon Subsequence (LUS)**.  
+A string `x` is an uncommon subsequence if:
 
-- **Interview setting**: Show that you can spot a pattern and reduce the problem to counting.  
-- **Coding challenge**: Time limit is generous, but this is the most maintainable solution.  
-- **Production code**: If you ever need a “longest uncommon subsequence” in a log or analytics pipeline, this is perfect.
+* `x` is a subsequence of **one** string in `strs`.
+* `x` is **not** a subsequence of **any** other string in `strs`.
 
----
+If no such subsequence exists, return `-1`.
 
-## 6️⃣ SEO‑Optimized Takeaway
+A subsequence can be obtained by deleting zero or more characters from a string without changing the order of the remaining characters.
 
-> **Keywords**: Leetcode 522, Longest Uncommon Subsequence II, Java solution, Python solution, C++ solution, string subsequence, interview question, coding interview, algorithm, time complexity, job interview.
+> **Examples**  
+> *Input:* `["aba","cdc","eae"]` → *Output:* `3`  
+> *Input:* `["aaa","aaa","aa"]`  → *Output:* `-1`
 
-> **Why this matters**:  
-> - Recruiters love concise, efficient code.  
-> - The blog’s headline *“Longest Uncommon Subsequence II – The 30‑Second Java/Python/C++ Solution”* targets the exact search terms candidates use when preparing for interviews.  
-> - The “good, bad, ugly” section shows you can analyze problems from multiple angles—an interview staple.
+### 2. Why This Problem is Interview Gold
 
----
+* **Small constraints, big mental load** – lengths ≤ 10, but you must reason about subsequence relationships, not just string equality.  
+* **Hidden edge‑case** – identical strings vs. same length but different strings.  
+* **Multiple languages** – demonstrating the same algorithm in Java, Python, and C++ shows deep understanding.  
+* **Scales to the “Longest Uncommon Subsequence” (LeetCode 521)** – once you nail `522`, you can tackle the harder version.
 
-## 7️⃣ Final Thoughts
+### 3. The “Good” – A Clean, Intuitive Solution
 
-The Longest Uncommon Subsequence II problem teaches a powerful lesson: **never underestimate the power of frequency counting**.  
-What looks like a classic subsequence problem turns into a “find the unique string” puzzle.  
-Keep this pattern in your toolbox; it will pop up in other interview questions about uniqueness, duplicates, and subsequences.
+#### 3.1 Core Idea
 
-> **Want to shine in your next interview?**  
-> Practice spotting such simplifications, write clean code in your language of choice, and explain the intuition clearly.  
-> You’ll be ready to tackle even the trickiest LeetCode problems and impress any hiring manager.
+*Sort the strings by length descending, then test each string to see if it is a subsequence of any other string. The first (i.e., longest) that passes is the answer.*
 
-Happy coding! 🚀
+Why does this work?
+
+* A longer string cannot be a subsequence of a shorter string.  
+* If a string is equal to another, it is automatically a subsequence of that string.  
+* Therefore, checking strings from longest to shortest guarantees we find the maximum length as soon as we find a unique subsequence.
+
+#### 3.2 Complexity
+
+With `n` strings (≤ 50) and each string length `L` (≤ 10):
+
+* **Subsequence check** – two‑pointer scan: `O(L)`  
+* **Total checks** – worst‑case `n²` comparisons: `O(n² * L)`  
+  → at most `50² * 10 = 25,000` operations – trivial for any interview.
+
+#### 3.3 Code Snippets
+
+| Language | Highlight |
+|----------|-----------|
+| **Java** | Uses `Arrays.sort` with a lambda, and a private helper `isSubsequence`. |
+| **Python** | Sorts in place with `strs.sort(key=len, reverse=True)`, and uses generator expression to short‑circuit. |
+| **C++** | Uses `std::sort` with a lambda, and a `size_t` pointer scan. |
+
+These snippets are already included above – copy‑paste into your IDE, run the test harness, and you’re done.
+
+### 4. The “Bad” – Common Pitfalls
+
+| Pitfall | Fix |
+|---------|-----|
+| **Assuming a unique string is always the answer** | Even a unique string can be a subsequence of another string (e.g., `"aa"` vs. `"aaa"`). |
+| **Using O(2^L) brute force to generate all subsequences** | With `L` up to 10, this is still feasible, but unnecessary and error‑prone. |
+| **Skipping the duplicate check** | Two identical strings always invalidate each other. |
+| **Sorting lexicographically instead of by length** | Longer strings must come first; otherwise you might return a shorter LUS. |
+
+### 5. The “Ugly” – Hidden Edge Cases
+
+1. **All strings identical** – e.g., `["abc","abc"]`.  
+   *Answer:* `-1` because any subsequence of `"abc"` is also a subsequence of the other identical string.
+
+2. **One string is a subsequence of all others** – e.g., `["ab", "abc", "abcd"]`.  
+   *Answer:* `-1`.  
+   The algorithm correctly checks against all others, and will not return the shortest string.
+
+3. **Multiple strings of the same length but distinct** – e.g., `["ab", "cd"]`.  
+   Both are candidates; the algorithm picks the first after sorting, which is fine because they are of equal length. Return `2`.
+
+### 6. Interview‑Ready Tips
+
+| Tip | Why It Matters |
+|-----|----------------|
+| **Explain the subsequence helper** | Shows you understand pointer‑based scanning and why it’s linear. |
+| **Discuss time‑space trade‑offs** | Even though constraints are small, articulate that `O(n²)` is acceptable and that we avoid unnecessary memory. |
+| **Mention sorting by length** | Demonstrates you’re thinking about how to guarantee optimality early. |
+| **Show you can handle duplicate strings** | Often interviewers test this edge case. |
+| **Write clean, commented code** | Readability scores highly in pair‑programming interviews. |
+
+### 7. SEO‑Optimized Summary
+
+> Want to ace your next **software engineering interview**? Master the **Longest Uncommon Subsequence II** (LeetCode 522) problem with our foolproof Java, Python, and C++ solutions. Learn the *good*, *bad*, and *ugly* of this classic algorithmic challenge and impress hiring managers with clear reasoning, optimal code, and real‑world edge‑case handling. 🚀
+
+### 8. Final Takeaway
+
+The “Longest Uncommon Subsequence II” is deceptively simple but packed with interview insight. The key is **sorting by length** and then **verifying subsequence relationships**. With the code above, you can confidently solve it in any of the three major languages. Show this solution in your portfolio, talk through the design decisions in your next interview, and let it be a testament to your algorithmic sharpness—exactly the quality hiring managers look for. Good luck!  
+
+--- 
+
+**Happy coding and best of luck on your job hunt!**

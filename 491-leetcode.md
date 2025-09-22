@@ -7,261 +7,217 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem recap
-
-**LeetCode 491 – Non‑decreasing Subsequences**
-
-> Given an integer array `nums`, return **all the different possible non‑decreasing subsequences** of the given array with at least two elements.  
-> The answer may be returned in any order.
-
-```
-Input : nums = [4,6,7,7]
-Output: [[4,6],[4,6,7],[4,6,7,7],[4,7],[4,7,7],[6,7],[6,7,7],[7,7]]
-```
-
-*Length of `nums` ≤ 15, so an exponential backtracking solution is fine.*
+        ## 🛠️ LeetCode 491 – “Non‑decreasing Subsequences”  
+**Language‑agnostic code (Java / Python / C++) + SEO‑friendly interview blog**
 
 ---
 
-## 2.  Core idea
+### Problem Recap  
+Given an integer array `nums` (1 ≤ len ≤ 15, -100 ≤ nums[i] ≤ 100), return *all* **different** non‑decreasing subsequences of length **≥ 2**. The order of the output does not matter.
 
-* **Backtracking** – at every position we decide whether to include the current element in the current subsequence.
-* We only **append** a new element if it is **≥** the last element already in the current subsequence (to keep it non‑decreasing).
-* **Duplicate subsequences** must be avoided.  
-  *Option 1 –* keep a global `Set` of all found subsequences.  
-  *Option 2 –* during the recursion, remember which numbers have already been used at the current depth (`seen` set) and skip duplicates immediately.  
-  Both approaches give the same result; the second one is a little faster because it prunes earlier.
-
-The recursion stops when the array is fully scanned.  
-Every time the current subsequence has length ≥ 2 it is inserted into the answer set.
+> **Example**  
+> Input: `[4,6,7,7]`  
+> Output: `[[4,6],[4,6,7],[4,6,7,7],[4,7],[4,7,7],[6,7],[6,7,7],[7,7]]`
 
 ---
 
-## 3.  Complexity
+## 🎯 Core Idea  
+A classic *backtracking* problem with two twists:
 
-Let `n` be the length of `nums`.
+1. **Non‑decreasing condition** → when extending a sequence we only pick numbers ≥ the last element.  
+2. **Avoid duplicates** → the array may contain repeated values, so the same subsequence can be formed in many ways. We need to output each unique subsequence only once.
 
-*Time* – In the worst case we explore every subset of the array (`2^n`).  
-Checking the non‑decreasing condition takes `O(1)` (just compare the last element).  
-So the time is **O(2^n · n)** (the `· n` comes from copying the vector into the result set).
-
-*Space* –  
-The recursion depth is `n`, each level stores at most `n` integers → **O(n)**.  
-The answer set may contain up to `2^n` subsequences, each of length `O(n)`, so the overall space can be **O(2^n · n)** in the worst case.  
-For `n ≤ 15` this is perfectly fine.
+The standard trick is: **at each recursion depth keep a local `Set` of numbers already taken**. This guarantees we never start a new branch with the same value twice, preventing duplicate subsequences.
 
 ---
 
-## 4.  Reference implementations
+## 📦 Code Snippets
 
-Below are clean, production‑ready implementations in **Java, Python, and C++**.  
-All three use the *seen‑at‑depth* trick to avoid duplicate work.
+Below are concise, production‑ready solutions in **Java**, **Python**, and **C++**.
 
----
+> ⚠️ All three solutions run in `O(n * 2^n)` time (worst‑case) and `O(n)` auxiliary space for recursion, which is optimal for `n ≤ 15`.
 
-### 4.1 Java (Java 17+)
+### 1. Java (Java 17+)
 
 ```java
 import java.util.*;
 
 public class Solution {
-
     public List<List<Integer>> findSubsequences(int[] nums) {
-        List<List<Integer>> result = new ArrayList<>();
-        backtrack(nums, 0, new ArrayList<>(), result, new HashSet<>());
-        return result;
+        List<List<Integer>> ans = new ArrayList<>();
+        backtrack(nums, 0, new ArrayList<>(), ans);
+        return ans;
     }
 
-    private void backtrack(int[] nums, int start, List<Integer> path,
-                           List<List<Integer>> result, Set<List<Integer>> globalSet) {
-        if (path.size() >= 2) {
-            // store only unique subsequences
-            if (globalSet.add(new ArrayList<>(path))) {
-                result.add(new ArrayList<>(path));
-            }
-        }
+    private void backtrack(int[] nums, int idx,
+                           List<Integer> cur, List<List<Integer>> ans) {
+        if (cur.size() >= 2) ans.add(new ArrayList<>(cur));
 
-        Set<Integer> seen = new HashSet<>();
-        for (int i = start; i < nums.length; i++) {
-            // skip duplicates at the same depth
-            if (seen.contains(nums[i])) continue;
-            if (path.isEmpty() || nums[i] >= path.get(path.size() - 1)) {
-                seen.add(nums[i]);
-                path.add(nums[i]);
-                backtrack(nums, i + 1, path, result, globalSet);
-                path.remove(path.size() - 1);
+        Set<Integer> seen = new HashSet<>();          // avoid duplicate starts
+        for (int i = idx; i < nums.length; i++) {
+            if (!seen.add(nums[i])) continue;          // already used at this depth
+            if (cur.isEmpty() || nums[i] >= cur.get(cur.size() - 1)) {
+                cur.add(nums[i]);
+                backtrack(nums, i + 1, cur, ans);
+                cur.remove(cur.size() - 1);
             }
         }
     }
 }
 ```
 
-*Why the `globalSet`?*  
-It guarantees that each distinct subsequence appears only once, even if it can be built in several ways (e.g. `[7,7]` in the example).
-
----
-
-### 4.2 Python 3
+### 2. Python (3.9+)
 
 ```python
 from typing import List
 
 class Solution:
     def findSubsequences(self, nums: List[int]) -> List[List[int]]:
-        result = []
-        seen_global = set()          # keep global uniqueness
+        ans = []
 
-        def backtrack(start: int, path: List[int]):
+        def backtrack(start: int, path: List[int]) -> None:
             if len(path) >= 2:
-                t = tuple(path)
-                if t not in seen_global:
-                    seen_global.add(t)
-                    result.append(path.copy())
+                ans.append(path.copy())
 
-            seen_local = set()      # avoid using same number twice at this level
+            used = set()                     # skip duplicate starts
             for i in range(start, len(nums)):
-                if nums[i] in seen_local:
+                if nums[i] in used:
                     continue
+                used.add(nums[i])
                 if not path or nums[i] >= path[-1]:
-                    seen_local.add(nums[i])
                     path.append(nums[i])
                     backtrack(i + 1, path)
                     path.pop()
 
         backtrack(0, [])
-        return result
+        return ans
 ```
 
-Python’s `set` of tuples is an elegant way to keep the subsequences unique.
-
----
-
-### 4.3 C++17
+### 3. C++ (C++17)
 
 ```cpp
-#include <bits/stdc++.h>
+#include <vector>
+#include <unordered_set>
 using namespace std;
 
 class Solution {
 public:
     vector<vector<int>> findSubsequences(vector<int>& nums) {
         vector<vector<int>> ans;
-        unordered_set<string> globalSet;           // for uniqueness
-
-        vector<int> path;
-        function<void(int)> dfs = [&](int idx) {
-            if (path.size() >= 2) {
-                string key = serialize(path);
-                if (globalSet.insert(key).second)   // inserted successfully
-                    ans.push_back(path);
-            }
-
-            unordered_set<int> localSeen;           // dedupe at this depth
-            for (int i = idx; i < nums.size(); ++i) {
-                if (localSeen.count(nums[i])) continue;
-                if (path.empty() || nums[i] >= path.back()) {
-                    localSeen.insert(nums[i]);
-                    path.push_back(nums[i]);
-                    dfs(i + 1);
-                    path.pop_back();
-                }
-            }
-        };
-
-        dfs(0);
+        vector<int> cur;
+        backtrack(nums, 0, cur, ans);
         return ans;
     }
 
 private:
-    // helper: convert vector to a string key (e.g. "4,6,7")
-    static string serialize(const vector<int>& v) {
-        string s;
-        for (int x : v) s += to_string(x) + ',';
-        return s;
+    void backtrack(const vector<int>& nums, int idx,
+                   vector<int>& cur, vector<vector<int>>& ans) {
+        if (cur.size() >= 2) ans.push_back(cur);
+
+        unordered_set<int> used;          // avoid duplicate starts
+        for (int i = idx; i < (int)nums.size(); ++i) {
+            if (!used.insert(nums[i]).second) continue;
+            if (cur.empty() || nums[i] >= cur.back()) {
+                cur.push_back(nums[i]);
+                backtrack(nums, i + 1, cur, ans);
+                cur.pop_back();
+            }
+        }
     }
 };
 ```
 
-The C++ version uses a helper to serialize each subsequence into a string key so it can be stored in an `unordered_set`.  
-(If you prefer, you can use `std::set<vector<int>>` for the global set – the compiler will provide the ordering operator.)
+---
+
+## 📚 Blog Article – “The Good, the Bad, and the Ugly of LeetCode 491”
+
+> **SEO Tags**:  
+> *LeetCode 491*, *Non‑decreasing Subsequences*, *Java solution*, *Python solution*, *C++ solution*, *interview coding*, *software engineering interview*, *job interview coding tips*, *dynamic programming*, *backtracking*, *duplicate handling*, *coding interview tricks*
 
 ---
 
-## 5.  Blog article
+### Introduction  
+When prepping for a coding interview, LeetCode’s “Non‑decreasing Subsequences” (Problem 491) is a **must‑do**. It tests:
 
-> **Title**: “Mastering LeetCode 491 – Non‑Decreasing Subsequences: The Good, The Bad, and The Ugly (With Code in Java, Python, C++)”
+- **Backtracking** – how you prune the search space.  
+- **Set usage** – handling duplicates.  
+- **Time‑space trade‑offs** – small input but exponential blow‑up.
 
----
-
-### 5.1 Introduction
-
-- Briefly introduce LeetCode 491, why it’s a common interview question (backtracking, pruning, handling duplicates).  
-- Mention that the solution is “medium” but a great showcase of algorithmic thinking.  
-- State that the article will walk through the *good* design, the *bad* pitfalls to avoid, and the *ugly* edge‑cases that trip up many novices.  
-- End the intro with a promise of 3 clean code snippets and a discussion on how this problem demonstrates depth that hiring managers love.
-
-### 5.2 The “Good” – A clean, production‑ready approach
-
-- Backtracking: Explain the recursion tree, why we can stop early.  
-- Duplicate handling: Show two ways: a global set or per‑depth seen set.  
-- Complexity discussion.  
-- Show the Java code as a full solution, pointing out key lines (e.g. `seen.add(nums[i])` to dedupe).  
-- Emphasise readability: good variable names, inline comments, using `List<Integer>` instead of raw arrays, etc.
-
-### 5.3 The “Bad” – Common mistakes
-
-- **Forgetting to copy the list before adding to the result** – leads to all entries pointing to the same list object.  
-- **Using a simple `HashSet<List<Integer>>` without a proper `equals`/`hashCode`** – Java’s default works for lists but not for arrays.  
-- **Not pruning duplicate numbers at the same recursion depth** – results in exponential blow‑up.  
-- **Using a global set but not using a tuple/serialized key** in Python/C++ – results in `TypeError` or slow lookups.  
-- Provide quick code snippets of the buggy version and explain why it fails.
-
-### 5.4 The “Ugly” – Edge cases that bite
-
-- **All equal numbers** – e.g. `[7,7,7,7]` – many repeated subsequences. Show how the per‑depth seen set solves it.  
-- **Strictly decreasing array** – only one valid subsequence if any (two same numbers).  
-- **Maximum length (15) with mixed signs** – discuss memory usage, but reassure that `O(2^15)` is ~32k subsequences, well within limits.  
-- **Negative numbers** – no special handling needed, but good to test.
-
-### 5.5 Why this problem is a hiring‑star
-
-- Demonstrates *backtracking* mastery – a core interview topic.  
-- Shows *deduplication* techniques – essential for production code.  
-- Exposes ability to *optimize* recursion with per‑depth sets – a subtle improvement that recruiters love to spot.  
-- Encourages clean code, comments, and test‑driven design.
-
-### 5.6 SEO‑friendly keywords
-
-- “LeetCode 491 solution”
-- “non‑decreasing subsequences”
-- “backtracking with duplicates”
-- “Java Python C++ solution”
-- “coding interview prep”
-- “software engineer interview questions”
-
-### 5.7 Call to action
-
-- Encourage readers to implement the solution themselves in the language of their choice.  
-- Invite them to submit their own test cases or ask for help in the comments.  
-- Suggest adding the code to their GitHub README for a quick showcase.  
-- Close with a friendly reminder: “The real test is writing clean, bug‑free code – keep practicing!”
+Below, we dissect the problem through three lenses: the *good*, the *bad*, and the *ugly*.
 
 ---
 
-## 6.  Conclusion
+### The Good – Why This Problem is a Goldmine
 
-- Recap the algorithm and highlight the key takeaways: backtracking, duplicate handling, and time/space analysis.  
-- Point out that the provided Java, Python, and C++ snippets are ready for copy‑paste into your LeetCode editor.  
-- End with a motivational note: “Every interview is a chance to showcase your problem‑solving chops. Good luck!”
+| Benefit | Why It Matters |
+|---------|----------------|
+| **Clear recursion structure** | You can explain backtracking “step by step”—an interviewers love a neat flow. |
+| **Small constraints** | `n ≤ 15` allows exhaustive search; you can discuss why `O(2^n)` is acceptable. |
+| **Common interview theme** | Many candidates hit the “duplicate subsequences” issue; demonstrating the set trick shows maturity. |
+| **Cross‑language** | You can present the same logic in Java, Python, and C++—showing versatility. |
 
---- 
+**Takeaway**: Mastering this problem shows you can reason about recursion depth, pruning, and handling duplicates—skills any hiring manager values.
 
-### 7.  TL;DR
+---
 
-| Language | Key Trick | Complexity |
-|----------|-----------|------------|
-| Java     | `HashSet<List<Integer>>` + per‑depth `seen` | `O(2^n · n)` |
-| Python   | `set(tuple)` + local `seen` | `O(2^n · n)` |
-| C++      | `unordered_set<string>` + local `seen` | `O(2^n · n)` |
+### The Bad – Pitfalls That Trip Up Candidates
 
-Happy coding! 🚀
+| Pitfall | What it looks like | Fix |
+|---------|--------------------|-----|
+| **Omitting duplicate guard** | You generate duplicate subsequences, causing Wrong Answer or TLE. | Add a *local* `Set` (or `HashSet`) to track values already used at the current recursion level. |
+| **Wrong base case** | Only add when `idx == n`, but forget subsequences shorter than 2. | Check `if path.size() >= 2` *before* continuing deeper. |
+| **Over‑pruning** | Using `if (!cur.empty() && nums[i] < cur.back()) continue;` but not accounting for equality. | Allow `>=` to maintain non‑decreasing property. |
+| **Memory leak in Java** | Returning a reference to the mutable list instead of a copy. | Clone the current list when adding to the answer. |
+
+**Pro Tip**: Write a quick unit test for `[4,4,3,2,1]` to see if your code returns only `[[4,4]]`. It’s a quick sanity check.
+
+---
+
+### The Ugly – Edge Cases & Advanced Tweaks
+
+1. **All elements equal**  
+   Input: `[5,5,5,5]` → Expected `[[5,5],[5,5,5],[5,5,5,5]]`.  
+   *Bug*: If you skip duplicates with a global set, you’ll miss longer subsequences.
+
+2. **Negative numbers**  
+   No special handling needed; the `>=` condition works for negatives.
+
+3. **Large duplicates with varying positions**  
+   Input: `[1,2,2,3]` → All subsequences that include the two `2`s can be formed in multiple ways.  
+   *Fix*: The *local* set ensures each unique value is used only once per depth.
+
+4. **Space‑optimised variant**  
+   If you’re asked to avoid `O(n)` recursion stack, consider an iterative DFS using a manual stack, but this is rarely needed for `n ≤ 15`.
+
+---
+
+### How to Discuss This in an Interview
+
+1. **State the problem in your own words** – this shows comprehension.  
+2. **Explain the recursion tree** – describe why you start a new subsequence only when `nums[i] >= last`.  
+3. **Show the duplicate‑avoidance trick** – mention the local `Set` and why it’s essential.  
+4. **Time & Space analysis** – `O(n·2^n)` time, `O(n)` recursion stack.  
+5. **Code walkthrough** – talk through the base case, loop, pruning, and backtracking step.  
+
+> **Interview Tip**: After writing the code, walk through the example `[4,6,7,7]` on the whiteboard. Highlight how the set stops `[4,7]` from being re‑added via the second `7`.
+
+---
+
+### SEO‑Optimized Headline & Meta Description
+
+- **Headline**: “LeetCode 491 – Master Non‑decreasing Subsequences (Java / Python / C++) + Interview Tips”
+- **Meta Description**: “Struggling with LeetCode 491? Discover the perfect backtracking solution in Java, Python, and C++, learn how to avoid duplicates, and ace your coding interview with our job‑ready guide.”
+
+---
+
+### Final Words
+
+LeetCode 491 is a **micro‑saga** of backtracking brilliance. By mastering it, you’ll be able to:
+
+- Explain recursion cleanly.  
+- Handle duplicates elegantly with local sets.  
+- Discuss time/space trade‑offs.  
+
+This is exactly the type of problem recruiters love to see candidates tackle confidently. Good luck in your next interview—and don’t forget to brag about your new “duplicate‑handling” super‑power! 🚀
+
+---

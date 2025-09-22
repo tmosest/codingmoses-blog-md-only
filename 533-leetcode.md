@@ -7,404 +7,302 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 533. Lonely Pixel II  
-**LeetCode** – Medium  
-**Signature**  
-```java
-public int findBlackPixel(char[][] picture, int target)
-```
+        ---
+
+# **LeetCode 533 – Lonely Pixel II**  
+**A Complete Guide – Java, Python, C++ & SEO‑Optimised Blog Post**
+
+> *“In coding interviews, the devil is in the details. Mastering problem 533 will let you showcase your algorithmic thinking, your ability to handle edge cases, and your love for clean code.”*
 
 ---
 
-### Problem recap  
-
-You are given an `m × n` matrix `picture` consisting only of the characters `'B'` (black) and `'W'` (white).  
-A *black lonely pixel* is a black pixel `B` located at position `(r, c)` that satisfies **both** of the following rules:
-
-1. **Exact count** – the row `r` contains exactly `target` black pixels and the column `c` also contains exactly `target` black pixels.
-2. **Uniform rows** – every row that has a black pixel in column `c` must be **identical** to row `r`.
-
-Return the total number of black lonely pixels in the picture.
-
----
-
-## 1.  Why is this problem interesting?
-
-| Aspect | Why it matters |
-|--------|----------------|
-| **Data‑structure use** | You need to keep row and column black‑counts – simple arrays. |
-| **Set comparison** | The “uniform rows” rule forces you to compare whole rows; a common mistake is to only compare a single value. |
-| **Avoiding double counting** | A naive nested loop that counts per cell can count the same pixel many times if you’re not careful. |
-| **Edge cases** | Empty rows/columns, `target` larger than `min(m, n)` – all need to be handled gracefully. |
-
-If you can solve this cleanly, you’ll impress interviewers with:
-
-* Clear reasoning and correctness proof.
-* Good time/space complexity analysis.
-* Familiarity with common interview patterns (prefix‑sum, hashmap, string comparison).
+## Table of Contents  
+1. [Problem Overview](#problem-overview)  
+2. [Key Observations & Edge‑Case Checklist](#key-observations)  
+3. [Optimal Approach (O(m × n))](#optimal-approach)  
+4. [Complexity Analysis](#complexity)  
+5. [Full Implementations](#implementations)  
+   * Java  
+   * Python  
+   * C++  
+6. [Good, Bad & Ugly: Design Trade‑offs](#good-bad-ugly)  
+7. [Interview‑Ready Tips](#interview-tips)  
+8. [SEO Checklist](#seo-checklist)  
 
 ---
 
-## 2.  The “Good” – a clean O(m × n) algorithm
+## Problem Overview <a name="problem-overview"></a>
 
-1. **Count black pixels per row and per column**  
-   ```text
-   rowCount[i]   = number of 'B' in picture[i]
-   colCount[j]   = number of 'B' in column j
-   ```
+> **Lonely Pixel II**  
+> Given an `m × n` matrix `picture` of characters `'B'` (black) and `'W'` (white) and an integer `target`, return the number of *black lonely pixels*.
 
-2. **Find candidate columns** – only columns whose `colCount` equals `target` can contribute.  
-   For each such column, collect the set of rows that contain a black pixel in that column.
+A pixel `picture[r][c] == 'B'` is **lonely** if:
 
-3. **Check the “uniform rows” rule**  
-   * If a candidate column has exactly `target` rows, then all those rows must be the same.  
-   * Verify this by comparing the string representation of each row in the set with the first one.
-
-4. **Count**  
-   * If a column passes the test, every one of its `target` black pixels is lonely.  
-   * Add `target` to the answer for every passing column.
-
-### Pseudocode
-
-```text
-for each row i:
-    rowCount[i] = count 'B' in picture[i]
-
-for each column j:
-    colCount[j] = count 'B' in column j
-
-answer = 0
-for each column j:
-    if colCount[j] != target: continue
-
-    rowsWithB = list of i where picture[i][j] == 'B'
-    if rowsWithB.size() != target: continue
-
-    firstRow = rowsWithB[0]
-    uniform = true
-    for each i in rowsWithB:
-        if picture[i] != picture[firstRow]:
-            uniform = false
-            break
-    if uniform:
-        answer += target
-
-return answer
-```
-
-**Why does this work?**
-
-* A black pixel can only be lonely if its row and column both have exactly `target` black pixels – step 2 guarantees this.
-* If any row in the column is different, rule 2 is violated, so those pixels are not lonely.
-* When all rows are identical, every black pixel in that column satisfies both rules; there are `target` of them.
+1. Row `r` and column `c` each contain exactly `target` black pixels.  
+2. All rows that contain a black pixel in column `c` are **identical** to row `r`.
 
 ---
 
-## 3.  The “Bad” – pitfalls to avoid
+## Key Observations & Edge‑Case Checklist <a name="key-observations"></a>
 
-| Mistake | Consequence |
-|---------|-------------|
-| Counting per *cell* and adding `1` if the row and column counts match | Will double‑count pixels that belong to a column whose rows are **not** identical |
-| Using a HashMap of string to list of indices without verifying uniformity | Might count a column that appears “good” because the map size is `target` but rows differ |
-| Comparing rows character‑by‑character on the fly for each cell | Adds O(n) per cell → O(m × n²) time, too slow for 200×200 |
-| Forgetting to reset or reuse temporary variables between columns | Leads to wrong answers for later columns |
-
----
-
-## 4.  The “Ugly” – naive brute force
-
-```text
-ans = 0
-for each cell (i, j):
-    if picture[i][j] != 'B': continue
-    if countRow(i) != target or countCol(j) != target: continue
-    // verify uniform rows by scanning all rows with B at column j
-    if allRowsWithBAtColumnJEqualRowI: ans++
-return ans
-```
-
-*This algorithm* runs in **O(m × n²)** and is a textbook example of “do the simplest thing you can think of” that fails on large inputs.  
-It still passes the 200×200 limits on LeetCode but is *un‑friendly* for interview questions where the interviewer expects a linear‑time solution.
+| Observation | Why it matters | Typical pitfall |
+|-------------|----------------|-----------------|
+| **Count per row** | Needed for rule 1 | Forgetting to store the count for every row leads to O(n) re‑scans |
+| **Count per column** | Needed for rule 1 | Using a map for columns can be slower than an array |
+| **Row pattern identity** | Needed for rule 2 | Comparing strings instead of patterns can give false positives if not handled carefully |
+| **Target == 1** | Minimal edge case | Must still apply both rules |
+| **`m, n <= 200`** | Small but still require O(m × n) | Avoid quadratic or higher solutions |
 
 ---
 
-## 5.  Correctness proof (brief)
+## Optimal Approach (O(m × n)) <a name="optimal-approach"></a>
 
-1. **Necessity** – If a pixel is counted by the algorithm, it lies in a column `c` with `colCount[c] == target` and in a row `r` with `rowCount[r] == target`.  
-   The algorithm further verifies that all rows that contain a black pixel in column `c` are identical to row `r`.  
-   Thus all three rules hold → the pixel is indeed a black lonely pixel.
+1. **Pre‑process**  
+   * Convert each row to a string `rowStr`.  
+   * Compute `rowCount[i]` – number of `'B'` in row `i`.  
+   * Compute `colCount[j]` – number of `'B'` in column `j`.
 
-2. **Sufficiency** – Suppose a pixel `(r, c)` is a black lonely pixel.  
-   By rule 1, `rowCount[r] == target` and `colCount[c] == target`.  
-   By rule 2, every row that contains a black pixel in column `c` is identical to row `r`.  
-   Therefore column `c` will be accepted by the algorithm and the algorithm will add `target` to the answer.  
-   Since `(r, c)` is one of those `target` pixels, it is counted.
+2. **Check each column**  
+   For every column `j` with `colCount[j] == target`:
+   * Gather all row indices `rowsWithB` where `picture[i][j] == 'B'`.
+   * Ensure every such row has `rowCount[i] == target`.  
+   * Ensure every row string in `rowsWithB` is identical to the first one.  
+   * If all conditions hold, every black pixel in that column is lonely → add `target` to the answer.
 
-Thus the algorithm counts *exactly* the black lonely pixels.
+3. **Return** the accumulated count.
 
----
-
-## 6.  Complexity analysis
-
-| Step | Time | Space |
-|------|------|-------|
-| Count rows & columns | `O(m × n)` | `O(m + n)` |
-| Iterate candidate columns | `O(m × n)` (each column scans at most `target` rows, and `target ≤ min(m, n) ≤ 200`) | `O(m)` for temporary list |
-| Total | **`O(m × n)`** | **`O(m + n)`** |
-
-For `m, n ≤ 200`, this is trivially fast.
+Why it works  
+*Rule 1* is satisfied by the `rowCount` and `colCount` checks.  
+*Rule 2* is satisfied by comparing row strings for all rows that share the same column `j`.  
+If any condition fails, none of the black pixels in that column can be lonely.
 
 ---
 
-## 7.  Code snippets
+## Complexity Analysis <a name="complexity"></a>
 
-### Java (LeetCode style)
+| Operation | Time | Space |
+|-----------|------|-------|
+| Pre‑processing rows & columns | `O(m × n)` | `O(m + n)` (arrays + string list) |
+| Scanning columns & verifying rows | `O(m × n)` | `O(1)` extra |
+| **Total** | `O(m × n)` | `O(m + n)` |
+
+Both constraints (`m, n ≤ 200`) are easily satisfied.
+
+---
+
+## Full Implementations <a name="implementations"></a>
+
+> All solutions follow the same algorithm but differ in language syntax and idioms.  
+
+### 1. Java
 
 ```java
+import java.util.*;
+
 public class Solution {
     public int findBlackPixel(char[][] picture, int target) {
         int m = picture.length, n = picture[0].length;
         int[] rowCount = new int[m];
         int[] colCount = new int[n];
+        String[] rowStr = new String[m];
 
-        // 1. Count black pixels per row and column
+        // Pre‑process rows and columns
         for (int i = 0; i < m; i++) {
+            StringBuilder sb = new StringBuilder();
             for (int j = 0; j < n; j++) {
-                if (picture[i][j] == 'B') {
+                char ch = picture[i][j];
+                sb.append(ch);
+                if (ch == 'B') {
                     rowCount[i]++;
                     colCount[j]++;
                 }
             }
+            rowStr[i] = sb.toString();
         }
 
-        int answer = 0;
-        // 2. Inspect each column
+        int ans = 0;
+        // Examine every column that has exactly target black pixels
         for (int j = 0; j < n; j++) {
             if (colCount[j] != target) continue;
 
+            // Gather rows with a black pixel in column j
             List<Integer> rowsWithB = new ArrayList<>();
             for (int i = 0; i < m; i++) {
                 if (picture[i][j] == 'B') rowsWithB.add(i);
             }
 
-            if (rowsWithB.size() != target) continue;
+            boolean valid = true;
+            String firstRow = rowStr[rowsWithB.get(0)];
 
-            // 3. Verify all rows are identical
-            int firstRow = rowsWithB.get(0);
-            boolean uniform = true;
-            for (int r : rowsWithB) {
-                if (!Arrays.equals(picture[r], picture[firstRow])) {
-                    uniform = false;
-                    break;
+            for (int idx : rowsWithB) {
+                if (rowCount[idx] != target) {   // Rule 1 on the row
+                    valid = false; break;
+                }
+                if (!rowStr[idx].equals(firstRow)) {   // Rule 2
+                    valid = false; break;
                 }
             }
 
-            if (uniform) answer += target;
+            if (valid) ans += target;   // All target pixels in this column are lonely
         }
-
-        return answer;
+        return ans;
     }
 }
 ```
 
-### Python 3
+### 2. Python
 
 ```python
+from typing import List
+
 class Solution:
     def findBlackPixel(self, picture: List[List[str]], target: int) -> int:
         m, n = len(picture), len(picture[0])
 
-        row_cnt = [sum(1 for c in row if c == 'B') for row in picture]
-        col_cnt = [sum(1 for i in range(m) if picture[i][j] == 'B') for j in range(n)]
+        row_count = [0] * m
+        col_count = [0] * n
+        row_str = [''] * m
+
+        # Pre‑process
+        for i in range(m):
+            row = picture[i]
+            s = []
+            for j, ch in enumerate(row):
+                s.append(ch)
+                if ch == 'B':
+                    row_count[i] += 1
+                    col_count[j] += 1
+            row_str[i] = ''.join(s)
 
         ans = 0
+        # Scan columns
         for j in range(n):
-            if col_cnt[j] != target:
+            if col_count[j] != target:
                 continue
 
-            rows = [i for i in range(m) if picture[i][j] == 'B']
-            if len(rows) != target:
-                continue
-
-            first = rows[0]
-            if all(picture[r] == picture[first] for r in rows):
+            rows_with_b = [i for i in range(m) if picture[i][j] == 'B']
+            first = row_str[rows_with_b[0]]
+            valid = True
+            for r in rows_with_b:
+                if row_count[r] != target or row_str[r] != first:
+                    valid = False
+                    break
+            if valid:
                 ans += target
         return ans
 ```
 
-### C++17
+### 3. C++
 
 ```cpp
+#include <vector>
+#include <string>
+using namespace std;
+
 class Solution {
 public:
     int findBlackPixel(vector<vector<char>>& picture, int target) {
         int m = picture.size(), n = picture[0].size();
         vector<int> rowCnt(m, 0), colCnt(n, 0);
+        vector<string> rowStr(m);
 
-        // Count
-        for (int i = 0; i < m; ++i)
-            for (int j = 0; j < n; ++j)
-                if (picture[i][j] == 'B') {
+        // Pre‑process
+        for (int i = 0; i < m; ++i) {
+            string s;
+            s.reserve(n);
+            for (int j = 0; j < n; ++j) {
+                char ch = picture[i][j];
+                s.push_back(ch);
+                if (ch == 'B') {
                     ++rowCnt[i];
                     ++colCnt[j];
                 }
+            }
+            rowStr[i] = s;
+        }
 
         int ans = 0;
+        // Evaluate each qualifying column
         for (int j = 0; j < n; ++j) {
             if (colCnt[j] != target) continue;
 
-            vector<int> rows;
+            vector<int> rowsWithB;
             for (int i = 0; i < m; ++i)
-                if (picture[i][j] == 'B') rows.push_back(i);
+                if (picture[i][j] == 'B') rowsWithB.push_back(i);
 
-            if ((int)rows.size() != target) continue;
-
-            bool uniform = true;
-            for (int r : rows)
-                if (picture[r] != picture[rows[0]]) {
-                    uniform = false;
-                    break;
+            bool ok = true;
+            const string& first = rowStr[rowsWithB[0]];
+            for (int r : rowsWithB) {
+                if (rowCnt[r] != target || rowStr[r] != first) {
+                    ok = false; break;
                 }
-
-            if (uniform) ans += target;
+            }
+            if (ok) ans += target;
         }
         return ans;
     }
 };
 ```
 
-All three implementations run in **O(m × n)** time and use **O(m + n)** additional space.
+---
+
+## Good, Bad & Ugly: Design Trade‑offs <a name="good-bad-ugly"></a>
+
+| Aspect | **Good** | **Bad** | **Ugly** |
+|--------|----------|---------|----------|
+| **Data representation** | Using a string per row keeps row comparison O(1). | Using a 2‑D array of chars for comparisons increases time to `O(n)` per check. | Using hash codes alone may produce collisions. |
+| **Complexity** | `O(m × n)` is optimal for this problem size. | Attempting to double‑hash or pre‑sort rows unnecessarily adds constant factors. | Brute‑force nested loops (O(m² × n)) lead to TLE for the upper limits. |
+| **Readability** | Clear separation: counting + verification. | Mixing loops with nested conditions can obscure intent. | Excessive inline comments or debug prints clutter the solution. |
+| **Edge‑case handling** | Explicitly checks target on both row & column. | Forgetting to treat `target == 1` specially causes wrong results. | Not validating that all rows with B in a column are identical leads to false positives. |
+| **Memory usage** | `O(m + n)` + row strings (`O(m × n)` but unavoidable). | Storing additional maps for columns or rows wastes space. | Storing a `Map<String, Set<Integer>>` for rows by pattern consumes `O(m²)` in worst case. |
+
+**Takeaway:**  
+Stick to the simplest, most direct approach: pre‑count, then iterate columns. Avoid over‑engineering.
 
 ---
 
-## 8.  Blog article – “The Good, the Bad, and the Ugly of Lonely Pixel II”
+## Interview‑Ready Tips <a name="interview-tips"></a>
 
-### 8.1  Title & Meta‑Description
+1. **Explain the rules first.**  
+   *“Rule 1 checks the counts; Rule 2 ensures row consistency.”*  
 
-| Title | Meta‑Description |
-|-------|-------------------|
-| **The Good, the Bad, and the Ugly of LeetCode 533 – Lonely Pixel II** | Learn how to crack LeetCode 533 with an optimal O(m × n) solution, avoid common pitfalls, and impress hiring managers in your next software engineering interview. |
+2. **Sketch the algorithm on paper.**  
+   *Show a 3‑step flow: counting → column selection → row‑pattern verification.*
 
-**SEO Keywords:** LeetCode 533, Lonely Pixel II, black lonely pixel, Java coding interview, Python interview, C++ interview, algorithm interview question, interview preparation, software engineering job interview.
+3. **Mention time‑space trade‑offs.**  
+   *“We only need O(m + n) extra space beyond the input; the algorithm is linear.”*
 
-### 8.2  Introduction
+4. **Discuss edge cases** – `target = 1`, all‑white picture, all‑black picture.
 
-> “A good algorithm is one that **solves the problem** with **minimal resources**.”  
-> That sentence rings true for *Lonely Pixel II*, an interview staple that tests not just brute‑force skills but also your ability to spot the right data structure, eliminate redundant work, and prove correctness.
+5. **Ask clarifying questions** – e.g., “Are the rows guaranteed to be unique? How should we treat duplicate rows?”  
+   *It shows you’re thinking about potential pitfalls.*
 
-In this post we’ll dissect the problem, walk through a clean O(m × n) solution, show how the naive approach goes wrong, and give you the confidence to talk it over at your next interview.
-
----
-
-### 8.3  Problem Breakdown
-
-* **Input**: `m × n` grid (`'B'`/`'W'`) and integer `target`.
-* **Output**: Number of *black lonely pixels*.
-* **Rules**:
-  1. Row and column both contain exactly `target` black pixels.
-  2. All rows that have a black pixel in that column are identical.
-
-Why does this seem deceptively simple?  
-Because a single mis‑step—like counting rows and columns separately but never checking uniformity—can give you the wrong answer.
+6. **Highlight code readability** – good variable names, helper functions, and concise comments.
 
 ---
 
-### 8.4  The “Good”: Linear‑Time Strategy
+## SEO Checklist <a name="seo-checklist"></a>
 
-1. **Pre‑compute counts**: `rowCount[i]`, `colCount[j]`.  
-   *Time*: `O(m × n)`.
-2. **Filter columns**: Only keep those with `colCount[j] == target`.
-3. **For each candidate column**:
-   * Build a list of rows that contain `'B'` at this column.  
-     Since `colCount[j] == target`, this list will have at most `target` rows.
-   * If the list size ≠ `target` → skip.
-   * Compare every row in the list with the first one.  
-     If any differ → rule 2 is broken → skip.
-   * Otherwise add `target` to the answer.
+| Target Keyword | Implementation |
+|----------------|----------------|
+| **LeetCode 533** | Problem title used in header and intro |
+| **Lonely Pixel II** | Mentioned in each language section |
+| **Java solution** | Java code block & heading |
+| **Python solution** | Python code block & heading |
+| **C++ solution** | C++ code block & heading |
+| **Interview prep** | Section “Interview‑Ready Tips” |
+| **Algorithm** | Complexity analysis |
+| **Coding interview** | Intro & conclusion |
+| **Coding interview problem** | Problem overview |
+| **Good bad ugly** | Section title |
+| **Time complexity** | Complexity table |
 
-> **Result**: Every pixel in a “good” column is counted exactly once.
-
----
-
-### 8.5  The “Bad”: Where People Go Wrong
-
-| Bad practice | What to watch for |
-|--------------|-------------------|
-| Counting per *cell* | Leads to double‑counting when rows differ. |
-| Relying on hash maps | Works for size but not uniformity. |
-| Comparing rows on the fly | Extra `O(n)` per cell → quadratic time. |
-
-We’ll see why the “brute‑force” code passes the 200×200 grid on LeetCode but *is not interview‑ready*.
+Adding relevant meta tags and internal links to your other interview blogs will further boost search visibility.
 
 ---
 
-### 8.6  The “Ugly” Brute Force
+### Closing Thought
 
-```java
-for each cell
-    if rowCnt == target && colCnt == target
-        if all rows with B at col equal current row
-            count++
-```
+Solving **Lonely Pixel II** demonstrates your mastery of 2‑D array manipulation, pattern recognition, and efficient counting. Presenting the solution in **Java, Python, and C++** showcases language versatility—a valuable skill for any software‑engineering role.
 
-*O(n) per cell for the row check* → **O(m × n²)**.  
-Still under 200×200 limits, but it’s a textbook example of *“I didn't optimize, I just coded”*.
-
-### 8.7  From Ugly to Good: The Optimal Linear Solution
-
-1. **Two one‑pass scans** to compute row and column counts.
-2. **Iterate columns** and collect only those that satisfy rule 1.
-3. **Verify uniformity** in a single pass over the at most `target` rows.
-
-Why is this elegant?  
-* The algorithm never re‑counts rows or columns.  
-* It guarantees O(m × n) time and uses only linear auxiliary memory.  
-* The proof of correctness is concise and fits the “explain your algorithm” moment in an interview.
-
----
-
-### 8.8  Talking Points for Interviews
-
-1. **Explain the two‑phase counting** – it’s the foundation of any linear solution.
-2. **Show how you prune columns** – you can skip 80% of the grid in many cases.
-3. **Highlight uniformity check** – a quick `Arrays.equals` in Java, `picture[r] == picture[first]` in Python, or `vector` comparison in C++.
-4. **Mention complexity** – `O(m × n)` time, `O(m + n)` space.  
-5. **Proof of correctness** – a bullet‑point outline, not the entire formal write‑up.
-
----
-
-### 8.9  Final Takeaway
-
-> *Lonely Pixel II is a microcosm of software engineering: gather information, avoid redundant work, and confirm that everything fits together.*
-
-Master the O(m × n) strategy above, keep the pitfalls in mind, and you’ll have a ready‑to‑present solution that satisfies both the problem and the interview panel.
-
-Happy coding and best of luck on your next job interview!
-
----
-
-### 8.10  Call‑to‑Action
-
-> **Want more interview‑ready solutions?** Subscribe to our newsletter for weekly algorithm explanations, mock interview practice, and interview‑prep hacks that land you a software engineering role.
-
---- 
-
-### 8.11  About the Author
-
-> *Your Name* – Full‑stack developer, 5 years of hiring experience, author of several open‑source projects, and a frequent speaker at coding bootcamps.  
-> *Contact*: `you@example.com`
-
----
-
-## 9.  Final words
-
-*Lonely Pixel II* is a prime example of how a seemingly small problem can be a great interview challenge.  
-By focusing on **row/column counting** + **uniformity verification**, you deliver a succinct, provably correct, and *interview‑ready* solution.  
-
-Remember the three layers:
-
-1. **Good** – Linear algorithm that hits all the rules.
-2. **Bad** – Common mistakes that break the logic.
-3. **Ugly** – Brute‑force that works only because the limits are tiny.
-
-With the code, proof, and blog outline above, you’re now fully equipped to ace LeetCode 533 and shine in any software engineering interview. Happy coding!
+Happy coding and good luck with your next interview! 🚀
