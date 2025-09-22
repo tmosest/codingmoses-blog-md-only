@@ -7,90 +7,102 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap – LeetCode 522: **Longest Uncommon Subsequence II**
-
-Given an array of strings `strs`, we must find the length of the **longest uncommon subsequence** among them.  
-An *uncommon subsequence* is a string that is a subsequence of **one** string in the array but **not** a subsequence of **any** of the other strings.  
-If no such subsequence exists, return `-1`.
-
-> **Examples**  
-> *Input:* `["aba","cdc","eae"]` → **Output:** `3`  
-> *Input:* `["aaa","aaa","aa"]` → **Output:** `-1`
-
-### Constraints
-- `2 ≤ strs.length ≤ 50`
-- `1 ≤ strs[i].length ≤ 10`
-- All strings contain only lowercase English letters
+        ## 🚀 522. Longest Uncommon Subsequence II – Three‑Way Solution (Java | Python | C++)  
+*Solve it in 30 seconds, explain the intuition, and get the interviewers excited!*
 
 ---
 
-## 2.  Core Insight
+### 1️⃣ Problem Recap
 
-If a string appears **more than once** in the array, it cannot be the longest uncommon subsequence – it is a subsequence of the other identical string(s).  
-Conversely, if a string appears **exactly once**, it is a subsequence of itself and **cannot** be a subsequence of any *other* string that has a *different* value, because the other string differs in at least one character.  
-Hence, the longest uncommon subsequence is simply the **longest string that appears only once**.
+> **Given an array of strings `strs`, find the length of the longest string that is a subsequence of **exactly one** element of `strs`.  
+> If no such string exists, return `-1`.**
 
-So the algorithm reduces to:
+> *Subsequence* – a string that can be derived by deleting zero or more characters without changing the order.
 
-1. Count how many times each string appears.
-2. Among the strings that appear only once, pick the maximum length.
-3. If no such string exists, return `-1`.
+**Constraints**
 
-This is a **O(n · m)** solution where `n` is the number of strings and `m` is the average length – easily fast enough for the given limits.
+| | | |
+|---|---|---|
+| `2 ≤ strs.length ≤ 50` | `1 ≤ strs[i].length ≤ 10` | all lowercase letters |
+
+> Example  
+> `strs = ["aba","cdc","eae"]` → **3** (the string `"aba"` itself)  
+> `strs = ["aaa","aaa","aa"]` → **-1** (no string is unique)
 
 ---
 
-## 3.  Code Implementations
+## 2️⃣ The “Aha!” Insight
 
-Below are clean, production‑ready implementations in **Java, Python, and C++**.  
-All three use the same logic described above.
+At first glance, the phrase “subsequence” might hint at dynamic programming or backtracking.  
+But a very simple observation turns the problem into a one‑liner:
+
+> **If a string appears only once in the array, it is *automatically* an uncommon subsequence.**  
+> Because every string is a subsequence of itself, but no other string contains it as a subsequence (otherwise the other string would be longer or equal, contradicting the uniqueness).
+
+Hence the **longest uncommon subsequence** is simply:
+
+1. **Find the longest string that occurs exactly once.**  
+2. If none exist, answer is `-1`.
+
+No DP, no pairwise comparison – just a frequency map.
+
+> *Why is this correct?*  
+> Suppose the longest uncommon subsequence `S` has length `L`.  
+> If `S` appears more than once, then it is a subsequence of at least two strings, violating the definition.  
+> So `S` must be unique.  
+> And because any other string `T` that contains `S` as a subsequence would have length ≥ `L`, `S` must be the longest unique string.
+
+---
+
+## 3️⃣ Implementation in Three Languages
+
+> **All three solutions are O(n log n) due to sorting or map construction, but with `n ≤ 50` the runtime is negligible.**
+
+---
 
 ### 3.1 Java
 
 ```java
 import java.util.*;
 
-public class Solution {
-    /**
-     * Returns the length of the longest uncommon subsequence or -1 if none exists.
-     *
-     * @param strs array of lowercase strings
-     * @return length of longest uncommon subsequence or -1
-     */
+class Solution {
     public int findLUSlength(String[] strs) {
-        // Count frequency of each string
+        // Count frequencies
         Map<String, Integer> freq = new HashMap<>();
-        for (String s : strs) {
-            freq.put(s, freq.getOrDefault(s, 0) + 1);
-        }
+        for (String s : strs) freq.put(s, freq.getOrDefault(s, 0) + 1);
 
-        int longest = -1;
+        int maxLen = -1;
         for (String s : strs) {
-            if (freq.get(s) == 1) {          // appears only once
-                longest = Math.max(longest, s.length());
-            }
+            if (freq.get(s) == 1)          // unique string
+                maxLen = Math.max(maxLen, s.length());
         }
-        return longest;
+        return maxLen;                      // -1 if none unique
     }
 }
 ```
 
+> **Complexity**  
+> Time: O(n)  
+> Space: O(n)
+
+---
+
 ### 3.2 Python
 
 ```python
-from collections import Counter
-from typing import List
-
 class Solution:
     def findLUSlength(self, strs: List[str]) -> int:
-        """Return length of longest uncommon subsequence or -1."""
+        from collections import Counter
         freq = Counter(strs)
-        longest = -1
-        for s in strs:
-            if freq[s] == 1:                # unique string
-                longest = max(longest, len(s))
-        return longest
+        max_len = max((len(s) for s in strs if freq[s] == 1), default=-1)
+        return max_len
 ```
+
+> **Complexity**  
+> Time: O(n)  
+> Space: O(n)
+
+---
 
 ### 3.3 C++
 
@@ -101,101 +113,62 @@ using namespace std;
 class Solution {
 public:
     int findLUSlength(vector<string>& strs) {
-        unordered_map<string, int> freq;
-        for (const auto& s : strs)
-            ++freq[s];
+        unordered_map<string,int> freq;
+        for (const string &s : strs) freq[s]++;
 
-        int longest = -1;
-        for (const auto& s : strs) {
-            if (freq[s] == 1)              // unique string
-                longest = max<longest>(longest, static_cast<int>(s.size()));
-        }
-        return longest;
+        int ans = -1;
+        for (const string &s : strs)
+            if (freq[s] == 1)
+                ans = max(ans, (int)s.size());
+        return ans;
     }
 };
 ```
 
-All three solutions are **O(n · m)** time and **O(n)** auxiliary space.
-
----
-
-## 4.  “Good, Bad, & Ugly” – Deep Dive
-
-| Aspect | What’s Good | What’s Bad | What’s Ugly |
-|--------|-------------|------------|-------------|
-| **Time Complexity** | Linear‑time, fast even for the upper limit of 50 strings. | None | – |
-| **Space Complexity** | Only a frequency map – negligible. | None | – |
-| **Simplicity** | One pass to build a map, another pass to find the max. | None | – |
-| **Edge Cases Handled** | Empty array (not allowed by constraints), duplicates, single‑char strings. | None | – |
-| **Scalability** | Works for any realistic `n`, `m`. | If `m` were huge (e.g., 10⁶), the map keys would explode. | – |
-| **Brute‑Force Ugly** | Avoided – no `2^m` enumeration of subsequences. | N/A | Brute‑force would be `O(n · 2^m)` and impossible for `m = 10`. |
-
-### Why the “ugly” brute‑force is rarely needed
-For very short strings (`m ≤ 10`) a brute‑force DFS or bit‑mask enumeration would still run fast, but it is far less elegant and harder to maintain. The greedy frequency‑count solution is *not* only faster, it is also clearer for interviewers to evaluate.
-
----
-
-## 5.  SEO‑Optimized Blog Article
-
-> **Title (≈60 chars)**  
-> *Master LeetCode 522 – Longest Uncommon Subsequence II (Java, Python, C++) – Interview Ready!*
-
-> **Meta Description (≈155 chars)**  
-> Learn how to solve LeetCode 522 with optimal Java, Python, and C++ code. Understand the “good, bad, ugly” trade‑offs and boost your interview prep.
-
----
-
-### 5.1 Article Body
-
-> **Introduction**  
-> The “Longest Uncommon Subsequence II” problem is a popular LeetCode interview question (Problem 522). It tests your understanding of subsequences, string manipulation, and clever greedy reasoning. In this article, we’ll walk through an optimal solution, present clean code in three major languages, and analyze the algorithm’s strengths and pitfalls.
-
-> **Problem Overview**  
-> You’re given an array of strings, and you need to find the length of the longest string that is a subsequence of **exactly one** string in the array. If no such string exists, return `-1`. The constraints are modest (`n ≤ 50`, `m ≤ 10`), but the key is to avoid brute‑force enumeration of all subsequences.
-
-> **Key Insight – The Frequency Trick**  
-> A string that appears multiple times can never be an uncommon subsequence because it will match every identical occurrence. Conversely, a unique string can’t be a subsequence of another different string because the two differ in at least one character. Thus, the answer is simply the longest **unique** string in the array.
-
-> **Algorithm Steps**  
-> 1. Count the frequency of each string using a hash map.  
-> 2. Iterate again and keep track of the maximum length among strings with frequency = 1.  
-> 3. Return that maximum or `-1` if none were found.
-
 > **Complexity**  
-> *Time*: O(n · m) – one pass to build the map, another to find the maximum.  
-> *Space*: O(n) – the map stores at most `n` entries.
-
-> **Code Implementations**  
-> *Java*: [Link to snippet]  
-> *Python*: [Link to snippet]  
-> *C++*: [Link to snippet]  
-
-> **“Good, Bad, Ugly” Analysis**  
-> *Good*: Linear time, minimal memory, easy to read.  
-> *Bad*: Assumes that all strings are distinct; if the dataset were huge, hash‑key storage could become a bottleneck (not a concern for LeetCode limits).  
-> *Ugly*: A brute‑force DFS would generate 2^m subsequences per string—impractical for `m = 10` and far more verbose.
-
-> **Takeaway for Interviews**  
-> The interviewer is looking for two things: correctness and an efficient idea. The frequency‑based greedy solution demonstrates both. If you can explain why a unique string cannot be a subsequence of another different string, you’ll impress any hiring manager.
-
-> **Further Practice**  
-> 1. *Longest Common Subsequence* – the counterpart problem.  
-> 2. *Longest Repeating Substring* – similar hashing technique.  
-> 3. *String Subsequence DP* – for deeper DP practice.
-
-> **Conclusion**  
-> Problem 522 is a classic “look‑for‑patterns” question. By focusing on frequency, we bypass unnecessary complexity and produce code that is both fast and easy to maintain. Master this pattern, and you’ll be ready for any string‑based interview question.
-
-> **Keywords**: LeetCode 522, Longest Uncommon Subsequence II, Java solution, Python solution, C++ solution, interview prep, algorithm analysis, software engineering interview.
+> Time: O(n)  
+> Space: O(n)
 
 ---
 
-## 6.  Final Checklist
+## 4️⃣ Good, Bad, and Ugly
 
-- ✅ Code compiles in Java 17, Python 3.10, and C++17
-- ✅ Handles all edge cases: duplicates, single‑character strings, no uncommon subsequence
-- ✅ Time & space complexity explained
-- ✅ Blog article ready for publishing with SEO‑friendly title/description
-- ✅ Good/BAD/UGLY analysis for interviewers
+| Aspect | ✅ Good | ❌ Bad | ⚠️ Ugly |
+|--------|---------|--------|---------|
+| **Complexity** | O(n) with constant factor – super fast | N/A – no heavy algorithmic burden | Be careful of integer overflow with huge inputs (not an issue here) |
+| **Readability** | Extremely short, clear | Too short may look “magic” to some interviewers | Avoid relying on language‑specific tricks that are hard to understand |
+| **Edge Cases** | Handles duplicates, all unique, all identical | None | Empty string array (not in constraints), extremely long strings (not in constraints) |
+| **Proof** | Can give a one‑sentence proof in 10 seconds | None needed if you can explain | Over‑engineering (DP, LCS) can confuse |
 
-Good luck landing that interview – your next question won’t be as intimidating!
+---
+
+## 5️⃣ When to Use This Approach
+
+- **Interview setting**: Show that you can spot a pattern and reduce the problem to counting.  
+- **Coding challenge**: Time limit is generous, but this is the most maintainable solution.  
+- **Production code**: If you ever need a “longest uncommon subsequence” in a log or analytics pipeline, this is perfect.
+
+---
+
+## 6️⃣ SEO‑Optimized Takeaway
+
+> **Keywords**: Leetcode 522, Longest Uncommon Subsequence II, Java solution, Python solution, C++ solution, string subsequence, interview question, coding interview, algorithm, time complexity, job interview.
+
+> **Why this matters**:  
+> - Recruiters love concise, efficient code.  
+> - The blog’s headline *“Longest Uncommon Subsequence II – The 30‑Second Java/Python/C++ Solution”* targets the exact search terms candidates use when preparing for interviews.  
+> - The “good, bad, ugly” section shows you can analyze problems from multiple angles—an interview staple.
+
+---
+
+## 7️⃣ Final Thoughts
+
+The Longest Uncommon Subsequence II problem teaches a powerful lesson: **never underestimate the power of frequency counting**.  
+What looks like a classic subsequence problem turns into a “find the unique string” puzzle.  
+Keep this pattern in your toolbox; it will pop up in other interview questions about uniqueness, duplicates, and subsequences.
+
+> **Want to shine in your next interview?**  
+> Practice spotting such simplifications, write clean code in your language of choice, and explain the intuition clearly.  
+> You’ll be ready to tackle even the trickiest LeetCode problems and impress any hiring manager.
+
+Happy coding! 🚀
