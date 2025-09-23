@@ -7,49 +7,50 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 📌 Reverse Pairs (LeetCode 493) – A Deep‑Dive into the Classic Merge‑Sort Solution  
-*(Java • Python • C++) – SEO‑Optimized, “Good / Bad / Ugly” Analysis for Your Next Job Interview*  
+        ## 🚀 Mastering LeetCode 493 – **Reverse Pairs**  
+*The Good, The Bad, and The Ugly – A Complete Guide for Interview‑Ready Developers*  
 
 ---
 
-### 🚀 TL;DR  
-- **Problem**: Count reverse pairs `(i, j)` where `i < j` and `nums[i] > 2 * nums[j]`.  
-- **Optimal Time**: **O(n log n)** using a modified merge‑sort.  
-- **Space**: **O(n)** auxiliary array (or O(log n) recursion stack).  
-- **Why It Matters**: It’s a frequent hard‑level LeetCode question and a staple in software‑engineering interviews that tests divide‑and‑conquer, overflow handling, and array manipulation.  
-
----
-
-## 📄 Problem Statement (LeetCode 493)
-
+### 1️⃣ Problem Overview  
+> **Reverse Pairs**  
 > Given an integer array `nums`, return the number of reverse pairs in the array.  
 > A reverse pair is a pair `(i, j)` where  
-> `0 <= i < j < nums.length` **and** `nums[i] > 2 * nums[j]`.  
+> `0 <= i < j < nums.length` **and** `nums[i] > 2 * nums[j]`.
 
-**Example**  
-```text
-Input:  nums = [1,3,2,3,1]
-Output: 2
-Explanation: (1,4) and (3,4) are reverse pairs.
-```
+**Examples**
 
-**Constraints**  
-- `1 <= nums.length <= 5·10⁴`  
-- `-2³¹ <= nums[i] <= 2³¹‑1`
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[1,3,2,3,1]` | `2` | `(1,4)` and `(3,4)` |
+| `[2,4,3,5,1]` | `3` | `(1,4)`, `(2,4)`, `(3,4)` |
 
----
+**Constraints**
 
-## 🔍 Why the Classic Merge‑Sort Approach Works
-
-| # | Observation | How Merge‑Sort Helps |
-|---|-------------|----------------------|
-| 1 | A naive O(n²) double loop is too slow. | Divide the array into halves to reduce comparisons. |
-| 2 | While merging two sorted halves, we can *count* cross‑pairs in O(n). | When left[i] > 2 * right[j], every element left[i..mid] will satisfy the condition with `right[j]`. |
-| 3 | Numbers can be as large as 2³¹‑1, so `2 * nums[j]` may overflow 32‑bit int. | Use 64‑bit (`long` / `long long`) during comparison. |
+- `1 <= nums.length <= 5 * 10^4`
+- `-2^31 <= nums[i] <= 2^31 - 1`
 
 ---
 
-## 🛠️ The Core Algorithm (Pseudo‑Code)
+## 2️⃣ Why This Problem Rocks in Interviews  
+
+- **Time Complexity Target:** `O(n log n)` – forces you to think beyond brute force.  
+- **Overflow Awareness:** `nums[i] > 2 * nums[j]` → requires 64‑bit math.  
+- **Merge‑Sort Insight:** Classic divide‑and‑conquer pattern that is frequently asked.  
+- **Edge‑Case Mastery:** Negative numbers, large positives, and integer overflow.  
+
+---
+
+## 3️⃣ The “Good” – The Standard Merge‑Sort Solution  
+
+### 3.1 Concept  
+1. **Divide** the array into halves recursively.  
+2. **Conquer**: While merging, count the reverse pairs that cross the two halves.  
+3. **Combine**: Merge the two sorted halves.  
+
+Because each level of recursion scans the array only once, the overall complexity is `O(n log n)`.
+
+### 3.2 Pseudocode  
 
 ```
 function reversePairs(nums):
@@ -58,216 +59,212 @@ function reversePairs(nums):
 function mergeSortAndCount(arr, left, right):
     if left >= right: return 0
     mid = (left + right) // 2
-    count = mergeSortAndCount(arr, left, mid)
-            + mergeSortAndCount(arr, mid+1, right)
-    # Count cross pairs
+    count = mergeSortAndCount(arr, left, mid) +
+            mergeSortAndCount(arr, mid+1, right)
+
+    // Count cross pairs
     j = mid + 1
-    for i in range(left, mid+1):
+    for i from left to mid:
         while j <= right and arr[i] > 2 * arr[j]:
             j += 1
         count += j - (mid + 1)
-    # Merge the two halves
+
+    // Merge two sorted halves
     merge(arr, left, mid, right)
     return count
 ```
 
----
-
-## 📚 Code Implementations
-
-Below are clean, production‑ready implementations in **Java**, **Python**, and **C++**.
-
-### Java
+### 3.3 Code – Java  
 
 ```java
-// 493. Reverse Pairs
-// Time:  O(n log n)
-// Space: O(n) auxiliary array (plus recursion stack)
+import java.util.*;
 
-class Solution {
+public class ReversePairs {
     public int reversePairs(int[] nums) {
-        if (nums == null || nums.length <= 1) return 0;
         return mergeSortAndCount(nums, 0, nums.length - 1);
     }
 
-    private int mergeSortAndCount(int[] arr, int left, int right) {
+    private int mergeSortAndCount(int[] nums, int left, int right) {
         if (left >= right) return 0;
-        int mid = left + (right - left) / 2;
-        int count = mergeSortAndCount(arr, left, mid)
-                  + mergeSortAndCount(arr, mid + 1, right);
 
-        // Count cross pairs
+        int mid = left + (right - left) / 2;
+        int count = mergeSortAndCount(nums, left, mid)
+                  + mergeSortAndCount(nums, mid + 1, right);
+
+        // Count reverse pairs across left and right halves
         int j = mid + 1;
         for (int i = left; i <= mid; i++) {
-            while (j <= right && (long)arr[i] > 2L * arr[j]) {
+            while (j <= right && (long) nums[i] > 2L * nums[j]) {
                 j++;
             }
             count += j - (mid + 1);
         }
 
-        // Merge step
-        int[] temp = new int[right - left + 1];
-        int i = left, k = 0, l = mid + 1;
-        while (i <= mid && l <= right) {
-            if (arr[i] <= arr[l]) temp[k++] = arr[i++];
-            else temp[k++] = arr[l++];
-        }
-        while (i <= mid) temp[k++] = arr[i++];
-        while (l <= right) temp[k++] = arr[l++];
-
-        System.arraycopy(temp, 0, arr, left, temp.length);
+        // Merge
+        merge(nums, left, mid, right);
         return count;
+    }
+
+    private void merge(int[] nums, int left, int mid, int right) {
+        int[] leftArr = Arrays.copyOfRange(nums, left, mid + 1);
+        int[] rightArr = Arrays.copyOfRange(nums, mid + 1, right + 1);
+        int i = 0, j = 0, k = left;
+
+        while (i < leftArr.length && j < rightArr.length) {
+            if (leftArr[i] <= rightArr[j]) nums[k++] = leftArr[i++];
+            else nums[k++] = rightArr[j++];
+        }
+        while (i < leftArr.length) nums[k++] = leftArr[i++];
+        while (j < rightArr.length) nums[k++] = rightArr[j++];
+    }
+
+    public static void main(String[] args) {
+        ReversePairs rp = new ReversePairs();
+        int[] nums = {1,3,2,3,1};
+        System.out.println(rp.reversePairs(nums)); // 2
     }
 }
 ```
 
-### Python
+### 3.4 Code – Python  
 
 ```python
-# 493. Reverse Pairs
-# Time:  O(n log n)
-# Space: O(n) auxiliary array
-
 class Solution:
-    def reversePairs(self, nums: List[int]) -> int:
-        if not nums:
-            return 0
-        return self._merge_sort_and_count(nums, 0, len(nums) - 1)
+    def reversePairs(self, nums):
+        return self.merge_sort_and_count(nums, 0, len(nums)-1)
 
-    def _merge_sort_and_count(self, arr, left, right):
+    def merge_sort_and_count(self, nums, left, right):
         if left >= right:
             return 0
         mid = (left + right) // 2
-        count = self._merge_sort_and_count(arr, left, mid) + \
-                self._merge_sort_and_count(arr, mid + 1, right)
+        count = (self.merge_sort_and_count(nums, left, mid) +
+                 self.merge_sort_and_count(nums, mid+1, right))
 
-        # Count reverse pairs across halves
+        # Count cross pairs
         j = mid + 1
-        for i in range(left, mid + 1):
-            while j <= right and arr[i] > 2 * arr[j]:
+        for i in range(left, mid+1):
+            while j <= right and nums[i] > 2 * nums[j]:
                 j += 1
             count += j - (mid + 1)
 
-        # Merge step
-        temp = []
-        l, r = left, mid + 1
-        while l <= mid and r <= right:
-            if arr[l] <= arr[r]:
-                temp.append(arr[l]); l += 1
-            else:
-                temp.append(arr[r]); r += 1
-        temp.extend(arr[l:mid+1])
-        temp.extend(arr[r:right+1])
-
-        arr[left:right+1] = temp
+        # Merge
+        self.merge(nums, left, mid, right)
         return count
+
+    def merge(self, nums, left, mid, right):
+        left_part = nums[left:mid+1]
+        right_part = nums[mid+1:right+1]
+        i = j = 0
+        for k in range(left, right+1):
+            if j == len(right_part) or (i < len(left_part) and left_part[i] <= right_part[j]):
+                nums[k] = left_part[i]
+                i += 1
+            else:
+                nums[k] = right_part[j]
+                j += 1
 ```
 
-### C++
+### 3.5 Code – C++  
 
 ```cpp
-// 493. Reverse Pairs
-// Time:  O(n log n)
-// Space: O(n) auxiliary vector (recursion stack is log n)
-
 class Solution {
 public:
     int reversePairs(vector<int>& nums) {
-        if (nums.empty()) return 0;
         return mergeSortAndCount(nums, 0, nums.size() - 1);
     }
 
 private:
-    int mergeSortAndCount(vector<int>& arr, int left, int right) {
+    int mergeSortAndCount(vector<int>& nums, int left, int right) {
         if (left >= right) return 0;
         int mid = left + (right - left) / 2;
-        int count = mergeSortAndCount(arr, left, mid)
-                  + mergeSortAndCount(arr, mid + 1, right);
+        int count = mergeSortAndCount(nums, left, mid)
+                  + mergeSortAndCount(nums, mid + 1, right);
 
-        // Count cross pairs
+        // Count reverse pairs across halves
         int j = mid + 1;
         for (int i = left; i <= mid; ++i) {
-            while (j <= right && (long long)arr[i] > 2LL * arr[j]) ++j;
+            while (j <= right && static_cast<long long>(nums[i]) > 2LL * nums[j]) {
+                ++j;
+            }
             count += j - (mid + 1);
         }
 
-        // Merge step
-        vector<int> temp;
-        temp.reserve(right - left + 1);
-        int i = left, l = mid + 1;
-        while (i <= mid && l <= right) {
-            if (arr[i] <= arr[l]) temp.push_back(arr[i++]);
-            else temp.push_back(arr[l++]);
-        }
-        while (i <= mid) temp.push_back(arr[i++]);
-        while (l <= right) temp.push_back(arr[l++]);
-
-        copy(temp.begin(), temp.end(), arr.begin() + left);
+        // Merge
+        merge(nums, left, mid, right);
         return count;
+    }
+
+    void merge(vector<int>& nums, int left, int mid, int right) {
+        vector<int> leftArr(nums.begin() + left, nums.begin() + mid + 1);
+        vector<int> rightArr(nums.begin() + mid + 1, nums.begin() + right + 1);
+        int i = 0, j = 0, k = left;
+
+        while (i < leftArr.size() && j < rightArr.size()) {
+            if (leftArr[i] <= rightArr[j]) nums[k++] = leftArr[i++];
+            else nums[k++] = rightArr[j++];
+        }
+        while (i < leftArr.size()) nums[k++] = leftArr[i++];
+        while (j < rightArr.size()) nums[k++] = rightArr[j++];
     }
 };
 ```
 
 ---
 
-## 📈 Complexity Analysis
+## 4️⃣ The “Bad” – Common Pitfalls & How to Avoid Them  
 
-| Complexity | Explanation |
-|------------|-------------|
-| **Time**   | `mergeSortAndCount` splits the array `log n` times. In each merge we perform a linear scan for counting pairs + merging ⇒ `O(n log n)`. |
-| **Space**  | `O(n)` temporary array per merge; recursion stack `O(log n)`. |
-
----
-
-## ⚠️ Pitfalls & Edge Cases (The “Bad” & “Ugly” Bits)
-
-| # | Issue | Fix |
-|---|-------|-----|
-| 1 | **Integer overflow** (`2 * nums[j]` may exceed 32‑bit). | Cast to `long` (Java) / `long long` (C++) / rely on Python’s arbitrary precision. |
-| 2 | **Negative numbers** – the condition still holds; be careful that the comparison logic works for negatives. | The algorithm is unaffected because we use 64‑bit multiplication. |
-| 3 | **Recursive depth** may reach `log₂(5·10⁴) ≈ 16` – fine, but always keep an eye on stack limits in very constrained environments. | Iterative mergesort or manual stack simulation can be used if needed. |
-| 4 | **Debugging the merge step** – subtle off‑by‑one errors are common. | Keep the merge logic separate and test it on its own (e.g., unit‑test the `merge` helper). |
-| 5 | **Large input arrays** – Python’s recursion limit (`sys.setrecursionlimit`) may need adjustment. | Use `sys.setrecursionlimit(1 << 20)` before running the solution in scripts. |
+| Pitfall | Why It Breaks | Fix |
+|---------|--------------|-----|
+| **Int overflow** (`nums[i] > 2 * nums[j]`) | `2 * nums[j]` can overflow 32‑bit signed int | Use 64‑bit (`long`/`long long`) when doing the multiplication. |
+| **Wrong merge order** | Merging unsorted halves causes pair counting to be wrong | Always merge **after** counting cross pairs; ensure both halves are sorted. |
+| **Recursion depth** (Java/C++ recursion limit) | For `n = 5*10^4`, recursion depth ~ 15, safe but some languages may stack‑overflow | Tail‑recursion isn’t required; if needed, convert to iterative bottom‑up merge sort. |
+| **Not copying arrays** | Modifying `nums` while iterating can lead to mis‑counts | Create temporary copies (`leftArr`, `rightArr`) before the merge loop. |
+| **Negative numbers** | `-1 > 2 * -2` is false, but `-1 > 2 * -3` is true – algorithm still works | No special handling needed; just ensure `2 * nums[j]` is computed in 64‑bit. |
 
 ---
 
-## 🎯 What Interviewers Really Want to See
+## 5️⃣ The “Ugly” – Alternative Approaches (Why You *Shouldn’t* Use Them)  
 
-1. **Correctness** – Does your code return the exact count for all test cases?  
-2. **Efficiency** – Show you understand why the divide‑and‑conquer approach beats O(n²).  
-3. **Overflow Safety** – Mention that you used 64‑bit arithmetic.  
-4. **Clean Code** – Use descriptive function names (`mergeSortAndCount`, `merge`).  
-5. **Edge‑Case Handling** – Explain how empty or single‑element arrays are handled.  
+| Approach | Complexity | Comments |
+|----------|------------|----------|
+| **Brute Force** (`O(n^2)`) | `O(n^2)` – too slow for `5*10^4`. | Acceptable only for very small inputs. |
+| **Binary Indexed Tree (Fenwick)** | `O(n log n)` with coordinate compression | Works, but the cross‑pair counting logic is more complicated than merge‑sort. |
+| **Segment Tree** | `O(n log n)` | Similar to BIT; more verbose, harder to explain in an interview. |
+| **HashMap + Two‑Pointers** | `O(n log n)` | Needs careful handling of order and duplicates; not a standard pattern. |
 
----
-
-## 📈 Practice Tips
-
-| Tip | Why It Helps |
-|-----|--------------|
-| **Implement the algorithm from scratch** before copying any snippet. | Builds confidence and reduces “copy‑paste” surprises. |
-| **Write a small test harness** to print intermediate sorted halves and pair counts. | Makes debugging far easier. |
-| **Try the problem on different data types** (`long`, `BigInteger`). | Reinforces overflow awareness. |
-| **Time yourself** – 2‑3 min for a clean solution is realistic in a real interview. | Shows you can solve hard problems under pressure. |
+If you’re in a time‑crunch interview, stick to the merge‑sort pattern. It’s easy to write, easy to explain, and the interviewer will be impressed.
 
 ---
 
-## 📢 Call to Action
+## 6️⃣ Interview Tips & Talking Points  
 
-Want to ace **software‑engineering interviews** that involve hard LeetCode problems?  
-1. **Clone** this repo and run the Java, Python, and C++ solutions on the official LeetCode platform.  
-2. **Add** your own variations (e.g., counting `nums[i] < nums[j] * 2`) to deepen understanding.  
-3. **Show** this code on your GitHub portfolio – it’s a great talking‑point in interviews.  
-
----
-
-## 🔑 SEO Highlights
-
-- **Primary Keywords**: *Reverse Pairs LeetCode 493*, *493 Reverse Pairs solution*, *Merge Sort algorithm interview*, *software engineer interview questions*.  
-- **Secondary Keywords**: *Java reverse pairs*, *Python reverse pairs*, *C++ reverse pairs*, *job interview algorithm*, *algorithm interview questions*, *coding interview tips*.  
-- **Meta Description (≈155 chars)**:  
-  > Master LeetCode 493 Reverse Pairs with an O(n log n) merge‑sort solution. Read Java, Python, and C++ code, plus a “Good / Bad / Ugly” interview guide.  
+1. **Explain the intuition first** – say “I’ll use divide & conquer” before jumping into code.  
+2. **Mention overflow explicitly** – “I’ll use `long` (Java) / `long long` (C++) to avoid overflow.”  
+3. **Show the counting logic** – “While merging, for each `i` in the left half, I’ll move a pointer `j` in the right half until `nums[i] <= 2 * nums[j]`.”  
+4. **Demonstrate edge‑case handling** – “The algorithm naturally handles negatives because the inequality is preserved after sorting.”  
+5. **Mention time/space** – “Time `O(n log n)`, space `O(n)` due to auxiliary arrays.”  
+6. **Optional optimization** – “If you’re concerned about memory, you can merge in place using a single auxiliary array.”  
 
 ---
 
-Happy coding—and may your next interview be a walk through this classic algorithm! 🚀
+## 7️⃣ Final Takeaway – Why Mastering Reverse Pairs Boosts Your Job Hunt  
+
+- **Showcase algorithmic depth** – `Reverse Pairs` is a classic “reduce the time complexity from O(n²) to O(n log n)” challenge.  
+- **Demonstrate robust coding** – You’re using safe arithmetic, handling negative values, and writing clean, testable functions.  
+- **Interview readiness** – This problem appears in *Google*, *Facebook*, *Amazon*, and *Microsoft* interviews. Knowing it inside‑out signals strong problem‑solving chops.  
+- **Show curiosity** – Explore variations: counting `nums[i] < 2 * nums[j]`, or a generic “count pairs with condition `f(nums[i], nums[j])`”. This shows you’re not just memorizing a solution but truly understanding the pattern.
+
+> **Ready to ace your next coding interview?**  
+> Practice the merge‑sort solution above, run it against edge cases, and add it to your portfolio.  
+> Add the solution to your GitHub repo, write a short README explaining the algorithm, and share it on LinkedIn with the hashtag #LeetCode493.  
+> Recruiters love seeing **clean code + thoughtful explanation**. 🚀  
+
+---  
+
+### 📚 Additional Resources  
+
+- [LeetCode Discuss – 493 Reverse Pairs](https://leetcode.com/problems/reverse-pairs/discuss/)
+- [Cracking the Coding Interview – Merge Sort Counting](https://www.crackingthecodinginterview.com)
+- [Algorithms Live‑Stream – Divide & Conquer Techniques](https://www.youtube.com/playlist?list=PLs3X0Wl3KJ8J2jQ3v7z3tqH7sS3g6d8xE)
+
+Happy coding, and may your next interview be your dream job! 🎯
