@@ -7,73 +7,57 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 391. Perfect Rectangle – A Complete Cross‑Language Solution
+        ## 1.  Problem Overview – LeetCode 391 “Perfect Rectangle”
 
-**LeetCode ID**: 391  
-**Difficulty**: Hard  
-**Tags**: Hash Table, Geometry, Set, Two‑Dimensional Geometry  
+| **Title** | **Difficulty** | **Link** |
+|-----------|----------------|----------|
+| Perfect Rectangle | Hard | <https://leetcode.com/problems/perfect-rectangle/> |
 
----
+**Statement**  
+You are given a list of axis‑aligned rectangles. Each rectangle is described by `[x1, y1, x2, y2]`, the bottom‑left and top‑right corners.  
+Return `true` iff the rectangles together cover *exactly* one larger rectangle – no overlaps, no gaps, and the union of all rectangles equals a single axis‑aligned rectangle.
 
-### Why is this problem interesting?
-
-At a glance it looks like a simple “check coverage” task, but it hides subtle pitfalls:
-
-* **Overlaps** – two tiny rectangles can cover the same area twice.
-* **Gaps** – a tiny rectangle may leave a hole in the big rectangle.
-* **Corner mishandling** – all four corners of the big rectangle must appear exactly once in the whole set.
-
-To pass the tests you have to think **geometrically** and **set‑wise**.  
-Below you’ll find a clean O(n) solution in **Java, Python, and C++** that will help you ace this question in a technical interview (or on LeetCode).
+**Why this problem is important**  
+- The solution uses a classic “count‑the‑corners” trick that appears in many interview questions (e.g., “Number of Islands”, “Valid Sudoku”).  
+- It tests your ability to reason about area, boundaries, and set operations – all key skills in system design and large‑scale data processing.  
+- It is a great way to demonstrate clean coding style in Java, Python, and C++, showing you can solve the same problem in multiple languages – a big plus for a multi‑stack hiring manager.
 
 ---
 
-## The Optimal Strategy
+## 2.  Core Idea – Area + Corner Set
 
-The classical, well‑known solution uses two observations:
+1. **Area check** –  
+   *The sum of the areas of all small rectangles must equal the area of the bounding rectangle formed by the minimal and maximal coordinates.*  
+   This catches many failure modes (gap, overlap, extra area) quickly.
 
-1. **Area check** – The sum of all small rectangles’ areas must equal the area of the bounding rectangle.
-2. **Corner set check** – If you add every corner point to a set and toggle its presence each time you encounter it, the only points that should survive are the four corners of the bounding rectangle. Any extra corner indicates either an overlap or a gap.
+2. **Corner set trick** –  
+   For every rectangle add its four corners to a set.  
+   - If a corner appears **exactly once** it must be a corner of the final big rectangle.  
+   - If it appears **twice** (or any even number) it is an internal edge and cancels out.  
+   After processing all rectangles, the set should contain **exactly four corners** – the four corners of the big rectangle.  
+   Any other number indicates an overlap or a gap.
 
-### Algorithm Steps
-
-1. **Initialize**  
-   * `minX, minY` to `+∞`  
-   * `maxX, maxY` to `-∞`  
-   * `areaSum` to `0`  
-   * `cornerSet` as an empty set
-
-2. **Iterate over each rectangle `[x1, y1, x2, y2]`**  
-   * Update `minX, minY, maxX, maxY` with the rectangle’s edges.  
-   * Add its area `(x2 - x1) * (y2 - y1)` to `areaSum`.  
-   * For each of its four corners `(x1, y1)`, `(x1, y2)`, `(x2, y1)`, `(x2, y2)`:  
-     * If the point exists in `cornerSet`, remove it.  
-     * Otherwise, add it.
-
-3. **Validate**  
-   * **Area**: `areaSum == (maxX - minX) * (maxY - minY)`  
-   * **Corners**: `cornerSet` contains exactly the four points:  
-     `(minX, minY), (minX, maxY), (maxX, minY), (maxX, maxY)`.
-
-If both checks pass → **true**; otherwise → **false**.
+The combination of the two checks guarantees correctness.
 
 ---
 
-## Code – Java
+## 3.  Implementation – Java, Python, C++
+
+### 3.1 Java
 
 ```java
 import java.util.*;
 
-public class Solution {
+class Solution {
     public boolean isRectangleCover(int[][] rectangles) {
-        long areaSum = 0;
+        long area = 0;                 // 64‑bit to avoid overflow
         long minX = Long.MAX_VALUE, minY = Long.MAX_VALUE;
         long maxX = Long.MIN_VALUE, maxY = Long.MIN_VALUE;
 
-        Set<Long> cornerSet = new HashSet<>();
+        Set<Long> corners = new HashSet<>();
 
-        for (int[] rect : rectangles) {
-            long x1 = rect[0], y1 = rect[1], x2 = rect[2], y2 = rect[3];
+        for (int[] r : rectangles) {
+            long x1 = r[0], y1 = r[1], x2 = r[2], y2 = r[3];
 
             // Update bounding rectangle
             minX = Math.min(minX, x1);
@@ -81,252 +65,238 @@ public class Solution {
             maxX = Math.max(maxX, x2);
             maxY = Math.max(maxY, y2);
 
-            // Area
-            areaSum += (x2 - x1) * (y2 - y1);
+            // Sum area
+            area += (x2 - x1) * (y2 - y1);
 
-            // Corner handling
-            toggleCorner(cornerSet, x1, y1);
-            toggleCorner(cornerSet, x1, y2);
-            toggleCorner(cornerSet, x2, y1);
-            toggleCorner(cornerSet, x2, y2);
+            // Encode corner as a single long: (x << 32) | y
+            long p1 = (x1 << 32) ^ y1;
+            long p2 = (x1 << 32) ^ y2;
+            long p3 = (x2 << 32) ^ y1;
+            long p4 = (x2 << 32) ^ y2;
+
+            // Add/remove corners
+            addCorner(corners, p1);
+            addCorner(corners, p2);
+            addCorner(corners, p3);
+            addCorner(corners, p4);
         }
 
-        // Bounding rectangle area
+        // Bounding rectangle area must match sum of small areas
         long boundingArea = (maxX - minX) * (maxY - minY);
-        if (areaSum != boundingArea) return false;
+        if (area != boundingArea) return false;
 
-        // Expected four corners
-        Set<Long> expected = new HashSet<>(Arrays.asList(
-                encode(minX, minY),
-                encode(minX, maxY),
-                encode(maxX, minY),
-                encode(maxX, maxY)
-        ));
+        // Only four corners should remain
+        if (corners.size() != 4) return false;
 
-        return cornerSet.equals(expected);
+        // All four expected corners must be present
+        long corner1 = (minX << 32) ^ minY;
+        long corner2 = (minX << 32) ^ maxY;
+        long corner3 = (maxX << 32) ^ minY;
+        long corner4 = (maxX << 32) ^ maxY;
+
+        return corners.contains(corner1) && corners.contains(corner2) &&
+               corners.contains(corner3) && corners.contains(corner4);
     }
 
-    private void toggleCorner(Set<Long> set, long x, long y) {
-        long key = encode(x, y);
-        if (!set.add(key)) set.remove(key);   // if add returns false, key existed -> remove
-    }
-
-    // Encode a pair (x,y) into a single long.  We shift x 32 bits to the left.
-    private long encode(long x, long y) {
-        return (x << 32) ^ y;
+    private void addCorner(Set<Long> set, long point) {
+        if (!set.add(point)) {
+            set.remove(point);   // remove when seen twice
+        }
     }
 }
 ```
 
-**Why it works**
-
-* `areaSum` is a `long` – the coordinates can be up to 10⁵, so the area can reach 10¹⁰, which fits in a 64‑bit integer.
-* Corner toggling guarantees that overlapped corners cancel out, while the true four corners of the big rectangle remain.
-* The final equality check ensures that there are no gaps or extra corners.
-
----
-
-## Code – Python
+### 3.2 Python
 
 ```python
-from typing import List
-
 class Solution:
     def isRectangleCover(self, rectangles: List[List[int]]) -> bool:
-        min_x, min_y = float('inf'), float('inf')
-        max_x, max_y = float('-inf'), float('-inf')
-        area_sum = 0
+        area = 0
+        min_x = min_y = float('inf')
+        max_x = max_y = float('-inf')
         corners = set()
 
         for x1, y1, x2, y2 in rectangles:
-            # Bounding rectangle
+            # Update bounding rectangle
             min_x, min_y = min(min_x, x1), min(min_y, y1)
             max_x, max_y = max(max_x, x2), max(max_y, y2)
 
-            # Area
-            area_sum += (x2 - x1) * (y2 - y1)
+            # Accumulate area
+            area += (x2 - x1) * (y2 - y1)
 
-            # Toggle corners
-            for corner in [(x1, y1), (x1, y2), (x2, y1), (x2, y2)]:
-                if corner in corners:
-                    corners.remove(corner)
+            # Corner tuples
+            pts = {(x1, y1), (x1, y2), (x2, y1), (x2, y2)}
+            for p in pts:
+                if p in corners:
+                    corners.remove(p)
                 else:
-                    corners.add(corner)
+                    corners.add(p)
 
-        # Bounding rectangle area
-        if area_sum != (max_x - min_x) * (max_y - min_y):
+        # Area must match
+        if area != (max_x - min_x) * (max_y - min_y):
             return False
 
-        # Expected corners
+        # Exactly four corners left
+        if len(corners) != 4:
+            return False
+
+        # They must be the four corners of the bounding box
         expected = {(min_x, min_y), (min_x, max_y),
                     (max_x, min_y), (max_x, max_y)}
         return corners == expected
 ```
 
-*Python’s* built‑in `set` makes corner toggling trivial.  
-The `float('inf')` trick avoids an explicit large constant for initial bounds.
-
----
-
-## Code – C++
+### 3.3 C++
 
 ```cpp
-#include <vector>
-#include <unordered_set>
-#include <tuple>
-#include <algorithm>
+#include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
 public:
     bool isRectangleCover(vector<vector<int>>& rectangles) {
-        long long areaSum = 0;
+        long long area = 0;
         long long minX = LLONG_MAX, minY = LLONG_MAX;
         long long maxX = LLONG_MIN, maxY = LLONG_MIN;
 
         unordered_set<long long> corners;
 
+        auto addCorner = [&](long long key) {
+            if (!corners.insert(key).second) corners.erase(key);
+        };
+
         for (auto &r : rectangles) {
             long long x1 = r[0], y1 = r[1], x2 = r[2], y2 = r[3];
 
-            // Bounding rectangle
             minX = min(minX, x1);
             minY = min(minY, y1);
             maxX = max(maxX, x2);
             maxY = max(maxY, y2);
 
-            // Area
-            areaSum += (x2 - x1) * (y2 - y1);
+            area += (x2 - x1) * (y2 - y1);
 
-            // Toggle corners
-            toggle(corners, x1, y1);
-            toggle(corners, x1, y2);
-            toggle(corners, x2, y1);
-            toggle(corners, x2, y2);
+            // Encode point as single 64‑bit: (x << 32) ^ y
+            long long p1 = (x1 << 32) ^ y1;
+            long long p2 = (x1 << 32) ^ y2;
+            long long p3 = (x2 << 32) ^ y1;
+            long long p4 = (x2 << 32) ^ y2;
+
+            addCorner(p1); addCorner(p2);
+            addCorner(p3); addCorner(p4);
         }
 
-        // Check area
-        long long boundingArea = (maxX - minX) * (maxY - minY);
-        if (areaSum != boundingArea) return false;
+        if (area != (maxX - minX) * (maxY - minY)) return false;
+        if (corners.size() != 4) return false;
 
-        // Expected four corners
-        unordered_set<long long> expected = {
-            encode(minX, minY),
-            encode(minX, maxY),
-            encode(maxX, minY),
-            encode(maxX, maxY)
-        };
+        long long c1 = (minX << 32) ^ minY;
+        long long c2 = (minX << 32) ^ maxY;
+        long long c3 = (maxX << 32) ^ minY;
+        long long c4 = (maxX << 32) ^ maxY;
 
-        return corners == expected;
-    }
-
-private:
-    void toggle(unordered_set<long long> &s, long long x, long long y) {
-        long long key = encode(x, y);
-        if (!s.insert(key).second) { // insert failed -> key existed
-            s.erase(key);
-        }
-    }
-
-    long long encode(long long x, long long y) {
-        return (x << 32) ^ y;   // x shifted 32 bits to left; works for 32‑bit signed ints
+        return corners.count(c1) && corners.count(c2) &&
+               corners.count(c3) && corners.count(c4);
     }
 };
 ```
 
-*Why the `encode` trick works:*  
-`x` and `y` are within ±10⁵, so after shifting `x` left by 32 bits the lower 32 bits are free for `y`. This guarantees a unique 64‑bit key for every coordinate pair.
+> **Why the hash trick works**  
+> A point that appears an even number of times (two, four, …) is internal – all those occurrences cancel. A point that appears once is a boundary corner. The algorithm guarantees that only the outer corners survive.
 
 ---
 
-## Blog Article – “The Perfect Rectangle: The Good, The Bad, The Ugly”
+## 4.  Good, Bad, and Ugly – What You Should Highlight in an Interview
 
-### 1. Introduction
+| **Aspect** | **Good** | **Bad** | **Ugly** |
+|------------|----------|---------|----------|
+| **Area Check** | Handles huge gaps/overlaps instantly; O(n) | Can mislead if you forget the bounding area | Over‑reliance on area alone may miss subtle overlap configurations |
+| **Corner Set** | Clean O(n) logic; no geometry libraries | Requires careful hashing; easy to mis‑encode | Corner‑set approach can be confusing to interviewers unfamiliar with the trick |
+| **Time Complexity** | `O(n)` | No significant drawback | None |
+| **Space Complexity** | `O(n)` (set of corners) | Extra memory usage | None |
+| **Edge Cases** | Works for negative coordinates, large ranges | Forgetting to use 64‑bit area | Wrong corner encoding causing false negatives |
+| **Readability** | Comments help | Long lambda may obscure logic | Unclear variable names may obscure intent |
 
-> **“You need to cover a rectangle with smaller rectangles without overlaps or gaps.”**  
-> A problem that looks deceptively simple turns into a delightful interview challenge.  
-> In this post we’ll dissect LeetCode 391 – *Perfect Rectangle* – in depth and walk through a clean, production‑ready solution in **Java**, **Python**, and **C++**. We’ll also cover the hidden pitfalls (the *bad* and the *ugly*) that trip many candidates.
+**Tips for the Interviewer’s Lens**
 
-**SEO Keywords**: Perfect Rectangle Leetcode 391, Java solution, Python solution, C++ solution, interview question, coding interview, hash set, geometry problem, tech interview.
+1. **Explain the intuition** – “We’re basically counting how many times each corner appears.”  
+2. **Show the area math** – “Sum of areas must equal bounding rectangle area.”  
+3. **Address overflow** – “We use 64‑bit to stay safe with coordinates up to ±10⁵.”  
+4. **Discuss corner encoding** – “We use a unique 64‑bit key to store a point.”  
+5. **Mention test cases** – “Test a single big rectangle, a perfect grid, a missing gap, and an overlap.”  
 
-### 2. Problem Recap
+---
 
-You’re given `rectangles`, each represented as `[x1, y1, x2, y2]` (bottom‑left to top‑right).  
-Return `true` if all rectangles together form *exactly* one larger rectangle with no holes or overlaps.
+## 5.  Complexity Analysis
 
-### 3. The “Good” – Elegant Observations
+| **Operation** | **Java** | **Python** | **C++** |
+|---------------|----------|------------|---------|
+| Time | `O(n)` | `O(n)` | `O(n)` |
+| Space | `O(n)` | `O(n)` | `O(n)` |
+| Notes | 64‑bit `long` for area; 64‑bit `long` key for corners | Python `int` is arbitrary precision; set of tuples | `long long` and `unordered_set` |
 
-1. **Area Consistency** – The sum of small areas must equal the bounding rectangle’s area.
-2. **Corner Magic** – If you add every corner to a set and toggle its presence each time, only the four outer corners should survive.
+`n` is the number of rectangles (`1 ≤ n ≤ 2·10⁴`).
 
-These two checks together eliminate all “bad” configurations: overlaps, gaps, and duplicate corners.
+---
 
-### 4. The “Bad” – Common Pitfalls
+## 6.  SEO‑Optimized Blog Article – “Perfect Rectangle: Master the Hard LeetCode 391”
 
-| Pitfall | Why It Happens | Fix |
-|---------|----------------|-----|
-| **Integer overflow** | Coordinates up to 10⁵ → area up to 10¹⁰. | Use 64‑bit (`long`/`long long`). |
-| **Corner collision** | Overlapping rectangles share corners, leading to extra points. | Toggle corners in a set. |
-| **Floating‑point inaccuracies** | Using doubles for area comparison can cause precision errors. | Stick to integer arithmetic. |
-| **Wrong bounding rectangle** | Forgetting to update min/max for every rectangle. | Update inside the loop. |
+### 6.1 Headline & Meta
 
-### 5. The “Ugly” – Edge Cases You Might Miss
+- **Title:** Perfect Rectangle – LeetCode 391 Solution (Java, Python, C++)  
+- **Meta Description:** Learn the optimal algorithm for LeetCode 391 “Perfect Rectangle.” Code in Java, Python, and C++. Understand the area + corner trick, time/space complexity, and interview tips.
 
-* **Zero‑area rectangles** – Should never appear given the constraints (`x1 < x2`, `y1 < y2`).  
-* **Negative coordinates** – Works fine with the integer approach.  
-* **Large dataset** – Up to 20,000 rectangles: O(n) time and O(n) memory is mandatory.
+### 6.2 Introduction
 
-### 6. Full Solution Walkthrough (Java)
+> **“In a world of messy data, finding the exact shape is a job skill.”**  
+> The *Perfect Rectangle* problem tests your ability to think geometrically and mathematically under constraints. It is a staple of technical interviews for backend, data‑engineering, and algorithmic roles.
 
-(Insert the Java code block from above, annotated line by line.)
+### 6.3 Problem Recap
 
-> **Why this passes all LeetCode tests?**  
-> *Area* ensures global coverage.  
-> *Corner set* guarantees local consistency.  
-> Combined, they form a complete invariant for the perfect cover.
+Summarize the problem with a small diagram (text‑only) and highlight constraints.
 
-### 7. Parallel Implementations
+### 6.4 Why It Matters for Your Job Hunt
 
-*Python* – Use tuple `set` and `float('inf')` for bounds.  
-*C++* – Use `unordered_set<long long>` with a bit‑shifting key.
+- **Cross‑Language Proficiency:** Show you can solve the same logic in Java, Python, and C++ – a must‑have for many hiring managers.  
+- **Set Operations:** Interviewers love set‑based solutions because they reveal your data‑structure intuition.  
+- **Edge‑Case Thinking:** Demonstrates robustness – you think about overflow, negative coordinates, and minimal/maximum values.
 
-(Insert the Python and C++ code blocks.)
+### 6.5 The Winning Strategy – Area + Corner Set
 
-### 8. Complexity Analysis
+Provide a step‑by‑step narrative, visualizing how corners cancel and why the bounding rectangle must match the summed area.
 
-| Operation | Time | Space |
-|-----------|------|-------|
-| Iterating rectangles | **O(n)** | |
-| Corner toggling (set ops) | **O(1)** average per op | |
-| Final corner check | **O(1)** | |
-| Total | **O(n)** | **O(n)** (for corner set) |
+### 6.6 Code Walkthrough
 
-### 9. How to Test Locally
+Show each language version, explain:
 
-```python
-def test():
-    sol = Solution()
-    assert sol.isRectangleCover([[1,1,3,3],[3,1,4,2],[3,2,4,4],[1,3,2,4],[2,3,3,4]]) == True
-    assert sol.isRectangleCover([[1,1,2,3],[1,3,2,4],[3,1,4,2],[3,2,4,4]]) == False
-    assert sol.isRectangleCover([[1,1,3,3],[3,1,4,2],[1,3,2,4],[2,2,4,4]]) == False
-```
+- **Corner encoding** (hashing a pair into a single key).  
+- **Set toggling** (add if not present, remove if present).  
+- **Area calculation** with 64‑bit integers.
 
-### 10. Takeaway for Interviewers
+### 6.7 Good, Bad, Ugly
 
-- **Explain the intuition** before diving into code.  
-- **Show your thought process**: area + corner set.  
-- **Discuss edge cases**: overflow, negative coordinates, etc.  
-- **Write clean, readable code** in the language of choice.
+Discuss the interview‑friendly aspects and pitfalls. Emphasize clarity, naming, and edge‑case handling.
 
-### 11. Wrap‑Up & Call‑to‑Action
+### 6.8 Performance Metrics
 
-If you cracked this problem, you just mastered a classic LeetCode interview gold‑mine. Keep practicing with variants – *covering a rectangle with squares*, *checking for tiling with dominoes*, etc.  
+Tabulate time/space complexity. Mention that the solution runs in linear time – ideal for `n = 20,000`.
 
-**Looking to land your next tech role?**  
-> Share your solution on LinkedIn, tag your recruiter, and let the hiring managers know you can solve hard geometry problems efficiently.  
+### 6.9 Practice & Interview Prep
 
-Happy coding! 🚀
+- Run through the three examples.  
+- Create custom test cases: perfect grid, single gap, large overlap, negative coordinates.  
+- Re‑implement from scratch without looking at the code to solidify the logic.
 
---- 
+### 6.10 Final Take‑away
 
-**Happy learning!**
+> **The Perfect Rectangle problem is not just a coding challenge; it’s a showcase of analytical thinking, data‑structure savvy, and coding discipline across languages. Master it, and you’re ready to tackle any algorithm interview.**
+
+---
+
+## 7.  Final Checklist for the Interview
+
+- ✔️ **Explain the area + corner trick.**  
+- ✔️ **Show working code in Java, Python, and C++.**  
+- ✔️ **Mention 64‑bit safety for coordinates.**  
+- ✔️ **Demonstrate edge‑case handling.**  
+- ✔️ **Discuss time/space complexity and why it’s optimal.**  
+
+Good luck—now you have the perfect rectangle (and your code) ready for any hard technical interview!

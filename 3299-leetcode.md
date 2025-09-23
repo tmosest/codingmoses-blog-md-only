@@ -7,280 +7,269 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 3299. Sum of Consecutive Subsequences – From Theory to a Job‑Ready Solution  
+        ## 📌 Problem Recap – Sum of Consecutive Subsequences (LeetCode 3299)
 
-> **Problem Source:** [LeetCode 3299](https://leetcode.com/problems/sum-of-consecutive-subsequences/)
+Given an integer array `nums` (1 ≤ `nums[i]` ≤ 10⁵, 1 ≤ `nums.length` ≤ 10⁵), a **consecutive subsequence** is a non‑empty subsequence whose elements form a strictly increasing or decreasing arithmetic progression with difference ±1.  
+The *value* of a subsequence is the sum of its elements.  
 
-### TL;DR  
+**Goal** – return the sum of the values of **all** consecutive non‑empty subsequences modulo 10⁹+7.
 
-For an array `nums` (1 ≤ `nums[i]` ≤ 10⁵, 1 ≤ `n` ≤ 10⁵) we have to sum the values of **all** non‑empty subsequences that are *consecutive* – i.e. each pair of consecutive elements differs by exactly +1 or exactly –1.  
-The answer can be huge, so we return it modulo `1 000 000 007`.  
-We’ll provide a single‑pass **O(n + max(nums))** algorithm and give full code in **Java, Python, and C++**.  
-
----
-
-## Why This Problem Is a Great Interview Topic
-
-| ✅ Good | ⚠️ Bad | 💀 Ugly |
-|---------|--------|---------|
-| **Large input size** – forces you to think in linear time. | **Two directions** (+1 and –1) make it easy to overlook symmetry. | **Edge cases**: single element subsequences, duplicate values, very large `nums[i]` (up to 10⁵). |
-| **Dynamic programming on value, not index** – the trick of remembering “how many increasing subsequences end at value X” is elegant. | **Misinterpreting “subsequence” vs “subarray”** – many candidates write O(n²) solutions that TLE. | **Modulo pitfalls** – forgetting to mod after every addition/multiplication can lead to overflow and wrong answers. |
-| **Cross‑language implementation** – shows versatility (Java, Python, C++). | **Space vs time trade‑off** – an array of size 10⁵ is fine, but a hashmap can be slower. | **Testing** – naive brute force only works up to 10, but you need to generate random cases to verify your DP. |
+> **Example**  
+> `nums = [1, 4, 2, 3]`  
+> Consecutive subsequences:  
+> `[1]`, `[4]`, `[2]`, `[3]`, `[1,2]`, `[2,3]`, `[4,3]`, `[1,2,3]`  
+> Sum of values = 31
 
 ---
 
-## The Core Insight
+## 🔑 Solution Overview
 
-If we focus on the **value** of the last element rather than its index, we can build every consecutive subsequence by *extending* an existing one.
+The naive O(2ⁿ) enumeration is impossible.  
+Observe:
 
-- Let  
-  - `incCnt[v]`  = number of increasing consecutive subsequences that **end** at value `v`  
-  - `incSum[v]`  = sum of all their elements  
-  - `decCnt[v]`  = number of decreasing consecutive subsequences that **end** at value `v`  
-  - `decSum[v]`  = sum of all their elements  
+* A consecutive subsequence can be split into an increasing run and a decreasing run.
+* If we process the array **forward** we can compute, for each value `v`,  
+  *`cntInc[v]`* – how many increasing subsequences end with value `v`  
+  *`sumInc[v]`* – the total value of those subsequences  
+* Similarly, a **backward** pass gives the decreasing parts.
 
-When we see a new element `x` in the original array we can:
+With these two passes we can combine the counts and sums to get the final answer in **O(n + maxValue)** time and **O(maxValue)** memory (maxValue ≤ 10⁵).
 
-1. **Create a new 1‑element subsequence** – contributes `x` to the answer.
-2. **Extend every increasing subsequence that ended at `x‑1`**  
-   - New count: `incCnt[x] += incCnt[x-1] + 1`  
-   - New sum:   `incSum[x] += incSum[x-1] + x * (incCnt[x-1] + 1)`  
-   - Contribution to answer: `incSum[x-1] + x * incCnt[x-1]`
-3. **Extend every decreasing subsequence that ended at `x+1`** – symmetric logic.
+### Why it works
 
-All operations are done modulo `MOD`.  
-Because `x` is at most 10⁵ we can keep the arrays `incCnt`, `incSum`, `decCnt`, `decSum` of size `max(nums)+2` – O(1 e5) space.  
-We process the original array once: **O(n)** time.
+For a fixed value `x` that appears at position `i`:
 
----
+1. **Increasing side** – any subsequence that ends at `x` must have been extended from a subsequence that ended at `x‑1` immediately before `i`.  
+   *New count* = `cntInc[x‑1] + 1` (`+1` for the subsequence consisting of only `x`).  
+   *New sum*   = `sumInc[x‑1] + x * (cntInc[x‑1] + 1)`.
 
-## Pseudocode
+2. **Decreasing side** – symmetric, using `x+1` as the previous value.
 
-```
-MOD = 1_000_000_007
-maxV = max(nums)
-size  = maxV + 2   // +2 so we can safely index x+1
+The total contribution of all subsequences ending at `x` is the sum of the two sides, minus the double counted single‑element subsequence (handled naturally by the DP equations).
 
-incCnt  = array[size]  // 0 initialized
-incSum  = array[size]
-decCnt  = array[size]
-decSum  = array[size]
-ans = 0
+The same DP works on the backward pass for the decreasing direction. Finally, for each value `v` we add the sums from both passes and subtract the over‑counted single‑element subsequence.
 
-for x in nums:
-    ans += x                          // 1‑element subsequence
-
-    // Extend increasing subsequences (x-1 -> x)
-    incCnt[x] = (incCnt[x] + incCnt[x-1] + 1) % MOD
-    incSum[x] = (incSum[x] + incSum[x-1] + x * (incCnt[x-1] + 1)) % MOD
-    ans = (ans + incSum[x-1] + x * incCnt[x-1]) % MOD
-
-    // Extend decreasing subsequences (x+1 -> x)
-    decCnt[x] = (decCnt[x] + decCnt[x+1] + 1) % MOD
-    decSum[x] = (decSum[x] + decSum[x+1] + x * (decCnt[x+1] + 1)) % MOD
-    ans = (ans + decSum[x+1] + x * decCnt[x+1]) % MOD
-
-return ans % MOD
-```
+All operations are performed modulo **M = 1 000 000 007**.
 
 ---
 
-## Full Implementations
+## 📄 Code Implementations
 
-### Java (O(n) + O(max(nums)) memory)
+### 1. Java (O(n) DP on values)
 
 ```java
-import java.util.*;
+import java.util.HashMap;
 
 public class Solution {
     private static final int MOD = 1_000_000_007;
 
-    public int getSum(int[] nums) {
-        int n = nums.length;
+    public int sumOfConsecutiveSubsequences(int[] nums) {
         int maxVal = 0;
         for (int v : nums) maxVal = Math.max(maxVal, v);
 
-        int size = maxVal + 2;
-        long[] incCnt = new long[size];
-        long[] incSum = new long[size];
-        long[] decCnt = new long[size];
-        long[] decSum = new long[size];
+        long[] cntInc = new long[maxVal + 2];
+        long[] sumInc = new long[maxVal + 2];
+        long[] cntDec = new long[maxVal + 3];
+        long[] sumDec = new long[maxVal + 3];
+
+        // Forward pass – increasing direction
+        for (int v : nums) {
+            long c = cntInc[v - 1] + 1;
+            long s = sumInc[v - 1] + v * c;
+            cntInc[v] = (cntInc[v] + c) % MOD;
+            sumInc[v] = (sumInc[v] + s) % MOD;
+        }
+
+        // Backward pass – decreasing direction
+        for (int i = nums.length - 1; i >= 0; --i) {
+            int v = nums[i];
+            long c = cntDec[v + 1] + 1;
+            long s = sumDec[v + 1] + v * c;
+            cntDec[v] = (cntDec[v] + c) % MOD;
+            sumDec[v] = (sumDec[v] + s) % MOD;
+        }
+
         long ans = 0;
-
-        for (int x : nums) {
-            ans = (ans + x) % MOD;              // single element
-
-            // Increasing direction
-            incCnt[x] = (incCnt[x] + incCnt[x - 1] + 1) % MOD;
-            incSum[x] = (incSum[x] + incSum[x - 1]
-                    + (long) x * (incCnt[x - 1] + 1)) % MOD;
-            ans = (ans + incSum[x - 1] + (long) x * incCnt[x - 1]) % MOD;
-
-            // Decreasing direction
-            decCnt[x] = (decCnt[x] + decCnt[x + 1] + 1) % MOD;
-            decSum[x] = (decSum[x] + decSum[x + 1]
-                    + (long) x * (decCnt[x + 1] + 1)) % MOD;
-            ans = (ans + decSum[x + 1] + (long) x * decCnt[x + 1]) % MOD;
+        for (int v = 1; v <= maxVal; ++v) {
+            ans = (ans + sumInc[v] + sumDec[v]) % MOD;
+            // subtract double counted single element subsequence
+            ans = (ans - v + MOD) % MOD;
         }
         return (int) ans;
     }
 }
 ```
 
-### Python (Python 3.10+)
+**Complexities**
+
+* Time: `O(n + maxValue)` (≤ O(n) in practice)
+* Memory: `O(maxValue)` (≈ 4 × 10⁵ longs → < 3 MB)
+
+---
+
+### 2. Python (O(n) DP with dictionaries)
 
 ```python
-MOD = 10 ** 9 + 7
+MOD = 1_000_000_007
 
-def get_sum(nums):
+def sum_of_consecutive_subsequences(nums):
     max_val = max(nums)
-    size = max_val + 2
-    inc_cnt = [0] * size
-    inc_sum = [0] * size
-    dec_cnt = [0] * size
-    dec_sum = [0] * size
+    cnt_inc = [0] * (max_val + 2)
+    sum_inc = [0] * (max_val + 2)
+    cnt_dec = [0] * (max_val + 3)
+    sum_dec = [0] * (max_val + 3)
+
+    # Forward pass
+    for v in nums:
+        c = cnt_inc[v - 1] + 1
+        s = (sum_inc[v - 1] + v * c) % MOD
+        cnt_inc[v] = (cnt_inc[v] + c) % MOD
+        sum_inc[v] = (sum_inc[v] + s) % MOD
+
+    # Backward pass
+    for v in reversed(nums):
+        c = cnt_dec[v + 1] + 1
+        s = (sum_dec[v + 1] + v * c) % MOD
+        cnt_dec[v] = (cnt_dec[v] + c) % MOD
+        sum_dec[v] = (sum_dec[v] + s) % MOD
+
     ans = 0
-
-    for x in nums:
-        ans = (ans + x) % MOD
-
-        # increasing
-        inc_cnt[x] = (inc_cnt[x] + inc_cnt[x - 1] + 1) % MOD
-        inc_sum[x] = (inc_sum[x] + inc_sum[x - 1] + x * (inc_cnt[x - 1] + 1)) % MOD
-        ans = (ans + inc_sum[x - 1] + x * inc_cnt[x - 1]) % MOD
-
-        # decreasing
-        dec_cnt[x] = (dec_cnt[x] + dec_cnt[x + 1] + 1) % MOD
-        dec_sum[x] = (dec_sum[x] + dec_sum[x + 1] + x * (dec_cnt[x + 1] + 1)) % MOD
-        ans = (ans + dec_sum[x + 1] + x * dec_cnt[x + 1]) % MOD
-
-    return ans % MOD
+    for v in range(1, max_val + 1):
+        ans = (ans + sum_inc[v] + sum_dec[v]) % MOD
+        ans = (ans - v + MOD) % MOD  # remove double counted single element
+    return ans
 ```
 
-### C++17
+---
+
+### 3. C++ (O(n) DP with vector)
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
-const long long MOD = 1'000'000'007LL;
+const int MOD = 1'000'000'007;
 
-class Solution {
-public:
-    int getSum(vector<int>& nums) {
-        int maxVal = *max_element(nums.begin(), nums.end());
-        int sz = maxVal + 2;                       // safe for x+1
+int sumOfConsecutiveSubsequences(vector<int>& nums) {
+    int maxVal = *max_element(nums.begin(), nums.end());
+    vector<long long> cntInc(maxVal + 2, 0), sumInc(maxVal + 2, 0);
+    vector<long long> cntDec(maxVal + 3, 0), sumDec(maxVal + 3, 0);
 
-        vector<long long> incCnt(sz), incSum(sz);
-        vector<long long> decCnt(sz), decSum(sz);
-        long long ans = 0;
-
-        for (int x : nums) {
-            ans = (ans + x) % MOD;
-
-            // Increasing
-            incCnt[x] = (incCnt[x] + incCnt[x-1] + 1) % MOD;
-            incSum[x] = (incSum[x] + incSum[x-1] + x * (incCnt[x-1] + 1)) % MOD;
-            ans = (ans + incSum[x-1] + x * incCnt[x-1]) % MOD;
-
-            // Decreasing
-            decCnt[x] = (decCnt[x] + decCnt[x+1] + 1) % MOD;
-            decSum[x] = (decSum[x] + decSum[x+1] + x * (decCnt[x+1] + 1)) % MOD;
-            ans = (ans + decSum[x+1] + x * decCnt[x+1]) % MOD;
-        }
-
-        return (int)(ans % MOD);
+    // Forward pass
+    for (int v : nums) {
+        long long c = cntInc[v - 1] + 1;
+        long long s = (sumInc[v - 1] + 1LL * v * c) % MOD;
+        cntInc[v] = (cntInc[v] + c) % MOD;
+        sumInc[v] = (sumInc[v] + s) % MOD;
     }
-};
+
+    // Backward pass
+    for (int i = nums.size() - 1; i >= 0; --i) {
+        int v = nums[i];
+        long long c = cntDec[v + 1] + 1;
+        long long s = (sumDec[v + 1] + 1LL * v * c) % MOD;
+        cntDec[v] = (cntDec[v] + c) % MOD;
+        sumDec[v] = (sumDec[v] + s) % MOD;
+    }
+
+    long long ans = 0;
+    for (int v = 1; v <= maxVal; ++v) {
+        ans = (ans + sumInc[v] + sumDec[v]) % MOD;
+        ans = (ans - v + MOD) % MOD;          // remove double counted single element
+    }
+    return static_cast<int>(ans);
+}
 ```
 
 ---
 
-## Testing the Implementation
-
-```python
-def brute(nums):
-    MOD = 10**9+7
-    n = len(nums)
-    res = 0
-    for mask in range(1, 1<<n):
-        sub = [nums[i] for i in range(n) if mask>>i & 1]
-        ok = True
-        for i in range(1, len(sub)):
-            if abs(sub[i]-sub[i-1]) != 1:
-                ok = False
-                break
-        if ok:
-            res = (res + sum(sub)) % MOD
-    return res
-
-import random, itertools
-for _ in range(200):
-    n = random.randint(1, 8)
-    nums = [random.randint(1, 10) for _ in range(n)]
-    if brute(nums) != get_sum(nums):
-        print("Mismatch", nums, brute(nums), get_sum(nums))
-        break
-else:
-    print("All random tests passed")
-```
-
-> **Result:** All tests pass, giving confidence in the DP logic.
-
----
-
-## SEO‑Optimized Blog Post: “How to Nail LeetCode 3299 and Land Your Next Software Engineering Job”
+## 📚 Blog Article – “The Good, The Bad, and The Ugly of Solving LeetCode 3299”
 
 ### Title  
-**Sum of Consecutive Subsequences – LeetCode 3299 | Java | Python | C++ | Interview Prep**
+**Sum of Consecutive Subsequences – The Good, The Bad, and The Ugly (O(n) DP on Values)**  
 
 ### Meta Description  
-Master LeetCode 3299 (Sum of Consecutive Subsequences) with a fast, O(n) solution. Get full Java, Python, and C++ code, understand the DP trick, and boost your interview confidence. Ideal for aspiring software engineers and job seekers.
+Learn how to crack LeetCode 3299 in interview‑ready time. We walk through the DP trick, pitfalls, and code in Java, Python, and C++. Get interview tips that recruiters love!
 
-### Headings
+### Why This Matters  
+If you’re prepping for a **software‑engineering interview** or looking to showcase your problem‑solving chops on your résumé, LeetCode 3299 is a *great talking point*. It tests:
 
-1. **What is “Sum of Consecutive Subsequences”?**  
-   - Problem statement and examples.  
-2. **Why This Problem Matters in Interviews**  
-   - Linear time, DP on value, space efficiency.  
-3. **The Key Insight – DP on Value, Not Index**  
-   - Inc/Dec counts and sums.  
-4. **Step‑by‑Step Walkthrough**  
-   - Build the DP tables, update formula, modulo handling.  
-5. **Full Code – Java, Python, C++**  
-   - Paste the implementations with comments.  
-6. **Testing & Edge Cases**  
-   - Brute‑force checker, random tests.  
-7. **Common Mistakes (Bad & Ugly)**  
-   - TLE with O(n²), wrong modulo, off‑by‑one errors.  
-8. **Tips to Impress Interviewers**  
-   - Talk about DP symmetry, explain time/space, discuss alternative approaches.  
-9. **Takeaway**  
-   - Recap the algorithm, encourage practicing DP on arrays.  
-10. **Further Reading & Resources**  
-    - LeetCode discussion threads, dynamic programming books.
+* **DP insight** – you must see the *value* of a subsequence as a sum of a run of `±1` values.
+* **Space‑time trade‑offs** – handling 10⁵ values efficiently.
+* **Careful modulo arithmetic** – a classic “gotcha” for many candidates.
 
-### SEO Keywords  
-
-- LeetCode 3299  
-- Sum of Consecutive Subsequences  
-- Java DP solution  
-- Python DP interview  
-- C++ dynamic programming  
-- Interview coding problem  
-- Software engineering interview prep  
-- LeetCode Hard DP  
-
-### Call‑to‑Action  
-
-> *“If you found this article helpful, download our free PDF cheat‑sheet for DP interview problems, and start acing your next coding interview today!”*
+Below is a full guide that will keep interviewers impressed.
 
 ---
 
-## Final Thoughts
+### 1. The Good – Elegant DP on Value Space
 
-- **Good** – linear‑time DP that scales to the problem’s limits.  
-- **Bad** – many overlook the need to extend in both directions, leading to O(n²).  
-- **Ugly** – forgetting modulo, or using an un‑bounded hashmap and getting memory errors on the edge case where `nums[i] = 10⁵`.
+* **Linear time** – Once you think in terms of *values* rather than positions, the solution collapses to two passes.  
+* **Intuitive recurrence** – `cnt[v] = cnt[v-1] + 1` and `sum[v] = sum[v-1] + v * cnt[v]`.  
+  These are simple to derive and easy to remember.  
+* **Low memory** – a vector of size `max(nums)+2` is tiny compared to the input.
 
-With the code snippets above, you can plug them into any IDE, run your own tests, and confidently discuss the algorithm with interviewers. Good luck, and happy coding!
+**Take‑away**: If you can rewrite a complex “subsequence” problem into a recurrence on element values, you often unlock a linear solution.
+
+---
+
+### 2. The Bad – Common Pitfalls That Break Your Code
+
+| Pitfall | Why it Happens | Fix |
+|---------|----------------|-----|
+| **Using `int` for sums** | `sumInc` can reach 10⁵ * 10⁵ * 10⁵ ≈ 10¹⁵ | Use `long long` (Java `long`, Python `int` is unbounded, C++ `long long`) |
+| **Missing modulo** | Subtractions can go negative | Add `MOD` before `% MOD` |
+| **Double counting single elements** | Increasing and decreasing passes both add `[x]` | Subtract `x` once at the end |
+| **Indexing out of bounds** | `cntInc[v-1]` when `v==1` | Allocate size `maxVal+2` and start from `v-1 >= 0` |
+| **Time‑outs on large `maxValue`** | If you allocate an array for 10⁹ values | Cap the size to `max(nums)+2` (≤ 10⁵) or use `unordered_map` |
+
+---
+
+### 3. The Ugly – When the Brute Force Idea Misleads
+
+Many candidates start by enumerating all subsequences, hoping that pruning will help. Even after pruning, the branching factor remains huge. The “ugly” part is realizing that **you cannot iterate over subsequences** – you must iterate over **values**.  
+When you finally figure out the DP, the code looks compact, but the real struggle is remembering the *plus‑1* terms for the new single‑element subsequence and correctly handling the decreasing direction.
+
+---
+
+### 📈 Complexity Recap (SEO Keywords)
+
+| Language | Time | Space |
+|----------|------|-------|
+| Java | O(n) | O(10⁵) |
+| Python | O(n) | O(10⁵) |
+| C++ | O(n) | O(10⁵) |
+
+*“O(n) DP on values”* and *“modulo 10⁹+7”* are the terms recruiters often ask about in coding interviews.
+
+---
+
+### 🎯 Interview Tips
+
+1. **Sketch the recurrence** on a whiteboard. Draw a small example, write `cntInc[v]`, `sumInc[v]` on the board, and show how they’re updated.
+2. **Explain the two passes**: forward for increasing, backward for decreasing. This demonstrates you can think about symmetry.
+3. **Mention the modulo trick**: “All operations are done mod M, so we need to add `M` before taking `% M` to avoid negatives.”
+4. **Show your code** – highlight the two loops. Interviewers love clean, self‑commented code.
+5. **Talk about edge cases** – single element arrays, all elements equal, alternating patterns. This signals deep understanding.
+
+---
+
+### 💼 How to Use This Article in Your Job Hunt
+
+* **SEO Keywords** – “Sum of Consecutive Subsequences”, “LeetCode 3299 solution”, “DP on values”, “Java DP interview”, “Python coding interview”, “C++ LeetCode solutions”, “software engineering interview tips”.
+* **Social Media Hook** – “Cracked LeetCode 3299 in O(n) – here's the trick that made recruiters nod!”  
+* **Call‑to‑Action** – Invite readers to drop a comment with their own solutions or ask for a pair‑programming session.
+
+---
+
+### Final Thought
+
+The *Good* is the clean DP that runs in linear time.  
+The *Bad* is the temptation to brute‑force or to over‑think the subsequence definition.  
+The *Ugly* is the subtle off‑by‑one and modulo handling that trips up even seasoned engineers.  
+
+Mastering this problem shows you can **abstract a seemingly combinatorial problem into a simple recurrence** – a skill recruiters look for in every senior software engineer. 🚀  
+
+--- 
+
+Happy coding, and best of luck on your next interview!

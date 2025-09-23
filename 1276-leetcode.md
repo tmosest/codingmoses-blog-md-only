@@ -7,160 +7,123 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 **Number of Burgers with No Waste of Ingredients – A Complete Guide**  
-> **Medium – LeetCode 1276**  
-> <https://leetcode.com/problems/number-of-burgers-with-no-waste-of-ingredients/>
+        ## 🚀 LeetCode 1276 – “Number of Burgers with No Waste of Ingredients”  
+### Java • Python • C++ – One‑liner Linear‑Equation Solution
+
+> **TL;DR** –  
+> The problem boils down to solving the linear system  
+> \[
+> 4x + 2y = \texttt{tomatoSlices}\quad,\quad x + y = \texttt{cheeseSlices}
+> \]  
+> with the constraints that both \(x\) (jumbo burgers) and \(y\) (small burgers) must be **non‑negative integers**.  
+> The optimal O(1) solution is:
+
+| Language | Code (O(1)) |
+|---------|-------------|
+| **Java** | `public int[] numOfBurgers(int tomatoSlices, int cheeseSlices) { … }` |
+| **Python** | `def num_of_burgers(tomato_slices, cheese_slices): …` |
+| **C++** | `vector<int> numOfBurgers(int tomatoSlices, int cheeseSlices) { … }` |
 
 ---
 
-### Table of Contents  
-1. [Problem Statement](#1)  
-2. [Intuition & Quick Math](#2)  
-3. [Time‑Space Complexity](#3)  
-4. [Java, Python & C++ Solutions](#4)  
-   - [Java](#4a)  
-   - [Python](#4b)  
-   - [C++](#4c)  
-5. [Testing & Edge Cases](#5)  
-6. [The Good, The Bad, The Ugly](#6)  
-7. [Conclusion & Take‑aways](#7)  
-8. [SEO Meta & Keywords](#8)
+## 📝 Problem Recap (LeetCode 1276)
+
+> **Given** two integers:  
+> - `tomatoSlices` (0 ≤ tomatoSlices ≤ 10⁷)  
+> - `cheeseSlices` (0 ≤ cheeseSlices ≤ 10⁷)  
+> **Find** the number of *jumbo* and *small* burgers that use **exactly** all the ingredients:  
+> - Jumbo Burger: 4 tomato + 1 cheese  
+> - Small Burger: 2 tomato + 1 cheese  
+> Return `[total_jumbo, total_small]` or `[]` if it’s impossible.
 
 ---
 
-<a name="1"></a>
-## 1. Problem Statement  
+## 🔍 The Math – “Good” part of the solution
 
-You are given two integers:
+1. **Set up equations**
 
-* `tomatoSlices` – total tomato slices available  
-* `cheeseSlices` – total cheese slices available  
+   ```
+   4x + 2y = tomatoSlices   // tomato usage
+   x  +  y = cheeseSlices   // cheese usage
+   ```
 
-Two burger types exist:
+2. **Solve for `x` (jumbo burgers)**
 
-| Burger | Tomato slices | Cheese slices |
-|--------|---------------|---------------|
-| Jumbo  | 4             | 1             |
-| Small  | 2             | 1             |
+   ```
+   From the second: y = cheeseSlices - x
+   Plug into the first:
+   4x + 2(cheeseSlices - x) = tomatoSlices
+   4x + 2cheeseSlices - 2x = tomatoSlices
+   2x = tomatoSlices - 2cheeseSlices
+   x = (tomatoSlices - 2cheeseSlices) / 2
+   ```
 
-Find non‑negative integers `total_jumbo` and `total_small` such that:
+3. **Constraints check**
 
-```
-4 * total_jumbo + 2 * total_small = tomatoSlices
-total_jumbo + total_small      = cheeseSlices
-```
+   - `tomatoSlices` must be **even** (otherwise `x` isn’t an integer).
+   - `x` must be ≥ 0.
+   - `y = cheeseSlices - x` must be ≥ 0.
 
-If no solution exists, return an empty array `[]`.
-
----
-
-<a name="2"></a>
-## 2. Intuition & Quick Math  
-
-Treat the two equations as a simple linear system:
-
-```
-4j + 2s = T          (1)
- j + s  = C          (2)
-```
-
-Let `j` = `total_jumbo`, `s` = `total_small`, `T` = `tomatoSlices`, `C` = `cheeseSlices`.
-
-From (2) → `s = C - j`.
-
-Plug into (1):
-
-```
-4j + 2(C - j) = T
-4j + 2C - 2j = T
-2j = T - 2C
-j  = (T - 2C) / 2
-```
-
-**Conditions for a valid solution**
-
-| Condition | Meaning |
-|-----------|---------|
-| `T % 2 == 0` | Tomato count must be even (sum of 4‑ and 2‑slice burgers). |
-| `T >= C` | At least one tomato per cheese slice is required. |
-| `(T - 2C)` is non‑negative and even | Gives a non‑negative integer `j`. |
-| `s = C - j` is non‑negative | Guarantees a valid burger count. |
-
-If any condition fails → return `[]`.
-
-All operations are constant‑time → **O(1)** time and **O(1)** space.
+If all conditions hold, the solution is `[x, y]`. Otherwise, return `[]`.
 
 ---
 
-<a name="3"></a>
-## 3. Time‑Space Complexity  
+## 📦 Implementation
 
-| Metric | Result |
-|--------|--------|
-| **Time** | **O(1)** – single arithmetic operations |
-| **Space** | **O(1)** – only a few integer variables |
-
----
-
-<a name="4"></a>
-## 4. Code
-
-Below you’ll find concise, production‑ready solutions in **Java**, **Python**, and **C++**. All three implement the math derived above and perform the same input validation.
-
-### <a name="4a"></a>Java (Java 17)
+### 1️⃣ Java (O(1) time, O(1) space)
 
 ```java
 import java.util.*;
 
 class Solution {
-    public List<Integer> numOfBurgers(int tomato, int cheese) {
-        // Quick sanity checks
-        if (tomato % 2 == 1 || tomato < cheese) return Collections.emptyList();
-
-        // j = (tomato - 2*cheese) / 2
-        int j = (tomato - 2 * cheese) / 2;
-        int s = cheese - j;
-
-        if (j < 0 || s < 0) return Collections.emptyList();
-
-        return List.of(j, s);
+    public int[] numOfBurgers(int tomatoSlices, int cheeseSlices) {
+        // tomatoSlices must be even
+        if (tomatoSlices % 2 != 0) return new int[0];
+        
+        int jumbo = tomatoSlices / 2 - cheeseSlices; // x
+        if (jumbo < 0) return new int[0];
+        
+        int small = cheeseSlices - jumbo; // y
+        if (small < 0) return new int[0];
+        
+        return new int[]{jumbo, small};
     }
 }
 ```
 
-### <a name="4b"></a>Python (Python 3.10+)
+> **Why it’s good** –  
+> No loops, just arithmetic. Handles the entire 0–10⁷ range instantly.
+
+### 2️⃣ Python (Pythonic O(1))
 
 ```python
-from typing import List
-
 class Solution:
     def numOfBurgers(self, tomatoSlices: int, cheeseSlices: int) -> List[int]:
-        if tomatoSlices % 2 or tomatoSlices < cheeseSlices:
+        if tomatoSlices % 2:
             return []
-
-        jumbo = (tomatoSlices - 2 * cheeseSlices) // 2
+        jumbo = tomatoSlices // 2 - cheeseSlices
+        if jumbo < 0:
+            return []
         small = cheeseSlices - jumbo
-
-        return [jumbo, small] if jumbo >= 0 and small >= 0 else []
+        if small < 0:
+            return []
+        return [jumbo, small]
 ```
 
-### <a name="4c"></a>C++ (C++17)
+### 3️⃣ C++ (Fast, O(1))
 
 ```cpp
 #include <vector>
+using namespace std;
 
 class Solution {
 public:
-    std::vector<int> numOfBurgers(int tomatoSlices, int cheeseSlices) {
-        if (tomatoSlices % 2 || tomatoSlices < cheeseSlices)
-            return {};
-
-        int jumbo = (tomatoSlices - 2 * cheeseSlices) / 2;
+    vector<int> numOfBurgers(int tomatoSlices, int cheeseSlices) {
+        if (tomatoSlices % 2) return {};
+        int jumbo = tomatoSlices / 2 - cheeseSlices;
+        if (jumbo < 0) return {};
         int small = cheeseSlices - jumbo;
-
-        if (jumbo < 0 || small < 0)
-            return {};
-
+        if (small < 0) return {};
         return {jumbo, small};
     }
 };
@@ -168,65 +131,79 @@ public:
 
 ---
 
-<a name="5"></a>
-## 5. Testing & Edge Cases  
+## ⚠️ Edge‑Case Checklist
 
-| Input | Expected Output | Reason |
-|-------|-----------------|--------|
-| `16, 7` | `[1, 6]` | One jumbo, six small → 4+12=16, 1+6=7 |
-| `17, 4` | `[]` | Tomato count odd → impossible |
-| `4, 17` | `[]` | Cheese > tomatoes → impossible |
-| `0, 0` | `[0, 0]` | No ingredients → no burgers |
-| `2, 1` | `[0, 1]` | Only one small burger |
-| `4, 1` | `[1, 0]` | Only one jumbo burger |
-| `10000000, 5000000` | `[2500000, 2500000]` | Large input, still O(1) |
-
-Run a quick script:
-
-```python
-s = Solution()
-tests = [
-    (16, 7), (17, 4), (4, 17), (0, 0),
-    (2, 1), (4, 1), (10, 5), (8, 3)
-]
-for t in tests:
-    print(t, "->", s.numOfBurgers(*t))
-```
+| Test | Expected | Reason |
+|------|----------|--------|
+| `tomatoSlices = 0, cheeseSlices = 0` | `[0,0]` | No burgers, no waste |
+| `tomatoSlices = 1, cheeseSlices = 0` | `[]` | Impossible (odd tomatoes) |
+| `tomatoSlices = 16, cheeseSlices = 7` | `[1,6]` | Example from LeetCode |
+| `tomatoSlices = 17, cheeseSlices = 4` | `[]` | Odd tomato count |
+| `tomatoSlices = 4, cheeseSlices = 17` | `[]` | Cheese excess |
 
 ---
 
-<a name="6"></a>
-## 6. The Good, The Bad, The Ugly  
+## 🔧 Complexity Analysis
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Mathematics** | One‑line formula – no loops, no recursion. | Requires careful handling of integer division. | If you try brute‑force enumeration, you’ll get TLE or memory issues for large inputs. |
-| **Readability** | Code is short, self‑explanatory. | Without comments, the logic might be opaque to newcomers. | Using obscure variable names (`x`, `y`) makes the code unreadable. |
-| **Robustness** | All edge cases handled with simple checks. | None | Forgetting the `tomato % 2 == 1` check will allow impossible cases. |
-| **Performance** | O(1) for all inputs up to 10⁷. | N/A | A naive search would be O(tomatoSlices) → not acceptable. |
+| Metric | Java / Python / C++ |
+|--------|---------------------|
+| Time | **O(1)** – constant arithmetic |
+| Space | **O(1)** – no auxiliary data structures |
 
 ---
 
-<a name="7"></a>
-## 7. Conclusion & Take‑aways  
+## 🧩 The “Bad” and “Ugly” Ways (for learning)
 
-* The problem is a classic linear Diophantine equation with two variables.  
-* A single formula derived from basic algebra yields a constant‑time solution.  
-* Remember the two necessary conditions: **even tomato count** and **tomato ≥ cheese**.  
-* The solution is language‑agnostic – the same math works in Java, Python, C++, or any other language.
+| Approach | Why it’s Bad / Ugly |
+|----------|---------------------|
+| **Brute Force** – try all `x` from 0 to `cheeseSlices` and compute `y`. | Still passes on LeetCode but **O(n)** where *n* could be 10⁷; unnecessary. |
+| **Recursive DFS** – backtracking over ingredient usage. | Exponential time, stack overflow risk. |
+| **Floating Point Math** – solving the equations with `double`. | Precision errors, unnecessary complexity. |
 
-If you’re preparing for interviews, highlight your ability to spot and solve linear equations, and always double‑check edge cases like `0` or odd counts.
-
----
-
-<a name="8"></a>
-## 8. SEO Meta & Keywords  
-
-- **Meta Title**: Solve LeetCode 1276 – Number of Burgers with No Waste | Java, Python, C++  
-- **Meta Description**: Learn the fastest O(1) solution for LeetCode 1276 “Number of Burgers with No Waste of Ingredients”. Full Java, Python, and C++ code, plus a deep dive into the math and edge cases.  
-- **Keywords**: LeetCode 1276, number of burgers, no waste of ingredients, linear Diophantine equation, interview preparation, Java solution, Python solution, C++ solution, algorithm interview, O(1) algorithm, coding interview problems, data structures & algorithms.
+> **Takeaway** – Use the algebraic shortcut; no loops, no recursion.
 
 ---
 
-**Happy coding!** 🍔🧑‍💻  
-*If you found this article helpful, share it on LinkedIn or Twitter to help others land their next tech job.*
+## 📚 “Good, The Bad, and The Ugly” – A Developer’s Lens
+
+| Category | Example | Lesson |
+|----------|---------|--------|
+| **Good** | O(1) linear‑equation solution | Solving the core problem mathematically reduces code complexity and improves performance. |
+| **Bad** | Checking all combinations (`for` loop) | Even if it works, it shows a lack of insight and wastes resources; interviewers expect clever math. |
+| **Ugly** | Over‑engineering (object‑oriented modeling, unnecessary classes) | When the problem is a simple equation, a few lines of code are cleaner and more readable. |
+
+---
+
+## 🎯 SEO‑Optimized Blog Post Outline
+
+1. **Title** – “LeetCode 1276 – Number of Burgers with No Waste of Ingredients (Java, Python, C++)”
+2. **Meta Description** – “Solve LeetCode 1276 in under 5 minutes with a pure‑math O(1) solution. Code examples in Java, Python, C++ – perfect for your next coding interview!”
+3. **Keywords** – `LeetCode 1276`, `Number of Burgers with No Waste of Ingredients`, `Java solution`, `Python solution`, `C++ solution`, `linear equations interview`, `coding interview prep`.
+4. **Header Structure**  
+   - `# LeetCode 1276: Quick Math Solution`  
+   - `## Problem Statement`  
+   - `## O(1) Algorithm`  
+   - `## Java Implementation`  
+   - `## Python Implementation`  
+   - `## C++ Implementation`  
+   - `## Edge Cases & Testing`  
+   - `## Good, The Bad, and The Ugly`  
+   - `## FAQ`  
+   - `## Conclusion – Boost Your Interview Game`
+5. **Rich Snippet** – Add a **Code Block** with all three implementations.
+6. **Internal Links** – Link to other LeetCode solutions (e.g., 1275, 1277) and your portfolio.
+7. **Call‑to‑Action** – Invite readers to download a “LeetCode Cheat Sheet” PDF.
+
+> **Result:** A well‑structured, keyword‑rich article that search engines love and interviewers admire.
+
+---
+
+## 📥 Final Takeaway
+
+- **The math is simple** – one linear equation, one algebraic step.
+- **Implementation is trivial** – just a handful of lines per language.
+- **Performance is unbeatable** – O(1) time & space, no loops.
+- **For interviews** – showcase the equation, then give the code.  
+  “I didn’t just brute‑force; I solved the system analytically.”
+
+Happy coding, and may your next interview have zero ingredient waste! 🍔🚀

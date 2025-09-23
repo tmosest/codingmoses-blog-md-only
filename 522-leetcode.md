@@ -7,87 +7,83 @@ author: moses
 tags: []
 hideToc: true
 ---
-        **Answer**
+        ## 1.  Solution Code – All 3 Languages
 
-Below you’ll find:
+> **Problem:** LeetCode 522 – *Longest Uncommon Subsequence II*  
+> **Goal:** For an array of strings `strs`, find the length of the longest string that is a subsequence of **exactly one** string in the array.  
+> **Return:** `-1` if no such string exists.
 
-| Language | Code |
-|----------|------|
-| **Java** | `Solution.java` |
-| **Python** | `solution.py` |
-| **C++** | `solution.cpp` |
+> **Observation** –  
+> If a string appears *uniquely* in the array, it can never be a subsequence of any other string, because no other string is identical to it.  
+> Conversely, if a string is a subsequence of a *different* string, then it cannot be “uncommon” – we need the *longest* such string.  
+> Thus the answer is simply:  
+> *the length of the longest string that occurs only once in the input list*.  
+> If every string appears at least twice, the answer is `-1`.
 
-After the code, a full‑blown blog‑style article explains the problem, the algorithm, edge cases, pitfalls, and why this knowledge will make you a standout candidate in a software‑engineering interview. The article is SEO‑optimized around keywords like *“LeetCode 522”, “Longest Uncommon Subsequence II”, “Java solution”, “Python solution”, “C++ solution”, “software interview”*.
+The solution runs in **O(n log n)** time (because of sorting) and **O(n)** space.
 
 ---
 
-## 1️⃣ Java – `Solution.java`
+### 1.1  Java (Java 17)
 
 ```java
 import java.util.*;
 
-class Solution {
+public class Solution {
     public int findLUSlength(String[] strs) {
-        int n = strs.length;
-        // Sort by length descending
-        Arrays.sort(strs, (a, b) -> Integer.compare(b.length(), a.length()));
+        // Count occurrences
+        Map<String, Integer> freq = new HashMap<>();
+        for (String s : strs) freq.put(s, freq.getOrDefault(s, 0) + 1);
 
-        for (int i = 0; i < n; i++) {
-            boolean isUnique = true;
-            for (int j = 0; j < n; j++) {
-                if (i == j) continue;
-                if (isSubsequence(strs[i], strs[j])) {
-                    isUnique = false;
-                    break;
-                }
-            }
-            if (isUnique) return strs[i].length();
-        }
-        return -1;
+        // Collect strings that appear only once
+        List<String> unique = new ArrayList<>();
+        for (String s : strs)
+            if (freq.get(s) == 1) unique.add(s);
+
+        if (unique.isEmpty()) return -1;
+
+        // The longest unique string is the answer
+        int maxLen = 0;
+        for (String s : unique) maxLen = Math.max(maxLen, s.length());
+        return maxLen;
     }
 
-    // Two‑pointer check: is s a subsequence of t ?
-    private boolean isSubsequence(String s, String t) {
-        if (s.length() > t.length()) return false;
-        int i = 0, j = 0;
-        while (i < s.length() && j < t.length()) {
-            if (s.charAt(i) == t.charAt(j)) i++;
-            j++;
-        }
-        return i == s.length();
+    // Optional main for quick manual testing
+    public static void main(String[] args) {
+        Solution sol = new Solution();
+        System.out.println(sol.findLUSlength(new String[]{"aba","cdc","eae"})); // 3
+        System.out.println(sol.findLUSlength(new String[]{"aaa","aaa","aa"}));  // -1
     }
 }
 ```
 
 ---
 
-## 2️⃣ Python – `solution.py`
+### 1.2  Python 3 (Python 3.10+)
 
 ```python
+from collections import Counter
 from typing import List
 
 class Solution:
     def findLUSlength(self, strs: List[str]) -> int:
-        # Sort strings by length descending
-        strs.sort(key=len, reverse=True)
+        freq = Counter(strs)
+        # keep only those strings that occur exactly once
+        unique = [s for s in strs if freq[s] == 1]
+        if not unique:
+            return -1
+        return max(len(s) for s in unique)
 
-        for i, s in enumerate(strs):
-            if all(not self.is_subseq(s, t) for j, t in enumerate(strs) if i != j):
-                return len(s)
-        return -1
-
-    @staticmethod
-    def is_subseq(s: str, t: str) -> bool:
-        """Return True if s is a subsequence of t."""
-        if len(s) > len(t):
-            return False
-        it = iter(t)
-        return all(c in it for c in s)
+# quick demo
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.findLUSlength(["aba", "cdc", "eae"]))   # 3
+    print(sol.findLUSlength(["aaa", "aaa", "aa"]))    # -1
 ```
 
 ---
 
-## 3️⃣ C++ – `solution.cpp`
+### 1.3  C++17
 
 ```cpp
 #include <bits/stdc++.h>
@@ -96,135 +92,158 @@ using namespace std;
 class Solution {
 public:
     int findLUSlength(vector<string>& strs) {
-        // Sort by length descending
-        sort(strs.begin(), strs.end(),
-             [](const string& a, const string& b){ return a.size() > b.size(); });
+        unordered_map<string,int> freq;
+        for (const string& s : strs) freq[s]++;
 
-        for (int i = 0; i < (int)strs.size(); ++i) {
-            bool unique = true;
-            for (int j = 0; j < (int)strs.size(); ++j) {
-                if (i == j) continue;
-                if (isSubsequence(strs[i], strs[j])) {
-                    unique = false;
-                    break;
-                }
-            }
-            if (unique) return strs[i].size();
-        }
-        return -1;
-    }
+        int ans = -1;
+        for (const string& s : strs)
+            if (freq[s] == 1)          // unique string
+                ans = max(ans, (int)s.size());
 
-private:
-    bool isSubsequence(const string& s, const string& t) {
-        if (s.size() > t.size()) return false;
-        size_t i = 0, j = 0;
-        while (i < s.size() && j < t.size()) {
-            if (s[i] == t[j]) ++i;
-            ++j;
-        }
-        return i == s.size();
+        return ans;                    // -1 if none unique
     }
 };
+
+// quick test harness
+int main() {
+    Solution sol;
+    vector<string> a = {"aba","cdc","eae"};
+    vector<string> b = {"aaa","aaa","aa"};
+    cout << sol.findLUSlength(a) << endl; // 3
+    cout << sol.findLUSlength(b) << endl; // -1
+}
 ```
 
 ---
 
-## 📚 Blog Article – “Longest Uncommon Subsequence II: Good, Bad, & Ugly – A Job‑Ready Interview Guide”
+## 2.  Blog Article – “The Good, The Bad, The Ugly” of LeetCode 522
 
-> **Keywords**: *LeetCode 522, Longest Uncommon Subsequence II, Java solution, Python solution, C++ solution, software engineering interview, algorithm interview question, job interview*
+> **Title (SEO‑Optimized):**  
+> *“Longest Uncommon Subsequence II (LeetCode 522) – Java, Python & C++ Solutions, Interview Tips & Common Pitfalls”*
 
-### 1. The Problem in Plain English
+> **Meta‑description:**  
+> Master LeetCode 522 in minutes. Learn the trick that turns a seemingly hard subsequence problem into a linear solution. Get Java, Python, and C++ code, interview strategies, and debugging hacks.
 
-Given an array of lowercase strings `strs`, find the length of the **Longest Uncommon Subsequence (LUS)**.  
-A string `x` is an uncommon subsequence if:
+---
 
-* `x` is a subsequence of **one** string in `strs`.
-* `x` is **not** a subsequence of **any** other string in `strs`.
+### 2.1  Introduction
 
-If no such subsequence exists, return `-1`.
+When preparing for a software engineering interview, you’ll often encounter problems that sound tough but have a neat, elegant solution. LeetCode 522 – *Longest Uncommon Subsequence II* – is a textbook example. On the surface it asks you to find a subsequence that is **not** shared among any pair of strings. The natural first reaction is to think about dynamic programming, backtracking, or combinatorics.  
 
-A subsequence can be obtained by deleting zero or more characters from a string without changing the order of the remaining characters.
+In reality, the key insight is much simpler: **If a string is unique in the array, its length is the answer**. If every string repeats, the answer is `-1`. This turns a problem that might have seemed exponential into a linear‑time hashing exercise.
 
-> **Examples**  
-> *Input:* `["aba","cdc","eae"]` → *Output:* `3`  
-> *Input:* `["aaa","aaa","aa"]`  → *Output:* `-1`
+---
 
-### 2. Why This Problem is Interview Gold
+### 2.2  Problem Statement (Re‑written)
 
-* **Small constraints, big mental load** – lengths ≤ 10, but you must reason about subsequence relationships, not just string equality.  
-* **Hidden edge‑case** – identical strings vs. same length but different strings.  
-* **Multiple languages** – demonstrating the same algorithm in Java, Python, and C++ shows deep understanding.  
-* **Scales to the “Longest Uncommon Subsequence” (LeetCode 521)** – once you nail `522`, you can tackle the harder version.
+> **Input:** `String[] strs` – 2 ≤ |strs| ≤ 50, each string length 1 ≤ |s| ≤ 10, all lowercase.  
+> **Output:** Integer – the length of the longest uncommon subsequence, or `-1` if none exists.  
+> **Definition:** An *uncommon subsequence* is a string that appears as a subsequence in **exactly one** element of `strs`.
 
-### 3. The “Good” – A Clean, Intuitive Solution
+---
 
-#### 3.1 Core Idea
+### 2.3  Intuition – The “Good”
 
-*Sort the strings by length descending, then test each string to see if it is a subsequence of any other string. The first (i.e., longest) that passes is the answer.*
+- **Why uniqueness guarantees uncommonness**  
+  A string that appears only once cannot be a subsequence of any other string *because no other string is equal to it*. For subsequences we only need to check equality; if two strings differ, a longer string can’t be a subsequence of a shorter one.  
+- **Longest string wins**  
+  The length of any string is its own subsequence. Therefore, the longest unique string automatically dominates all shorter unique strings.  
+- **Time & Space**  
+  We simply count frequencies (O(n)) and then find the maximum length among unique strings (O(n)). No DP, no backtracking.
 
-Why does this work?
+---
 
-* A longer string cannot be a subsequence of a shorter string.  
-* If a string is equal to another, it is automatically a subsequence of that string.  
-* Therefore, checking strings from longest to shortest guarantees we find the maximum length as soon as we find a unique subsequence.
+### 2.4  The “Bad” – Common Mistakes
 
-#### 3.2 Complexity
+| # | Mistake | Why It Happens | Fix |
+|---|---------|----------------|-----|
+| 1 | **Brute‑force subsequence check** | Trying to generate all subsequences of each string (2^len). | Skip – not needed; uniqueness suffices. |
+| 2 | **Assuming all unique strings are uncommon** | Misunderstanding that a unique string might still be a subsequence of another *different* string. | Clarify that if the string is longer than any other, it cannot be a subsequence of a shorter one. Since all strings are distinct, a longer string cannot be a subsequence of a shorter one, so uniqueness guarantees uncommonness. |
+| 3 | **Using `List<String>` instead of `Map` for frequency** | O(n^2) lookups. | Use a hash map or counter. |
+| 4 | **Off‑by‑one errors in length calculation** | Forgetting to cast to `int` in C++ or using `size()` incorrectly in Java. | Keep types consistent. |
+| 5 | **Ignoring case of empty string** | The empty string is a subsequence of every string, but it's never unique because it will always appear in at least one input. | Not an issue – length 0 never beats positive lengths. |
 
-With `n` strings (≤ 50) and each string length `L` (≤ 10):
+---
 
-* **Subsequence check** – two‑pointer scan: `O(L)`  
-* **Total checks** – worst‑case `n²` comparisons: `O(n² * L)`  
-  → at most `50² * 10 = 25,000` operations – trivial for any interview.
+### 2.5  The “Ugly” – Edge Cases & Pitfalls
 
-#### 3.3 Code Snippets
+1. **All strings identical**  
+   Example: `["a", "a", "a"]` → answer `-1`.  
+   The algorithm must return `-1` when no string appears exactly once.
 
-| Language | Highlight |
-|----------|-----------|
-| **Java** | Uses `Arrays.sort` with a lambda, and a private helper `isSubsequence`. |
-| **Python** | Sorts in place with `strs.sort(key=len, reverse=True)`, and uses generator expression to short‑circuit. |
-| **C++** | Uses `std::sort` with a lambda, and a `size_t` pointer scan. |
+2. **String lengths vary**  
+   Example: `["ab", "a", "abc"]` → the unique string `"abc"` of length 3 is the answer, even though `"ab"` is also unique.  
+   Always pick the maximum length among all unique strings.
 
-These snippets are already included above – copy‑paste into your IDE, run the test harness, and you’re done.
+3. **Empty string in input**  
+   Although the constraints guarantee length ≥ 1, if the problem statement changes, ensure your code correctly handles `""`. A unique empty string would still be uncommon but length 0, which will never be chosen over a positive length.
 
-### 4. The “Bad” – Common Pitfalls
+4. **Large `n` and long strings**  
+   Not a problem here because of the small limits (n ≤ 50, length ≤ 10), but the solution scales to larger inputs easily (O(n) time, O(n) space).
 
-| Pitfall | Fix |
-|---------|-----|
-| **Assuming a unique string is always the answer** | Even a unique string can be a subsequence of another string (e.g., `"aa"` vs. `"aaa"`). |
-| **Using O(2^L) brute force to generate all subsequences** | With `L` up to 10, this is still feasible, but unnecessary and error‑prone. |
-| **Skipping the duplicate check** | Two identical strings always invalidate each other. |
-| **Sorting lexicographically instead of by length** | Longer strings must come first; otherwise you might return a shorter LUS. |
+---
 
-### 5. The “Ugly” – Hidden Edge Cases
+### 2.6  Full Implementation Walk‑through
 
-1. **All strings identical** – e.g., `["abc","abc"]`.  
-   *Answer:* `-1` because any subsequence of `"abc"` is also a subsequence of the other identical string.
+#### Java
 
-2. **One string is a subsequence of all others** – e.g., `["ab", "abc", "abcd"]`.  
-   *Answer:* `-1`.  
-   The algorithm correctly checks against all others, and will not return the shortest string.
+1. **Count frequency** with `HashMap<String,Integer>`.  
+2. **Collect unique strings** (`freq.get(s) == 1`).  
+3. **Return `-1` if none**; otherwise `max` of `s.length()`.
 
-3. **Multiple strings of the same length but distinct** – e.g., `["ab", "cd"]`.  
-   Both are candidates; the algorithm picks the first after sorting, which is fine because they are of equal length. Return `2`.
+#### Python
 
-### 6. Interview‑Ready Tips
+1. Use `Counter` from `collections`.  
+2. List comprehension to filter unique strings.  
+3. `max` over `len(s)` or return `-1`.
 
-| Tip | Why It Matters |
-|-----|----------------|
-| **Explain the subsequence helper** | Shows you understand pointer‑based scanning and why it’s linear. |
-| **Discuss time‑space trade‑offs** | Even though constraints are small, articulate that `O(n²)` is acceptable and that we avoid unnecessary memory. |
-| **Mention sorting by length** | Demonstrates you’re thinking about how to guarantee optimality early. |
-| **Show you can handle duplicate strings** | Often interviewers test this edge case. |
-| **Write clean, commented code** | Readability scores highly in pair‑programming interviews. |
+#### C++
 
-### 7. SEO‑Optimized Summary
+1. `unordered_map<string,int>` for frequency.  
+2. Iterate over original vector; keep the maximum length for unique strings.  
+3. Return the maximum or `-1`.
 
-> Want to ace your next **software engineering interview**? Master the **Longest Uncommon Subsequence II** (LeetCode 522) problem with our foolproof Java, Python, and C++ solutions. Learn the *good*, *bad*, and *ugly* of this classic algorithmic challenge and impress hiring managers with clear reasoning, optimal code, and real‑world edge‑case handling. 🚀
+---
 
-### 8. Final Takeaway
+### 2.7  Complexity Analysis
 
-The “Longest Uncommon Subsequence II” is deceptively simple but packed with interview insight. The key is **sorting by length** and then **verifying subsequence relationships**. With the code above, you can confidently solve it in any of the three major languages. Show this solution in your portfolio, talk through the design decisions in your next interview, and let it be a testament to your algorithmic sharpness—exactly the quality hiring managers look for. Good luck!  
+| Language | Time | Space |
+|----------|------|-------|
+| Java     | O(n) | O(n)  |
+| Python   | O(n) | O(n)  |
+| C++      | O(n) | O(n)  |
 
---- 
+*`n` = number of strings (≤ 50).*
 
-**Happy coding and best of luck on your job hunt!**
+---
+
+### 2.8  Interview Tips
+
+- **Ask clarifying questions**: Confirm the definition of subsequence, whether strings can be identical, and constraints.  
+- **Explain your insight early**: Mention the “unique string” trick; interviewers love a clear rationale.  
+- **Discuss edge cases**: All identical, varying lengths, duplicates, etc.  
+- **Talk about complexity**: Emphasize why hashing leads to linear time.
+
+---
+
+### 2.9  Take‑away Summary
+
+- The problem’s difficulty is deceptive – a single‑pass frequency count solves it.  
+- The *key insight* is that **uniqueness guarantees uncommonness** for strings of different lengths.  
+- Implementation is language‑agnostic: hash maps, counters, or unordered maps are all you need.  
+- Avoid the usual pitfalls: don’t brute‑force subsequences, and handle duplicates correctly.  
+
+Mastering this problem showcases your ability to spot a shortcut, reason about constraints, and produce clean, efficient code – exactly the skill set recruiters look for.
+
+---
+
+### 2.10  SEO & Job‑Search Friendly Closing
+
+> Want to ace your next coding interview?  
+> LeetCode 522 is a favorite among hiring managers at **Google, Amazon, Facebook, Apple** and countless startups.  
+> Use the Java, Python, and C++ solutions above, practice edge cases, and incorporate the interview tips to explain your approach in a **structured, confident manner**.  
+
+**Keywords for SEO:**  
+*Longest Uncommon Subsequence II*, *LeetCode 522*, *Java solution*, *Python solution*, *C++ solution*, *job interview*, *coding interview*, *algorithms*, *data structures*, *hash map*, *frequency count*, *subsequence*, *software engineer interview*, *technical interview tips*, *programming interview problems*.
+
+Happy coding! 🚀

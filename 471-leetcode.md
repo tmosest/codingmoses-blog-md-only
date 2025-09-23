@@ -7,159 +7,201 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap  
-**LeetCode 471 – Encode String with Shortest Length**  
-> Given a string `s` (1 ≤ |s| ≤ 150) of lowercase letters, return an encoded form that has the *shortest possible length*.  
-> The encoding rule is `k[encoded_string]`, where `encoded_string` is repeated exactly `k` times. `k` is a positive integer.  
-> If encoding does **not** shorten the string, return the original string. If several shortest encodings exist, any one is acceptable.
+        # Encode String with Shortest Length – 471  
+**Solution in Java, Python & C++ + a SEO‑friendly blog post**
 
-> Example  
-> `s = "aaaaaaaaaa"` → `"10[a]"`
+> **Keywords** – encode string, shortest length, DP, LeetCode 471, interview question, coding interview, best practices, time complexity, space complexity, dynamic programming, string manipulation, job interview preparation
 
 ---
 
-## 2.  Why This Problem Is a *Great* Job‑Interview Question
+## 1. Problem Recap
 
-| Good | Bad | Ugly |
-|------|-----|------|
-| **Demonstrates DP & substring tricks** – interviewers love problems that force you to split the string in all possible ways. | **Large search space** – naïve O(2ⁿ) enumeration will time‑out. | **Corner cases** – single characters, nested patterns, and mixed patterns can trip up a novice. |
-| **Showcases pattern detection** – detecting repeated sub‑strings is a classic algorithmic skill. | **Hard to get the “shortest” correctly** – you must compare encoded length, not the string itself. | **Hard to explain** – if you can’t explain why you chose a split or a pattern, the interviewer will doubt your understanding. |
-| **Real‑world relevance** – data compression, DNA sequencing, network packet framing. | **Requires careful handling of `k` digits** – e.g., `"100[a]"` vs `"3[30[a]]"`. | **Tight time limit** – a 150‑char string forces a solution to run in < O(n³) time. |
+```text
+Given a string s (1 ≤ s.length ≤ 150) consisting only of lowercase English letters,
+return an encoded string of the *shortest possible length* using the rule:
+k[encoded_string]   (k ≥ 1)
 
----
+If an encoding does not reduce the length, keep the original substring.
+If multiple encodings have the same minimal length, any one may be returned.
+```
 
-## 3.  Algorithm Overview
-
-1. **Dynamic Programming**  
-   `dp[i][j]` (0‑based, inclusive) stores the *shortest encoding* of `s[i…j]`.  
-   The answer is `dp[0][n‑1]`.
-
-2. **Three ways to form `dp[i][j]`:**  
-   * **No encoding** – the substring itself, `s[i…j]`.  
-   * **Split** – try every possible split point `k` between `i` and `j` and combine `dp[i][k] + dp[k+1][j]`.  
-   * **Repeat pattern** – if `s[i…j]` consists of `t` copies of a smaller substring `t = s[i…j]` split into `len = j-i+1`.  
-     * Find the smallest period of the substring using the *prefix function* (KMP) or by brute force (acceptable for n ≤ 150).  
-     * If the period `< len`, encode as `cnt[periodString]` where `cnt = len / period` and `periodString = dp[i][i+period-1]`.
-
-3. **Choose the option with the shortest resulting string length**.  
-   Ties can be broken arbitrarily (the problem permits any shortest encoding).
-
-4. **Complexity**  
-   *Time*: O(n³) – three nested loops (length, start, split).  
-   *Space*: O(n²) – the DP table.
-
-5. **Optimizations**  
-   * Pre‑compute the shortest period for every substring (prefix function or Z‑algorithm).  
-   * Store the length of each `dp[i][j]` separately to avoid repeated `length()` calls.  
+Examples  
+| Input | Output | Reason |
+|-------|--------|--------|
+| `"aaa"` | `"aaa"` | No shorter encoding |
+| `"aaaaa"` | `"5[a]"` | 5[a] (4 chars) < 5 chars |
+| `"aaaaaaaaaa"` | `"10[a]"` | 10[a] (5 chars) ≤ 10 chars |
 
 ---
 
-## 4.  Reference Implementations
+## 2. Intuition
 
-### 4.1 Java
+The string is at most **150** characters long – a classic length for a **dynamic programming** (DP) solution.  
+The goal is to explore *all* possible partitions of the string and keep the best one.
+
+For any substring `s[i … j]`:
+
+1. **Split** it into two parts `s[i … k]` + `s[k+1 … j]`.  
+   The encoded form is `dp[i][k] + dp[k+1][j]`.
+
+2. **Repeat** – if the whole substring can be expressed as `k` copies of a *smaller* substring `t`.  
+   Encode as `k[dp[t]]` (where `dp[t]` is the best encoding of `t`).
+
+The minimal length is the smallest among all candidates.  
+DP gives us the optimal sub‑solutions for the smaller substrings.
+
+---
+
+## 3. Detecting a Repeat Pattern
+
+A key sub‑problem: *“Is `s[i … j]` a repetition of some substring `t`?”*  
+A convenient way:
+
+1. Let `len = j - i + 1`.  
+2. Build a **failure function** (KMP prefix array) for `s[i … j]`.  
+3. Let `p = len - failure[len-1]`.  
+   If `len % p == 0` and `p < len`, the string repeats `len / p` times with the pattern `s[i … i+p-1]`.
+
+The prefix array is O(`len`); overall DP runs in O(n³) time but is easily fast enough for n ≤ 150.
+
+---
+
+## 4. DP Recurrence
+
+```
+dp[i][j]  – best encoded string for s[i … j]
+
+For all i <= j:
+    best = s[i … j]                         // the original substring
+    for k from i to j-1:                   // split
+        cand = dp[i][k] + dp[k+1][j]
+        if cand.length < best.length: best = cand
+
+    // check repetition
+    if s[i … j] can be written as t repeated m times:
+        m = (j-i+1) / len(t)
+        cand = m + "[" + dp[i][i+len(t)-1] + "]"
+        if cand.length < best.length: best = cand
+
+    dp[i][j] = best
+```
+
+Complexities:  
+- **Time** – O(n³) (n = 150 → ~3.4 million operations)  
+- **Space** – O(n²) for DP table + O(n) for the prefix array
+
+---
+
+## 5. Code Implementations
+
+### 5.1 Java (LeetCode‑ready)
 
 ```java
-import java.util.Arrays;
+import java.util.*;
 
 public class Solution {
     public String encode(String s) {
         int n = s.length();
         String[][] dp = new String[n][n];
-        int[][] period = new int[n][n];          // smallest period length for s[i..j]
+        // length 1 substrings are already minimal
+        for (int i = 0; i < n; i++) dp[i][i] = s.substring(i, i+1);
 
-        // Pre‑compute periods with KMP prefix function
-        for (int i = 0; i < n; i++) {
-            int[] pi = new int[n - i];
-            for (int j = i; j < n; j++) {
-                int len = j - i + 1;
-                if (len == 1) { period[i][j] = 1; continue; }
-                // compute prefix function for s[i..j]
-                if (j > i) {
-                    int k = pi[j - i - 1];
-                    while (k > 0 && s.charAt(i + len - 1) != s.charAt(i + k))
-                        k = pi[k - 1];
-                    if (s.charAt(i + len - 1) == s.charAt(i + k)) k++;
-                    pi[j - i] = k;
-                }
-                int p = len - pi[len - 1];
-                period[i][j] = (len % p == 0) ? p : len;
-            }
-        }
-
-        for (int len = 1; len <= n; len++) {
+        for (int len = 2; len <= n; len++) {
             for (int i = 0; i + len - 1 < n; i++) {
                 int j = i + len - 1;
-                String best = s.substring(i, j + 1);   // no encoding
-                // try split
+                String best = s.substring(i, j+1);          // original
+                // split
                 for (int k = i; k < j; k++) {
-                    String cand = dp[i][k] + dp[k + 1][j];
+                    String cand = dp[i][k] + dp[k+1][j];
                     if (cand.length() < best.length()) best = cand;
                 }
-                // try repeat pattern
-                int per = period[i][j];
-                if (per < len) {          // there is a repetition
-                    int times = len / per;
-                    String cand = times + "[" + dp[i][i + per - 1] + "]";
+                // repeat check
+                int repeat = getRepeatCount(s, i, j);
+                if (repeat > 1) {
+                    int partLen = len / repeat;
+                    String part = dp[i][i + partLen - 1];
+                    String cand = repeat + "[" + part + "]";
                     if (cand.length() < best.length()) best = cand;
                 }
                 dp[i][j] = best;
             }
         }
-        return dp[0][n - 1];
+        return dp[0][n-1];
+    }
+
+    // KMP prefix to find smallest period
+    private int getRepeatCount(String s, int l, int r) {
+        int len = r - l + 1;
+        int[] pi = new int[len];
+        for (int i = 1; i < len; i++) {
+            int j = pi[i-1];
+            while (j > 0 && s.charAt(l+i) != s.charAt(l+j)) j = pi[j-1];
+            if (s.charAt(l+i) == s.charAt(l+j)) j++;
+            pi[i] = j;
+        }
+        int period = len - pi[len-1];
+        if (period < len && len % period == 0) return len / period;
+        return 1;   // no repetition
     }
 }
 ```
 
-### 4.2 Python
+---
+
+### 5.2 Python (3.10+)
 
 ```python
+from functools import lru_cache
+from typing import List
+
 class Solution:
     def encode(self, s: str) -> str:
         n = len(s)
-        dp = [["" for _ in range(n)] for _ in range(n)]
-        period = [[0] * n for _ in range(n)]
+        # memoization table
+        dp: List[List[str]] = [[""] * n for _ in range(n)]
 
-        # helper: compute period for substring s[i:j+1]
+        # length 1 substrings
         for i in range(n):
-            for j in range(i, n):
-                sub = s[i:j+1]
-                m = len(sub)
-                if m == 1:
-                    period[i][j] = 1
-                    continue
-                # prefix function
-                pi = [0] * m
-                for k in range(1, m):
-                    t = pi[k-1]
-                    while t > 0 and sub[k] != sub[t]:
-                        t = pi[t-1]
-                    if sub[k] == sub[t]:
-                        t += 1
-                    pi[k] = t
-                p = m - pi[-1]
-                period[i][j] = p if m % p == 0 else m
+            dp[i][i] = s[i]
 
-        for l in range(1, n+1):
-            for i in range(n-l+1):
-                j = i+l-1
-                best = s[i:j+1]                      # no encoding
+        # helper to find repeat count
+        def repeat_count(l: int, r: int) -> int:
+            length = r - l + 1
+            pi = [0] * length
+            for i in range(1, length):
+                j = pi[i-1]
+                while j > 0 and s[l+i] != s[l+j]:
+                    j = pi[j-1]
+                if s[l+i] == s[l+j]:
+                    j += 1
+                pi[i] = j
+            period = length - pi[-1]
+            return length // period if period < length and length % period == 0 else 1
+
+        for length in range(2, n+1):
+            for i in range(n - length + 1):
+                j = i + length - 1
+                best = s[i:j+1]
                 # split
                 for k in range(i, j):
                     cand = dp[i][k] + dp[k+1][j]
                     if len(cand) < len(best):
                         best = cand
-                # repetition
-                per = period[i][j]
-                if per < l:
-                    times = l // per
-                    cand = f"{times}[{dp[i][i+per-1]}]"
+                # repeat
+                m = repeat_count(i, j)
+                if m > 1:
+                    part_len = length // m
+                    cand = f"{m}[{dp[i][i+part_len-1]}]"
                     if len(cand) < len(best):
                         best = cand
                 dp[i][j] = best
+
         return dp[0][n-1]
 ```
 
-### 4.3 C++
+---
+
+### 5.3 C++ (GNU++17)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -170,43 +212,45 @@ public:
     string encode(string s) {
         int n = s.size();
         vector<vector<string>> dp(n, vector<string>(n));
-        vector<vector<int>> period(n, vector<int>(n));
 
-        // precompute smallest period for every substring using KMP prefix
-        for (int i = 0; i < n; ++i) {
-            for (int j = i; j < n; ++j) {
-                string sub = s.substr(i, j - i + 1);
-                int m = sub.size();
-                if (m == 1) { period[i][j] = 1; continue; }
+        // length 1
+        for (int i = 0; i < n; ++i) dp[i][i] = string(1, s[i]);
 
-                vector<int> pi(m, 0);
-                for (int k = 1; k < m; ++k) {
-                    int t = pi[k-1];
-                    while (t > 0 && sub[k] != sub[t]) t = pi[t-1];
-                    if (sub[k] == sub[t]) ++t;
-                    pi[k] = t;
-                }
-                int p = m - pi[m-1];
-                period[i][j] = (m % p == 0) ? p : m;
+        // helper: KMP prefix for substring [l, r]
+        auto repeatCount = [&](int l, int r) -> int {
+            int len = r - l + 1;
+            vector<int> pi(len, 0);
+            for (int i = 1; i < len; ++i) {
+                int j = pi[i-1];
+                while (j > 0 && s[l+i] != s[l+j]) j = pi[j-1];
+                if (s[l+i] == s[l+j]) ++j;
+                pi[i] = j;
             }
-        }
+            int period = len - pi[len-1];
+            if (period < len && len % period == 0) return len / period;
+            return 1;
+        };
 
-        for (int len = 1; len <= n; ++len) {
+        for (int len = 2; len <= n; ++len) {
             for (int i = 0; i + len - 1 < n; ++i) {
                 int j = i + len - 1;
-                string best = s.substr(i, len);          // no encode
+                string best = s.substr(i, len);
+
                 // split
                 for (int k = i; k < j; ++k) {
                     string cand = dp[i][k] + dp[k+1][j];
                     if (cand.size() < best.size()) best = cand;
                 }
+
                 // repetition
-                int per = period[i][j];
-                if (per < len) {
-                    int times = len / per;
-                    string cand = to_string(times) + "[" + dp[i][i+per-1] + "]";
+                int m = repeatCount(i, j);
+                if (m > 1) {
+                    int partLen = len / m;
+                    string part = dp[i][i+partLen-1];
+                    string cand = to_string(m) + "[" + part + "]";
                     if (cand.size() < best.size()) best = cand;
                 }
+
                 dp[i][j] = best;
             }
         }
@@ -217,74 +261,71 @@ public:
 
 ---
 
-## 5.  Blog Article (SEO‑Optimized)
+## 6. Blog Post – *The Good, The Bad, and the Ugly of String Encoding*
 
-> **Title**: “Decode to Encode: Mastering LeetCode 471 in Java, Python, & C++ – The Job‑Ready Guide”  
-> **Meta Description**: “Learn how to solve LeetCode 471 (Encode String with Shortest Length) in Java, Python, and C++. Step‑by‑step DP tutorial, edge‑case handling, and interview‑ready insights.”  
-
-### 5.1 Introduction  
-In the competitive world of software engineering interviews, **LeetCode 471 – Encode String with Shortest Length** often shows up as a *hard* challenge. The problem tests a candidate’s ability to combine dynamic programming, string manipulation, and pattern recognition. Below you’ll find a complete, language‑agnostic solution, plus optimized Java, Python, and C++ implementations that are ready for a technical interview.
-
-### 5.2 The Problem in Plain English  
-> “Given a lowercase string `s`, return the shortest string that can be *encoded* using the rule `k[encoded_string]`. If the encoded form isn’t shorter, return the original string.”  
-The challenge is not just to compress but to find the *shortest possible* representation, which involves exploring all possible splits and repeated patterns.
-
-### 5.3 Why This Problem is a Gold‑Mine for Interviewees  
-* **DP + Substring** – Classic “String Compression” problem.  
-* **Pattern detection** – Understanding how to find the smallest repeating unit.  
-* **Complexity awareness** – Demonstrates how to keep O(n³) under the 150‑character limit.  
-* **Real‑world feel** – Compression is a core concept in networking and storage.
-
-### 5.4 Step‑by‑Step Algorithm
-
-1. **Initialize a 2‑D DP table** `dp[i][j]` to store the shortest encoding of substring `s[i…j]`.  
-2. **Pre‑compute the smallest period** for every substring using the KMP prefix function.  
-3. **Iterate over all substring lengths** (1 … n).  
-   * Base case: `dp[i][i] = s[i]`.  
-   * **Split**: For every split point `k`, combine `dp[i][k] + dp[k+1][j]`.  
-   * **Repeat pattern**: If the substring’s period `p` is smaller than its length, encode as `cnt[dp[i][i+p-1]]`.  
-4. Pick the candidate with the shortest length.  
-5. Return `dp[0][n‑1]`.
-
-### 5.5 Edge‑Case Mastery
-
-| Case | Explanation | How the DP Handles It |
-|------|-------------|-----------------------|
-| `aaa` | No compression improves length | Split candidates all longer → keep original |
-| `aa...aa` (many repeats) | Period is `1` → encode as `len[a]` | Period detection finds smallest unit |
-| Nested repeats like `abcabcabc` | Period `3` → encode as `3[abc]` | DP uses split or pattern whichever shorter |
-| Mixed patterns `aabcaabcaabc` | Period `3` with `aab` | Works because period detection covers entire block |
-
-### 5.6 Complexity Analysis
-
-| Aspect | Value |
-|--------|-------|
-| Time   | O(n³) – three nested loops over length, start, and split. With `n ≤ 150`, this comfortably runs under 0.1 s. |
-| Space  | O(n²) – DP table and period matrix. |
-
-### 5.7 Code Snippets for the Top Languages
-
-- **Java** – Uses a 2‑D `String` table and a period matrix; leverages KMP for period detection.  
-- **Python** – Same logic; uses list comprehension and f‑strings for readability.  
-- **C++** – Efficient memory use with `vector<string>`; `to_string` for the integer part.  
-
-(Full source is provided in the sections above.)
-
-### 5.8 Common Interview Pitfalls and How to Avoid Them
-
-1. **Forgetting to compare lengths** – It’s easy to return a longer encoding if you only check *validity*.  
-2. **Not handling single‑character substrings** – They should never be encoded; the DP base case must be `s[i]`.  
-3. **Using naive substring creation in a tight loop** – In Java or C++, repeatedly calling `substring` can lead to O(n²) overhead; store pre‑computed substrings if needed.  
-4. **Missing the “period < len” guard** – Encoding a non‑repeating string as `1[abc]` is longer.  
-
-### 5.9 Final Thoughts – Making the Interviewer *Impressed*  
-
-*Speak *in words*:* While showing code, articulate why you’re picking a split or a repeat, how the DP table ensures optimality, and why the complexity is acceptable.  
-*Show *confidence* in edge cases:* Mention how your algorithm correctly handles single characters, long runs, and nested patterns.  
-*Ask *clarifying questions:* For instance, “Does the string contain only lowercase letters?” – this demonstrates communication skills.
+> **Title:** *Decode the Interview – Mastering LeetCode 471 (Encode String with Shortest Length)*
+>
+> **Meta Description:** Learn the DP approach for LeetCode 471, compare Java/Python/C++ solutions, and get SEO‑friendly interview prep content that can help land your dream job.
 
 ---
 
-## 6.  Wrap‑Up
+### 6.1 Why is This Problem Interview‑Gold?
 
-You now have a battle‑tested, multi‑language solution to LeetCode 471. Use this as a template for future interview questions involving string compression, dynamic programming, and pattern detection. Remember, mastering the *hard* problems like this one not only scores you on LeetCode but also positions you as a *thoughtful, detail‑oriented* candidate ready to tackle real‑world challenges. Happy coding—and good luck on your next interview!
+- **String manipulation + DP** – two core CS concepts combined.
+- **Optimisation mindset** – you’re asked not just to encode, but to *shorten*.
+- **Scalability** – the algorithm must work fast for n ≤ 150, a realistic interview constraint.
+- **Edge‑case mastery** – you must think of “no repetition” vs “repetition with nested patterns”.
+
+Hiring managers love candidates who can balance *correctness* and *efficiency*, and LeetCode 471 is a perfect showcase.
+
+---
+
+### 6.2 The Good – What Works Well
+
+| Aspect | Why it’s good |
+|--------|---------------|
+| **O(n³) DP** | Acceptable for n = 150; keeps code clean. |
+| **KMP prefix** | Detects repeat patterns in linear time per substring, avoiding brute‑force checks. |
+| **Modular design** | Separate `repeatCount` function makes the DP logic readable. |
+| **Language‑agnostic** | The same algorithm is expressed in Java, Python, and C++ – handy for multi‑stack interviews. |
+
+---
+
+### 6.3 The Bad – Common Pitfalls
+
+| Pitfall | Fix |
+|---------|-----|
+| **Not checking repetition when the encoded form is not shorter** | Compare lengths before committing to `k[encoded]`. |
+| **Using `StringBuilder` incorrectly** | In Java, string concatenation in loops is costly – use `StringBuilder` or pre‑allocate. |
+| **Mis‑computing the period** | Remember that the period is `len - pi[len-1]`. A missing check for `period < len` can return a false repeat. |
+| **O(n³) memory blowup** | Store only the best string for each substring; avoid caching the full DP table if memory is tight. |
+
+---
+
+### 6.4 The Ugly – Edge Cases & Hidden Tricks
+
+| Edge Case | Explanation |
+|-----------|-------------|
+| **Single character strings** | Return the same character – DP base case. |
+| **Large numbers (e.g., “aaaaaaaa…”)** | `k` can be > 9; printing the integer itself adds digits – the algorithm handles it automatically. |
+| **Nested encodings** | For strings like `"ababab"` the best might be `"3[ab]"` – the DP naturally builds nested solutions via splits. |
+| **Overlapping patterns** | `"aaaaa"` can be `"5[a]"` or `"2[a]a"`. Our DP returns the shortest; ties can be arbitrary. |
+
+---
+
+### 6.5 How to Use This in Your Job Hunt
+
+1. **Show the code** – copy the language you’re most comfortable with, run it on LeetCode, and push the repo to GitHub.  
+2. **Explain the algorithm** – in your resume or portfolio, add a bullet: *“Implemented optimal O(n³) DP solution for LeetCode 471 using KMP to detect repeats.”*  
+3. **Highlight the SEO angle** – write a blog (like this one) that demonstrates deep understanding, which can surface in Google searches by recruiters.  
+4. **Practice variations** – tweak the problem: *“Encode with a maximum allowed nesting depth”* or *“Add wildcard characters”*. Show how DP adapts.  
+
+---
+
+## 7. Final Takeaway
+
+- **Dynamic programming** + **KMP** = **Shortest encoding**.  
+- Keep the solution clean, modular, and language‑agnostic.  
+- Use the blog to demonstrate mastery, turning a coding interview problem into a portfolio asset.
+
+Good luck—your next coding interview could just be a string away!

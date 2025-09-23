@@ -7,105 +7,87 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 335. Self‑Crossing – Multi‑Language Solutions & SEO‑Optimized Blog
+        ## 📈 LeetCode 335 – “Self Crossing”  
+### A Deep‑Dive into the Algorithm, Code, and Interview‑Style Insight
+
+> **Problem**  
+> Given an array of distances, you start at `(0,0)` and move  
+> north → west → south → east → … (counter‑clockwise).  
+> Return `true` if the path crosses itself at any point, otherwise `false`.
+
+> **Constraints**  
+> * `1 ≤ distance.length ≤ 10^5`  
+> * `1 ≤ distance[i] ≤ 10^5`
 
 ---
 
-### 1.  Problem Recap  
-> **Self‑Crossing**  
-> You start at **(0, 0)**.  
-> Move `distance[0]` north, `distance[1]` west, `distance[2]` south, `distance[3]` east, … (counter‑clockwise).  
-> Return **`true`** if the path ever crosses itself, otherwise **`false`**.
+### TL;DR – One Pass, O(n) Time, O(1) Space
 
-**Constraints**
-
-| Constraint | Value |
-|------------|-------|
-| `1 ≤ distance.length ≤ 10⁵` | |
-| `1 ≤ distance[i] ≤ 10⁵` | |
-
----
-
-### 2.  Why This Problem Rocks for Interviews  
-- **Geometry + Arrays** – tests the ability to reason about 2‑D motion without heavy math.  
-- **Edge‑Case Awareness** – the path can cross in subtle ways that simple O(n²) checks miss.  
-- **Optimality Mindset** – requires O(n) time and O(1) space, a classic interview challenge.  
-
-If you nail this, you’ll impress hiring managers on tech stacks that value **clean code, efficient algorithms, and edge‑case robustness**.
-
----
-
-### 3.  High‑Level Insight  
-A line segment can only intersect the line 3 or 4 segments behind it:
-
-| Index `i` | Check Type | Reason |
-|-----------|------------|--------|
-| `i ≥ 3`   | **Case 1** – `i` vs `i‑3` | New line can only hit the line that’s 3 steps back. |
-| `i ≥ 4`   | **Case 2** – `i` vs `i‑4` | In a “tight spiral”, the new line can touch the line 4 steps back. |
-
-If any of these conditions hold, we return `true`.
-
-The full set of conditions (derived from the official editorial) is:
-
-```
-if (i >= 3) {                 // Case 1
-    // 1) Overlap with i-3
-    if (distance[i] >= distance[i-2] &&
-        distance[i-1] <= distance[i-3]) return true;
-
-    if (i >= 4) {             // Case 2
-        // 2) Touching i-4
-        if (distance[i-1] == distance[i-3] &&
-            distance[i] + distance[i-4] >= distance[i-2]) return true;
-
-        // 3) Tight spiral (i-5)
-        if (i >= 5 &&
-            distance[i-2] >= distance[i-4] &&
-            distance[i] + distance[i-4] >= distance[i-2] &&
-            distance[i-1] == distance[i-3] &&
-            distance[i-3] >= distance[i-5]) return true;
-    }
-}
+```text
+- Keep only the last 4 segment lengths.
+- At step i, check three crossing patterns:
+  1) 4‑segment cross (i >= 3)
+  2) 5‑segment overlapping cross (i >= 4)
+  3) 6‑segment special case (i >= 5)
 ```
 
-All other cases are safe.
+---
+
+## 1. Why This Problem Is a “Hidden Gem” in Interviews
+
+* **Geometry + Pattern Recognition** – Candidates must translate a geometric “spiral” into logical conditions.
+* **Constant‑Space Trick** – Many naïve solutions keep the whole path, leading to O(n²) time or O(n) memory. The optimal solution uses only the last 4 moves.
+* **Corner Cases** – The “6‑segment special case” is easy to miss; failing it costs the interview.
+
+> *Good*: Clean O(n) algorithm.  
+> *Bad*: Too many edge‑case checks.  
+> *Ugly*: Quadratic time, excessive memory.
 
 ---
 
-### 4.  Code Implementations  
+## 2. The Algorithm (One‑Pass, Constant Memory)
 
-> **All three solutions share the same O(n) time & O(1) space logic.**  
-> They differ only in syntax, not in strategy.
+| i | Segment  | Direction | Condition to Detect Crossing |
+|---|----------|-----------|-----------------------------|
+| **i ≥ 3** | 4th segment | Check if `dist[i] >= dist[i-2]` **and** `dist[i-1] <= dist[i-3]` |
+| **i ≥ 4** | 5th segment | Check if `dist[i-1] == dist[i-3]` **and** `dist[i] + dist[i-4] >= dist[i-2]` |
+| **i ≥ 5** | 6th segment | Check if `dist[i-2] >= dist[i-4]` **and** `dist[i-1] <= dist[i-3]` **and** `dist[i] + dist[i-4] >= dist[i-2]` **and** `dist[i-1] + dist[i-5] >= dist[i-3]` |
+
+The intuition:  
+- **Case 1** – the current line meets the line two steps back (simple U‑shaped cross).  
+- **Case 2** – the current line meets the line three steps back (overlap).  
+- **Case 3** – the current line meets the line four steps back (complex spiral).
+
+All checks are constant‑time comparisons of distances.
 
 ---
 
-#### 4.1 Java (LeetCode‑Style)
+## 3. Code Implementations
+
+### 3.1 Java
 
 ```java
-class Solution {
+public class Solution {
     public boolean isSelfCrossing(int[] distance) {
-        int n = distance.length;
-        for (int i = 3; i < n; i++) {
-            // Case 1: current line touches the line 3 steps back
+        for (int i = 3; i < distance.length; i++) {
+            // Case 1: Current line crosses the line two steps ahead
             if (distance[i] >= distance[i - 2] &&
                 distance[i - 1] <= distance[i - 3]) {
                 return true;
             }
-
-            // Case 2: special cases for a tight spiral
+            // Case 2: Current line meets the line three steps ahead
             if (i >= 4) {
-                // 2a) current line touches the line 4 steps back
                 if (distance[i - 1] == distance[i - 3] &&
                     distance[i] + distance[i - 4] >= distance[i - 2]) {
                     return true;
                 }
-
-                // 2b) tighter spiral involving line 5 steps back
-                if (i >= 5 &&
-                    distance[i - 2] >= distance[i - 4] &&
+            }
+            // Case 3: Current line meets the line four steps ahead
+            if (i >= 5) {
+                if (distance[i - 2] >= distance[i - 4] &&
+                    distance[i - 1] <= distance[i - 3] &&
                     distance[i] + distance[i - 4] >= distance[i - 2] &&
-                    distance[i - 1] == distance[i - 3] &&
-                    distance[i - 3] >= distance[i - 5]) {
+                    distance[i - 1] + distance[i - 5] >= distance[i - 3]) {
                     return true;
                 }
             }
@@ -115,147 +97,112 @@ class Solution {
 }
 ```
 
-*Comments* are sprinkled to aid readability and maintenance.
-
----
-
-#### 4.2 Python 3
+### 3.2 Python
 
 ```python
 class Solution:
-    def isSelfCrossing(self, distance: list[int]) -> bool:
-        n = len(distance)
-        for i in range(3, n):
+    def isSelfCrossing(self, distance: List[int]) -> bool:
+        for i in range(3, len(distance)):
             # Case 1
             if distance[i] >= distance[i - 2] and distance[i - 1] <= distance[i - 3]:
                 return True
 
-            # Case 2 – spiral cases
-            if i >= 4:
-                # 2a
-                if distance[i - 1] == distance[i - 3] and distance[i] + distance[i - 4] >= distance[i - 2]:
-                    return True
+            # Case 2
+            if i >= 4 and distance[i - 1] == distance[i - 3] \
+               and distance[i] + distance[i - 4] >= distance[i - 2]:
+                return True
 
-                # 2b – tighter spiral
-                if (i >= 5 and
-                    distance[i - 2] >= distance[i - 4] and
-                    distance[i] + distance[i - 4] >= distance[i - 2] and
-                    distance[i - 1] == distance[i - 3] and
-                    distance[i - 3] >= distance[i - 5]):
-                    return True
+            # Case 3
+            if i >= 5 and distance[i - 2] >= distance[i - 4] \
+               and distance[i - 1] <= distance[i - 3] \
+               and distance[i] + distance[i - 4] >= distance[i - 2] \
+               and distance[i - 1] + distance[i - 5] >= distance[i - 3]:
+                return True
         return False
 ```
 
-Python’s `list[int]` type hint aligns with LeetCode’s test harness.
-
----
-
-#### 4.3 C++17
+### 3.3 C++
 
 ```cpp
 class Solution {
 public:
     bool isSelfCrossing(vector<int>& distance) {
-        int n = distance.size();
-        for (int i = 3; i < n; ++i) {
+        for (int i = 3; i < distance.size(); ++i) {
             // Case 1
-            if (distance[i] >= distance[i-2] &&
-                distance[i-1] <= distance[i-3]) return true;
+            if (distance[i] >= distance[i-2] && distance[i-1] <= distance[i-3])
+                return true;
 
             // Case 2
-            if (i >= 4) {
-                // 2a
-                if (distance[i-1] == distance[i-3] &&
-                    distance[i] + distance[i-4] >= distance[i-2]) return true;
+            if (i >= 4 &&
+                distance[i-1] == distance[i-3] &&
+                distance[i] + distance[i-4] >= distance[i-2])
+                return true;
 
-                // 2b – tighter spiral
-                if (i >= 5 &&
-                    distance[i-2] >= distance[i-4] &&
-                    distance[i] + distance[i-4] >= distance[i-2] &&
-                    distance[i-1] == distance[i-3] &&
-                    distance[i-3] >= distance[i-5]) return true;
-            }
+            // Case 3
+            if (i >= 5 &&
+                distance[i-2] >= distance[i-4] &&
+                distance[i-1] <= distance[i-3] &&
+                distance[i] + distance[i-4] >= distance[i-2] &&
+                distance[i-1] + distance[i-5] >= distance[i-3])
+                return true;
         }
         return false;
     }
 };
 ```
 
-The logic is identical; we only adjust syntax for `vector<int>`.
+---
+
+## 4. Time & Space Complexity
+
+| Metric | Value |
+|--------|-------|
+| **Time** | `O(n)` – single pass over the input. |
+| **Space** | `O(1)` – only a handful of integer variables. |
 
 ---
 
-### 5.  Complexity Analysis  
+## 5. Edge Cases & Common Pitfalls
 
-| Metric | Java | Python | C++ |
-|--------|------|--------|-----|
-| Time   | **O(n)** | **O(n)** | **O(n)** |
-| Space  | **O(1)** | **O(1)** | **O(1)** |
-
-With `n ≤ 10⁵`, the solution comfortably meets performance constraints on all three platforms.
-
----
-
-### 6.  Edge‑Case Checklist  
-
-| Scenario | Why it matters | Check |
-|----------|----------------|-------|
-| All distances equal | Forms a perfect square spiral | `i‑2 >= i‑4` and equal lengths trigger case 2b |
-| Distance[0] < distance[1] | Starting segment too short | No crossing; algorithm still safe |
-| Length < 4 | Cannot form a self‑crossing shape | Loop starts at 3, returns `false` |
-
-Test the algorithm with these patterns before submitting.
+| Pitfall | How to Avoid It |
+|---------|-----------------|
+| Not checking `i >= 5` before accessing `i-5` | Add guard `if (i >= 5)` before the third case. |
+| Mis‑ordering comparisons | Follow the exact inequality order: ≥ and ≤, not the reverse. |
+| Using an array of previous distances | It works but wastes memory; still acceptable for interview, but O(n) space is less elegant. |
+| Forgetting the “special” 6‑segment case | Test with `distance = [1,1,1,2,1]`; you’ll get false if omitted. |
 
 ---
 
-### 7.  Common Pitfalls & “Ugly” Mistakes  
+## 6. Why This Solution Rocks for Interviews
 
-1. **O(n²) naive approach** – iterating over all previous segments leads to 10⁵² operations, impossible.  
-2. **Off‑by‑one errors** – mis‑indexing `i-3`, `i-4` etc.  
-3. **Missing the spiral case** – ignoring the `i >= 5` conditions will miss tight loops.  
-4. **Using 64‑bit overflow** – `distance[i] + distance[i-4]` can reach `2·10⁵`; fits in 32‑bit signed int, but keep an eye in languages with smaller integer ranges.  
-
-The “ugly” part of this problem is the need to **think geometrically** without drawing each step. The trick is to **recognize the only two intersection patterns** and encode them succinctly.
+1. **Demonstrates Pattern Recognition** – You translate a geometric spiral into simple arithmetic checks.  
+2. **Shows Efficiency** – O(n) time and O(1) memory are impressive for a “Hard” LeetCode problem.  
+3. **Clear, Readable Code** – Easy to explain during a technical interview.  
+4. **Edge‑Case Awareness** – Handling the 6‑segment special case proves thoroughness.
 
 ---
 
-### 8.  Interview Tips  
+## 7. Blog Wrap‑Up & SEO Highlights
 
-| Tip | How it Helps |
-|-----|--------------|
-| **Explain the geometry first** | Demonstrates analytical thinking. |
-| **Write pseudocode before coding** | Shows clarity and reduces bugs. |
-| **Highlight O(n) & O(1) space** | Interviewers love efficient solutions. |
-| **Show edge‑case tests** | Proves robustness. |
-| **Mention LeetCode links** | Provides context and shows research skills. |
+> **LeetCode 335 – Self Crossing**  
+> *“One Pass, Constant Space, No Geometry Needed.”*  
+> 
+> In this article, we explored the **Self Crossing** problem, uncovered the three crossing patterns, and delivered clean implementations in **Java, Python, and C++**. We also broke down the *good*, *bad*, and *ugly* parts of common approaches and gave you an interview‑ready, O(n) solution.
 
-> *“Why do you only need to look back 3 or 4 steps?”* – explain that any farther segment cannot intersect the current one due to the counter‑clockwise movement pattern.
+### SEO Keywords (inserted naturally)
 
----
-
-### 9.  SEO‑Optimized Blog Post (Excerpt)
-
-> **Title:** *Mastering LeetCode 335 – Self‑Crossing: Java, Python, C++ Solutions + Interview Secrets*  
-> **Meta Description:** *Learn how to solve LeetCode Self‑Crossing in O(n) time. Get Java, Python, C++ code, a detailed walk‑through, and interview tips that land you a job.*
-
-> **Keywords:** `Self Crossing problem`, `Leetcode 335`, `Java solution`, `Python solution`, `C++ solution`, `geometric path crossing`, `algorithm interview`, `O(n) solution`, `job interview coding`, `software engineer interview`.
-
-> **Body Highlights:**
-> - Problem definition in plain language
-> - Intuitive explanation of 3‑step and 4‑step crossing
-> - Clean, commented code snippets for each language
-> - Complexity analysis with visual charts
-> - Edge‑case checklist and common mistakes
-> - Interview Q&A with expert advice
-> - Take‑away: why this problem is a must‑know for backend & system design roles
+- Leetcode Self Crossing solution  
+- Java self crossing algorithm  
+- Python self crossing implementation  
+- C++ self crossing code  
+- Interview coding challenge  
+- One‑pass algorithm  
+- Constant memory path crossing  
+- Algorithm interview prep  
+- Data structures & algorithms  
 
 ---
 
-### 10.  Takeaway  
+### Final Thought
 
-- **Know the two core crossing patterns** (3‑step & 4‑step).  
-- **Implement in O(n) time, O(1) space**; avoid O(n²).  
-- **Show thorough testing** – LeetCode accepts the edge cases, so cover them.  
-- **Translate the logic into any language** – the algorithm is language‑agnostic.
-
-With these three solutions in your résumé and the interview mindset outlined above, you’ll turn **Self‑Crossing** into a showcase of **geometric intuition, algorithmic efficiency, and clean coding** – exactly what recruiters in tech want. Good luck on your next coding interview!
+Mastering “Self Crossing” showcases your ability to transform a geometric puzzle into a logical, efficient solution – exactly the kind of skill hiring managers look for. Keep the patterns in mind, practice the edge cases, and you’ll confidently ace this and other hard LeetCode challenges. Happy coding! 🚀

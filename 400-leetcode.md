@@ -7,235 +7,303 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🚀 Mastering LeetCode 400 – “Nth Digit”  
-*(Java | Python | C++ Solutions + SEO‑Optimized Blog Post to land that tech job)*  
+        ## 📘 LeetCode 400 – Nth Digit  
+**Java | Python | C++ – O(1) log n Solutions + In‑Depth Blog Post**
+
+> **SEO Keywords** – *LeetCode 400 Nth Digit*, *Nth Digit solution*, *LeetCode interview*, *Java Python C++ algorithm*, *O(log n) time complexity*, *coding interview questions*, *tech‑career resume*
 
 ---
 
-## 1️⃣ Problem Recap  
-**LeetCode 400 – Nth Digit**  
-> **Medium** | `int findNthDigit(int n)`  
+### 1️⃣ Problem Overview
 
-> Given an integer `n`, return the nth digit of the infinite integer sequence  
-> `1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, …`.  
-> `1 <= n <= 2³¹‑1`.
+> **LeetCode 400 – Nth Digit**  
+> *Difficulty:* **Medium**  
+> *Public Function:* `int findNthDigit(int n)`
 
-**Examples**
+> **Goal**  
+> Given a positive integer `n`, return the *n‑th* digit in the infinite sequence  
+> `1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, …`  
+> Example:  
+> `n = 11` → `0` (the 0 in the number 10).
 
-| n | Output | Explanation |
-|---|--------|-------------|
-| 3 | 3 | The third digit is `3`. |
-| 11 | 0 | The 11th digit comes from the number `10` → digit `0`. |
-
----
-
-## 2️⃣ Why This Problem Rocks for Interviews  
-
-| ✅ | Value |
-|---|-------|
-| ✔️ **Core Concepts** | Positional math, digit counting, simple loops. |
-| ✔️ **Time Complexity** | `O(log10 n)` – very fast. |
-| ✔️ **Space Complexity** | `O(1)` – no extra data structures. |
-| ✔️ **Tricky Edge Cases** | Numbers with many digits (e.g., 100‑digit numbers) and integer overflow. |
-| ✔️ **Common Interview Themes** | “Find the nth element in an implicit sequence”, “Avoid generating the whole sequence”, “Use math instead of simulation”. |
+> **Constraints**  
+> `1 ≤ n ≤ 2^31 − 1`
 
 ---
 
-## 3️⃣ Three Clean Solutions  
+### 2️⃣ Why This Problem Rocks
 
-> All three solutions follow the same mathematical idea:  
-> 1. Find the **digit length** (1‑digit numbers, 2‑digit numbers, …) that contains the `n`th digit.  
-> 2. Compute the exact number that holds the digit.  
-> 3. Extract the digit via string conversion or arithmetic.  
+| ✅ Good | ❌ Bad | ⚡ Ugly |
+|--------|-------|--------|
+| **Mathematics meets programming** – a pure arithmetic trick. | **Integer overflow** – many naive loops will exceed `int`. | **Off‑by‑one traps** – mis‑counting the digit groups leads to wrong answers. |
+| **O(log n) time** – only a handful of iterations. | **Large `n`** – must use 64‑bit arithmetic. | **Complexity confusion** – some solutions claim `O(1)` but they’re still linear in the number of digits. |
+| **Cross‑language learning** – same logic in Java, Python, C++. | **No direct string manipulation** – you can’t just build the sequence. | **Edge case 10‑digit numbers** – 9, 99, 999… require careful handling. |
 
-### 3.1 Java 17 (O(1) space, O(log n) time)
+---
+
+### 3️⃣ Intuition & Mathematical Insight
+
+1. **Group numbers by digit length**  
+   *1‑digit numbers:* 1–9 (9 numbers) → 9 digits  
+   *2‑digit numbers:* 10–99 (90 numbers) → 180 digits  
+   *3‑digit numbers:* 100–999 (900 numbers) → 2700 digits  
+   …  
+
+2. **Find the digit group that contains the `n`‑th digit**  
+   Subtract the size of each group (`groupSize = count * digitLength`) from `n` until `n` ≤ groupSize.
+
+3. **Locate the exact number**  
+   `numberOffset = (n-1) / digitLength` (0‑based)  
+   `digitOffset  = (n-1) % digitLength`
+
+4. **Extract the digit**  
+   Convert the number to a string or use math (`pow10`) and pick the digit at `digitOffset`.
+
+All arithmetic uses 64‑bit (`long`) to stay safe up to `2^31−1`.
+
+---
+
+### 4️⃣ Pseudo‑Code
+
+```
+findNthDigit(n):
+    length = 1               # current digit length
+    count  = 9               # numbers with this length
+    while n > length * count:
+        n -= length * count
+        length += 1
+        count *= 10
+    # n is now inside the current group
+    number = 10^(length-1) + (n-1) / length
+    digitIndex = (n-1) % length
+    return digit of number at digitIndex
+```
+
+---
+
+### 5️⃣ Complete Implementations
+
+> ⚙️ All three codes below run in **O(log n)** time, **O(1)** space, and handle the full 32‑bit signed integer range.
+
+#### 5.1 Java
 
 ```java
-class Solution {
+public class Solution {
     public int findNthDigit(int n) {
-        // 1. Find the digit length block
-        long digitLen = 1;          // current block's digit length
-        long count = 9;             // how many numbers in this block
-        long start = 1;             // first number in this block
+        long N = n;                // promote to long for safety
+        int length = 1;            // digit length
+        long count = 9;            // numbers with this length
 
-        while (n > digitLen * count) {
-            n -= digitLen * count;  // skip the whole block
-            digitLen++;
-            start *= 10;            // move to next block (10, 100, 1000 …)
-            count *= 10;            // 9, 90, 900 …
+        // Step 1: locate the group
+        while (N > length * count) {
+            N -= length * count;
+            length++;
+            count *= 10;
         }
 
-        // 2. Locate the exact number
-        long number = start + (n - 1) / digitLen;
+        // Step 2: locate the exact number
+        long number = (long) Math.pow(10, length - 1) + (N - 1) / length;
+        int digitIndex = (int) ((N - 1) % length);
 
-        // 3. Grab the digit
-        return String.valueOf(number).charAt((int)((n - 1) % digitLen)) - '0';
+        // Step 3: extract the digit
+        return String.valueOf(number).charAt(digitIndex) - '0';
     }
 }
 ```
 
-> **Why `long`?**  
-> `n` can be up to `2³¹‑1`. During the loop we multiply by `digitLen`, so using `long` prevents overflow.
-
----
-
-### 3.2 Python 3 (Elegant and idiomatic)
+#### 5.2 Python
 
 ```python
 class Solution:
     def findNthDigit(self, n: int) -> int:
-        digit_len = 1          # current block's digit length
-        count = 9              # how many numbers in this block
-        start = 1              # first number in this block
+        N = n
+        length = 1          # digit length
+        count = 9           # numbers with this length
 
-        # Find the block that contains the nth digit
-        while n > digit_len * count:
-            n -= digit_len * count
-            digit_len += 1
-            start *= 10
+        # Locate the correct group
+        while N > length * count:
+            N -= length * count
+            length += 1
             count *= 10
 
-        # Exact number holding the digit
-        number = start + (n - 1) // digit_len
+        # Locate the exact number
+        number = 10 ** (length - 1) + (N - 1) // length
+        digit_index = (N - 1) % length
 
-        # Digit position inside the number
-        index = (n - 1) % digit_len
-        return int(str(number)[index])
+        # Extract digit
+        return int(str(number)[digit_index])
 ```
 
-> Python’s arbitrary‑precision integers mean we don’t have to worry about overflow, but the `long`‑style loop keeps it `O(log n)`.
-
----
-
-### 3.3 C++17 (Performance‑oriented, no string overhead)
+#### 5.3 C++
 
 ```cpp
 class Solution {
 public:
     int findNthDigit(int n) {
-        long long digitLen = 1;      // block's digit length
-        long long count = 9;         // numbers in this block
-        long long start = 1;         // first number in this block
+        long long N = n;
+        int length = 1;
+        long long count = 9;
 
-        while (static_cast<long long>(n) > digitLen * count) {
-            n -= digitLen * count;   // skip block
-            digitLen++;
-            start *= 10;
+        // Find the group
+        while (N > length * count) {
+            N -= length * count;
+            length++;
             count *= 10;
         }
 
-        long long number = start + (n - 1) / digitLen;
-        int index = (n - 1) % digitLen;
+        // Find the number
+        long long number = (long long)pow(10, length - 1) + (N - 1) / length;
+        int digitIndex = (int)((N - 1) % length);
 
-        // Convert to string only once
-        std::string s = std::to_string(number);
-        return s[index] - '0';
+        // Convert to string for digit extraction
+        string s = to_string(number);
+        return s[digitIndex] - '0';
     }
 };
 ```
 
-> **Why `long long`?** Same overflow reasoning as Java.  
-> If you want to avoid `to_string`, you can strip digits with a simple division loop.
+> **Tip**: In Java/C++ you could avoid `pow` by iteratively multiplying a `long` variable.  
+> In Python, integer arithmetic is arbitrary precision, so no worries.
 
 ---
 
-## 4️⃣ Complexity & “Job‑Interview” Takeaways  
+### 6️⃣ Edge‑Case Checklist
 
-| ✅ | Metric | Result |
-|---|--------|--------|
-| Time | `O(log10 n)` | ~< 10 iterations even for the largest 32‑bit input. |
-| Space | `O(1)` | Only a handful of primitive variables. |
-| **Pitfall** | Integer overflow – use `long`/`long long`. |
-| **Common Interview Twist** | “What if you had to return the whole number instead of a single digit?” (easy to extend). |
-
----
-
-## 5️⃣ “The Good, The Bad, and The Ugly” – Interview Insights  
-
-### 5️⃣1 The Good  
-* **Fast math trick** – you’ll impress interviewers by skipping huge portions of the sequence.  
-* **Scalable** – works for 10‑digit, 100‑digit numbers with just one loop.  
-* **Portability** – same logic fits any language (Java, Python, C++, Go, Rust).  
-
-### 5️⃣2 The Bad  
-* **Naïve simulation** (e.g., concatenating strings until `n` is reached) blows up quickly (`O(n)` time, `O(n)` space).  
-* Forgetting to handle **overflow** can lead to wrong answers on large inputs.  
-* Some candidates over‑engineer: build a hash map of digit blocks or pre‑compute powers of ten.  
-  *This is unnecessary* – a simple loop is enough.  
-
-### 5️⃣3 The Ugly  
-* **Edge‑case confusion**:  
-  * `n == 9` → digit is `9` (first block).  
-  * After subtracting a whole block, `n` might become exactly a multiple of `digitLen`.  
-    *Example:* `n = 180` (the last digit of the 2‑digit block) → digit `9`.  
-* **Integer division vs. modulo** – off‑by‑one errors are common.  
-* **String vs. arithmetic extraction** – both work, but string conversion is more readable in Java/Python, while pure arithmetic is faster in C++.  
+| Edge Case | Why it matters | Fix |
+|-----------|----------------|-----|
+| `n = 1` | First digit | The algorithm naturally returns `1`. |
+| `n = 9` | Last 1‑digit number | `N` will stop in the first group. |
+| `n = 10` | First digit of `10` | After group subtraction, `N` will be `1`. |
+| `n = 190` | Last 2‑digit number | Group subtraction ends after 2‑digit group. |
+| `n = 2^31-1` | Max integer | All intermediate values fit into `long`. |
 
 ---
 
-## 6️⃣ Interview “Gold‑Dust” Tips  
+### 7️⃣ Complexity Analysis
 
-| Tip | Why it Matters |
-|-----|----------------|
-| **Explain your math** | Interviewers love to see you walk through the positional reasoning before writing code. |
-| **Mention overflow** | Shows awareness of language limits (`int` → `long`/`long long`). |
-| **Talk about `O(log n)`** | Highlights algorithmic efficiency. |
-| **Show a quick test harness** | If asked on the spot, a small script to verify edge cases boosts confidence. |
-| **Practice edge cases** | 1, 9, 10, 11, 19, 20, 100, 101, 110, 999, 1000, 10000, … |
+| Metric | Java | Python | C++ |
+|--------|------|--------|-----|
+| **Time** | `O(log n)` (digit groups ≈ 10) | `O(log n)` | `O(log n)` |
+| **Space** | `O(1)` | `O(1)` | `O(1)` |
 
-> **“If you can solve this problem, you can solve any implicit sequence interview question.”**
+The loop runs at most 10 times because the maximum number of digits for a 32‑bit integer is 10.
 
 ---
 
-## 7️⃣ Related Questions & Variants  
+### 8️⃣ SEO‑Optimized Blog Post: “The Good, The Bad, and The Ugly of LeetCode 400 – Nth Digit”
 
-| # | Problem | What it Teaches |
-|---|---------|-----------------|
-| 200 | *Number of Islands* | Graph traversal, BFS/DFS. |
-| 234 | *Palindrome Linked List* | Two‑pointer technique, O(1) space. |
-| 541 | *Reverse String in Blocks* | Sliding windows, string manipulation. |
-| 1309 | *Decompress Run Length Encoded List* | Array manipulation, efficient decoding. |
-
-> If you’re prepping for **Google, Amazon, Facebook, Microsoft**, you’ll likely get variations that ask for the *nth number* instead of the *nth digit*, or the *nth prime* in an implicit sequence.
+> **Introduction**  
+> The *Nth Digit* problem (LeetCode 400) is a staple on coding interview boards. It’s simple to state but subtly tricky: it tests your ability to turn a number‑theory insight into clean, efficient code. In this article, we’ll dissect the problem, reveal the genius behind the O(log n) solution, and expose common pitfalls that trip up many candidates. Along the way, we’ll provide ready‑to‑paste Java, Python, and C++ solutions that you can drop into your coding interview or portfolio.
 
 ---
 
-## 8️⃣ How to Use This Blog Post to Boost Your Tech‑Job Resume  
+#### Why You Should Master This Problem
 
-1. **Keyword‑Rich Title** – “Nth Digit LeetCode 400 Java Solution”  
-2. **Meta Description** – “Learn the fastest Java, Python, and C++ solutions for LeetCode 400 – Nth Digit. Boost your interview skills and land your dream tech job.”  
-3. **Header Tags** – `<h1>`, `<h2>`, `<h3>` with target keywords.  
-4. **Internal Links** – link to other algorithm blogs (e.g., “Two Sum”, “Binary Tree Inorder Traversal”).  
-5. **External Links** – reference the official LeetCode page, the GitHub repo, and interview‑prep blogs.  
+- **Interview Frequency**: Recruiters love it because it reveals algorithmic thinking without drowning candidates in data‑structure jargon.
+- **Time‑Efficiency Showcase**: A perfect example of transforming a seemingly linear task into logarithmic time.
+- **Cross‑Language Proficiency**: Demonstrates that you can port a core idea across Java, Python, and C++ – a must‑have for tech‑companies with polyglot stacks.
 
 ---
 
-## 9️⃣ Takeaway – “The Good, The Bad, and The Ugly”
+#### The **Good**: Clean, Elegant Math
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **The Good** | O(log n) time, O(1) space, no extra memory, pure math. | – | – |
-| **The Bad** | Off‑by‑one mistakes, forgetting overflow, wrong block calculation. | – | – |
-| **The Ugly** | Someone might try to build the entire string (`"123456789101112..."`) until `n`, which is *massively* inefficient and can overflow memory. | Avoid this naive simulation. | Use math first. |
+The crux of the solution lies in recognizing the *grouped* structure of the sequence:
 
-> **Bottom line:** The “Nth Digit” problem is a *must‑know* for any software‑engineering interview. Master the math, write clean code in your language of choice, and you’ll impress recruiters with both technical skill and interview‑ready thinking.
+| Digit Length | Range | Count | Total Digits |
+|--------------|-------|-------|--------------|
+| 1 | 1‑9 | 9 | 9 |
+| 2 | 10‑99 | 90 | 180 |
+| 3 | 100‑999 | 900 | 2700 |
+| … | … | … | … |
+
+By iteratively subtracting `length * count`, we isolate the group that contains the `n`‑th digit. This reduces a potentially huge search space to a handful of arithmetic operations.
+
+**Takeaway**: *When a problem involves a long sequence, always look for hidden patterns that can be expressed mathematically.*
 
 ---
 
-## 📚 Final Word – Land That Dream Job  
+#### The **Bad**: Overflow & Off‑by‑One Nightmares
 
-*Your interview stack now contains:*
+1. **Integer Overflow**  
+   A naïve loop that builds the sequence or iterates `n` times will quickly exceed `int` limits.  
+   *Solution:* Use `long` (Java) / `long long` (C++) / default Python ints.
 
-- **Java** – industry‑standard for back‑end and Android roles.  
-- **Python** – favored for data‑science, scripting, and quick prototyping.  
-- **C++** – essential for systems programming, gaming, and high‑performance computing.  
+2. **Off‑by‑One Errors**  
+   Mis‑counting the digits in a group (e.g., `length * count` vs. `length * (count-1)`) or the offset inside a number leads to wrong answers.  
+   *Solution:* Stick to 0‑based indexing (`n-1`) consistently.
 
-Show recruiters that you can solve problems efficiently **without brute force** and you’ll stand out among the millions of candidates. Good luck, and happy coding! 🚀
+3. **Misinterpreting `pow`**  
+   In C++/Java, `pow` returns a floating point; converting to `int` can truncate.  
+   *Solution:* Build the base (`10^(length-1)`) iteratively or cast the result carefully.
+
+---
+
+#### The **Ugly**: Hidden Edge Cases
+
+- **Large `n` (≈ 2 billion)**: The algorithm must still run within milliseconds.  
+- **The 10‑digit threshold**: After 9 digits, the next group (10‑digit numbers) jumps the base from 1 000 000 000 to 10 000 000 000, exceeding 32‑bit.  
+- **Negative `n`**: LeetCode guarantees positivity, but defensive programming still matters in real‑world code.
+
+---
+
+#### Step‑by‑Step Walkthrough (Java Example)
+
+```java
+int n = 11;         // 11th digit in the sequence
+long N = n;         // Promote to long
+int length = 1;     // Current digit length
+long count = 9;     // Numbers in this group
+
+// Find the correct group
+while (N > length * count) {
+    N -= length * count;
+    length++;
+    count *= 10;
+}
+
+// Determine the target number
+long number = (long) Math.pow(10, length - 1) + (N - 1) / length;
+
+// Extract the specific digit
+int digitIndex = (int) ((N - 1) % length);
+int result = String.valueOf(number).charAt(digitIndex) - '0';
+System.out.println(result); // prints 0
+```
+
+---
+
+#### “Why I Write This Blog”
+
+- **Job‑Ready Knowledge**: The more you can explain a problem’s *why* and *how*, the better you’ll communicate during interviews.  
+- **Portfolio Asset**: Share the Java/Python/C++ code on GitHub, link it in your résumé. Recruiters love seeing clean, language‑agnostic solutions.  
+- **Search Engine Boost**: Keywords like *LeetCode 400 solution*, *Nth digit algorithm*, and *interview coding challenge* help recruiters find you online.
+
+---
+
+#### Final Thoughts
+
+The *Nth Digit* problem is deceptively simple but rich with lessons:
+
+- **Leverage mathematics** to collapse a huge search space.  
+- **Guard against overflow** by using 64‑bit integers.  
+- **Test thoroughly** with the edge cases listed above.
+
+Master this problem, polish the code snippets, and you’ll have a standout piece in your coding interview toolkit.
+
+> **Ready to impress?** Copy the Java, Python, or C++ solution, practice explaining the algorithm in your own words, and watch recruiters notice the depth of your problem‑solving skills.
+
+---
+
+### 9️⃣ Bonus: Quick Test Cases
+
+| `n` | Expected | Reason |
+|-----|----------|--------|
+| 3   | 3 | Third digit of the sequence. |
+| 11  | 0 | 11th digit is the 0 in `10`. |
+| 190 | 9 | Last digit of 2‑digit numbers (`99`). |
+| 1000 | 1 | First digit of `100`. |
+| 2147483647 | 8 | Edge case – test the limit. |
 
 --- 
 
-### 👨‍💻 Want a deeper dive?  
-Check out my full GitHub repo:  
-[`https://github.com/yourhandle/leetcode-400-nth-digit`](#)  
-
-Feel free to **share** this article on LinkedIn, Medium, or any developer community to increase your visibility. Good luck on your next interview!
+Happy coding! 🚀

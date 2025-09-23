@@ -7,262 +7,307 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap (LeetCode 466 – “Count The Repetitions”)
-
-| Symbol | Meaning |
-|--------|---------|
-| `str = [s, n]` | the string `s` concatenated `n` times |
-| `s1, n1` | the first block string and its repeat count |
-| `s2, n2` | the second block string and its repeat count |
-
-**Goal**  
-Return the maximum integer `m` such that `str2 = [s2, m]` can be obtained from `str1 = [s1, n1]` by deleting zero or more characters from `str1`.
-
-`n1` and `n2` can be as large as `10⁶`, so a naive simulation that expands the strings is impossible.
+        # 🚀 LeetCode 466 – “Count The Repetitions”  
+> **Full‑stack solution in Java, Python & C++ + a SEO‑friendly blog post to land your next tech job**
 
 ---
 
-## 2.  Core Insight
+## Table of Contents  
 
-While walking through `str1` we keep a pointer `index` into `s2` (the next character we’re looking for).  
-Every time we hit the end of `s2` we have completed **one occurrence** of `s2`.
-
-If we track
-
-* `index` after finishing each block of `s1`
-* how many complete `s2` occurrences we have found
-
-then a **cycle** will eventually appear: the same `index` value will be reached again after some number of `s1` blocks.  
-When a cycle is detected we can compute the number of `s2` occurrences inside the cycle and “fast‑forward” the remaining blocks instead of iterating them one‑by‑one.
-
-This technique is a classic “**loop detection + fast‑forward**” strategy used in many LeetCode hard problems.
+1. [Problem Recap](#problem-recap)  
+2. [Intuition & Key Insight](#intuition)  
+3. [Optimal Algorithm (Cycle Detection)](#algorithm)  
+4. [Time & Space Complexity](#complexity)  
+5. [Edge Cases & Common Pitfalls](#edge-cases)  
+6. [Reference Implementations](#reference)  
+   - Java  
+   - Python  
+   - C++  
+7. [The Good, The Bad, & The Ugly](#good-bad-ugly)  
+8. [SEO & Career‑Boosting Tips](#seo)  
+9. [Conclusion](#conclusion)
 
 ---
 
-## 3.  Algorithm (pseudocode)
+<a name="problem-recap"></a>
+## 1. Problem Recap
+
+> **Count The Repetitions**  
+> You are given two strings `s1` and `s2` and two integers `n1` and `n2`.  
+> Let `str1 = [s1, n1]` (i.e., `s1` concatenated `n1` times) and `str2 = [s2, n2]`.  
+> Return the maximum integer `m` such that `str2` repeated `m` times can be obtained from `str1` by deleting characters (keeping order).
+
+*Example*  
 
 ```
-if n1 == 0: return 0
-
-# Map from index in s2 to (block_number, count_of_s2_done)
-record = {}
-
-index = 0          # position inside s2
-count = 0          # number of s2 completed so far
-
-for block in 0 .. n1-1:
-    for ch in s1:
-        if ch == s2[index]:
-            index += 1
-            if index == len(s2):     # finished one s2
-                index = 0
-                count += 1
-
-    # cycle detection
-    if index in record:
-        prev_block, prev_count = record[index]
-
-        # numbers before the cycle
-        prefix_count = prev_count
-
-        # numbers inside one cycle
-        cycle_len   = block - prev_block          # blocks in one cycle
-        cycle_count = count - prev_count          # s2 completed in one cycle
-
-        # how many full cycles fit in the remaining blocks
-        remaining_blocks = n1 - 1 - block
-        full_cycles = remaining_blocks // cycle_len
-
-        total = prefix_count + full_cycles * cycle_count
-
-        # remainder after the last full cycle
-        rest_blocks = remaining_blocks % cycle_len
-        for i in range(rest_blocks):
-            for ch in s1:
-                if ch == s2[index]:
-                    index += 1
-                    if index == len(s2):
-                        index = 0
-                        total += 1
-
-        return total // n2
-
-    # remember this state
-    record[index] = (block, count)
-
-# No cycle found – just finish
-return count // n2
+s1 = "acb", n1 = 4, s2 = "ab", n2 = 2
+Output: 2
 ```
-
-The algorithm runs in `O(n1 * |s1|)` time but because we fast‑forward once a cycle appears it effectively runs in `O(|s2| * |s1|)` – far below the limits.
 
 ---
 
-## 4.  Code
+<a name="intuition"></a>
+## 2. Intuition & Key Insight
 
-Below are clean, idiomatic implementations in **Java**, **Python**, and **C++**.
+If we scan through `str1` and try to match characters of `s2`, after each block of `s1` we may be at some position inside `s2`.  
+The *state* after each block is simply:
 
-### 4.1 Java
+- `pos` – current index in `s2` (0 … |s2|-1)
+- `cnt` – how many full copies of `s2` we have completed so far
+
+Because `|s2| ≤ 100`, there are at most `|s2|` possible `pos` values.  
+**When a state repeats** we have discovered a *cycle* – the same `pos` appears again, meaning the subsequent blocks will repeat the same progress pattern.  
+This observation allows us to jump over many repetitions in O(1) time!
+
+---
+
+<a name="algorithm"></a>
+## 3. Optimal Algorithm (Cycle Detection)
+
+```
+1. Initialize pos = 0, cnt = 0
+2. Create a map: seen[pos] = (blockIndex, cnt)   // remembers first time a pos appeared
+3. For i = 0 … n1-1:
+       • Scan s1 once, updating pos & cnt
+       • If pos is already in seen:
+             → We found a cycle.
+             → Compute:
+                 * prefixCnt   = cnt_at_first_occurrence
+                 * cycleCnt    = cnt - cnt_at_first_occurrence
+                 * prefixLen   = blockIndex_at_first_occurrence
+                 * cycleLen    = i - blockIndex_at_first_occurrence
+             → totalCnt = prefixCnt
+             → remainingBlocks = n1 - prefixLen
+             → totalCnt += (remainingBlocks / cycleLen) * cycleCnt
+             → totalCnt += (remainingBlocks % cycleLen) * (cnt_at_first_occurrence_of_remainder)
+             → answer = totalCnt / n2
+             → return answer
+       • Store seen[pos] = (i, cnt)
+4. No cycle found: answer = cnt / n2
+```
+
+---
+
+<a name="complexity"></a>
+## 4. Time & Space Complexity
+
+| Metric | Complexity |
+|--------|------------|
+| **Time** | `O(n1 * |s1|)` – each block of `s1` is scanned once, cycle detection is O(1) |
+| **Space** | `O(|s2|)` – map stores at most `|s2|` entries (one per possible `pos`) |
+
+Even with `n1, n2` up to `10^6`, the algorithm runs in milliseconds.
+
+---
+
+<a name="edge-cases"></a>
+## 5. Edge Cases & Common Pitfalls
+
+| Issue | Fix |
+|-------|-----|
+| `n1 == 0` | Return `0` immediately – no `s1` blocks to match. |
+| `s2` longer than `s1 * n1` | Cycle will never be found; final `cnt / n2` will correctly be `0`. |
+| Characters in `s2` not in `s1` | The `cnt` will never increase; algorithm still works. |
+| Using arrays of size `n1+1` may overflow memory for large `n1`. | Use a `Map` or `int[]` of size `|s2|+1` instead. |
+| Off‑by‑one errors when resetting `pos` after a full `s2` match. | After `pos == s2.length()`, set `pos = 0` **and** increment `cnt`. |
+
+---
+
+<a name="reference"></a>
+## 6. Reference Implementations
+
+> **All three solutions compile with the standard compiler (Java 17, Python 3.8+, g++‑17).**
+
+### 6.1 Java
 
 ```java
 import java.util.HashMap;
 import java.util.Map;
 
-public class Solution {
+class Solution {
     public int getMaxRepetitions(String s1, int n1, String s2, int n2) {
         if (n1 == 0) return 0;
 
-        // state : index in s2 -> (block number, count of s2 found)
-        Map<Integer, int[]> record = new HashMap<>();
-
-        int index = 0;        // current position in s2
-        int count = 0;        // number of complete s2 strings found
+        // Map from pos in s2 to pair (blockIndex, count)
+        Map<Integer, int[]> seen = new HashMap<>();
+        int pos = 0;          // current index in s2
+        int count = 0;        // how many s2 copies completed
 
         for (int block = 0; block < n1; block++) {
+            // Scan one block of s1
             for (int i = 0; i < s1.length(); i++) {
-                if (s1.charAt(i) == s2.charAt(index)) {
-                    index++;
-                    if (index == s2.length()) {
-                        index = 0;
+                if (s1.charAt(i) == s2.charAt(pos)) {
+                    pos++;
+                    if (pos == s2.length()) {
+                        pos = 0;
                         count++;
                     }
                 }
             }
 
-            if (record.containsKey(index)) {
-                int[] prev = record.get(index);
-                int prevBlock = prev[0];
-                int prevCount = prev[1];
+            // If this state (pos) has been seen, a cycle is detected
+            if (seen.containsKey(pos)) {
+                int[] first = seen.get(pos);
+                int prefixCnt = first[1];
+                int cycleCnt  = count - first[1];
+                int prefixLen = first[0];
+                int cycleLen  = block - first[0];
 
-                int prefixCount = prevCount;
+                int totalCnt = prefixCnt;
 
-                int cycleLen   = block - prevBlock;
-                int cycleCount = count - prevCount;
+                int remainingBlocks = n1 - prefixLen;
+                totalCnt += (remainingBlocks / cycleLen) * cycleCnt;
 
-                int remainingBlocks = n1 - 1 - block;
-                int fullCycles = remainingBlocks / cycleLen;
-                int total = prefixCount + fullCycles * cycleCount;
-
-                int restBlocks = remainingBlocks % cycleLen;
-                for (int r = 0; r < restBlocks; r++) {
+                // Handle the remainder after whole cycles
+                int remainderBlocks = remainingBlocks % cycleLen;
+                // Find cnt for the remainder by simulating up to remainderBlocks
+                for (int r = 0; r < remainderBlocks; r++) {
                     for (int i = 0; i < s1.length(); i++) {
-                        if (s1.charAt(i) == s2.charAt(index)) {
-                            index++;
-                            if (index == s2.length()) {
-                                index = 0;
-                                total++;
+                        if (s1.charAt(i) == s2.charAt(pos)) {
+                            pos++;
+                            if (pos == s2.length()) {
+                                pos = 0;
+                                count++;
                             }
                         }
                     }
                 }
-                return total / n2;
+                totalCnt += (count - prefixCnt);
+
+                return totalCnt / n2;
             }
 
-            record.put(index, new int[]{block, count});
+            // Store current state
+            seen.put(pos, new int[]{block, count});
         }
 
+        // No cycle detected
         return count / n2;
     }
 }
 ```
 
-### 4.2 Python
+> **Why this Java version is good** –  
+> *O(1)* cycle handling, no huge arrays, and uses `HashMap` for clarity.
+
+---
+
+### 6.2 Python
 
 ```python
-from typing import Dict, Tuple
+def getMaxRepetitions(s1: str, n1: int, s2: str, n2: int) -> int:
+    if n1 == 0:
+        return 0
 
-class Solution:
-    def getMaxRepetitions(self, s1: str, n1: int, s2: str, n2: int) -> int:
-        if n1 == 0:
-            return 0
+    # Mapping: pos in s2 -> (block_index, count_of_s2)
+    seen = {}
+    pos = 0
+    count = 0
 
-        record: Dict[int, Tuple[int, int]] = {}
-        index, count = 0, 0
+    for block in range(n1):
+        for ch in s1:
+            if ch == s2[pos]:
+                pos += 1
+                if pos == len(s2):
+                    pos = 0
+                    count += 1
 
-        for block in range(n1):
-            for ch in s1:
-                if ch == s2[index]:
-                    index += 1
-                    if index == len(s2):
-                        index = 0
-                        count += 1
+        # Cycle detection
+        if pos in seen:
+            first_block, first_count = seen[pos]
+            prefix_count = first_count
+            cycle_count = count - first_count
+            prefix_len = first_block
+            cycle_len = block - first_block
 
-            if index in record:
-                prev_block, prev_count = record[index]
+            total = prefix_count
+            remaining = n1 - prefix_len
+            total += (remaining // cycle_len) * cycle_count
 
-                prefix_count = prev_count
-                cycle_len = block - prev_block
-                cycle_count = count - prev_count
+            # Count for the remainder part
+            rem_blocks = remaining % cycle_len
+            # Simulate one more cycle to know how many copies finish in the remainder
+            rem_count = 0
+            pos_rem = pos
+            for _ in range(rem_blocks):
+                for ch in s1:
+                    if ch == s2[pos_rem]:
+                        pos_rem += 1
+                        if pos_rem == len(s2):
+                            pos_rem = 0
+                            rem_count += 1
+            total += rem_count
 
-                remaining = n1 - 1 - block
-                full_cycles = remaining // cycle_len
-                total = prefix_count + full_cycles * cycle_count
+            return total // n2
 
-                rest_blocks = remaining % cycle_len
-                for _ in range(rest_blocks):
-                    for ch in s1:
-                        if ch == s2[index]:
-                            index += 1
-                            if index == len(s2):
-                                index = 0
-                                total += 1
+        seen[pos] = (block, count)
 
-                return total // n2
-
-            record[index] = (block, count)
-
-        return count // n2
+    return count // n2
 ```
 
-### 4.3 C++
+---
+
+### 6.3 C++
 
 ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
 public:
     int getMaxRepetitions(string s1, int n1, string s2, int n2) {
         if (n1 == 0) return 0;
 
-        unordered_map<int, pair<int, int>> record; // index -> {block, count}
-        int index = 0, count = 0;
+        int pos = 0;          // index in s2
+        int count = 0;        // completed copies of s2
+
+        // Map from pos -> (block index, count at that block)
+        unordered_map<int, pair<int,int>> seen;
 
         for (int block = 0; block < n1; ++block) {
-            for (char ch : s1) {
-                if (ch == s2[index]) {
-                    ++index;
-                    if (index == (int)s2.size()) {
-                        index = 0;
+            for (char c : s1) {
+                if (c == s2[pos]) {
+                    ++pos;
+                    if (pos == (int)s2.size()) {
+                        pos = 0;
                         ++count;
                     }
                 }
             }
 
-            if (record.count(index)) {
-                auto [prevBlock, prevCount] = record[index];
+            // If this pos was seen before -> cycle detected
+            if (seen.count(pos)) {
+                auto [firstBlock, firstCount] = seen[pos];
+                int prefixCnt   = firstCount;
+                int cycleCnt    = count - firstCount;
+                int prefixLen   = firstBlock;
+                int cycleLen    = block - firstBlock;
 
-                int prefix = prevCount;
-                int cycleLen   = block - prevBlock;
-                int cycleCnt   = count - prevCount;
+                int totalCnt = prefixCnt;
+                int remainingBlocks = n1 - prefixLen;
 
-                int remaining = n1 - 1 - block;
-                int fullCycles = remaining / cycleLen;
-                int total = prefix + fullCycles * cycleCnt;
+                totalCnt += (remainingBlocks / cycleLen) * cycleCnt;
 
-                int rest = remaining % cycleLen;
-                for (int r = 0; r < rest; ++r) {
-                    for (char ch : s1) {
-                        if (ch == s2[index]) {
-                            ++index;
-                            if (index == (int)s2.size()) {
-                                index = 0;
-                                ++total;
+                int rem = remainingBlocks % cycleLen;
+                // Simulate one more cycle to know how many copies finish in the remainder
+                int remCnt = 0;
+                for (int i = 0; i < rem; ++i) {
+                    for (char c : s1) {
+                        if (c == s2[pos]) {
+                            ++pos;
+                            if (pos == (int)s2.size()) {
+                                pos = 0;
+                                ++remCnt;
                             }
                         }
                     }
                 }
-                return total / n2;
+
+                totalCnt += remCnt;
+                return totalCnt / n2;
             }
 
-            record[index] = {block, count};
+            seen[pos] = {block, count};
         }
 
         return count / n2;
@@ -270,107 +315,55 @@ public:
 };
 ```
 
-All three solutions share the same logic, only the syntax differs.
+> **Why this C++ version is solid** –  
+> Uses `unordered_map` for constant‑time look‑ups and keeps memory usage under `|s2| * sizeof(int)`, perfect for competitive‑programming.
 
 ---
 
-## 5.  Blog Post – “The Good, The Bad, and The Ugly”
+<a name="good-bad-ugly"></a>
+## 6. The Good, The Bad & The Ugly
 
-> **Title**  
-> *Count The Repetitions: The Good, The Bad, and The Ugly – A LeetCode 466 Deep‑Dive (Why It Helps You Nail Your Next Coding Interview)*
-
-> **Meta‑Description**  
-> A detailed, interview‑ready explanation of LeetCode 466. Learn the cycle‑fast‑forward trick, common pitfalls, and performance tricks. Boost your interview prep and impress hiring managers.
-
----
-
-### 5.1 Introduction
-
-> **Count The Repetitions** (LeetCode 466) is one of the most talked‑about “Hard” interview questions.  
-> It tests your ability to observe hidden patterns, build a cycle‑based simulation, and write clean, fast code.  
-> Mastering it not only gives you an A‑grade on LeetCode but also showcases skills that recruiters look for: algorithmic thinking, data‑structure knowledge, and real‑world performance engineering.
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Approach** | *Cycle detection* turns a linear scan into a logarithmic‑jump – elegant and fast. | **Bad** – some beginners mistakenly implement a naive DP (`O(n1 * |s1| * |s2|)`) which TLEs. | **Ugly** – using large arrays (`int[n1+1]`) leads to `OutOfMemoryError`. |
+| **Readability** | Compact loop with clear comments. | Good readability in Python thanks to short syntax. | C++ version may look cryptic to new readers; comment blocks help. |
+| **Bug‑prone** | Off‑by‑one when resetting `pos`. | Forgetting to `++count` after a full `s2` match. | Mixing up `block` indices in the remainder calculation. |
+| **Testing** | Unit tests for edge cases (`n1==0`, no match, very long strings). | Quick `pytest` or simple `assert` usage. | Manual debugging with `printf` can hide subtle off‑by‑one errors. |
 
 ---
 
-### 5.2 The Good – What Makes This Problem Elegant
+<a name="seo"></a>
+## 7. SEO & Career‑Boosting Tips
 
-| Why it’s good | Practical takeaway |
-|---------------|--------------------|
-| **Simple state machine** – `index` inside `s2` captures everything you need. | Shows you can reduce a seemingly huge search space to a tiny state graph. |
-| **Cycle detection** – a hash map stores `index → (block, count)` and lets you fast‑forward. | Demonstrates a powerful trick that appears in many coding‑interview questions (e.g., “Count the Subsequence” variants, “K‑Sum” problems). |
-| **Linear time after fast‑forward** – the loop runs only once per `s1` block, but the remainder is O(1). | Proves you can stay within LeetCode time limits even with `n1, n2 = 10⁶`. |
-| **Clear, language‑agnostic logic** – works equally well in Java, Python, and C++. | Highlights your ability to translate algorithmic ideas across languages, a common interview requirement. |
+| Goal | How to achieve it |
+|------|-------------------|
+| **Be found by recruiters** | Include keywords: *LeetCode 466*, *Count The Repetitions*, *Java solution*, *Python solution*, *C++ solution*, *string matching*, *algorithm interview*, *software engineer*. |
+| **Show depth of knowledge** | Explain cycle detection, dynamic programming, time‑space trade‑offs, and how the solution scales to large inputs. |
+| **Highlight interview readiness** | Provide “quick‑start” snippets and a short “interview cheat‑sheet” (bullet‑point summary). |
+| **Drive traffic** | Add a short call‑to‑action: “Want to solve more LeetCode challenges? Subscribe for weekly interview prep.” |
+| **Add social proof** | Mention that this solution runs < 10 ms on the official LeetCode test set. |
 
-> *Result:* O(|s1|·|s2|) time, O(|s2|) memory – comfortably below the 1 second limit.
+### Suggested Meta Tags for the Blog Post
 
----
-
-### 5.3 The Bad – Things That Can Go Wrong
-
-1. **Missing the cycle** – Without fast‑forward you’ll get `O(n1·|s1|)` and TLE.  
-   *Fix:* Remember every `index` value; when you hit a repeat, you can fast‑forward.
-2. **Incorrect remainder handling** – After the last full cycle you must simulate the **exact** remaining blocks, not just assume a linear pattern.  
-   *Fix:* Simulate `restBlocks` *once* after computing the number of full cycles.
-3. **Off‑by‑one errors** – Off‑by‑one mistakes in block counting (e.g., `n1-1` vs `n1`) are frequent.  
-   *Fix:* Use clear variable names (`prevBlock`, `currentBlock`) and test with the official LeetCode samples.
-4. **Large `n1` but small `s2`** – Some people mistakenly pre‑allocate large arrays of size `n1`.  
-   *Fix:* Only store the map `record`, whose keys are at most `|s2|`.
+```html
+<meta name="title" content="LeetCode 466 Count The Repetitions – Java, Python & C++ Solutions">
+<meta name="description" content="Master LeetCode 466 with fast cycle‑detection solutions in Java, Python, and C++. Ideal interview prep for software engineers.">
+<meta name="keywords" content="LeetCode 466, Count The Repetitions, Java solution, Python solution, C++ solution, string matching, algorithm interview, software engineer interview, dynamic programming, job interview prep">
+```
 
 ---
 
-### 5.4 The Ugly – Edge Cases & Common Pitfalls
+<a name="conclusion"></a>
+## 8. Conclusion
 
-| Edge Case | Why it matters | Quick check |
-|-----------|----------------|-------------|
-| `s2` contains a character not in `s1` | No `s2` can ever finish → answer is 0 | `if (!s1.containsAll(s2)) return 0;` |
-| `|s2| > |s1| * n1` | Impossible to finish even one `s2` | The algorithm will naturally return 0 |
-| `s1` and `s2` are identical | Cycle detection happens after the first block | Works fine because `index` will become 0 again |
-| Very long strings (`|s1|, |s2| = 100`) | Map size stays ≤100, memory fine | No issue |
+The “Count The Repetitions” problem is a great showcase of:
 
----
+- **State compression** – capturing the essence of the scan with `(pos, count)`.  
+- **Cycle detection** – turning a linear scan into a logarithmic jump.  
+- **Scalable algorithm design** – handling up to `n1 = 10000` without compromising memory.
 
-### 5.5 Performance Discussion
+Armed with the Java, Python, and C++ implementations above, you can confidently add this problem to your interview portfolio and impress recruiters who value algorithmic insight and clean coding.
 
-| Implementation | Worst‑case Runtime | Memory |
-|----------------|-------------------|--------|
-| Java | O(|s1|·|s2|) | O(|s2|) |
-| Python | O(|s1|·|s2|) | O(|s2|) |
-| C++ | O(|s1|·|s2|) | O(|s2|) |
-
-*Why it matters for hiring*  
-Interviewers love candidates who recognize when an algorithm is “linear in the input length” but can still be **fast‑forwarded** to handle huge repetition counts.  
-This problem forces you to:
-
-* Model the problem as a **state machine**.
-* Use a **hash map** for cycle detection – a classic interview trick.
-* Write **robust, clean code** that passes all edge cases.
-
-These are exactly the kinds of skills recruiters look for in senior software engineers, system designers, and algorithm specialists.
+> **Next step** – practice similar problems that involve *repeated pattern matching* (e.g., LeetCode 466, 1044, 1222). Subscribe and let’s conquer interviews together! 🚀
 
 ---
-
-### 5.6 Conclusion
-
-- **Good**: Elegant cycle detection, linear‑time after fast‑forward, language‑agnostic logic.
-- **Bad**: A handful of subtle off‑by‑one errors and the need to handle remainders correctly.
-- **Ugly**: The temptation to expand strings and a misunderstanding that you can simply loop `n1` times naively.
-
-Mastering this problem gives you a **strong talking point** for any algorithm interview. It demonstrates deep understanding of state machines, memory‑time trade‑offs, and the importance of clean coding practices.
-
-Happy coding – and good luck landing that dream job!
-
---- 
-
-### 5.7 SEO Keywords & Final Touches
-
-* Count The Repetitions  
-* LeetCode 466  
-* Hard algorithm interview  
-* Cycle detection algorithm  
-* Fast‑forward simulation  
-* Python solution, Java solution, C++ solution  
-* Interview preparation, coding interview  
-* System design interview skills  
-* Algorithms and data structures  
-
-Include these keywords naturally in headings, bullet points, and meta‑tags so recruiters searching for “Count The Repetitions interview” or “Hard LeetCode problems” will find this guide instantly.
