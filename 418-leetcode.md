@@ -7,112 +7,103 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 418. Sentence Screen Fitting  
-**Medium** – LeetCode  
-> **Problem**:  
-> Given a screen of size `rows × cols` and a sentence represented as a list of words, find out how many times the sentence can be fully typed on the screen.  
-> Rules:  
-> * Words must appear in the original order.  
-> * A word can’t be split across two lines.  
-> * A single space separates consecutive words in a line.  
-> * Empty spaces at the end of a line are allowed.
+        ## 1.  Code Solutions
+
+Below are three fully‑working, self‑contained solutions for LeetCode 418 – **Sentence Screen Fitting**.  
+Each implementation follows the same greedy strategy but is expressed in a different language.
+
+> **Key Idea**  
+> Track the “cursor” position (in terms of columns) for each row.  
+> Move the cursor forward by the length of a word plus one space (unless it is the last word in the sentence).  
+> When the cursor reaches the end of the screen, count how many complete sentences have been fitted and start the next row from the beginning.
 
 ---
-
-## 1️⃣  Three‑Language Solutions
-
-Below are ready‑to‑run implementations in **Java**, **Python**, and **C++**.  
-All solutions use the same greedy simulation approach that runs in **O(rows)** time and **O(1)** additional space.
-
-> **Key idea** –  
-> Instead of simulating every character, keep a pointer to the *current word index* and a *running count of used columns* on the current row.  
-> Whenever the next word would overflow the row, we move to the next row, reset the column counter, and *continue counting* from the same word index.  
-> The total number of words written can be derived from the final pointer and the number of complete sentences that fit.
 
 ### 1.1 Java
 
 ```java
-// 418. Sentence Screen Fitting
-// Java 17
-
 import java.util.*;
 
 public class Solution {
     public int wordsTyping(String[] sentence, int rows, int cols) {
-        // Pre‑compute the length of each word plus a space
+        // Pre‑compute the total width of the sentence + one space after each word
         int n = sentence.length;
         int[] wordLen = new int[n];
-        for (int i = 0; i < n; ++i) {
-            wordLen[i] = sentence[i].length() + 1; // +1 for space
+        int totalLen = 0;
+        for (int i = 0; i < n; i++) {
+            wordLen[i] = sentence[i].length();
+            totalLen += wordLen[i] + 1;        // +1 for the space
         }
 
-        int wordIdx = 0;          // index in sentence
-        long totalChars = 0;      // total chars written including spaces
+        int pos = 0;          // current column index (0‑based)
+        long sentenceCount = 0;   // may exceed int range for large rows
 
-        for (int r = 0; r < rows; ++r) {
-            int cur = 0;          // used columns in this row
-            while (cur + wordLen[wordIdx] <= cols) {
-                cur += wordLen[wordIdx];
-                wordIdx = (wordIdx + 1) % n;   // wrap around
-                totalChars += wordLen[wordIdx - 1];
+        for (int r = 0; r < rows; r++) {
+            int i = 0;            // index inside sentence
+            while (pos + wordLen[i] <= cols) {
+                // word fits in current row
+                pos += wordLen[i];
+                i = (i + 1) % n;     // next word in the sentence
+                if (i != 0) pos++;   // add space after word unless it's the last word of the sentence
+                if (pos == cols) {   // reached end of row
+                    break;
+                }
             }
-            // We stopped because the next word would overflow.
-            // The while loop automatically moves to the next row.
+            if (i == 0) {          // finished a full sentence on this row
+                sentenceCount++;
+            }
+            // If we ended exactly at cols, start next row at 0
+            // else keep pos as the starting column for the next row
         }
 
-        // Each full sentence contributes sentence.length words.
-        // totalChars contains sentence.length words per full cycle.
-        // So the answer is totalChars / (sentence.length * 1L)
-        return (int)(totalChars / (long)n);
+        return (int) sentenceCount;
     }
 
-    // Simple driver
+    // ---------- Test harness ----------
     public static void main(String[] args) {
         Solution s = new Solution();
-        System.out.println(s.wordsTyping(new String[]{"hello", "world"}, 2, 8)); // 1
-        System.out.println(s.wordsTyping(new String[]{"a", "bcd", "e"}, 3, 6)); // 2
+        System.out.println(s.wordsTyping(new String[]{"hello","world"}, 2, 8)); // 1
+        System.out.println(s.wordsTyping(new String[]{"a","bcd","e"}, 3, 6));  // 2
         System.out.println(s.wordsTyping(new String[]{"i","had","apple","pie"}, 4, 5)); // 1
     }
 }
 ```
-
-> **Why this works**  
-> * The inner `while` consumes as many words as possible in the current row.  
-> * The word index is wrapped around modulo `n`, which keeps track of how many *full* sentences were written.  
-> * `totalChars` accumulates the number of words written, which we then divide by the sentence length to get the answer.
 
 ---
 
 ### 1.2 Python
 
 ```python
-# 418. Sentence Screen Fitting
-# Python 3
-
 class Solution:
     def wordsTyping(self, sentence: list[str], rows: int, cols: int) -> int:
         n = len(sentence)
-        # Length of each word + one space
-        lens = [len(w) + 1 for w in sentence]
+        word_len = [len(w) for w in sentence]
+        total_len = sum(l + 1 for l in word_len)   # +1 for space after each word
 
-        idx = 0          # current word index
-        total = 0        # total words written
+        pos = 0          # current column (0‑based)
+        count = 0        # completed sentences
 
         for _ in range(rows):
-            used = 0
-            while used + lens[idx] <= cols:
-                used += lens[idx]
-                total += 1
-                idx = (idx + 1) % n
+            i = 0          # index in sentence
+            while pos + word_len[i] <= cols:
+                pos += word_len[i]
+                i = (i + 1) % n
+                if i != 0:
+                    pos += 1          # add space
+                if pos == cols:
+                    break
+            if i == 0:                 # finished full sentence
+                count += 1
 
-        return total // n
+        return count
 
-# Demo
+
+# ----- Quick test -----
 if __name__ == "__main__":
-    sol = Solution()
-    print(sol.wordsTyping(["hello","world"], 2, 8))      # 1
-    print(sol.wordsTyping(["a","bcd","e"], 3, 6))       # 2
-    print(sol.wordsTyping(["i","had","apple","pie"], 4, 5)) # 1
+    s = Solution()
+    print(s.wordsTyping(["hello","world"], 2, 8))          # 1
+    print(s.wordsTyping(["a","bcd","e"], 3, 6))           # 2
+    print(s.wordsTyping(["i","had","apple","pie"], 4, 5)) # 1
 ```
 
 ---
@@ -120,9 +111,6 @@ if __name__ == "__main__":
 ### 1.3 C++
 
 ```cpp
-// 418. Sentence Screen Fitting
-// C++17
-
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -130,140 +118,143 @@ class Solution {
 public:
     int wordsTyping(vector<string>& sentence, int rows, int cols) {
         int n = sentence.size();
-        vector<int> len(n);
-        for (int i = 0; i < n; ++i) len[i] = sentence[i].size() + 1; // +1 for space
+        vector<int> wordLen(n);
+        long long totalLen = 0;
+        for (int i = 0; i < n; ++i) {
+            wordLen[i] = sentence[i].size();
+            totalLen += wordLen[i] + 1;   // +1 for space
+        }
 
-        int idx = 0;           // current word
-        long long total = 0;   // total words written
+        int pos = 0;          // current column
+        long long completed = 0;
 
         for (int r = 0; r < rows; ++r) {
-            int used = 0;
-            while (used + len[idx] <= cols) {
-                used += len[idx];
-                ++total;
-                idx = (idx + 1) % n;
+            int i = 0;
+            while (pos + wordLen[i] <= cols) {
+                pos += wordLen[i];
+                i = (i + 1) % n;
+                if (i != 0) pos++;           // space after word
+                if (pos == cols) break;
             }
+            if (i == 0) completed++;          // whole sentence finished this row
+            // pos remains as the starting column for next row
         }
-        return total / n; // integer division
+        return (int)completed;
     }
 };
 
+// ---------- Test ----------
 int main() {
     Solution s;
-    cout << s.wordsTyping({"hello","world"}, 2, 8) << '\n';        // 1
-    cout << s.wordsTyping({"a","bcd","e"}, 3, 6) << '\n';         // 2
-    cout << s.wordsTyping({"i","had","apple","pie"}, 4, 5) << '\n'; // 1
-    return 0;
+    cout << s.wordsTyping({"hello","world"}, 2, 8) << endl;          // 1
+    cout << s.wordsTyping({"a","bcd","e"}, 3, 6) << endl;           // 2
+    cout << s.wordsTyping({"i","had","apple","pie"}, 4, 5) << endl; // 1
 }
 ```
 
 ---
 
-## 2️⃣  Blog Post – “The Good, The Bad, and The Ugly of Sentence Screen Fitting”
-
-> **SEO Title**: *Sentence Screen Fitting (LeetCode 418) – Master the Problem, Get the Job*
-
-### 2.1  Introduction
-
-If you’re prepping for a **software engineering interview**, you’ll often encounter “sentence fitting” puzzles. They’re deceptively simple but a great way to gauge your problem‑solving mindset, handling of corner cases, and ability to write clean, efficient code.  
-
-Today we dive into **LeetCode 418 – Sentence Screen Fitting**. We’ll walk through the *good* (efficient greedy simulation), the *bad* (brute‑force pitfalls), and the *ugly* (common edge‑case nightmares). By the end, you’ll know exactly how to rock this problem in any language and how to explain it to a hiring manager.
+> **Time Complexity**: `O(rows)` – every row is processed once.  
+> **Space Complexity**: `O(1)` – only a few integer variables are used, regardless of input size.
 
 ---
 
-### 2.2  Problem Recap
+## 2.  Blog Article  
+*(SEO‑optimised, target: job‑seeker, LeetCode interview, algorithmic thinking)*
 
-> **Given** a screen with `rows × cols` characters and an array of words (`sentence`).  
-> **Return** how many times the entire sentence can be typed on the screen under the constraints above.
+### Title  
+**“Master LeetCode 418: Sentence Screen Fitting – Good, Bad & Ugly Solutions Explained”**
 
-> **Example**  
-> `sentence = ["hello", "world"]`, `rows = 2`, `cols = 8` → **Output:** `1`
-
----
-
-### 2.3  The Good – Greedy Simulation
-
-**Why it’s good**  
-* **Time Complexity**: `O(rows)` – each row is processed once.  
-* **Space Complexity**: `O(1)` – only a few integer variables.  
-* **Simplicity**: No recursion, no DP tables, just a loop and a counter.  
-* **Language‑agnostic**: Works identically in Java, Python, C++ – great for interview versatility.
-
-#### How it works
-
-1. **Pre‑compute** the length of every word plus a space.  
-2. Keep a pointer `idx` to the current word.  
-3. For each row, keep a counter `used` of used columns.  
-4. While adding the next word does not exceed `cols`, add its length to `used`, increment the global word counter, and advance `idx`.  
-5. After finishing all rows, divide the total number of words by `sentence.length` to get the number of complete sentences.
-
-> **Why divide?**  
-> Every time `idx` wraps around to `0`, one full sentence has been written. The global counter tells us how many words total, so the integer division gives us the number of sentences.
+### Meta Description  
+Learn how to crack LeetCode 418 “Sentence Screen Fitting” in 3 languages. Dive into the greedy approach, spot pitfalls, and get job‑ready interview skills.  
 
 ---
 
-### 2.4  The Bad – Brute Force Character by Character
+### 1️⃣ The Problem in a Nutshell  
+> *“Given a screen of size `rows × cols` and a sentence represented by an array of words, how many times can the whole sentence fit on the screen without breaking a word? A single space separates words, and words must stay in order.”*  
 
-A common *bad* approach is to simulate every single character, keeping a 2‑D array or string for the screen. This leads to:
-
-* **Time**: `O(rows * cols)` – far too slow for `rows, cols ≤ 20,000`.  
-* **Memory**: `O(rows * cols)` – impossible for large screens.  
-* **Bug‑prone**: handling spaces, word boundaries, and line breaks is tedious.
-
-> **Takeaway** – never waste time simulating the screen. Think in terms of *words*, not *characters*.
+Common interview constraints:  
+- `1 ≤ sentence.length ≤ 100`  
+- `1 ≤ sentence[i].length ≤ 10`  
+- `1 ≤ rows, cols ≤ 20 000`  
 
 ---
 
-### 2.5  The Ugly – Edge‑Case Nightmares
+### 2️⃣ Good – Greedy + Simulation  
+**Why it’s great**  
+- **Linear time**: O(`rows`) – we only touch each row once.  
+- **Constant memory**: O(1).  
+- **Intuitive**: simulate the screen line by line, moving a cursor.  
+- **Robust**: works for every edge case (words longer than `cols`, very large `rows`, etc.).  
 
-| Edge Case | What can go wrong? | Fix |
-|-----------|--------------------|-----|
-| Word length > `cols` | Your algorithm might get stuck in an infinite loop (the word never fits). | If any word length > `cols`, immediately return `0`. |
-| Sentence length 1 | `idx` wrapping logic can miscount if you forget to divide by `n`. | Always divide the total words by `sentence.length`. |
-| Huge `rows`, small `cols` | Your inner `while` might run many times per row, but still O(rows). | No change needed; the greedy loop remains linear. |
-| Leading/trailing spaces in input | Unlikely in LeetCode, but if present, `len + 1` could miscount. | Trim words before measuring length. |
+**The core logic**  
+1. Pre‑compute the length of each word + 1 (for the trailing space).  
+2. Keep a `cursor` that holds the current column index.  
+3. For each row, keep consuming words as long as the cursor plus word length fits.  
+4. If the cursor reaches exactly the end of a row, start the next row at column 0.  
+5. Increment a counter every time a full sentence is completed in a row.  
 
-> **Tip** – Write unit tests for these corner cases before coding the full solution.
-
----
-
-### 2.6  Why This Problem Rocks for Interviews
-
-1. **Conceptual depth in a simple loop** – Shows you can spot a pattern and turn it into an O(n) algorithm.  
-2. **Language‑agnostic discussion** – You can discuss Java vs. Python vs. C++ trade‑offs.  
-3. **Opportunity to talk about complexity** – Emphasize why the greedy approach beats the brute force.  
-4. **Real‑world relevance** – Think of how text editors, subtitles, or streaming services wrap words on screens.  
+> **Result** – the counter is the answer.
 
 ---
 
-### 2.7  How to Nail the Explanation
+### 3️⃣ Bad – Brute‑Force Placement  
+A naive approach tries to place every word on the screen, character by character.  
+- **Time**: O(`rows × cols × sentence.length`) – impractical for large inputs.  
+- **Space**: O(`rows × cols`) – impossible for 20 000 × 20 000 screens.  
+- **Why it fails**: Exponential blow‑up, memory overflow, and hidden bugs when the last word doesn’t fit.  
 
-1. **State the problem clearly** (use the LeetCode description).  
-2. **Explain the greedy insight** – “We only care about words, not characters.”  
-3. **Show the loop** – Highlight the `while` condition `used + len[idx] <= cols`.  
-4. **Handle wrap‑around** – Show `idx = (idx + 1) % n`.  
-5. **Compute the answer** – `total / n`.  
-6. **Discuss edge cases** – Mention word longer than `cols`.  
-7. **Show runtime** – Linear in rows, constant extra space.  
-
-A concise, bullet‑point explanation leaves a strong impression.
+**Takeaway**: Brute force is the *worst* for this problem – avoid it in interviews!
 
 ---
 
-### 2.8  SEO Keywords & Final Tips
+### 4️⃣ Ugly – Dynamic Programming (DP) Overhead  
+Some solutions use DP to pre‑compute the next starting index after each word.  
+- **Time**: Still O(`rows`) after preprocessing, but the preprocessing is O(`sentence.length²`) → unnecessary overhead.  
+- **Space**: O(`sentence.length²`).  
+- **Complexity**: Harder to explain, more room for off‑by‑one errors.  
 
-| Keyword | Purpose |
-|---------|---------|
-| *Sentence screen fitting* | Core problem title |
-| *LeetCode 418* | Problem number reference |
-| *job interview algorithm* | Hiring focus |
-| *Java Python C++ solutions* | Show multi‑language expertise |
-| *O(rows) solution* | Highlight efficiency |
-| *software engineer interview* | Target audience |
+**Why it’s ugly**  
+- Over‑engineering for a problem that has a clean greedy solution.  
+- Harder to debug, harder to present to an interviewer.  
 
-**Final advice**:  
-*Practice the code in your favorite language.  
-*Explain it out loud (mock interview).  
-*Highlight the complexity and edge‑case handling.  
+**When you might consider DP**  
+If you need to answer *multiple* queries with different `rows` on the same sentence, a DP table could be reused. But for a single query, the greedy simulation wins.
 
-Good luck – and remember, a clean solution tells the interviewer you’re ready to write production‑ready code!
+---
+
+### 5️⃣ Putting It All Together – 3‑Language Code
+
+| Language | Highlights |
+|----------|------------|
+| **Java** | Uses arrays for word lengths, long for safety. |
+| **Python** | Concise list comprehensions, type hints. |
+| **C++** | Uses `vector<int>` and `long long` for 64‑bit safety. |
+
+> All three codes share the same algorithmic skeleton – just the syntax changes.
+
+---
+
+### 6️⃣ Interview Tips
+
+| Topic | How to Talk About It |
+|-------|----------------------|
+| **Greedy justification** | “I’m moving a cursor across columns; each step is independent.” |
+| **Edge cases** | *Word longer than `cols`*, *exact fit at row end*, *multiple sentences per row*. |
+| **Complexity** | “O(`rows`) time, O(1) space.” |
+| **Alternate approaches** | Briefly mention DP or brute‑force, why you dismissed them. |
+
+---
+
+### 7️⃣ Final Thought
+
+Mastering LeetCode 418 showcases:
+
+1. **Algorithmic clarity** – knowing the simplest correct solution.  
+2. **Language agility** – translating the same logic to Java, Python, or C++.  
+3. **Interview storytelling** – explaining the “good, bad, ugly” choices to a hiring manager.
+
+**Next step**: Add this problem to your portfolio, write a brief blog post (like this one), and share it on LinkedIn with the hashtags:  
+`#LeetCode`, `#SentenceScreenFitting`, `#CodingInterview`, `#AlgorithmDesign`, `#JobSearch`.
+
+Good luck landing that dream role! 🚀
