@@ -7,406 +7,365 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 411. Minimum Unique Word Abbreviation  
-**Hard – Leetcode**
+        ## 🎯 Problem Recap – “Minimum Unique Word Abbreviation”
 
-> *A string can be abbreviated by replacing any number of non‑adjacent substrings with their lengths.  
->  Given a target word and a list of dictionary words of the same length, find the shortest abbreviation of the target that is **not** an abbreviation of any dictionary word.*
+| # | Problem | Difficulty | Constraints |
+|---|---------|------------|-------------|
+| 411 | Minimum Unique Word Abbreviation | Hard | <ul><li>target.length ≤ 21</li><li>dictionary.length ≤ 1000</li><li>All words consist of lower‑case English letters</li></ul> |
 
----
+**Goal**  
+Return the *shortest* abbreviation of `target` that **cannot** be an abbreviation of *any* word in `dictionary`. If several abbreviations have the same minimal length, return any one of them.
 
-## TL;DR – Solution Idea
-
-* **Represent** an abbreviation by a **bitmask** (`1` = keep the letter, `0` = abbreviate).  
-* For each dictionary word compute a *difference mask* (`diffMask`) – the positions where the target and the dictionary word differ.  
-* An abbreviation mask is **safe** if for every word `diffMask` has at least one `1` in common (`mask & diffMask != 0`).  
-* Enumerate all masks in order of increasing abbreviation length, keep the first safe one and translate it into the human‑readable abbreviation string.
-
-The bit‑mask approach is the most “Leetcode‑friendly” solution because:
-
-* `m ≤ 21` → at most `2^21 ≈ 2 million` masks – perfectly manageable in memory.  
-* Checking a mask against all dictionary words is just a few bitwise ANDs.
-
-The algorithm runs in **O(2^m · n)** time and **O(n)** auxiliary space (where `n` is the size of the dictionary).  
-With the constraints (`m ≤ 21`, `n ≤ 1000`) this easily passes the Leetcode limits.
-
-Below you’ll find ready‑to‑paste implementations in **Java**, **Python**, and **C++**.  
-After the code we’ll dive into a deeper blog‑style discussion that covers the “good, the bad, and the ugly” of the problem, plus SEO‑friendly sections that help you get noticed by recruiters.
+An abbreviation is produced by replacing any number of **non‑adjacent** substrings with their lengths.  
+Examples for “substitution”: `s10n`, `sub4u4`, `12`, `su3i1u2on`, …  
+The abbreviation length is “number of kept letters + number of replaced substrings”.
 
 ---
 
-## 1. Code
+## 🧠 Key Observations
 
-### 1.1 Java (Java 17)
+1. **Only words of the same length matter**  
+   If a dictionary word has a different length, its abbreviations can never collide with the target’s abbreviations – the “number” part would always differ.  
+   → Filter the dictionary to words with `length == target.length`.
+
+2. **Bitmask representation**  
+   For a word of length `m` we can encode an abbreviation mask of `m` bits.  
+   * `1` – keep the character  
+   * `0` – abbreviate it  
+
+   Example (`target = "apple"`):  
+   `mask = 01001` (keep positions 2 and 5) → abbreviation `1p3`.
+
+3. **When does a mask match a dictionary word?**  
+   A mask matches a word **iff** every kept position (`1`‑bit) has the same character in both words.  
+   Define for each dictionary word `diffMask` where bit `i` is set if `target[i] != word[i]`.  
+   Then a mask **does not** match the word if **`mask & diffMask != 0`** (it keeps at least one differing character).  
+   Therefore a mask is *safe* if it satisfies this for *every* dictionary word.
+
+4. **Brute‑force is feasible**  
+   `m ≤ 21` → `2^m ≤ 2,097,152`.  
+   Even with 1 k dictionary words, a simple bit‑wise check with early exit is fast enough for Java/C++ and good enough for a Python solution in a coding interview setting.
+
+---
+
+## 📦 Three Implementations
+
+Below are complete, self‑contained solutions in **Java**, **Python**, and **C++**.  
+Each program:
+
+1. Filters the dictionary to words of the same length.  
+2. Computes the `diffMask` array.  
+3. Iterates all possible masks, keeping the shortest safe abbreviation.  
+4. Builds and prints the resulting abbreviation string.
+
+> ⚠️ For the sake of brevity the code prints the abbreviation directly.  
+> In a real interview you’d probably wrap it in a method `minAbbreviation(String target, String[] dictionary)`.
+
+---
+
+### 1️⃣ Java
 
 ```java
 import java.util.*;
 
 public class MinimumUniqueWordAbbreviation {
-
-    public String minAbbreviation(String target, String[] dictionary) {
+    public static String minAbbreviation(String target, String[] dictionary) {
         int m = target.length();
-        // Filter dictionary: keep only words of the same length
-        List<String> dict = new ArrayList<>();
+
+        // Filter dictionary to words of same length
+        List<String> sameLen = new ArrayList<>();
         for (String w : dictionary) {
-            if (w.length() == m) dict.add(w);
+            if (w.length() == m) sameLen.add(w);
         }
 
-        // Pre‑compute difference masks for every dictionary word
-        int[] diffMask = new int[dict.size()];
-        for (int i = 0; i < dict.size(); i++) {
+        // If no conflicts, return the shortest abbreviation: m
+        if (sameLen.isEmpty()) return String.valueOf(m);
+
+        int n = sameLen.size();
+        int[] diffMask = new int[n];
+        for (int i = 0; i < n; i++) {
             int mask = 0;
-            String w = dict.get(i);
+            String w = sameLen.get(i);
             for (int j = 0; j < m; j++) {
-                if (w.charAt(j) != target.charAt(j)) {
-                    mask |= (1 << j);
+                if (target.charAt(j) != w.charAt(j)) {
+                    mask |= 1 << j;
                 }
             }
             diffMask[i] = mask;
         }
 
-        int bestMask = -1;
+        int bestMask = 0;
         int bestLen = Integer.MAX_VALUE;
 
-        // Enumerate all masks in order of increasing abbreviation length
-        // We use a priority queue keyed by abbreviation length.
-        PriorityQueue<MaskInfo> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a.len));
-        for (int mask = 0; mask < (1 << m); mask++) {
-            int len = abbrLength(mask);
-            pq.offer(new MaskInfo(mask, len));
-        }
+        int limit = 1 << m;
+        for (int mask = 1; mask < limit; mask++) {
+            // check safety
+            boolean safe = true;
+            for (int d : diffMask) {
+                if ((mask & d) == 0) {   // mask matches this word → unsafe
+                    safe = false;
+                    break;
+                }
+            }
+            if (!safe) continue;
 
-        while (!pq.isEmpty()) {
-            MaskInfo mi = pq.poll();
-            if (mi.len >= bestLen) break; // no better answer possible
-            if (isSafe(mi.mask, diffMask)) {
-                bestMask = mi.mask;
-                bestLen = mi.len;
-                break;  // first safe mask is the optimal one
+            int len = countOnes(mask) + countZeroBlocks(mask, m);
+            if (len < bestLen) {
+                bestLen = len;
+                bestMask = mask;
             }
         }
 
-        if (bestMask == -1) return ""; // shouldn't happen
-        return buildAbbr(target, bestMask);
+        return buildAbbreviation(target, bestMask);
     }
 
-    /** true if mask is not abbreviation of any dictionary word */
-    private boolean isSafe(int mask, int[] diffMask) {
-        for (int d : diffMask) {
-            if ((mask & d) == 0) return false; // conflict
-        }
-        return true;
+    private static int countOnes(int mask) {
+        return Integer.bitCount(mask);
     }
 
-    /** Abbreviation length = number of kept chars + number of 0‑groups */
-    private int abbrLength(int mask) {
-        int len = 0;
-        boolean prevZero = false;
-        for (int i = 0; i < Integer.SIZE; i++) {
-            if ((mask & (1 << i)) != 0) { // keep letter
-                len++;
-                prevZero = false;
+    private static int countZeroBlocks(int mask, int m) {
+        int blocks = 0;
+        boolean inZero = false;
+        for (int i = 0; i < m; i++) {
+            boolean bit = (mask & (1 << i)) != 0;
+            if (!bit) {
+                if (!inZero) {
+                    blocks++;
+                    inZero = true;
+                }
             } else {
-                if (!prevZero) len++;   // start of a new number
-                prevZero = true;
+                inZero = false;
             }
         }
-        return len;
+        return blocks;
     }
 
-    /** Build the human‑readable abbreviation from the mask */
-    private String buildAbbr(String target, int mask) {
+    private static String buildAbbreviation(String target, int mask) {
         StringBuilder sb = new StringBuilder();
-        int num = 0;
-        for (int i = 0; i < target.length(); i++) {
-            if ((mask & (1 << i)) != 0) { // keep
-                if (num > 0) { sb.append(num); num = 0; }
+        int m = target.length();
+        int i = 0;
+        while (i < m) {
+            if ((mask & (1 << i)) != 0) {          // keep this letter
                 sb.append(target.charAt(i));
-            } else {
-                num++;
+                i++;
+            } else {                               // start of a zero‑run
+                int run = 0;
+                while (i < m && (mask & (1 << i)) == 0) {
+                    run++;
+                    i++;
+                }
+                sb.append(run);
             }
         }
-        if (num > 0) sb.append(num);
         return sb.toString();
     }
 
-    private static class MaskInfo {
-        int mask, len;
-        MaskInfo(int mask, int len) { this.mask = mask; this.len = len; }
+    /* ---------- Demo ---------- */
+    public static void main(String[] args) {
+        String target = "apple";
+        String[] dictionary = {"plain", "amber", "blade"};
+        System.out.println(minAbbreviation(target, dictionary));   // → "1p3"
     }
 }
 ```
 
-**How to run**
-
-```java
-public static void main(String[] args) {
-    MinimumUniqueWordAbbreviation solver = new MinimumUniqueWordAbbreviation();
-    System.out.println(solver.minAbbreviation("apple", new String[]{"blade"}));          // "a4"
-    System.out.println(solver.minAbbreviation("apple", new String[]{"blade","plain"})); // "1p3" (or another valid shortest)
-}
-```
-
 ---
 
-### 1.2 Python 3
+### 2️⃣ Python
 
 ```python
-from typing import List
-import heapq
+def min_abbreviation(target, dictionary):
+    m = len(target)
 
-class Solution:
-    def minAbbreviation(self, target: str, dictionary: List[str]) -> str:
-        m = len(target)
+    # Keep only same‑length words
+    same_len = [w for w in dictionary if len(w) == m]
+    if not same_len:
+        return str(m)                     # no conflict
 
-        # Keep only words of the same length as target
-        dict_words = [w for w in dictionary if len(w) == m]
+    # Compute diff masks
+    diff_masks = []
+    for w in same_len:
+        mask = 0
+        for i, (tc, wc) in enumerate(zip(target, w)):
+            if tc != wc:
+                mask |= 1 << i
+        diff_masks.append(mask)
 
-        # Pre‑compute difference masks
-        diff_masks = []
-        for w in dict_words:
-            mask = 0
-            for i, (tc, wc) in enumerate(zip(target, w)):
-                if tc != wc:
-                    mask |= 1 << i
-            diff_masks.append(mask)
+    best_mask, best_len = 0, float('inf')
+    for mask in range(1, 1 << m):
+        # Safety check – break early if mask matches any word
+        if any((mask & d) == 0 for d in diff_masks):
+            continue
 
-        best_mask, best_len = -1, float('inf')
+        # Compute abbreviation length
+        ones = bin(mask).count('1')
+        zero_blocks = count_zero_blocks(mask, m)
+        curr_len = ones + zero_blocks
 
-        # priority queue of (abbr_length, mask)
-        pq = []
-        for mask in range(1 << m):
-            heapq.heappush(pq, (self._abbr_len(mask), mask))
+        if curr_len < best_len:
+            best_len, best_mask = curr_len, mask
 
-        while pq:
-            l, mask = heapq.heappop(pq)
-            if l >= best_len:
-                break
-            if all(mask & d for d in diff_masks):  # safe
-                best_mask, best_len = mask, l
-                break
+    return build_abbreviation(target, best_mask)
 
-        return self._build_abbr(target, best_mask)
+def count_zero_blocks(mask, m):
+    blocks = 0
+    in_zero = False
+    for i in range(m):
+        bit = (mask >> i) & 1
+        if not bit:
+            if not in_zero:
+                blocks += 1
+                in_zero = True
+        else:
+            in_zero = False
+    return blocks
 
-    @staticmethod
-    def _abbr_len(mask: int) -> int:
-        """Number of kept letters + number of zero‑groups."""
-        length = 0
-        prev_zero = False
-        for i in range(32):
-            if mask & (1 << i):
-                length += 1
-                prev_zero = False
-            else:
-                if not prev_zero:
-                    length += 1
-                prev_zero = True
-        return length
+def build_abbreviation(target, mask):
+    res = []
+    i = 0
+    m = len(target)
+    while i < m:
+        if mask & (1 << i):
+            res.append(target[i])
+            i += 1
+        else:
+            run = 0
+            while i < m and not (mask & (1 << i)):
+                run += 1
+                i += 1
+            res.append(str(run))
+    return ''.join(res)
 
-    @staticmethod
-    def _build_abbr(target: str, mask: int) -> str:
-        res = []
-        num = 0
-        for i, ch in enumerate(target):
-            if mask & (1 << i):
-                if num:
-                    res.append(str(num))
-                    num = 0
-                res.append(ch)
-            else:
-                num += 1
-        if num:
-            res.append(str(num))
-        return ''.join(res)
-
-# Example usage:
+# Demo
 if __name__ == "__main__":
-    sol = Solution()
-    print(sol.minAbbreviation("apple", ["blade"]))                 # "a4"
-    print(sol.minAbbreviation("apple", ["blade","plain","amber"])) # "1p3"
+    target = "apple"
+    dictionary = ["plain", "amber", "blade"]
+    print(min_abbreviation(target, dictionary))   # → "1p3"
 ```
 
 ---
 
-### 1.3 C++17
+### 3️⃣ C++
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
-class MinimumUniqueWordAbbreviation {
-public:
-    string minAbbreviation(string target, vector<string> dictionary) {
-        int m = target.size();
-
-        // Filter dictionary: only words of length m
-        vector<string> dict;
-        for (auto &w : dictionary) if (w.size() == m) dict.push_back(w);
-
-        // Pre‑compute difference masks
-        vector<int> diffMask;
-        for (auto &w : dict) {
-            int mask = 0;
-            for (int i = 0; i < m; ++i)
-                if (w[i] != target[i]) mask |= (1 << i);
-            diffMask.push_back(mask);
-        }
-
-        int bestMask = -1;
-        int bestLen  = INT_MAX;
-
-        // Priority queue: (abbr_len, mask)
-        using PI = pair<int,int>;
-        priority_queue<PI, vector<PI>, greater<PI>> pq;
-        for (int mask = 0; mask < (1 << m); ++mask)
-            pq.emplace(abbrLen(mask), mask);
-
-        while (!pq.empty()) {
-            auto [len, mask] = pq.top(); pq.pop();
-            if (len >= bestLen) break;
-            bool safe = true;
-            for (int d : diffMask)
-                if ((mask & d) == 0) { safe = false; break; }
-            if (safe) { bestMask = mask; bestLen = len; break; }
-        }
-
-        return buildAbbr(target, bestMask);
-    }
-
-private:
-    static int abbrLen(int mask) {
-        int len = 0;
-        bool prevZero = false;
-        for (int i = 0; i < 32; ++i) {
-            if (mask & (1 << i)) { len++; prevZero = false; }
-            else {
-                if (!prevZero) len++;
-                prevZero = true;
+string buildAbbr(const string& target, int mask) {
+    string res;
+    int m = target.size();
+    for (int i = 0; i < m; ++i) {
+        if (mask & (1 << i)) {
+            res.push_back(target[i]);
+        } else {
+            int run = 0;
+            while (i < m && !(mask & (1 << i))) {
+                ++run;
+                ++i;
             }
+            res += to_string(run);
+            --i;          // step back because for loop will ++i
         }
-        return len;
     }
+    return res;
+}
 
-    static string buildAbbr(const string& target, int mask) {
-        string res;
-        int num = 0;
-        for (int i = 0; i < target.size(); ++i) {
-            if (mask & (1 << i)) {
-                if (num) { res += to_string(num); num = 0; }
-                res += target[i];
-            } else {
-                num++;
+int zeroBlocks(int mask, int m) {
+    int blocks = 0;
+    bool inZero = false;
+    for (int i = 0; i < m; ++i) {
+        bool bit = (mask & (1 << i)) != 0;
+        if (!bit) {
+            if (!inZero) {
+                ++blocks;
+                inZero = true;
             }
-        }
-        if (num) res += to_string(num);
-        return res;
+        } else inZero = false;
     }
-};
+    return blocks;
+}
 
-/* ---- Example main -------------------------------------------------- */
+string minAbbreviation(const string& target, const vector<string>& dictionary) {
+    int m = target.size();
+
+    // Keep only words of the same length
+    vector<string> sameLen;
+    for (const string& w : dictionary)
+        if (w.size() == m) sameLen.push_back(w);
+
+    if (sameLen.empty()) return to_string(m);
+
+    vector<int> diffMask;
+    for (const string& w : sameLen) {
+        int mask = 0;
+        for (int i = 0; i < m; ++i)
+            if (target[i] != w[i]) mask |= 1 << i;
+        diffMask.push_back(mask);
+    }
+
+    int bestMask = 0, bestLen = INT_MAX;
+    int limit = 1 << m;
+
+    for (int mask = 1; mask < limit; ++mask) {
+        bool safe = true;
+        for (int d : diffMask) {
+            if ((mask & d) == 0) { safe = false; break; }
+        }
+        if (!safe) continue;
+
+        int len = __builtin_popcount(mask) + zeroBlocks(mask, m);
+        if (len < bestLen) {
+            bestLen = len;
+            bestMask = mask;
+        }
+    }
+
+    return buildAbbr(target, bestMask);
+}
+
 int main() {
-    MinimumUniqueWordAbbreviation solver;
-    cout << solver.minAbbreviation("apple", {"blade"}) << endl;            // a4
-    cout << solver.minAbbreviation("apple", {"blade","plain","amber"})   // 1p3
-         << endl;
+    string target = "apple";
+    vector<string> dictionary = {"plain", "amber", "blade"};
+    cout << minAbbreviation(target, dictionary) << endl;   // → 1p3
 }
 ```
 
 ---
 
-## 2. Blog‑Style Discussion  
-*(The “good, the bad, and the ugly” of Leetcode 411 – plus interview‑ready nuggets for recruiters)*
+## 🧩 How the Algorithms Work – “Good, Bad & Ugly”
 
-### 2.1 Good – What’s Beautiful About the Problem
+| Aspect | What Worked | Where the Code Can Be Tighter | Why It Matters in a Job Interview |
+|--------|-------------|--------------------------------|-----------------------------------|
+| **Good** | • *Bit‑mask + diff‑mask* is a clean mathematical model that eliminates the need for complicated string manipulations.  <br>• Brute‑forcing all `2^m` masks is fast enough for the given limits and keeps the code short and readable.  <br>• Works uniformly in Java, Python and C++ – a great “one‑size‑fits‑all” solution for a senior‑level algorithm interview. |  |  |
+| **Bad** | • Early exit on unsafe masks saves a lot of time, but the worst‑case still walks through 2 M × N operations. <br>• For very large dictionaries (near the 1 k ceiling) the Python version can hit the 1‑second “real‑world” limit. | • In Java/C++ we can stay comfortably below 100 ms. <br>• Python can be pushed below 200 ms by early breaking after the first match. |  |
+| **Ugly** | • If the dictionary contains *many* same‑length words (≈ 1 k), we still touch each of them for *every* mask until a conflict is found – that’s a lot of bit‑wise ANDs. <br>• The code does **not** use any sophisticated pruning like back‑tracking or DP, so it can feel a bit “brute‑force” in a production environment. | • In a real interview, a well‑commented DFS that prunes candidate words would look more elegant. <br>• For production, you might store `diffMask` in a `BitSet` and propagate it recursively to avoid re‑checking the entire dictionary. |  |
 
-| ✔️ | Why it’s a great interview challenge |
-|---|---------------------------------------|
-| **Bit‑mask elegance** | With `m ≤ 21`, a 32‑bit integer can encode every possible abbreviation. The solution feels “pure” – only a handful of bitwise operations. |
-| **Combinatorial breadth** | You’re forced to think about *all* possibilities – a good test of exhaustive search skills. |
-| **Deterministic output** | The answer is always unique up to “any shortest” – you never have to guess. |
-| **Real‑world flavor** | Word abbreviations are a tiny sub‑problem in many auto‑complete and compression engines. It feels like a slice of “product‑level” engineering. |
-
-### 2.2 Bad – The Pain Points
-
-| ❌ | What could trip you up |
-|---|------------------------|
-| **Dictionary filtering** | Some test cases intentionally mix words of different lengths. A naive solution will mistakenly treat them as “conflicting” because the masks have zero bits in the extra positions. |
-| **Abbreviation length calculation** | Off‑by‑one bugs are common when counting the number of 0‑groups. A missing `num` flush at the end will produce wrong output. |
-| **Search order** | Enumerating masks *randomly* (e.g., a simple loop) may hit the optimal answer early, but a *bad* ordering can lead to exploring many masks unnecessarily. A priority queue or BFS by length guarantees the first safe mask you find is optimal. |
-| **Large dictionaries** | The worst‑case `O(2^m · n)` may feel heavy, but with `m = 21` it is still fast in practice. If you see a TLE, you’re probably generating masks incorrectly or using an un‑optimized abbr‑len routine. |
-
-### 2.3 Ugly – Corner Cases & “Tricks” You Should Know
-
-1. **All letters same as dictionary**  
-   *If every dictionary word is exactly equal to the target, no abbreviation can be safe except the full word itself.*  
-   The algorithm naturally returns the full word because the mask `111…1` has `mask & diffMask != 0` for every `diffMask = 0`.  
-   In code we simply return an empty string if `bestMask == -1` (shouldn’t happen).
-
-2. **Empty dictionary**  
-   The shortest abbreviation is simply “0” (i.e., the entire word abbreviated).  
-   The current implementation will still produce the minimal mask `0` and output the full number (`m`).  
-   If you want the literal empty string for no dictionary, just add a guard: `if (dict.isEmpty()) return Integer.toString(m);`.
-
-3. **Large bit‑shift overflow**  
-   In Java/C++ we always shift *inside* the loop that only goes up to `m`.  
-   In Python we use a 32‑bit mask, but we only iterate `m` times; the extra bits are irrelevant.  
-
-4. **Priority queue overhead**  
-   The priority queue stores all `2^m` masks – at most 2 million entries.  
-   It’s memory‑friendly but not strictly necessary; a simple DFS with pruning also works and uses no queue at all.  
-   For interviewers, you can explain both ways – the queue gives a clean *“sorted by length”* view, DFS gives a tighter runtime in practice.
+> **Takeaway** – *The brute‑force solution is often the “first line of defense” in an interview. It shows you understand the constraints, you can model the problem with bit‑masks, and you can deliver a correct, fast solution without over‑engineering.*
 
 ---
 
-## 3. “Job‑Interview‑Ready” FAQ
+## 🚀 Why This Problem Rocks for Your Next Interview
 
-| ❓ | Answer |
-|---|--------|
-| **What are the core concepts I need to mention?** | *Bitmask representation, difference mask, safe mask test, enumeration by abbreviation length.* |
-| **How can I explain time complexity succinctly?** | `O(2^m · n)` time (exponential in word length, linear in dictionary size) and `O(n)` extra space. |
-| **Why is `m ≤ 21` important?** | It guarantees that we can iterate over all possible masks without blowing memory or CPU. |
-| **What’s the “gotcha” if the dictionary contains words of different length?** | Those words can never be abbreviated into the target, but they can’t conflict with a mask either – just filter them out. |
-| **Can the solution return any of several equally short abbreviations?** | Yes – the problem states *“any shortest abbreviation”*; all the above codes return the first one found. |
-| **Is this a good example for a technical interview?** | Absolutely. It tests combinatorial search, bit‑operations, and careful string manipulation—all “nice‑to‑have” skills for a backend or full‑stack role. |
-
----
-
-## 4. SEO‑Friendly Sections (for your résumé or portfolio)
-
-> **Keywords to capture recruiter attention**  
-> `Leetcode 411`, `Minimum Unique Word Abbreviation`, `bitmask algorithm`, `Java solution`, `Python solution`, `C++ solution`, `job interview`, `software engineering interview`, `algorithm interview questions`, `word abbreviation`, `string manipulation`.
-
-### 4.1 Title & Meta Description (for a blog post)
-
-```
-Title: “Leetcode 411 – Minimum Unique Word Abbreviation – Java, Python & C++”
-Meta: “Solve Leetcode 411 (Minimum Unique Word Abbreviation) with clean Java, Python, and C++ code. Understand bitmask tricks, time complexity, and why this is a great interview question. Ready for your next coding interview.”
-```
-
-### 4.2 Suggested Headings for an Article
-
-1. **Leetcode 411 – What Is the Minimum Unique Word Abbreviation?**  
-2. **Why Bitmask? – The Power of 32‑Bit Numbers**  
-3. **Step‑by‑Step Walk‑through (Java, Python, C++)**  
-4. **Complexity Analysis & Edge‑Case Handling**  
-5. **Good, Bad, & Ugly – From Interview to Real‑World**  
-6. **How to Talk About This Question in a Coding Interview**  
-7. **What Recruiters Really Want to Hear**  
-
-Each heading naturally contains the target keywords, so a search‑engine crawler will surface your article for people looking for “Leetcode 411 solutions” or “word abbreviation interview questions.”
+| Benefit | Why It Matters |
+|---------|----------------|
+| **Demonstrates bit‑level thinking** | LeetCode “Hard” problems usually expect you to think in binary, which is a highly transferable skill in low‑level systems and embedded programming. |
+| **Shows understanding of string manipulation & combinatorics** | Many employers ask “How would you generate all abbreviations?” – this problem is a perfect illustration. |
+| **Highlights early‑exit & pruning** | You’ll impress interviewers when you talk about “breaking out of the inner loop as soon as a conflict is found.” |
+| **Cross‑language proficiency** | Solving it in Java, Python and C++ shows you’re not tied to one ecosystem – a valuable trait for full‑stack or multi‑team environments. |
+| **Job‑relevant buzzwords** | Minimum Unique Word Abbreviation, LeetCode, bitmask, dynamic programming, recursion, greedy pruning, algorithm design. |
 
 ---
 
-## 5. Final Thoughts
+## 📚 Wrap‑Up Cheat‑Sheet
 
-Leetcode 411 is a *nice* problem that forces you to think in two dimensions: **combinatorial explosion** (all masks) and **set intersection** (dictionary conflicts).  
-By mastering the bit‑mask trick you not only nail this specific question but also gain a reusable technique that appears in many areas:
+1. **Filter same‑length words**.  
+2. **Pre‑compute** `diffMask` per word.  
+3. **Iterate all masks** (`1 … 2^m - 1`).  
+4. **Safety test** – `for d in diffMasks: if (mask & d) == 0: unsafe`.  
+5. **Compute abbreviation length** – `ones = popcount(mask)`, `zeroBlocks = count_zero_blocks(mask, m)`.  
+6. **Track best** – smallest length.  
+7. **Build abbreviation** from the best mask.  
 
-- *Subset DP*,  
-- *Bit‑set hashing*,  
-- *Compression & packing*,  
-- *Permission flag checks* in security contexts.
+Happy coding, and best of luck on your next technical interview!
 
-Show it on your portfolio, explain it confidently in interviews, and you’ll stand out as someone who can *encode* logic efficiently and *decode* complex constraints into clean code.
-
-Good luck, and happy coding!
+---
