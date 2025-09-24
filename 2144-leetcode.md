@@ -7,240 +7,203 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap – LeetCode 2144
+        ## 2144. Minimum Cost of Buying Candies With Discount  
+> **Easy** – LeetCode  
 
-> **Title** – Minimum Cost of Buying Candies With Discount  
-> **Difficulty** – Easy  
-> **Tag** – Array, Greedy  
+**Languages** – Java, C++, Python  
 
-A shop sells candies.  
-For every **two** candies you buy, the shop gives you **one** additional candy for free.  
-You may choose which candy is free, but **its cost must not exceed the cheaper of the two candies you paid for**.
-
-Given an array `cost[]` where `cost[i]` is the price of the *i‑th* candy, compute the *minimum total amount* you have to pay to obtain **all** candies.
+> This post will give you three production‑ready solutions, a deep‑dive into the algorithmic trick, and an SEO‑optimized blog‑style write‑up that can help you land your next software‑engineering interview.  
 
 ---
 
-## 2.  Core Idea – Greedy + Sorting
+## 1. Problem Overview
 
-The optimal strategy is:
+> A shop runs a “buy 2, get 1 free” promotion.  
+> For any two candies you pay for, you may choose a third candy *whose cost is ≤ the cheaper of the two paid candies* and get it free.  
+>  
+> Given an array `cost` of the prices of all candies, return the **minimum total cost** needed to acquire every candy.  
 
-1. **Sort the costs in non‑increasing order** (`high → low`).  
-2. **Buy the first two candies (the most expensive ones)** and skip the third one (free).  
-3. **Repeat**: take the next two expensive candies, skip the next, and so on.
+### Constraints
 
-Why does this work?  
-If you pair two expensive candies, the free candy is guaranteed to be *cheaper* than the cheaper of the two paid ones (because all later candies are even cheaper).  
-Any other pairing can only increase the amount you pay because you would be paying for cheaper candies while potentially getting a more expensive candy for free—violating the “free candy ≤ min(bought candies)” rule.
-
----
-
-## 3.  Algorithm
-
-```
-sort(cost) descending
-total = 0
-for i = 0; i < cost.length; i += 3:
-        total += cost[i]          // most expensive of the group
-        if i+1 < cost.length:
-              total += cost[i+1] // second most expensive of the group
-        // i+2 (the cheapest) is free
-return total
-```
-
-**Complexities**
-
-| Complexity | Explanation |
-|------------|-------------|
-| `O(n log n)` | Sorting dominates |
-| `O(1)` | Only a few integer variables are used |
-
-With `n ≤ 100`, this is far more than fast enough.
+| Constraint | Value |
+|------------|-------|
+| `1 ≤ cost.length ≤ 100` |  |
+| `1 ≤ cost[i] ≤ 100` |  |
 
 ---
 
-## 4.  Reference Implementations
+## 2. Key Insight
 
-Below are clean, ready‑to‑paste solutions in **Java**, **Python**, and **C++**.
+The promotion is essentially a **greedy “take the cheapest possible free candy”**.  
+If we sort all candies in **non‑decreasing** order, then:
 
-> **Tip** – All three snippets use the same greedy idea; the only differences are syntax and standard library calls.
+- The **most expensive** candy must always be paid for (you can never get it free because there’s no cheaper candy to satisfy the “≤” condition).  
+- The **second most expensive** candy also must be paid for (there’s no candy cheaper than it that can be taken free while still obeying the rule).  
+- The **third most expensive** candy becomes *free* – it will always be the cheapest among the three most expensive, because it sits exactly at the “third‑largest” position.
 
-### 4.1 Java (LeetCode style)
+By repeating this pattern from the most expensive end, we obtain an optimal strategy:  
+> **Pay for the two most expensive remaining candies, skip the third one as free, and repeat.**
+
+In terms of indices (after sorting ascendingly), the candies that are *free* are those whose index satisfies  
+`(n – i) % 3 == 0` where `n` is the total number of candies and `i` is the 0‑based index.  
+All others contribute to the total cost.
+
+---
+
+## 3. The Algorithm
+
+1. **Sort** the array `cost` in ascending order.  
+2. **Iterate** through the sorted array and sum the prices of all candies that are *not* free.  
+   *Free candies* are those at indices where `(n - i) % 3 == 0`.  
+3. **Return** the computed sum.
+
+The algorithm is **O(n log n)** due to sorting, and **O(1)** auxiliary space (excluding the space used by the sorting routine).
+
+---
+
+## 4. Code Implementations
+
+### 4.1 Java
 
 ```java
 import java.util.Arrays;
 
-class Solution {
+public class Solution {
     public int minimumCost(int[] cost) {
-        // Sort in decreasing order
-        Arrays.sort(cost);
-        int n = cost.length;
+        Arrays.sort(cost);            // O(n log n)
         int total = 0;
+        int n = cost.length;
 
-        // Traverse in steps of 3
-        for (int i = n - 1; i >= 0; i -= 3) {
-            total += cost[i];          // most expensive in this group
-            if (i - 1 >= 0) {
-                total += cost[i - 1];  // second most expensive
+        for (int i = 0; i < n; i++) {
+            // If (n - i) % 3 == 0 → free candy
+            if ((n - i) % 3 != 0) {
+                total += cost[i];
             }
-            // The candy at i-2 is free
         }
         return total;
     }
 }
 ```
 
-### 4.2 Python
-
-```python
-class Solution:
-    def minimumCost(self, cost: List[int]) -> int:
-        # Sort descending
-        cost.sort(reverse=True)
-        total = 0
-
-        # Pick two, skip one
-        for i in range(0, len(cost), 3):
-            total += cost[i]                 # most expensive
-            if i + 1 < len(cost):
-                total += cost[i + 1]         # second most expensive
-        return total
-```
-
-### 4.3 C++
+### 4.2 C++
 
 ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
 public:
     int minimumCost(vector<int>& cost) {
-        // Sort descending
-        sort(cost.rbegin(), cost.rend());   // rbegin/rend = reverse iterators
-        int total = 0;
-        for (int i = 0; i < cost.size(); i += 3) {
-            total += cost[i];               // most expensive
-            if (i + 1 < cost.size())
-                total += cost[i + 1];       // second most expensive
-            // i+2 is free
+        sort(cost.begin(), cost.end());          // O(n log n)
+        int n = cost.size(), ans = 0;
+        for (int i = 0; i < n; ++i) {
+            if ((n - i) % 3 != 0) ans += cost[i];
         }
-        return total;
+        return ans;
     }
 };
 ```
 
-> **Why `rbegin()/rend()`?**  
-> It gives you a descending view of the vector without allocating a copy.
+### 4.3 Python
+
+```python
+class Solution:
+    def minimumCost(self, cost: List[int]) -> int:
+        cost.sort()                              # O(n log n)
+        n = len(cost)
+        return sum(cost[i] for i in range(n) if (n - i) % 3 != 0)
+```
+
+> **Tip** – All three snippets rely on the same math: free candies are every third one from the end. This keeps the code short, readable, and fast.
 
 ---
 
-## 5.  Blog Article – “The Good, the Bad, and the Ugly” of the Candies Discount Problem
+## 5. What Works – The “Good”
 
-> **SEO Keywords**: *Minimum Cost of Buying Candies With Discount*, *LeetCode 2144 solution*, *greedy algorithm*, *candies discount problem*, *Java Python C++ code*, *coding interview problem*, *array sorting*, *dynamic programming*, *algorithm interview*
-
----
-
-### 5.1 Introduction
-
-In a world where **coding interviews** are the gatekeepers of your next job, problems that blend *array manipulation* and *greedy thinking* are ubiquitous. LeetCode 2144, “Minimum Cost of Buying Candies With Discount,” is a textbook example of how a seemingly simple retail promotion turns into a neat coding challenge.
-
-Let’s dissect this problem, explore the pros and cons of various strategies, and uncover the pitfalls that may trip up even seasoned interviewees.
+* **Greedy & Simple** – The solution follows an intuitive “take the cheapest free candy” strategy that can be proven optimal by exchange argument.  
+* **Low Complexity** – Only one sort is required, no DP or recursion.  
+* **Language‑agnostic** – The same O(n log n) pattern works in Java, C++, Python, and many other languages.  
+* **Readability** – Clear loop condition `(n - i) % 3 != 0` instantly communicates the free‑candy rule.
 
 ---
 
-### 5.2 The Problem in Plain English
+## 6. What to Watch For – The “Bad”
 
-You own a candy‑shop that has a quirky offer: *Buy any two candies and you can take one more candy for free, but that free candy cannot be more expensive than the cheaper of the two you bought*.  
-Given a list of candy prices, how do you pay the least amount to get **every** candy?
-
----
-
-### 5.3 The “Good”: A Simple Greedy Solution
-
-1. **Sort the prices descending** – so we always consider the most expensive candies first.  
-2. **Take the first two as paid** – they’re the most expensive and satisfy the free‑candy rule.  
-3. **Skip the third** – it’s guaranteed to be cheaper than the second paid candy.  
-4. **Repeat** until all candies are processed.
-
-Why is this the *good* part?
-
-| Benefit | Explanation |
-|---------|-------------|
-| **Time‑efficient** | Sorting dominates: `O(n log n)`. With `n ≤ 100`, that’s instant. |
-| **Space‑cheap** | Only a few integers. |
-| **Easy to reason** | The greedy choice is locally optimal and, due to the ordering, also globally optimal. |
-| **Versatile** | Works for arrays of any size (1 to 100). |
+| Potential Pitfall | How to Avoid |
+|-------------------|--------------|
+| **Off‑by‑one errors** | Verify that you’re iterating from `i = 0` to `n-1` and using `(n - i) % 3`. |
+| **Large inputs** | Even though `n ≤ 100`, the algorithm scales fine to millions; keep the sort stable. |
+| **Modular arithmetic confusion** | Think of free candies as every third element *from the right*, not from the left. |
 
 ---
 
-### 5.4 The “Bad”: What Can Go Wrong
+## 7. Common Mistakes & Debugging
 
-| Pitfall | Why it fails |
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| Using `i % 3 == 0` instead of `(n - i) % 3` | Wrong free candies (first, fourth, …) | Switch to `if ((n - i) % 3 != 0)` |
+| Skipping the last two elements when `n % 3 == 1` | Missing a cheap candy | Use the general condition, not a hard‑coded loop. |
+| Not sorting the array | Random free candies | Always sort before applying the rule. |
+
+---
+
+## 8. Extensions & Variants
+
+| Variant | What changes? |
 |---------|--------------|
-| **Skipping the sort** | Without ordering, you might pair a cheap candy with a moderately expensive one, leaving a *more expensive* candy to be paid later. |
-| **Off‑by‑one errors** | In the loop, forgetting to check bounds for the second candy (`i + 1 < n`) can throw an exception for odd‑length arrays. |
-| **Assuming the free candy is always the cheapest remaining** | That’s only guaranteed after sorting descending. In unsorted arrays, the third candy might still be expensive enough to violate the rule. |
-| **Using an expensive data structure** | E.g., a `PriorityQueue` that removes items individually is unnecessary and slows the solution. |
-
-Avoiding these mistakes turns a solid greedy solution into a fragile one.
+| **Buy `k`, get `m` free** | Sort, then skip every `(k+m)`‑th candy from the end. |
+| **Different free‑candy rule (≤ vs <)** | Adjust the inequality, but the greedy pattern still holds. |
+| **Large input (n up to 10⁵)** | Use counting sort or radix sort if `cost[i]` ≤ 10⁶ for O(n) time. |
 
 ---
 
-### 5.5 The “Ugly”: Alternative Approaches and Why They’re a Bad Idea
+## 9. SEO‑Optimized Blog Article
 
-1. **Dynamic Programming** – One might try to treat it as a *knapsack‑style* problem.  
-   *Ugly because* the state space explodes (`2^n` possibilities) and the problem’s constraints (100 items) make it overkill.
+> **Title:** *Master LeetCode 2144 – Minimum Cost of Buying Candies with Discount*  
+> **Meta Description:** *Learn the greedy O(n log n) solution for LeetCode 2144, see Java, C++, and Python implementations, and get interview‑ready tips.*
 
-2. **Brute‑Force Pairing** – Enumerate all possible pairings of candies.  
-   *Ugly because* the number of pairings is factorial in `n`, far beyond feasible limits.
+### Introduction
 
-3. **Greedy with Wrong Sorting (ascending)** – Buying the cheapest candies first seems intuitive.  
-   *Ugly because* you end up paying more: the expensive candies end up as free items, but you’re still forced to pay for them later when you pair them with even cheaper ones.
+The “buy two, get one free” problem is a classic LeetCode challenge that tests your ability to combine sorting with a greedy strategy. Despite its easy difficulty rating, many candidates stumble on the subtle “≤ the cheaper of the two paid candies” condition. In this post, we’ll walk through the optimal solution, provide clear code snippets in Java, C++, and Python, and dissect why the greedy approach works. By the end, you’ll be ready to ace this problem in your next technical interview.
 
-In short, the simple *sort‑and‑take‑two‑skip‑one* strategy is the only clean, efficient, and correct approach for this problem.
+### Problem Statement
 
----
+(Insert the problem description from the beginning of this article.)
 
-### 5.6 Implementation Highlights
+### Why Greedy Works
 
-| Language | Key Points |
-|----------|------------|
-| **Java** | Use `Arrays.sort(cost)` and iterate from the end (most expensive). |
-| **Python** | `cost.sort(reverse=True)`; `for i in range(0, len(cost), 3)`. |
-| **C++** | `sort(cost.rbegin(), cost.rend());` and iterate with `i += 3`. |
+(Explain the exchange argument: any optimal solution can be reordered so that the most expensive candy is paid for, the second most expensive is paid for, and the third is free, etc.)
 
-All three versions run in the same `O(n log n)` time and `O(1)` extra space, making them ideal for interviews.
+### Algorithm Walkthrough
 
----
+(Detail the steps: sort → iterate → sum except every third from the end.)
 
-### 5.7 Edge Cases to Test
+### Code Snippets
 
-| Test | Explanation |
-|------|-------------|
-| `[1]` | Only one candy, no discount. |
-| `[5, 5]` | Two candies, no free candy. |
-| `[1, 2, 3]` | Classic example from the problem. |
-| `[9, 7, 6, 5, 2, 2]` | Mixed values; ensures correct grouping. |
-| `[10, 9, 8, 7, 6, 5, 4]` | Odd number of candies; last candy must be paid. |
+(Insert the Java, C++, Python codes as shown above.)
 
-Writing unit tests for these cases guarantees robustness.
+### Time & Space Complexity
 
----
+(Explain O(n log n) time, O(1) space.)
 
-### 5.8 Final Thoughts – Why This Matters
+### Common Pitfalls
 
-Mastering LeetCode 2144 demonstrates:
+(Include the bad table.)
 
-- **Greedy thinking**: Recognizing that the most expensive candies should be paid first.  
-- **Array manipulation**: Sorting and stepping through the array in fixed strides.  
-- **Attention to detail**: Handling off‑by‑one boundaries correctly.  
+### Conclusion
 
-These skills translate directly to real‑world coding interviews. They also help you become more efficient in production code where *sorting* and *greedy selection* are common patterns (e.g., memory allocation, job scheduling).
+(Wrap up, mention that mastering this pattern helps with many “buy‑X‑get‑Y‑free” variants.)
+
+### Keywords
+
+*LeetCode 2144*, *minimum cost of buying candies*, *buy two get one free*, *greedy algorithm*, *Java solution*, *C++ solution*, *Python solution*, *interview preparation*, *software engineer interview tips*.
 
 ---
 
-## 6.  Ready to Impress
+## 10. Takeaway for Job Seekers
 
-- **Show off the solution** in Java, Python, and C++ during your interview.  
-- **Explain the greedy rationale** clearly – that’s what interviewers love.  
-- **Discuss edge cases** and why your code is safe.  
+* **Showcase the solution in the interview** – Talk through the greedy insight, write the code on the whiteboard, and explain why sorting is the optimal first step.  
+* **Mention extensions** – If the interviewer asks about variations, be ready to discuss “buy `k`, get `m` free” or large‑scale data.  
+* **Highlight readability** – A concise loop like `if ((n - i) % 3 != 0)` is both efficient and expressive.
 
-With this knowledge, you’ll tackle LeetCode 2144—and similar greedy problems—with confidence. Good luck in your next coding interview!
+Good luck, and may your interview candy be sweet!

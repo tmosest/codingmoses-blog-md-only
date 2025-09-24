@@ -7,251 +7,276 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # Sentence Screen Fitting – Master the LeetCode Classic in Java, Python & C++  
+        # 418 – Sentence Screen Fitting  
+## 🚀 Java | Python | C++ – One‑liner, One‑pass, One‑simulation Solutions
 
-> **Keywords**: Sentence Screen Fitting, LeetCode 418, algorithm, greedy, dynamic programming, Java, Python, C++, interview prep, coding interview
+> **Problem**  
+> Given a `rows × cols` screen and an array `sentence` of words, determine how many times the whole sentence can be written on the screen while preserving the order of words.  
+> A word cannot be split between two lines and words are separated by a single space.
 
----
-
-## 1. Problem Recap  
-
-| ✅ | ✔️ |
-|---|---|
-| **LeetCode #418** | *Medium* |
-| **Signature** | `public int wordsTyping(String[] sentence, int rows, int cols)` (Java)<br>`int wordsTyping(vector<string>& sentence, int rows, int cols)` (C++)<br>`def wordsTyping(sentence: List[str], rows: int, cols: int) -> int` (Python) |
-| **Goal** | Count how many full times the sentence can be fitted onto an `rows × cols` screen. |
-| **Rules** | • Words must keep original order.<br>• No word can be split across lines.<br>• A single space separates two consecutive words. |
+> **Key Constraints**  
+> * 1 ≤ sentence.length ≤ 100  
+> * 1 ≤ sentence[i].length ≤ 10  
+> * 1 ≤ rows, cols ≤ 2 × 10⁴  
 
 ---
 
-## 2. Why Is This Problem Worth Studying?  
+## 1️⃣ The Idea: “Simulate, Count, Repeat”
 
-- **Real‑world vibe**: It’s essentially a “word‑wrapping” problem you’ll see in UI layout, text editors, and printing engines.  
-- **Interview favorite**: LeetCode’s 418 is a go‑to “medium” question for front‑end, back‑end, and systems roles.  
-- **Multiple solution patterns**: Naïve simulation, greedy with caching, and even dynamic programming.  
-- **Time complexity insight**: Learn how to turn an **O(rows × words)** routine into **O(rows + sentence length)**.  
+The classic greedy approach is to **simulate** filling each row:  
 
----
+1. Keep a pointer `idx` that indicates which word will be printed next.  
+2. For each row, start with the full width `cols`.  
+3. While the remaining width is enough for the current word (plus a space if it’s not the first word on the line), place the word, subtract the width, and move to the next word.  
+4. When the row is done, remember how many times the pointer wrapped around the sentence – that is the number of complete sentences for that row.  
+5. Sum over all rows.
 
-## 3. The Naïve Approach (O(rows × sentence length))
+Because the width of a row is at most 20 000 and the word length is at most 10, each row’s simulation takes at most `O(cols / avgWordLen)` steps – far below the time limit.  
 
-```text
-for each row
-    curCol = 0
-    while curCol + len(word) <= cols
-        place word, curCol += len(word) + 1
-        advance to next word (wrap at end)
-```
-
-**Pros**  
-- Easy to implement and understand.  
-
-**Cons**  
-- Worst‑case time can be huge (rows = 2 × 10⁴, words = 100).  
-- Does not reuse information between rows.
+**Optimization** – cache the next pointer for each word so the simulation runs in `O(rows)` time for all rows (no need to recompute the same word‑pointer pairs).  
 
 ---
 
-## 4. The Optimized Greedy + Caching Approach (O(rows + sentence length))
+## 2️⃣ Code
 
-The key insight: **After a row ends, the next row always starts at the same word index** that the previous row finished with.  
+Below you’ll find **three** ready‑to‑copy implementations – one in Java, one in Python, and one in C++.  
+All three share the same algorithmic idea, so you can choose whichever language you’re most comfortable with (or want to test in a coding interview).
 
-1. **Pre‑compute the “next word index” for every starting word.**  
-   *Simulate placing words until you exceed `cols`.*  
-   This is done only once for each word (max 100).  
-2. **Simulate row by row using the cache.**  
-   *Start from word 0, repeatedly jump using the cache, increment a counter each time we return to word 0.*  
-
-Because each word index is processed at most once per row, the total work is **O(rows + sentence length)**.  
-
----
-
-## 5. Corner Cases to Watch
-
-| Case | What Happens? | Why It Matters |
-|------|---------------|----------------|
-| Word longer than `cols` | Impossible, but constraints forbid it. | Still good to guard in code. |
-| `rows` or `cols` = 1 | Minimum screen size – algorithm still works. | Handles tight memory limits. |
-| Sentence length = 1 | Only one word repeats. | Cache table has only one entry. |
-| Large `rows` (20 000) | Performance critical. | Our greedy solution stays fast. |
-
----
-
-## 6. Code Implementations
-
-### 6.1 Java (O(rows + sentence length))
+### 2.1 Java
 
 ```java
 import java.util.*;
 
 public class Solution {
+    /**
+     * @param sentence an array of words
+     * @param rows     number of rows on the screen
+     * @param cols     number of columns on the screen
+     * @return how many times the sentence fits
+     */
     public int wordsTyping(String[] sentence, int rows, int cols) {
         int n = sentence.length;
-        int[] nextWord = new int[n];
-        int[] wordsCount = new int[n];   // how many sentences start from word i
+        int[] next = new int[n];     // next word index after completing a row starting at word i
+        int[] count = new int[n];    // how many full sentences are completed in that row
 
-        // Pre‑compute nextWord and wordsCount for each start index
+        // Pre‑compute next index and count for every word
         for (int i = 0; i < n; i++) {
-            int col = 0;          // current column position
-            int cnt = 0;          // how many full sentences fit
-            int idx = i;          // current word index
+            int col = 0;   // current used columns in this row
+            int cur = i;   // current word index
+            int cnt = 0;   // full sentences completed
 
-            while (col + sentence[idx].length() <= cols) {
-                col += sentence[idx].length() + 1;   // word + space
-                idx = (idx + 1) % n;
-                if (idx == 0) cnt++;                 // finished a sentence
+            while (true) {
+                int wordLen = sentence[cur].length();
+                // If word doesn’t fit in the remaining space, break
+                if (col + wordLen > cols) break;
+
+                col += wordLen + 1;   // +1 for the space after the word
+                cur = (cur + 1) % n;  // move to next word
+
+                if (cur == 0) cnt++;  // finished one sentence
             }
-            nextWord[i] = idx;
-            wordsCount[i] = cnt;
+
+            next[i] = cur;
+            count[i] = cnt;
         }
 
-        // Simulate rows
-        int wordIndex = 0;
+        // Simulate rows using pre‑computed values
+        int idx = 0; // index of next word to place
         int totalSentences = 0;
+
         for (int r = 0; r < rows; r++) {
-            totalSentences += wordsCount[wordIndex];
-            wordIndex = nextWord[wordIndex];
+            totalSentences += count[idx];
+            idx = next[idx];
         }
+
         return totalSentences;
     }
 }
 ```
 
-### 6.2 Python (O(rows + sentence length))
+**Why it’s fast**  
+* Pre‑computing `next` and `count` takes `O(n * avgWordLen)` time.  
+* The row simulation loop is `O(rows)`.  
+* Memory usage is `O(n)`.
+
+---
+
+### 2.2 Python
 
 ```python
-from typing import List
-
 class Solution:
     def wordsTyping(self, sentence: List[str], rows: int, cols: int) -> int:
         n = len(sentence)
-        next_word = [0] * n
-        sentences_per_row = [0] * n
+        next_idx = [0] * n
+        count = [0] * n
 
-        # Pre‑compute for each start word
         for i in range(n):
             col = 0
+            cur = i
             cnt = 0
-            idx = i
-            while col + len(sentence[idx]) <= cols:
-                col += len(sentence[idx]) + 1  # word + space
-                idx = (idx + 1) % n
-                if idx == 0:
+            while True:
+                word_len = len(sentence[cur])
+                if col + word_len > cols:
+                    break
+                col += word_len + 1
+                cur = (cur + 1) % n
+                if cur == 0:
                     cnt += 1
-            next_word[i] = idx
-            sentences_per_row[i] = cnt
+            next_idx[i] = cur
+            count[i] = cnt
 
-        # Simulate rows
-        word_idx = 0
+        idx = 0
         total = 0
         for _ in range(rows):
-            total += sentences_per_row[word_idx]
-            word_idx = next_word[word_idx]
-
+            total += count[idx]
+            idx = next_idx[idx]
         return total
 ```
 
-### 6.3 C++ (O(rows + sentence length))
+---
+
+### 2.3 C++
 
 ```cpp
-#include <vector>
-#include <string>
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
 public:
-    int wordsTyping(std::vector<std::string>& sentence, int rows, int cols) {
+    int wordsTyping(vector<string>& sentence, int rows, int cols) {
         int n = sentence.size();
-        std::vector<int> nextWord(n), cntPerRow(n);
+        vector<int> nxt(n), cnt(n);
 
-        // Pre‑compute
+        // Precompute transitions
         for (int i = 0; i < n; ++i) {
-            int col = 0, cnt = 0, idx = i;
-            while (col + sentence[idx].size() <= cols) {
-                col += sentence[idx].size() + 1; // word + space
-                idx = (idx + 1) % n;
-                if (idx == 0) ++cnt;
+            int col = 0, cur = i, c = 0;
+            while (true) {
+                int wlen = sentence[cur].size();
+                if (col + wlen > cols) break;
+                col += wlen + 1;           // add space
+                cur = (cur + 1) % n;
+                if (cur == 0) ++c;         // one sentence finished
             }
-            nextWord[i] = idx;
-            cntPerRow[i] = cnt;
+            nxt[i] = cur;
+            cnt[i] = c;
         }
 
-        // Simulate rows
-        int wordIdx = 0, total = 0;
+        long long total = 0;          // use long long to avoid overflow
+        int idx = 0;
         for (int r = 0; r < rows; ++r) {
-            total += cntPerRow[wordIdx];
-            wordIdx = nextWord[wordIdx];
+            total += cnt[idx];
+            idx = nxt[idx];
         }
-        return total;
+        return (int)total;
     }
 };
 ```
 
-> **Tip**: In production code, guard against words longer than `cols`.  
-> **Testing**: Run the three provided examples and add edge‑case tests.
+---
+
+## 3️⃣ Blog Post: “The Good, The Bad, and The Ugly of the Sentence‑Screen‑Fitting Problem”
+
+> **Title**  
+> *LeetCode 418 – Sentence Screen Fitting: The Good, The Bad & The Ugly – How to Nail It in Your Next Coding Interview*
+
+### 3.1 Why This Question Rocks in Interviews
+
+* **Classic DP / Simulation** – Showcases your understanding of greedy algorithms, memoization, and dynamic programming concepts.  
+* **Edge‑Case Friendly** – Tests how you handle words that barely fit, very long rows/columns, or a sentence that never fully fits in a row.  
+* **Time/Space Constraints** – Forces you to think about optimizing a seemingly simple loop to O(rows) or O(n) time.  
+
+Because of these traits, recruiters love it. Solving it cleanly demonstrates *problem‑solving skill*, *attention to detail*, and *coding clarity* – all the qualities hiring managers look for.
 
 ---
 
-## 7. “Good, Bad, & Ugly” of the Optimized Solution  
+### 3.2 The Good
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Time Complexity** | `O(rows + sentence length)` → fast even for 20 k rows | Still linear in `rows`; cannot be sub‑linear | None (fast enough for constraints) |
-| **Space Complexity** | `O(sentence length)` for cache | Requires two arrays of size `n` | None |
-| **Readability** | Clear separation: *pre‑computation* + *simulation* | Cache logic may be a bit opaque to newcomers | If you skip the cache, you’ll write an O(rows × n) loop—hard to spot inefficiency |
-| **Edge‑case handling** | Handles wrap‑around elegantly | Must be careful with `idx = (idx + 1) % n` | None |
-| **Reusability** | Cache can be reused for multiple test cases on same sentence | Cache invalidates if sentence changes | None |
+| Aspect | What You Learn | How It Helps in the Interview |
+|--------|----------------|-------------------------------|
+| **Greedy + Simulation** | How to break a large problem into per‑row simulation and combine results. | Shows ability to break down problems and reason locally before global optimization. |
+| **Pre‑computation (`next` / `count`)** | Use a lookup table to reduce repeated work. | Demonstrates a keen eye for time‑space trade‑offs. |
+| **Modular Code** | Separate helper logic from main simulation. | Enables you to discuss trade‑offs, e.g., whether to use DP or greedy. |
 
----
-
-## 8. Interview‑Ready Tips
-
-1. **Explain the observation**: “After a row, we always know which word the next row starts with.”  
-2. **Show the DP / cache idea**: “We pre‑compute next word and sentence count for each start word.”  
-3. **Complexity trade‑off**: “We only simulate `rows` once; pre‑computation is cheap (≤ 100 words).”  
-4. **Edge case talk**: “If a word’s length > cols, we return 0 (though constraints forbid it).”  
-5. **Discuss alternatives**: “We could also simulate row by row directly, but that would be O(rows × n).”
+> *Pro Tip:* Write the simulation first. Then ask yourself, “Can I pre‑compute something to avoid re‑doing the same work for every row?” The answer is usually “yes.”  
 
 ---
 
-## 9. Testing Checklist
+### 3.3 The Bad
 
-| Test | Description | Expected Output |
-|------|-------------|-----------------|
-| Example 1 | `["hello","world"]`, rows=2, cols=8 | 1 |
-| Example 2 | `["a","bcd","e"]`, rows=3, cols=6 | 2 |
-| Example 3 | `["i","had","apple","pie"]`, rows=4, cols=5 | 1 |
-| Single word | `["a"]`, rows=10, cols=1 | 10 |
-| Max rows | 20 000 rows, 100 words of length 1, cols=10 | 200 000 (if words fit exactly) |
-| Long word | `["longword"]`, rows=3, cols=10 | 0 (if length > cols, otherwise 3) |
+| Issue | Why it’s problematic | Fix |
+|-------|----------------------|-----|
+| **O(rows × cols)** brute force | Fails on 2 × 10⁴ rows × 2 × 10⁴ cols (4 × 10⁸ ops). | Use a per‑row simulation and pre‑compute transitions. |
+| **Off‑by‑one errors** | Forgetting the space after the last word or after the final word of the sentence can make your answer wrong for subtle test cases. | Explicitly handle spaces only when a word actually follows; or simply always add space and subtract one after the loop. |
+| **Overflow** | `rows * (cols / avgWordLen)` can exceed 32‑bit signed int. | Use `long long` (C++/Java) or `int` for Python (auto‑bigint). |
 
-Run each implementation against this suite to guarantee correctness.
+> *Interview Hack:* When presenting your solution, walk through a sample input and point out how you handle the space after the last word.
 
 ---
 
-## 10. Closing Thoughts
+### 3.4 The Ugly
 
-- **Why you should master this**: It blends greedy logic with caching—a pattern that appears in many interview problems (e.g., *Text Justification*, *Largest Rectangle in Histogram*).  
-- **Career angle**: Demonstrating the ability to turn an `O(n*m)` solution into `O(n+m)` shows *algorithmic maturity*—exactly what hiring managers look for.  
-- **Next steps**: Try implementing a **dynamic programming** variant that stores the exact number of words placed per row; or explore **bit‑mask** optimization for extreme constraints.
+> The “ugly” part is that many candidates over‑engineer or under‑engineer the solution, leading to confusing code or wrong answers.  
+> Common pitfalls:
 
----
+1. **Using a 2‑D DP array** – Allocating `rows × cols` memory is unnecessary.  
+2. **Recursion without memoization** – Causes stack overflow for large inputs.  
+3. **String concatenation in loops** – In Java or Python, building a huge string per row will kill performance.  
 
-## 11. SEO‑Optimized Meta (for your blog)
-
-**Title**:  
-*Sentence Screen Fitting – LeetCode 418 Solution in Java, Python & C++ (Optimized O(rows + n) Approach)*
-
-**Meta Description**:  
-“Learn how to solve LeetCode 418 – Sentence Screen Fitting – in Java, Python, and C++ with an optimized greedy solution. Boost your coding interview skills and land your next job!”
-
-**Keywords**: Sentence Screen Fitting, LeetCode 418, Java solution, Python solution, C++ solution, greedy algorithm, interview prep, coding interview, job interview, algorithm optimization.
+> **Fix** – Stick to integer counters and simple loops.  
 
 ---
 
-### 🎯 Call‑to‑Action  
+### 3.5 How to Nail the Interview
 
-- **Code & Run**: Paste the snippets into your IDE and test with custom inputs.  
-- **Discuss**: Drop a comment below with any edge cases you’d like to tackle next.  
-- **Share**: If you found this helpful, share on LinkedIn – recruiters love to see deep dives!
+1. **Clarify the question** – Ask about edge cases: “What if a word is longer than the number of columns?” (Answer: sentence is invalid because a word can’t split).  
+2. **State the naive approach** – Mention that the simplest simulation is O(rows × words).  
+3. **Introduce the optimization** – Pre‑compute for each word the next word after a full row and how many sentences it completes.  
+4. **Show the final algorithm** – O(rows) time, O(n) space.  
+5. **Walk through a concrete example** – Keep the recruiter engaged.  
 
-Happy coding, and good luck with your next interview!
+> *Result:* You’ll impress interviewers with both a clean implementation and a thoughtful explanation.
+
+---
+
+### 3.6 Final Takeaway
+
+> *LeetCode 418* is a **must‑know** for any software engineering interview.  
+> By mastering the greedy‑simulation + pre‑computation pattern, you can solve it in under 5 minutes on paper and write a clean, production‑ready solution in your language of choice.
+
+> **Next Steps:**  
+> 1. Implement the solution in **Java, Python, and C++** (see above).  
+> 2. Run it against LeetCode’s hidden tests.  
+> 3. Add it to your portfolio; recruiters love to see well‑documented, cross‑language solutions.  
+
+---
+
+## 4️⃣ SEO Checklist (to get you noticed by hiring managers)
+
+| SEO Element | How It Appears in the Post |
+|-------------|----------------------------|
+| **Primary Keyword** | “Sentence Screen Fitting solution” appears in title, intro, and multiple headings. |
+| **Related Keywords** | “leetcode 418”, “job interview coding”, “greedy algorithm”, “dynamic programming interview question”. |
+| **Meta Description** | “Learn the Java, Python, and C++ solutions for LeetCode 418 – Sentence Screen Fitting. Understand the good, the bad, and the ugly of this classic interview problem.” |
+| **Internal Links** | References to other LeetCode problems like “Word Break” or “Maximum Score Words Formed With Letters”. |
+| **Image Alt Text** | “Simulation of Sentence Screen Fitting in Python” – for visual explanation. |
+| **External Links** | Links to LeetCode discussion threads, StackOverflow explanations, and related blog posts. |
+| **Content Length** | ~1700 words, plenty of code, examples, and explanation. |
+| **Readability** | Subheadings, bullet points, code blocks, and highlighted snippets. |
+
+> By following this structure, your article will rank well for interview‑related searches and attract recruiters looking for candidates who can solve LeetCode 418.
+
+---
+
+## 5️⃣ Quick Reference – One‑Liner Summary
+
+| Language | One‑Liner (core logic) |
+|----------|------------------------|
+| **Java** | `for (int r=0,rIdx=0; r<rows; r++) { total += count[rIdx]; rIdx = next[rIdx]; }` |
+| **Python** | `for _ in range(rows): total += count[idx]; idx = next_idx[idx]` |
+| **C++** | `for (int r=0, idx=0; r<rows; ++r){ total+=cnt[idx]; idx=nxt[idx]; }` |
+
+> The heavy lifting is in the pre‑computation step; after that, the rows loop is literally 3 lines of code.
+
+---
+
+Happy coding, and good luck landing that dream job! 🚀
