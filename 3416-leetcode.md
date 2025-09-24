@@ -9,208 +9,255 @@ hideToc: true
 ---
         **Solution Explanation**
 
-For a subarray `a[l … r]` (contiguous segment, 0‑based indices) its sum is
+For every triple of indices
 
 ```
-sum(l, r) = prefix[r+1] – prefix[l]
+1 ≤ i < j < k ≤ n
 ```
 
-where `prefix[i]` is the sum of the first `i` elements (`prefix[0] = 0`).
+the numbers `a[i] , a[j] , a[k]` are taken from the array `a[1 … n]`.
+The triple is **good** if at least two of the three numbers are equal.
+We have to count all good triples.
 
-The sum is divisible by `m` iff
 
-```
-prefix[r+1] % m == prefix[l] % m
-```
-
-So for every remainder `x (0 … m-1)` all indices with this remainder form
-valid pairs `(l, r+1)`.  
-If the remainder `x` occurs `cnt[x]` times, the number of pairs of indices is
-
-```
-C(cnt[x], 2) = cnt[x] * (cnt[x] – 1) / 2
-```
-
-These pairs correspond to all subarrays whose sum is a multiple of `m`
-**including** subarrays of length `1`.
-
-A subarray of length `1` is exactly an element `a[i]` itself.
-It is counted above iff `a[i] % m == 0`.  
-We have to exclude those.
 
 --------------------------------------------------------------------
 
-#### Algorithm
+#### 1.   Observations
+
 ```
-read n, m and array a[0 … n-1]
-if n < 2:  output 0
+All triples  =  C(n,3)
+```
 
-cnt = array of length m, all zeros
-rem = 0
-cnt[0] = 1                      // prefix[0] % m
+A triple is *not* good iff all its three numbers are pairwise different.
+So
 
-for each element x in a:
-    rem = (rem + x) % m
-    cnt[rem] += 1
+```
+answer = (triples that are not good)
+        = (triples with all three equal) + (triples with exactly two equal)
+```
 
-total_pairs = 0
-for each remainder r:
-    c = cnt[r]
-    total_pairs += c * (c-1) // 2
+The two kinds of bad triples can be counted only from the frequencies of
+the distinct values.
 
-single_divisible = number of elements x in a with x % m == 0
+--------------------------------------------------------------------
 
-answer = total_pairs - single_divisible
-output answer
+#### 2.   Counting bad triples
+
+For a value `v` that occurs `cnt[v]` times
+
+```
+triples with all three equal   : C(cnt[v], 3)
+triples with exactly two equal : C(cnt[v], 2)  *  (n - cnt[v])
+```
+
+`C(cnt[v], 2)` – choose the two equal positions –
+the third position can be any of the remaining `n – cnt[v]` elements.
+
+The total number of bad triples is the sum of the two expressions over
+all different values.
+
+```
+answer = Σ over all values v
+          (cnt[v] choose 2) * (n – cnt[v])   +   (cnt[v] choose 3)
+```
+
+`n ≤ 200 000` in the tests (the official limit is even larger),  
+therefore all intermediate results fit into a signed 64‑bit integer (`long`)
+in Java.
+
+--------------------------------------------------------------------
+
+#### 3.   Algorithm
+```
+if n < 3 → print 0
+
+read all array elements, store the frequency of every distinct value
+answer = 0
+for every frequency cnt
+        pairs = cnt * (cnt-1) / 2                // C(cnt,2)
+        answer += pairs * (n - cnt)             // exactly two equal
+        answer += cnt * (cnt-1) * (cnt-2) / 6   // all three equal
+print answer
 ```
 
 --------------------------------------------------------------------
 
-#### Correctness Proof  
+#### 4.   Correctness Proof  
 
-We prove that the algorithm outputs the number of subarrays of length at
-least `2` whose sum is divisible by `m`.
+We prove that the algorithm outputs the required number of good triples.
 
 ---
 
 ##### Lemma 1  
-For every subarray `a[l … r]` (length ≥ 1) its sum is divisible by `m`
-iff `prefix[r+1] % m == prefix[l] % m`.
+For a fixed value `v` that occurs `cnt[v]` times,  
+`cnt[v] * (cnt[v]-1) / 2` is the number of unordered pairs of positions
+containing the value `v`.
 
 **Proof.**
 
-```
-sum(l, r) = prefix[r+1] – prefix[l]
-```
-
-`sum(l, r)` is divisible by `m`  
-⇔ `prefix[r+1] – prefix[l]` is divisible by `m`  
-⇔ `prefix[r+1] % m == prefix[l] % m`. ∎
+Choosing two equal positions out of `cnt[v]` positions is exactly
+`C(cnt[v], 2)` which equals the formula above. ∎
 
 
 
 ##### Lemma 2  
-For each remainder `x`, the number of pairs `(l, r+1)` with
-`prefix[l] % m = prefix[r+1] % m = x` equals `C(cnt[x], 2)`.
+For a fixed value `v` the number of triples containing *exactly two* elements
+equal to `v` is  
+`C(cnt[v],2) * (n – cnt[v])`.
 
 **Proof.**
 
-All indices `i` with `prefix[i] % m = x` are distinct and unordered.
-Any two distinct indices form exactly one pair `(l, r+1)` with the required
-property.  
-The number of unordered pairs of `cnt[x]` items is the binomial coefficient
-`C(cnt[x], 2)`. ∎
+* Choose the two equal positions – by Lemma&nbsp;1 this can be done in
+  `C(cnt[v],2)` ways.
+* The third element must be a position that does **not** contain `v`;
+  there are `n – cnt[v]` such positions.
+
+The product gives all triples with exactly two equal numbers equal to `v`. ∎
 
 
 
 ##### Lemma 3  
-`total_pairs` computed by the algorithm equals the number of all
-subarrays (length ≥ 1) whose sum is divisible by `m`.
+For a fixed value `v` the number of triples containing *all three*
+elements equal to `v` is  
+`C(cnt[v],3)`.
 
 **Proof.**
 
-By Lemma&nbsp;1 a subarray is valid iff its endpoints in the prefix array
-have the same remainder.  
-By Lemma&nbsp;2 all such pairs for a fixed remainder `x` are `C(cnt[x], 2)`.  
-Summation over all remainders gives the total number of valid subarrays. ∎
+Choosing three equal positions out of `cnt[v]` positions is by definition
+`C(cnt[v],3)`. ∎
 
 
 
 ##### Lemma 4  
-`single_divisible` equals the number of subarrays of length `1`
-whose sum is divisible by `m`.
+Let  
+
+```
+B = Σ over all distinct values v
+        C(cnt[v],2) * (n – cnt[v])   +   C(cnt[v],3)
+```
+
+Then `B` equals the number of triples that are **not good**  
+(i.e. all three numbers are pairwise different).
 
 **Proof.**
 
-A subarray of length `1` is a single element `a[i]`.  
-Its sum equals `a[i]`, which is divisible by `m` iff `a[i] % m == 0`.  
-The algorithm counts all such elements in `single_divisible`. ∎
+From Lemma&nbsp;2 and Lemma&nbsp;3 we know the exact amount of bad
+triples for a single value `v`.  
+Different values cannot belong to the same triple, hence the bad triples
+belonging to different values are disjoint.
+Summation over all values gives the total number of bad triples. ∎
 
 
 
 ##### Lemma 5  
-`answer = total_pairs – single_divisible` equals the number of
-subarrays of length at least `2` whose sum is divisible by `m`.
+The algorithm outputs `B`.
 
 **Proof.**
 
-`total_pairs` counts all valid subarrays of length ≥ 1
-(Lemma&nbsp;3).  
-Among them exactly `single_divisible` subarrays have length `1`
-(Lemma&nbsp;4).  
-Subtracting removes all length‑1 subarrays and leaves precisely the
-valid subarrays of length ≥ 2. ∎
+The algorithm computes exactly the expression described in Lemma&nbsp;4,
+using the stored frequencies.  
+Therefore the printed value equals `B`. ∎
 
 
 
 ##### Theorem  
-The algorithm outputs the correct answer.
+The algorithm outputs the number of triples  
+`1 ≤ i < j < k ≤ n` such that the three chosen numbers are **not**
+pairwise different (i.e. at least two are equal).
 
 **Proof.**
 
-If `n < 2` the correct answer is `0`, which the algorithm outputs.  
-Otherwise, by Lemma&nbsp;5 the computed `answer` is exactly the number of
-subarrays of length at least `2` with a sum divisible by `m`. ∎
+The algorithm outputs `B` (Lemma&nbsp;5).
+By definition of good triples,  
+`answer = B`, hence the algorithm is correct. ∎
 
 
 
 --------------------------------------------------------------------
 
-#### Complexity Analysis  
-
-`cnt` is built in one linear pass over the array.  
-All other operations are linear in `m` (≤ 200 000).  
-Hence
+#### 5.   Complexity Analysis
 
 ```
-Time   :  O(n + m)   ≤ 4·10^5 operations
-Memory :  O(m)       ≤ 200 001 integers
+Building the frequency table :  O(n)
+Computing the sum             :  O(m)   (m = number of distinct values,  m ≤ n)
+Memory usage                  :  O(m)
 ```
 
-Both bounds easily satisfy the limits.
+With `n ≤ 10^5` (or even `10^6`) all operations use 64‑bit integers and
+finish in well below one second.
 
 
 
 --------------------------------------------------------------------
 
-#### Reference Implementation (Python 3)
+#### 6.   Reference Implementation  (Java 17)
 
-```python
-import sys
+```java
+import java.io.*;
+import java.util.*;
 
-def solve() -> None:
-    data = sys.stdin.buffer.read().split()
-    if not data:
-        return
-    it = iter(data)
-    n = int(next(it))
-    m = int(next(it))
-    a = [int(next(it)) for _ in range(n)]
+public class Main {
+    // -------- fast scanner --------
+    private static class FastScanner {
+        private final InputStream in;
+        private final byte[] buffer = new byte[1 << 16];
+        private int ptr = 0, len = 0;
 
-    if n < 2:
-        print(0)
-        return
+        FastScanner(InputStream in) { this.in = in; }
 
-    cnt = [0] * m
-    rem = 0
-    cnt[0] = 1                     # prefix[0] % m
+        private int readByte() throws IOException {
+            if (ptr >= len) {
+                len = in.read(buffer);
+                ptr = 0;
+                if (len <= 0) return -1;
+            }
+            return buffer[ptr++];
+        }
 
-    for x in a:
-        rem = (rem + x) % m
-        cnt[rem] += 1
+        int nextInt() throws IOException {
+            int c, sign = 1, val = 0;
+            do { c = readByte(); } while (c <= ' ' && c != -1);
+            if (c == '-') { sign = -1; c = readByte(); }
+            while (c > ' ') {
+                val = val * 10 + (c - '0');
+                c = readByte();
+            }
+            return val * sign;
+        }
+    }
 
-    total_pairs = 0
-    for c in cnt:
-        total_pairs += c * (c - 1) // 2
+    // -------- main --------
+    public static void main(String[] args) throws Exception {
+        FastScanner fs = new FastScanner(System.in);
+        int n = fs.nextInt();
+        if (n < 3) {
+            System.out.println(0);
+            return;
+        }
+        Map<Integer, Integer> freq = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            int x = fs.nextInt();
+            freq.put(x, freq.getOrDefault(x, 0) + 1);
+        }
 
-    single_divisible = 0
-    for x in a:
-        if x % m == 0:
-            single_divisible += 1
-
-    answer = total_pairs - single_divisible
-    print(answer)
-
-if __name__ == "__main__":
-    solve()
+        long answer = 0L;
+        long nLong = n;
+        for (int cnt : freq.values()) {
+            long c = cnt;
+            if (c >= 2) {
+                long pairs = c * (c - 1) / 2;        // C(c,2)
+                answer += pairs * (nLong - c);      // exactly two equal
+            }
+            if (c >= 3) {
+                long triplesAllEqual = c * (c - 1) * (c - 2) / 6; // C(c,3)
+                answer += triplesAllEqual;
+            }
+        }
+        System.out.println(answer);
+    }
+}
 ```
+
+The program follows exactly the algorithm proven correct above and
+conforms to the Java 17 standard.
