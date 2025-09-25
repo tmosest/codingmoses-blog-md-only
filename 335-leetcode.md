@@ -7,161 +7,147 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Leetcode 335 – **Self Crossing**  
-> **Hard** – O(n) time, O(1) space  
+        ## 1.  Solution – One‑pass, O(n) time & O(1) space
 
-| Language | Code |
-|---|---|
-| **Java** | ✅ |
-| **Python** | ✅ |
-| **C++** | ✅ |
+The classic “self‑crossing” problem can be solved in a single linear scan by
+checking only the last few moves.  
+Because the direction always turns counter‑clockwise (North → West → South → East → …),
+the path can only intersect itself in a few specific patterns:
 
-> **Why is this problem useful for your interview prep?**  
->  *It tests your ability to reason about geometry, edge‑cases, and to write an optimal, one‑pass solution. It also shows that you can read a concise specification and translate it into production‑ready code.*
+| Situation | Crossing condition |
+|-----------|--------------------|
+| **Standard** – the i‑th segment crosses the segment i‑2. | `dist[i] >= dist[i‑2] && dist[i‑1] <= dist[i‑3]` |
+| **Special 4‑step** – the i‑th segment touches the segment i‑3 (when i≥4). | `dist[i‑1] == dist[i‑3] && dist[i] + dist[i‑4] >= dist[i‑2]` |
+| **Special 5‑step** – the i‑th segment cuts a loop opened in the previous 5 steps (when i≥5). | `dist[i‑2] > dist[i‑4] && dist[i] + dist[i‑4] >= dist[i‑2] && dist[i‑1] + dist[i‑5] >= dist[i‑3] && dist[i‑1] <= dist[i‑3]` |
 
----
+If any of these three conditions is true, the path has crossed itself.
+Otherwise we continue scanning until the end of the array.
 
-## 2.  Solution Overview
+### Why it works
 
-We walk around a grid counter‑clockwise:
+- After every four moves the direction repeats, so the only possible new
+  intersection is with a segment that was drawn **2** or **4** steps ago.
+- The third case handles the “over‑over” situation where the 5th segment
+  overlaps a loop created by the previous segments.
+- The conditions are derived from the relative lengths of the involved
+  segments; they are both necessary and sufficient for a crossing to occur.
 
-```
-north → west → south → east → north → …
-```
+### Complexity
 
-The path *crosses itself* if any new segment intersects any earlier segment **except** the immediately previous one (because consecutive segments share an endpoint).
-
-The optimal approach examines the current segment against a handful of previous segments that could possibly intersect it. By the time we have at least 4 segments we can already determine whether we are in a “tight spiral” that will cross or not.
-
-The classic 3‑case analysis is:
-
-| Case | What it checks | Why it works |
-|------|----------------|--------------|
-| **Case 1** | `i >= 3` and `dist[i] >= dist[i-2]` AND `dist[i-1] <= dist[i-3]` | The current segment crosses the segment 3 steps back. |
-| **Case 2** | `i >= 4` and `dist[i-1] == dist[i-3]` AND `dist[i] + dist[i-4] >= dist[i-2]` | A “U‑shaped” crossing, like a closed loop. |
-| **Case 3** | `i >= 5` and `dist[i-2] >= dist[i-4]` AND `dist[i] >= dist[i-2] - dist[i-4]` AND `dist[i-1] <= dist[i-3] - dist[i-5]` AND `dist[i-1] + dist[i-5] >= dist[i-3]` | A more elaborate “double‑turn” crossing. |
-
-If **any** case triggers, we return `true`. Otherwise, after iterating through the whole array, we return `false`.
-
-> **Why is this O(n)?**  
-> We only iterate once and each step performs a constant amount of work.
+| Metric | Analysis |
+|--------|----------|
+| **Time** | `O(n)` – one pass through the array |
+| **Space** | `O(1)` – only a few integer variables are used |
 
 ---
 
-## 3.  Code
+## 2.  Code
 
-> **Tip** – The code below is written for readability, but is still production‑ready. Feel free to strip comments or rename variables for a cleaner production commit.
+Below are clean, one‑pass implementations in **Java**, **Python**, and **C++**.
 
----
-
-### 3.1 Java
+### 2.1 Java
 
 ```java
-/**
- * Leetcode 335 – Self Crossing
- * O(n) time, O(1) space
- */
 public class Solution {
+    /**
+     * Returns true if the path defined by distance[] crosses itself.
+     * @param distance an array of positive integers
+     * @return true if self‑crossing, false otherwise
+     */
     public boolean isSelfCrossing(int[] distance) {
-        int n = distance.length;
-        if (n < 4) return false;          // fewer than 4 moves => never cross
+        if (distance == null || distance.length < 4) {
+            return false;               // fewer than 4 moves can't cross
+        }
 
-        for (int i = 3; i < n; i++) {
-            // Case 1: current line crosses line 3 steps back
-            if (distance[i] >= distance[i-2] &&
-                distance[i-1] <= distance[i-3]) {
+        for (int i = 3; i < distance.length; i++) {
+            // Case 1: Current line crosses the line 2 steps back
+            if (distance[i] >= distance[i - 2] &&
+                distance[i - 1] <= distance[i - 3]) {
                 return true;
             }
 
-            // Case 2: current line touches line 4 steps back (U‑shaped)
+            // Case 2: Current line touches the line 3 steps back
             if (i >= 4 &&
-                distance[i-1] == distance[i-3] &&
-                distance[i] + distance[i-4] >= distance[i-2]) {
+                distance[i - 1] == distance[i - 3] &&
+                distance[i] + distance[i - 4] >= distance[i - 2]) {
                 return true;
             }
 
-            // Case 3: current line crosses line 5 steps back
+            // Case 3: Current line crosses a loop opened in the last 5 moves
             if (i >= 5 &&
-                distance[i-2] >= distance[i-4] &&
-                distance[i] >= distance[i-2] - distance[i-4] &&
-                distance[i-1] <= distance[i-3] - distance[i-5] &&
-                distance[i-1] + distance[i-5] >= distance[i-3]) {
+                distance[i - 2] > distance[i - 4] &&
+                distance[i] + distance[i - 4] >= distance[i - 2] &&
+                distance[i - 1] + distance[i - 5] >= distance[i - 3] &&
+                distance[i - 1] <= distance[i - 3]) {
                 return true;
             }
         }
+
         return false;
     }
 }
 ```
 
----
-
-### 3.2 Python
+### 2.2 Python
 
 ```python
-# Leetcode 335 – Self Crossing
-# Time: O(n), Space: O(1)
-
 class Solution:
     def isSelfCrossing(self, distance: list[int]) -> bool:
-        n = len(distance)
-        if n < 4:
+        """Return True if the walk crosses itself."""
+        if len(distance) < 4:
             return False
 
-        for i in range(3, n):
-            # Case 1
-            if distance[i] >= distance[i-2] and distance[i-1] <= distance[i-3]:
+        for i in range(3, len(distance)):
+            # 1st case
+            if (distance[i] >= distance[i - 2] and
+                distance[i - 1] <= distance[i - 3]):
                 return True
 
-            # Case 2
-            if i >= 4 and distance[i-1] == distance[i-3] and distance[i] + distance[i-4] >= distance[i-2]:
+            # 2nd case
+            if (i >= 4 and
+                distance[i - 1] == distance[i - 3] and
+                distance[i] + distance[i - 4] >= distance[i - 2]):
                 return True
 
-            # Case 3
+            # 3rd case
             if (i >= 5 and
-                distance[i-2] >= distance[i-4] and
-                distance[i] >= distance[i-2] - distance[i-4] and
-                distance[i-1] <= distance[i-3] - distance[i-5] and
-                distance[i-1] + distance[i-5] >= distance[i-3]):
+                distance[i - 2] > distance[i - 4] and
+                distance[i] + distance[i - 4] >= distance[i - 2] and
+                distance[i - 1] + distance[i - 5] >= distance[i - 3] and
+                distance[i - 1] <= distance[i - 3]):
                 return True
 
         return False
 ```
 
----
-
-### 3.3 C++
+### 2.3 C++
 
 ```cpp
-/* Leetcode 335 – Self Crossing
- * O(n) time, O(1) space
- */
 class Solution {
 public:
     bool isSelfCrossing(vector<int>& distance) {
-        int n = distance.size();
-        if (n < 4) return false;
+        if (distance.size() < 4) return false;
 
-        for (int i = 3; i < n; ++i) {
+        for (int i = 3; i < distance.size(); ++i) {
             // Case 1
-            if (distance[i] >= distance[i-2] &&
-                distance[i-1] <= distance[i-3]) {
+            if (distance[i] >= distance[i - 2] &&
+                distance[i - 1] <= distance[i - 3]) {
                 return true;
             }
 
             // Case 2
             if (i >= 4 &&
-                distance[i-1] == distance[i-3] &&
-                distance[i] + distance[i-4] >= distance[i-2]) {
+                distance[i - 1] == distance[i - 3] &&
+                distance[i] + distance[i - 4] >= distance[i - 2]) {
                 return true;
             }
 
             // Case 3
             if (i >= 5 &&
-                distance[i-2] >= distance[i-4] &&
-                distance[i] >= distance[i-2] - distance[i-4] &&
-                distance[i-1] <= distance[i-3] - distance[i-5] &&
-                distance[i-1] + distance[i-5] >= distance[i-3]) {
+                distance[i - 2] > distance[i - 4] &&
+                distance[i] + distance[i - 4] >= distance[i - 2] &&
+                distance[i - 1] + distance[i - 5] >= distance[i - 3] &&
+                distance[i - 1] <= distance[i - 3]) {
                 return true;
             }
         }
@@ -170,305 +156,240 @@ public:
 };
 ```
 
----
-
-## 4.  Blog Article – “The Good, the Bad, and the Ugly of Leetcode’s Self‑Crossing”
-
-### 4.1 Meta‑Description (SEO)
-
-> *Master Leetcode 335 “Self Crossing” in Java, Python, and C++ with a clean one‑pass solution. Learn why this hard problem matters for your interview, plus tips on handling edge cases, time complexity, and real‑world coding style.*
+All three snippets run in `O(n)` time and use only constant extra space.
 
 ---
 
-### 4.2 Header Structure
+## 3.  Blog Article
 
+> **Title**  
+> Self‑Crossing in LeetCode 335: The Good, The Bad, and The Ugly
+
+> **Meta‑Description**  
+> Learn how to solve LeetCode 335 – “Self Crossing” – in Java, Python, and C++ with a one‑pass O(n) algorithm. Understand the pattern‑matching logic, pitfalls, and edge cases. Perfect your interview prep for algorithm questions.
+
+---
+
+### 3.1 Introduction
+
+When it comes to algorithm interviews, LeetCode problems that involve geometry or path simulation often look intimidating. “Self Crossing” (Problem 335) is one such challenge: you walk in a counter‑clockwise spiral and need to determine whether your path ever crosses itself.
+
+At first glance, you might think you have to keep a full set of coordinates or use a line‑segment intersection routine—an O(n²) nightmare. But the real secret lies in the **directional pattern** of the walk. Once you see it, the solution collapses to a handful of simple inequality checks.
+
+This post will walk through that insight, present a concise one‑pass solution, discuss common pitfalls, and give you ready‑to‑copy code in Java, Python, and C++. By the end, you’ll be able to explain the problem, the algorithm, and the edge‑case logic to any interview panel.
+
+---
+
+### 3.2 Problem Recap
+
+You start at the origin `(0,0)` on a 2‑D plane.  
+You receive an array `distance[]` of positive integers.  
+You move:
+
+1. `distance[0]` meters **North**  
+2. `distance[1]` meters **West**  
+3. `distance[2]` meters **South**  
+4. `distance[3]` meters **East**  
+5. … and repeat counter‑clockwise.
+
+Return `true` if the path ever crosses itself; otherwise `false`.
+
+> **Constraints**  
+> • `1 ≤ distance.length ≤ 10^5`  
+> • `1 ≤ distance[i] ≤ 10^5`
+
+The challenge is to do it in **linear time** and **constant space**.
+
+---
+
+### 3.3 The Good – Why a One‑Pass Works
+
+Because the direction changes predictably (North → West → South → East → North …), each new segment can only intersect the previous segments in a **very limited set of ways**.
+
+After the first four moves the direction repeats, so any new segment can only possibly touch:
+
+- The segment drawn two moves ago (a 90° turn).
+- The segment drawn three moves ago (a 180° turn, i.e., a “touch”).
+- The segment drawn five moves ago (an “over‑over” situation that closes a loop).
+
+These are the only possibilities that can produce a crossing. The rest of the plane is already “cleared” by the previous pattern.
+
+Hence we only need to keep track of the last few distances—no need for a list of coordinates or a line‑segment intersection routine.
+
+---
+
+### 3.4 The Bad – Common Mistakes
+
+| Mistake | Why it Fails | Fix |
+|---------|--------------|-----|
+| **Using a full coordinate list** | O(n²) time and O(n) memory, plus floating‑point errors. | Keep only the last 6 distances; compare inequalities. |
+| **Checking only two steps back** | Missing the “touch” case when the i‑th segment equals the i‑3rd. | Add the 4‑step “touch” condition. |
+| **Using absolute position comparisons** | Requires recomputing positions at each step; unnecessary. | Use relative inequalities between distances. |
+| **Assuming symmetry** | The path may have asymmetrical lengths; crossing may happen in irregular patterns. | Use the exact conditions derived from geometry. |
+
+---
+
+### 3.5 The Ugly – Edge Cases That Trip You Up
+
+| Edge case | Typical error | How the algorithm handles it |
+|-----------|---------------|-----------------------------|
+| **Exactly 4 moves** | Some implementations forget to handle `i == 4` properly. | The second condition (`i >= 4`) checks the touch scenario. |
+| **Large numbers causing overflow** | Adding two `int` values can overflow `int` in Java/C++. | Use `long` or cast to `long` during addition (`distance[i] + distance[i-4]`). |
+| **Equal lengths creating degenerate loops** | A sequence like `[1,1,1,1,1]` may look non‑crossing, but the 5‑step rule captures it. | Third condition accounts for the “over‑over” loop. |
+| **Very long input** | Recursion or excessive allocation may hit limits. | Iterative loop with constant auxiliary storage. |
+
+---
+
+### 3.6 The Algorithm in Detail
+
+```text
+for i from 3 to n-1
+    if distance[i] >= distance[i-2]   // longer or equal to the segment 2 steps back
+       and distance[i-1] <= distance[i-3]  // the middle segment is not longer
+          return true
+
+    if i >= 4 and
+       distance[i-1] == distance[i-3]          // touching the 3‑step‑back segment
+       and distance[i] + distance[i-4] >= distance[i-2]
+          return true
+
+    if i >= 5 and
+       distance[i-2] > distance[i-4]           // opening a loop
+       and distance[i] + distance[i-4] >= distance[i-2]
+       and distance[i-1] + distance[i-5] >= distance[i-3]
+       and distance[i-1] <= distance[i-3]
+          return true
+
+return false
 ```
-# The Good, the Bad, and the Ugly of Leetcode’s Self‑Crossing  
-## 1. What the Problem Actually Wants  
-## 2. Why It’s a Good Interview Question  
-## 3. The Bad – Common Pitfalls & Misunderstandings  
-## 4. The Ugly – Naïve Brute‑Force Approaches  
-## 5. The Clean, One‑Pass Solution  
-### 5.1 Java Implementation  
-### 5.2 Python Implementation  
-### 5.3 C++ Implementation  
-## 6. Edge‑Case Checklist  
-## 7. Performance Profile  
-## 8. How to Talk About It in an Interview  
-## 9. Take‑away for the Job‑Seeker  
-```
 
-### 4.3 Article Body
+The three blocks correspond exactly to the three crossing scenarios explained earlier.
 
 ---
 
-# The Good, the Bad, and the Ugly of Leetcode’s Self‑Crossing
+### 3.7 Complexity Analysis
 
-> **Leetcode 335 – Self Crossing**  
-> **Difficulty:** Hard  
-> **Runtime:** O(n)  
-> **Space:** O(1)
+| Metric | Java | Python | C++ |
+|--------|------|--------|-----|
+| **Time** | `O(n)` – one scan | `O(n)` – one scan | `O(n)` – one scan |
+| **Space** | `O(1)` – 5–6 integer variables | `O(1)` | `O(1)` |
 
-If you’re a job‑seeker gearing up for algorithm interviews, you’ll almost certainly bump into *Self Crossing*. This problem tests a candidate’s ability to think geometrically, spot patterns, and write an efficient, edge‑case‑safe solution. Below we break it down, show you a **clean** implementation in Java, Python, and C++, and share interview‑ready talking points.
-
----
-
-## 1. What the Problem Actually Wants
-
-You start at the origin, walk `distance[0]` steps north, then `distance[1]` steps west, `distance[2]` steps south, `distance[3]` steps east, and so on, rotating counter‑clockwise each time.  
-*Return `true` if any segment of the walk intersects any other segment that is not its immediate predecessor; otherwise return `false`.*
-
-> **Key takeaway:** We only need to detect *crossing*, not *overlap* or *touching at a single point*. The path is a simple polyline.
+The algorithm works for `n = 10^5` comfortably on all major platforms.
 
 ---
 
-## 2. Why It’s a Good Interview Question
+### 3.8 Code Snippets
 
-| Skill Tested | Why It Matters |
-|--------------|----------------|
-| **One‑pass logic** | Shows you can solve problems in linear time, a must‑have for large inputs. |
-| **Geometric reasoning** | Demonstrates spatial thinking – often asked in system‑design and low‑level interviews. |
-| **Edge‑case awareness** | Handling short arrays, equal segments, or large values is a red flag for many developers. |
-| **Clean code** | Clear comments and readable structure show professionalism. |
-
----
-
-## 3. The Bad – Common Pitfalls & Misunderstandings
-
-1. **Treating adjacent segments as a crossing.**  
-   The problem explicitly says *except the immediately previous one*.  
-   *Solution:* Never compare `i` with `i-1`.
-
-2. **Assuming you only need to check the last segment against all previous ones.**  
-   In practice, you only need to compare with the last 5 segments.  
-   *Solution:* Use the 3‑case analysis described below.
-
-3. **Using indices incorrectly (off‑by‑one errors).**  
-   The counter‑clockwise sequence means `0 → 1 → 2 → 3 → 0 …`.  
-   *Solution:* Keep a mental map: 0:N, 1:W, 2:S, 3:E, 4:N again.
-
-4. **Ignoring integer overflow in languages with 32‑bit ints.**  
-   With `distance[i] <= 10^5`, sums fit in `int`.  
-   *Solution:* Use `long` only if you modify constraints.
-
----
-
-## 4. The Ugly – Naïve Brute‑Force Approaches
-
-A common first attempt is:
-
-```pseudo
-for i in 0..n-1:
-    for j in 0..i-1:
-        if segment(i) intersects segment(j):
-            return true
-```
-
-*Why it’s ugly:*  
-- **O(n²)** time, which fails for `n = 10⁵`.  
-- You’d need to calculate coordinates for every segment – messy and error‑prone.  
-- Interviewers will immediately spot the inefficiency.
-
----
-
-## 5. The Clean, One‑Pass Solution
-
-### 5.1 Java Implementation
+#### Java
 
 ```java
 public class Solution {
     public boolean isSelfCrossing(int[] distance) {
-        int n = distance.length;
-        if (n < 4) return false;
-
-        for (int i = 3; i < n; i++) {
-            // Case 1: current line crosses line 3 steps back
+        if (distance == null || distance.length < 4) return false;
+        for (int i = 3; i < distance.length; i++) {
             if (distance[i] >= distance[i-2] &&
                 distance[i-1] <= distance[i-3]) return true;
-
-            // Case 2: U‑shaped crossing (touches line 4 steps back)
             if (i >= 4 &&
                 distance[i-1] == distance[i-3] &&
                 distance[i] + distance[i-4] >= distance[i-2]) return true;
-
-            // Case 3: more complex crossing involving 5 lines
             if (i >= 5 &&
-                distance[i-2] >= distance[i-4] &&
-                distance[i] >= distance[i-2] - distance[i-4] &&
-                distance[i-1] <= distance[i-3] - distance[i-5] &&
-                distance[i-1] + distance[i-5] >= distance[i-3]) return true;
+                distance[i-2] > distance[i-4] &&
+                distance[i] + distance[i-4] >= distance[i-2] &&
+                distance[i-1] + distance[i-5] >= distance[i-3] &&
+                distance[i-1] <= distance[i-3]) return true;
         }
         return false;
     }
 }
 ```
 
-### 5.2 Python Implementation
+#### Python
 
 ```python
 class Solution:
     def isSelfCrossing(self, distance: list[int]) -> bool:
-        n = len(distance)
-        if n < 4: return False
-
-        for i in range(3, n):
+        if len(distance) < 4:
+            return False
+        for i in range(3, len(distance)):
             if distance[i] >= distance[i-2] and distance[i-1] <= distance[i-3]:
                 return True
-            if i >= 4 and distance[i-1] == distance[i-3] and distance[i] + distance[i-4] >= distance[i-2]:
+            if i >= 4 and distance[i-1] == distance[i-3] and \
+               distance[i] + distance[i-4] >= distance[i-2]:
                 return True
-            if (i >= 5 and
-                distance[i-2] >= distance[i-4] and
-                distance[i] >= distance[i-2] - distance[i-4] and
-                distance[i-1] <= distance[i-3] - distance[i-5] and
-                distance[i-1] + distance[i-5] >= distance[i-3]):
+            if i >= 5 and distance[i-2] > distance[i-4] and \
+               distance[i] + distance[i-4] >= distance[i-2] and \
+               distance[i-1] + distance[i-5] >= distance[i-3] and \
+               distance[i-1] <= distance[i-3]:
                 return True
         return False
 ```
 
-### 5.3 C++ Implementation
+#### C++
 
 ```cpp
 class Solution {
 public:
     bool isSelfCrossing(vector<int>& distance) {
-        int n = distance.size();
-        if (n < 4) return false;
-
-        for (int i = 3; i < n; ++i) {
-            // Case 1
+        if (distance.size() < 4) return false;
+        for (int i = 3; i < distance.size(); ++i) {
             if (distance[i] >= distance[i-2] &&
                 distance[i-1] <= distance[i-3]) return true;
-            // Case 2
             if (i >= 4 &&
                 distance[i-1] == distance[i-3] &&
                 distance[i] + distance[i-4] >= distance[i-2]) return true;
-            // Case 3
             if (i >= 5 &&
-                distance[i-2] >= distance[i-4] &&
-                distance[i] >= distance[i-2] - distance[i-4] &&
-                distance[i-1] <= distance[i-3] - distance[i-5] &&
-                distance[i-1] + distance[i-5] >= distance[i-3]) return true;
+                distance[i-2] > distance[i-4] &&
+                distance[i] + distance[i-4] >= distance[i-2] &&
+                distance[i-1] + distance[i-5] >= distance[i-3] &&
+                distance[i-1] <= distance[i-3]) return true;
         }
         return false;
     }
 };
 ```
 
-> **Why it works:**  
-- We’re only comparing the current segment with the *last five* segments, the minimal set that could cause a crossing.  
-- The 3‑case analysis covers all possible shapes that a counter‑clockwise walk can form.  
-- The algorithm stays **O(n)** and uses **O(1)** additional space.
+Feel free to copy, paste, and run. Remember to test the tricky cases:
+
+```text
+[1,2,3,4]          -> false
+[1,1,1,1]          -> true (touch case)
+[1,1,2,1,1,1]      -> true (5‑step loop)
+```
 
 ---
 
-## 6. Edge‑Case Checklist
+### 3.9 How to Discuss This in an Interview
 
-| Scenario | What to Check |
-|----------|--------------|
-| Very short input (`n < 4`) | Immediate `false`. |
-| Two consecutive equal segments (`distance[i] == distance[i-1]`) | Can’t cross the previous segment but may cross others. |
-| All segments identical | Crosses at `i = 3` (Case 1). |
-| Large values (`10^5`) | Still fits in `int`; sums up to `2 * 10^5`. |
-| Zero‑length segment | Handles naturally – no coordinate jumps. |
+1. **Explain the movement pattern**: “We walk North → West → South → East → …, so after the first 4 steps the direction repeats.”
 
----
+2. **State the limited intersection possibilities**:  
+   - Two steps back (90° turn).  
+   - Three steps back (180° touch).  
+   - Five steps back (loop closure).
 
-## 7. Performance Profile
+3. **Present the inequalities**:  
+   Show the three conditions.  
+   Use a simple diagram if you’re on paper.
 
-| Language | Avg. Runtime | Memory |
-|----------|--------------|--------|
-| Java | ~45 ms (Leetcode) | ~20 MB |
-| Python | ~70 ms (Leetcode) | ~30 MB |
-| C++ | ~10 ms (Leetcode) | ~5 MB |
+4. **Mention the time/space complexity**:  
+   `O(n)` time, `O(1)` space.
 
-> *Note:* Real‑world performance depends on compiler optimizations and input size, but the theoretical O(n) guarantee holds across all languages.
+5. **Talk about edge‑case safety**:  
+   Overflow handling, array length checks, large inputs.
 
----
-
-## 8. How to Talk About It in an Interview
-
-> **Start with the intuition:** “I first visualized the path as a spiral and realized we only need to compare with the last five lines.”  
-> **Explain the 3 cases:** “Case 1 captures a simple intersection, Case 2 handles a U‑shaped touch, and Case 3 covers a more complex five‑segment overlap.”  
-> **Mention edge cases:** “I added a guard for `n < 4` and carefully avoided checking the adjacent segment.”  
-> **Show the code quickly:** “Here’s my Java version—note the minimal loops and constant space.”
+This concise yet rigorous explanation demonstrates depth of understanding—a hallmark of a top‑tier software engineer.
 
 ---
 
-## 9. Take‑away for the Job‑Seeker
+### 4.  Conclusion
 
-1. **Keep the implementation clean.** Interviewers value readable, well‑commented code.  
-2. **Practice the 3‑case pattern.** Once you understand it, the problem becomes a simple “if‑else” chain.  
-3. **Explain your reasoning aloud.** Talk through your geometric intuition; that’s often what the interviewer cares about more than just a correct answer.  
-4. **Deploy the same logic across languages.** Being comfortable with Java, Python, and C++ shows versatility.  
+LeetCode 335 “Self Crossing” is deceptively simple once you spot the *directional pattern*. The key is to treat the problem as a **sequence of relative inequalities** instead of absolute geometry. With that perspective, a one‑pass `O(n)` algorithm emerges naturally.
 
-By mastering Self Crossing, you’re not only solving a hard Leetcode problem – you’re sharpening the exact skills employers look for in algorithm‑heavy roles.
+We covered:
 
----
+- The **why** behind the one‑pass trick.  
+- The **what** of common pitfalls.  
+- The **how** of edge‑case handling.  
+- Ready‑to‑use code in **Java, Python, C++**.
 
-### 4.4 Final Thoughts
-
-> *The “Self Crossing” problem is a beautiful illustration of how a seemingly simple path‑tracing task can turn into a rich interview puzzle. Armed with the clean one‑pass solution above, you’ll impress hiring managers and confidently handle the “good, bad, ugly” discussion during your next coding interview.*
-
---- 
-
-### 4.5 Keywords for SEO
-
-- Leetcode Self Crossing  
-- Leetcode 335 solution  
-- algorithm interview questions  
-- one‑pass algorithm  
-- Java Leetcode 335  
-- Python Self Crossing  
-- C++ Self Crossing  
-- interview coding patterns  
-- time complexity O(n)  
-
-By following the article structure and including the meta‑description, your content will rank higher on search queries such as “Self Crossing solution” or “Leetcode 335 interview”. The header hierarchy and keyword‑dense paragraphs give search engines context, while the human‑friendly tone keeps readers engaged.
-
----
-
-### 4.6 Closing Note
-
-Whether you’re brushing up before a coding round or prepping for a technical interview panel, the *Self Crossing* problem is a perfect showcase of algorithmic polish. The implementations above are battle‑tested, language‑agnostic, and ready to copy‑paste into your GitHub portfolio. Good luck, and happy coding!
-
---- 
-
-### 4.7 Call‑to‑Action
-
-> **Want more Leetcode walk‑throughs?**  
-> Subscribe to our newsletter for weekly algorithm deep dives, interview hacks, and real‑world coding challenges.
-
----
-
-### 4.8 Final SEO Checklist
-
-- [ ] **Primary keyword** “Leetcode 335 Self Crossing” appears in title and first paragraph.  
-- [ ] **Secondary keywords** “Java implementation”, “Python solution”, “C++ code” appear in sub‑headers.  
-- **LSI keywords** “geometric reasoning”, “O(n) algorithm”, “algorithm interview”.  
-- **Outbound links** to Leetcode’s official problem page (`https://leetcode.com/problems/self-crossing/`).  
-
-With this article, you’re not only solving a hard problem—you’re building a portfolio that’s discoverable by recruiters and search engines alike.
-
---- 
-
-### 4.9 End of Article
-
---- 
-
-> *Prepared by a senior software engineer who has helped thousands ace algorithm interviews.*
-
---- 
-
-### 4.10 Post‑scriptum
-
-**Tip:** When you get an interview call, ask the interviewer if they’d like to review your code together. That demonstrates confidence and the willingness to collaborate—two highly prized traits in modern engineering teams.
-
---- 
-
-*Happy Interviewing!*  
-
---- 
-
-## 4.4 Closing Thoughts
-
-This article, complete with meta‑description, header structure, and keyword‑rich content, is designed to rank well on search engines while giving real value to the reader. The accompanying code snippets illustrate the **clean** solution you’ll want to present in your portfolio or in a live coding interview. Good luck on your job hunt—*Self Crossing* is a problem you can solve, discuss, and own with confidence.
+Now you can confidently tackle this question, explain your solution in any language, and impress interviewers with both elegance and efficiency. Happy coding—and good luck on your next interview!

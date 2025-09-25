@@ -7,116 +7,98 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 Master LeetCode 418 – *Sentence Screen Fitting*  
-### Java, Python & C++ – The Good, the Bad & the Ugly  
-*(SEO‑optimized blog post for interview‑ready developers)*  
+        # Sentence Screen Fitting – LeetCode 418  
+**Brute‑Force ➜ Greedy ➜ O(1) Optimization**  
+*A complete, multi‑language walkthrough + SEO‑friendly article that will help you land your next coding interview.*
 
 ---
 
-### Meta Description  
-Learn how to crack LeetCode 418 – *Sentence Screen Fitting* with clean, production‑ready Java, Python, and C++ code. Understand the algorithm, analyze time‑space trade‑offs, and discover interview tips to impress recruiters.  
+## 1️⃣ Problem Overview
 
-### Keywords  
-LeetCode 418, Sentence Screen Fitting, Java solution, Python solution, C++ solution, coding interview, algorithm, greedy, simulation, job interview, interview prep
+| Topic | Details |
+|-------|---------|
+| **Problem** | *Sentence Screen Fitting* (LeetCode 418) |
+| **Input** | `String[] sentence`, `int rows`, `int cols` |
+| **Output** | `int` – the number of times the sentence can be fitted on a screen of `rows × cols` |
+| **Constraints** | `1 ≤ sentence.length ≤ 100`, `1 ≤ sentence[i].length ≤ 10`, `1 ≤ rows, cols ≤ 2·10⁴` |
 
----
-
-## 1️⃣ Introduction  
-
-**LeetCode 418 – Sentence Screen Fitting** is a classic medium‑level problem that tests your ability to **simulate** text rendering while keeping track of word boundaries. It’s a staple on many interview question lists because it combines simple string logic with subtle edge‑cases.  
-
-> *Goal:* Count how many full copies of a given sentence fit on a `rows × cols` screen, respecting word order, single‑space separation, and no word splits.
-
-Why is this problem a “must‑know” for the hiring process?  
-- It forces you to think about **rolling pointers** and **circular indexing**.  
-- It shows how you manage **state across multiple rows** without recomputing from scratch.  
-- It’s a great demonstration of **time‑efficient simulation** (O(rows) vs. O(rows × words)).
-
-Below you’ll find:
-
-| Language | Solution Type | Time Complexity | Space Complexity |
-|----------|---------------|-----------------|------------------|
-| Java | Greedy simulation | **O(rows)** | **O(1)** |
-| Python | Greedy simulation | **O(rows)** | **O(1)** |
-| C++ | Greedy simulation | **O(rows)** | **O(1)** |
+You must preserve the order of words. A word cannot be split; words are separated by a single space. Empty cells on the screen are filled with `-` in the examples.
 
 ---
 
-## 2️⃣ Problem Statement (Copy‑Paste Ready)
+## 2️⃣ Intuition
 
-```text
-Input:  sentence = ["hello","world"], rows = 2, cols = 8
-Output: 1
-```
+The screen is scanned line by line. Each line can hold as many *whole* words as the width allows. Once a line is full, the next word starts on the next line.  
+The naive simulation is easy but **O(rows × len(sentence))** – far too slow when `rows` is 20 000 and the sentence is long.
 
-*You are given a `rows × cols` screen and a sentence as a list of strings. Return how many times the sentence can be fully written on the screen. Words are separated by a single space, no word can be split across lines, and the order of words is fixed.*
-
----
-
-## 3️⃣ Constraints
-
-```text
-1 ≤ sentence.length ≤ 100
-1 ≤ sentence[i].length ≤ 10
-sentence[i] consists of lowercase English letters
-1 ≤ rows, cols ≤ 2·10⁴
-```
+The key observation: the *state* of the screen after each line is just the **index of the word** that will be printed next.  
+If we know how the index changes after one row, we can “jump” many rows at once.
 
 ---
 
-## 4️⃣ Approach Overview
+## 3️⃣ Algorithm – O(rows) Greedy + Memorization
 
-The most efficient strategy is a **greedy simulation**:
+1. **Pre‑compute** the next word index for every word in the sentence.  
+   `nextIdx[i]` tells you: *if the next word to print is `sentence[i]`, which word will be next after the current row finishes?*
+2. **Iterate over rows** while maintaining a pointer `curIdx` to the current word index.  
+   On each iteration:  
+   `curIdx = nextIdx[curIdx]` – jump to the next starting word.  
+   Keep a counter `fits` that increases by 1 each time we complete a full cycle of the sentence (i.e., when `curIdx` returns to 0).
+3. **Return** the counter `fits`.
 
-1. **Pre‑process** the lengths of each word in `sentence` → `wordLen[i]`.  
-2. **Maintain** two variables across rows:
-   - `curCol` – current column position on the current row.
-   - `idx`    – index of the next word to place (circular).
-3. For each row:
-   - While the next word fits (`curCol + wordLen[idx] ≤ cols`):
-     - Place the word, advance `curCol += wordLen[idx] + 1` (space after it).  
-     - Move to the next word (`idx = (idx + 1) % n`).
-   - After the row is full, remove the trailing space:  
-     `if curCol > 0: curCol--` (otherwise no space to remove).
-4. After all rows, the number of times the sentence was completed is `idx / n` (integer division).
+**Why it works**  
+Because each row only depends on the starting word. Once we know how a row transforms the starting word, the process is deterministic and can be repeated row‑by‑row.
 
-Why does this work?  
-- Each row consumes a *fixed amount of horizontal space* (`cols`).  
-- By greedily packing as many words as possible per row, we maximize usage of space.  
-- The circular index ensures the word order is preserved across line breaks.
+**Complexity**  
+- Time: **O(rows + n)**, where *n* = `sentence.length`.  
+- Space: **O(n)** for the `nextIdx` array.
 
 ---
 
-## 5️⃣ Detailed Code Samples
+## 4️⃣ Edge Cases
+
+| Case | Why it matters | How to handle |
+|------|----------------|---------------|
+| Word longer than `cols` | Impossible to fit, but constraints forbid it | Not needed |
+| Sentence has exactly one word | `nextIdx[0]` will be `0` after each row | Works naturally |
+| `rows = 0` | No lines, answer `0` | Loop will not run |
+
+---
+
+## 5️⃣ Code – Three Languages
+
+> **Tip**: The Java version uses `int[] nextIdx`, the Python version uses a list, and the C++ version uses a `vector<int>`. All share the same logic.
 
 ### 5.1 Java
 
 ```java
-/**
- * LeetCode 418 – Sentence Screen Fitting
- * Greedy simulation – O(rows) time, O(1) space
- */
 public class Solution {
     public int wordsTyping(String[] sentence, int rows, int cols) {
         int n = sentence.length;
-        int[] len = new int[n];
-        for (int i = 0; i < n; i++) len[i] = sentence[i].length();
+        int[] nextIdx = new int[n];
+        int curIdx = 0;
 
-        int idx = 0;      // next word index
-        int curCol = 0;   // current column position
-
-        for (int r = 0; r < rows; r++) {
-            while (curCol + len[idx] <= cols) {
-                curCol += len[idx] + 1;   // place word + space
-                idx = (idx + 1) % n;
+        // Pre‑compute next index for each word
+        for (int i = 0; i < n; i++) {
+            int length = 0;
+            int j = i;
+            while (true) {
+                int wordLen = sentence[j].length();
+                if (length + wordLen > cols) break;
+                length += wordLen;
+                j = (j + 1) % n;
+                // Add a space after every word except the last one on the line
+                if (length < cols) length++; // space
             }
-            // Remove trailing space if any
-            if (curCol > 0) curCol--;   // reset for next row
+            nextIdx[i] = j;
         }
 
-        // idx gives how many words have been placed in total.
-        // Each full sentence is n words.
-        return idx / n;
+        int fits = 0;
+        for (int r = 0; r < rows; r++) {
+            curIdx = nextIdx[curIdx];
+            if (curIdx == 0) fits++;
+        }
+        return fits;
     }
 }
 ```
@@ -124,124 +106,114 @@ public class Solution {
 ### 5.2 Python
 
 ```python
-"""
-LeetCode 418 – Sentence Screen Fitting
-Greedy simulation – O(rows) time, O(1) space
-"""
-
 class Solution:
-    def wordsTyping(self, sentence: List[str], rows: int, cols: int) -> int:
+    def wordsTyping(self, sentence: list[str], rows: int, cols: int) -> int:
         n = len(sentence)
-        lengths = [len(w) for w in sentence]
+        next_idx = [0] * n
 
-        idx = 0     # next word index
-        cur = 0     # current column position
+        # Pre‑compute next index for each word
+        for i in range(n):
+            length = 0
+            j = i
+            while True:
+                word_len = len(sentence[j])
+                if length + word_len > cols:
+                    break
+                length += word_len
+                j = (j + 1) % n
+                # space after a word, unless it would exceed the line
+                if length < cols:
+                    length += 1
+            next_idx[i] = j
 
+        cur_idx, fits = 0, 0
         for _ in range(rows):
-            while cur + lengths[idx] <= cols:
-                cur += lengths[idx] + 1   # word + space
-                idx = (idx + 1) % n
-            if cur > 0:          # remove trailing space
-                cur -= 1
-
-        return idx // n
+            cur_idx = next_idx[cur_idx]
+            if cur_idx == 0:
+                fits += 1
+        return fits
 ```
 
 ### 5.3 C++
 
 ```cpp
-/**
- * LeetCode 418 – Sentence Screen Fitting
- * Greedy simulation – O(rows) time, O(1) space
- */
 class Solution {
 public:
     int wordsTyping(vector<string>& sentence, int rows, int cols) {
         int n = sentence.size();
-        vector<int> len(n);
-        for (int i = 0; i < n; ++i) len[i] = sentence[i].size();
+        vector<int> nextIdx(n);
 
-        int idx = 0;   // next word index
-        int cur = 0;   // current column
-
-        for (int r = 0; r < rows; ++r) {
-            while (cur + len[idx] <= cols) {
-                cur += len[idx] + 1;          // word + space
-                idx = (idx + 1) % n;
+        // Pre‑compute the next index for each word
+        for (int i = 0; i < n; ++i) {
+            int len = 0;
+            int j = i;
+            while (true) {
+                int wlen = sentence[j].size();
+                if (len + wlen > cols) break;
+                len += wlen;
+                j = (j + 1) % n;
+                if (len < cols) ++len; // add space
             }
-            if (cur > 0) cur--;               // remove trailing space
+            nextIdx[i] = j;
         }
 
-        return idx / n;   // number of full sentences
+        int curIdx = 0, fits = 0;
+        for (int r = 0; r < rows; ++r) {
+            curIdx = nextIdx[curIdx];
+            if (curIdx == 0) ++fits;
+        }
+        return fits;
     }
 };
 ```
 
 ---
 
-## 6️⃣ The Good, The Bad, and The Ugly
+## 6️⃣ Blog‑Style Discussion: Good, Bad, and Ugly
 
-| **Aspect** | **Good** | **Bad** | **Ugly** |
-|------------|----------|---------|----------|
-| **Time complexity** | Linear in rows (`O(rows)`), excellent for 20 k rows | Exponential or quadratic solutions (e.g., brute‑force simulation of every character) are unnecessary | An `O(rows * n)` DP approach can waste memory and time |
-| **Space usage** | Constant (`O(1)`) – no extra buffers | Pre‑allocating a 2‑D grid is wasteful | Recursion with heavy stack frames can cause stack overflow |
-| **Readability** | Clear loop, minimal state | Over‑abstraction (e.g., helper classes) hides logic | Mixing string manipulation with pointer arithmetic can confuse |
-| **Maintainability** | Single function, well‑named variables | Hard‑coded magic numbers | In‑place modification of input array (mutating `sentence`) |
+> **SEO Keywords**: *sentence screen fitting, leetcode 418 solution, coding interview, job interview, algorithm design, greedy, optimization, Java, Python, C++*  
 
-### Why the Greedy Approach is the “Right” One
+### 6.1 The “Bad” Brute‑Force
 
-- **Deterministic**: We always know exactly how many columns a word occupies.  
-- **Predictable**: The cursor (`curCol`) never goes backward, making debugging trivial.  
-- **Scalable**: Handles the maximum constraints comfortably (`rows = 20000`).
+> ```python
+> # O(rows * words_in_sentence) – too slow for 20k rows
+> for row in range(rows):
+>     for word in sentence:
+>         ...
+> ```
+> 
+> *Why it fails:*  
+> Each row loops over the entire sentence, even when the sentence is long but most words never fit in a single line. Complexity blows up to millions of operations.
 
----
+### 6.2 The “Good” Greedy + Memorization
 
-## 7️⃣ Performance Analysis
+*Key idea:* *Remember where you end after each line.*  
+- Pre‑compute the transition `nextIdx`.  
+- For every row just jump: `curIdx = nextIdx[curIdx]`.  
+- Complexity is linear in the number of rows – *optimal for interview coding*.
 
-| Implementation | Rows | Cols | Runtime (approx.) |
-|----------------|------|------|-------------------|
-| Java (Greedy)  | 20 000 | 20 000 | ~0.3 ms |
-| Python (Greedy)| 20 000 | 20 000 | ~10 ms |
-| C++ (Greedy)   | 20 000 | 20 000 | ~0.2 ms |
+### 6.3 The “Ugly” DP Variant (from some editorial)
 
-*(Times measured on a mid‑range laptop; actual results may vary.)*
+Some solutions use dynamic programming with a 2‑D array to record the state of each row–column pair.  
+While technically correct, it uses **O(rows·cols)** memory and time, making it *unnecessary* and *harder to understand*.  
+For an interview, keep the solution simple and readable – **the greedy approach wins**.
 
-The key takeaway: **Time is proportional to the number of rows, not to the total number of characters**. That makes the greedy solution optimal for interview‑style time limits.
+### 6.4 Interview‑Ready Tips
 
----
-
-## 8️⃣ Interview Tips
-
-1. **Clarify the question**: Ask if words can repeat, if spaces count, etc.  
-2. **Sketch a small example**: Walk through 2 rows, 8 cols, sentence `["hello","world"]`.  
-3. **Explain the circular index**: How `idx = (idx + 1) % n` preserves order.  
-4. **Show a test case with an exact fit**: `["a","b","c"]`, `rows=3`, `cols=5`.  
-5. **Mention edge cases**:  
-   - Sentence length > cols (impossible to fit).  
-   - Single very long word that equals cols.  
-   - Last word ends exactly at the row end.  
-6. **Talk about complexity**: Highlight O(rows) time and O(1) space.  
+| Tip | Reason |
+|-----|--------|
+| **Explain the state transition** (next word index) | Shows deep understanding of the problem structure |
+| **Mention edge cases** (single word, sentence length 1, etc.) | Demonstrates thoroughness |
+| **Give complexity analysis** | Interviewers expect this |
+| **Show code in two languages** | Versatile skillset (Java/Python/C++) |
 
 ---
 
-## 9️⃣ Conclusion
+## 7️⃣ Takeaway
 
-*LeetCode 418 – Sentence Screen Fitting* may look simple at first glance, but it’s a powerful exercise in **efficient simulation** and **state management**. By mastering the greedy approach showcased above, you’ll be ready to:
+- **Problem**: Count how many times a sentence fits in a given screen.
+- **Best Solution**: Greedy + memorization (`O(rows + n)`).
+- **Key Insight**: The state of the screen after each row is fully determined by the index of the next word to print.
+- **Languages**: Java, Python, C++ – all use the same algorithm.
 
-- **Implement clean, production‑grade code** in Java, Python, or C++.
-- **Explain algorithmic trade‑offs** clearly to interviewers.
-- **Handle all edge cases** without resorting to brute‑force.
-
-Remember: **Clarity beats cleverness**. A concise, well‑documented solution that passes all tests is more impressive than a complex one that just works.
-
----
-
-## 🔧 Call to Action
-
-- **Practice**: Clone this solution, run it against random test cases, and tweak it for extra features (e.g., return the exact row/col where the sentence stops).  
-- **Share**: Post your own version on GitHub, tag it `#LeetCode418`.  
-- **Apply**: Next time you land an interview, bring this problem to the table—show you’re comfortable with loops, circular indexing, and O(rows) optimization.
-
-Good luck, and may your cursor always stay ahead of the curve! 🚀
-
----
+> Mastering this pattern will not only help you ace *LeetCode 418* but also any interview question that involves *string packing*, *cyclic patterns*, or *greedy simulation*. Good luck landing that next job!

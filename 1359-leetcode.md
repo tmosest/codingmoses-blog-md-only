@@ -7,205 +7,213 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 📦 1359 – Count All Valid Pickup and Delivery Options  
-### The Hard LeetCode Problem That Will Make Your Interviewer Go “Wow!”
-
-> **Problem link:** <https://leetcode.com/problems/count-all-valid-pickup-and-delivery-options/>  
-> **Difficulty:** Hard  
-> **Tags:** Dynamic Programming, Math, Recursion
+        ## 📦 1359. Count All Valid Pickup and Delivery Options  
+**Hard – LeetCode** | **Java | Python | C++** | **Dynamic Programming + Combinatorics**  
 
 ---
 
-### 1️⃣ Problem Recap
+### TL;DR  
+> **Answer** =  `(2n)! / 2ⁿ  (mod 1 000 000 007)`  
+> Recurrence:  
+> `dp[1] = 1`  
+> `dp[i] = dp[i‑1] * i * (2i – 1)  (mod MOD)`  
 
-You’re given **`n`** orders.  
-Each order *i* has a **pickup** (`Pi`) and a **delivery** (`Di`).  
-A sequence of the 2·n actions is **valid** if for every order `Di` comes **after** `Pi`.
-
-> **Return** the number of valid sequences modulo **1 000 000 007**.
-
-*Examples*
-
-| n | Output | Explanation |
-|---|--------|-------------|
-| 1 | 1 | Only `(P1, D1)` |
-| 2 | 6 | `(P1,P2,D1,D2)`, `(P1,P2,D2,D1)`, `(P1,D1,P2,D2)`, `(P2,P1,D1,D2)`, `(P2,P1,D2,D1)`, `(P2,D2,P1,D1)` |
-| 3 | 90 | … |
-
-**Constraints**
-
-* 1 ≤ n ≤ 500
+Time `O(n)` | Space `O(1)`  
 
 ---
 
-### 2️⃣ Intuition – The “Add‑One‑Order” Observation
+## 🚀 Why This Problem Rocks for Interview Prep
 
-Suppose you already know how many sequences exist for **`n‑1`** orders.  
-Now you add the *n*-th order:
-
-1. **Insert the new pickup**  
-   In the current sequence of 2(n‑1) events you have **2(n‑1) + 1 = 2n‑1** positions to place `Pn` (before any event or at the end).
-
-2. **Insert the delivery**  
-   After putting `Pn`, there are **n** free spots after it where you can place `Dn` (exactly one of them will be the last, one before the last, …, or the very first after `Pn`).  
-   *Why n?*  
-   Every time you add a pickup, you increase the total number of “open” positions by one, so when inserting the delivery you have exactly `n` positions available.
-
-Thus, for each valid sequence of length `2(n‑1)` you get exactly `(2n‑1)·n` new sequences when adding the nth order.
-
-> **Recurrence**  
-> `dp[n] = dp[n‑1] · (2n‑1) · n`  
-> with `dp[1] = 1`.
-
-That’s it – **one simple multiplicative formula**. No DP table needed, just a loop.
+- **Hard level** but solvable with a *single* insight (factorial + division).
+- Shows you can turn a combinatorial counting problem into an *efficient DP*.
+- Demonstrates proficiency with modular arithmetic, which is a must‑know for interviews.
+- Appears on the “LeetCode Hard” list and is often asked in **coding‑interview** questions.
 
 ---
 
-### 3️⃣ Complexity
+## 📄 Problem Statement (Paraphrased)
 
-| Metric | Time | Space |
-|--------|------|-------|
-| For n ≤ 500 | **O(n)** | **O(1)** (only a 64‑bit accumulator)
+You have **n** orders.  
+Each order `i` consists of a *pickup* `Pᵢ` and a *delivery* `Dᵢ`.  
+You must count the number of sequences of length `2n` that contain every `Pᵢ` and `Dᵢ` exactly once, with the constraint that `Dᵢ` always appears after `Pᵢ`.  
+Return the answer modulo `10⁹+7`.
 
-The modulo keeps the numbers in 32‑bit range, but we use 64‑bit integers to avoid overflow during multiplication.
-
----
-
-### 4️⃣ Reference Implementations
-
-Below are clean, ready‑to‑copy solutions in **Java**, **Python**, and **C++**. All run in a fraction of a millisecond for the largest input.
+> **Example**  
+> `n = 2` → 6 valid sequences:  
+> (P1,P2,D1,D2), (P1,P2,D2,D1), (P1,D1,P2,D2), (P2,P1,D1,D2), (P2,P1,D2,D1), (P2,D2,P1,D1).
 
 ---
 
-#### Java
+## 💡 The “Good” – A Simple Formula
+
+The problem is a classic *Catalan‑style* counting problem.  
+If you think about it:
+
+1. **Arrange the pickups** in any order: `n!` ways.
+2. **Insert deliveries**: after each pickup you can insert its delivery in any of the remaining open slots.
+
+A clean combinatorial derivation shows that the total number of valid sequences is
+
+```
+(2n)! / 2ⁿ
+```
+
+- `2n` factorial: all possible permutations of the 2n items.
+- Divide by `2ⁿ`: each order’s pickup–delivery pair is over‑counted twice (once for each possible internal ordering).
+
+Because we work modulo `MOD`, division is handled as multiplication by the modular inverse of `2ⁿ`.
+
+---
+
+## 📈 The “Bad” – Direct Factorials and Mod Inverses
+
+You could pre‑compute factorials up to `2n` and compute `inv(2)` raised to `n`.  
+This works, but:
+
+- Requires an extra array of size `2n`.
+- Involves modular exponentiation and inverse, which can obscure the core idea.
+- Slightly higher constant factors.
+
+For interviews, clarity is usually better than micro‑optimizations.
+
+---
+
+## 🐛 The “Ugly” – Brute‑Force Enumeration
+
+A naive approach would generate all `(2n)!` permutations and test the constraint.  
+Complexity explodes (factorial) and is infeasible even for `n=10`.  
+You’ll never get past the first few test cases.
+
+---
+
+## 🔑 The “Elegant” – DP Recurrence
+
+From the formula `(2n)! / 2ⁿ` we can derive a simple recurrence:
+
+```
+dp[n] = dp[n-1] * n * (2n-1)   (mod MOD)
+```
+
+**Why does this work?**
+
+```
+dp[n] / dp[n-1] = ((2n)! / 2ⁿ) / ((2n-2)! / 2ⁿ⁻¹)
+                = (2n)(2n-1) / 2
+                = n(2n-1)
+```
+
+Thus, we only need a single loop from `2` to `n`.  
+The recurrence uses only `long` arithmetic and no extra memory.
+
+---
+
+## 🧑‍💻 Code Implementations
+
+Below are clean, production‑ready solutions in **Java**, **Python**, and **C++**.  
+All use the DP recurrence described above.
+
+---
+
+### Java (Java 17)
 
 ```java
 class Solution {
-    private static final long MOD = 1_000_000_007L;
+    private static final int MOD = 1_000_000_007;
 
     public int countOrders(int n) {
-        long result = 1;
+        long res = 1;          // dp[1] = 1
         for (int i = 2; i <= n; i++) {
-            result = result * (2L * i - 1) % MOD;
-            result = result * i % MOD;
+            res = res * i % MOD;          // multiply by i
+            res = res * (2L * i - 1) % MOD; // multiply by (2i-1)
         }
-        return (int) result;
+        return (int) res;
     }
 }
 ```
 
-> **Why it works**  
-> `result` starts with `dp[1] = 1`.  
-> Each loop applies the recurrence `dp[i] = dp[i‑1] · (2i‑1) · i`, taking the modulus after each multiplication to keep the value within bounds.
-
 ---
 
-#### Python
+### Python (Python 3)
 
 ```python
 class Solution:
-    MOD = 1_000_000_007
+    MOD = 10 ** 9 + 7
 
     def countOrders(self, n: int) -> int:
-        res = 1
+        res = 1            # dp[1] = 1
         for i in range(2, n + 1):
-            res = res * (2 * i - 1) % self.MOD
             res = res * i % self.MOD
+            res = res * (2 * i - 1) % self.MOD
         return res
 ```
 
-> Python’s arbitrary‑precision integers make the modulo step optional, but we keep it for clarity and speed.
-
 ---
 
-#### C++
+### C++ (C++17)
 
 ```cpp
 class Solution {
 public:
-    static const long long MOD = 1'000'000'007LL;
-
     int countOrders(int n) {
-        long long res = 1;
+        const long long MOD = 1'000'000'007LL;
+        long long res = 1;                // dp[1] = 1
         for (int i = 2; i <= n; ++i) {
-            res = res * (2LL * i - 1) % MOD;
-            res = res * i % MOD;
+            res = res * i % MOD;                 // multiply by i
+            res = res * (2LL * i - 1) % MOD;     // multiply by (2i-1)
         }
         return static_cast<int>(res);
     }
 };
 ```
 
----
-
-### 5️⃣ The “Good, the Bad, and the Ugly”
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Good** | • Extremely simple recurrence – O(n) time. <br>• Handles the modulo cleanly. <br>• Works for all n ≤ 500. | – | – |
-| **Bad** | • The recurrence can be unintuitive if you first think in terms of DP tables. <br>• Requires a small mental step to realize that the delivery has `n` possible slots. | – | – |
-| **Ugly** | • Some naive solutions over‑count by mistakenly adding the delivery before any pickup. <br>• A DP table of size 501×501 is wasteful but still passes due to small constraints. | – | – |
-
-> **Takeaway:** Keep the recurrence in mind – it is the *golden ticket* for this problem.
+All three snippets run in **O(n)** time and **O(1)** space – perfect for interviews.
 
 ---
 
-### 6️⃣ Quick Checklist for Interviews
+## 📊 Complexity Analysis
 
-1. **State the problem** in your own words.  
-2. **Explain the intuition**: “Insert the new pickup into 2n‑1 slots, then the delivery into n slots.”  
-3. **Derive the recurrence** and write it down.  
-4. **Show the loop** and modulo arithmetic.  
-5. **Discuss complexity**: O(n) time, O(1) space.  
-6. **Mention edge cases** (`n==1`).  
+| Approach | Time | Space |
+|----------|------|-------|
+| DP Recurrence | **O(n)** | **O(1)** |
+| Factorial + Mod Inverse | **O(n)** | **O(n)** (factorial array) |
+| Brute Force | **O((2n)!)** | **O(1)** |
 
-> A clean, concise explanation wins points.
-
----
-
-### 7️⃣ Testing Your Solution
-
-```bash
-# Java
-javac Solution.java
-java Solution
-
-# Python
-python - <<'PY'
-print(__import__('solution').Solution().countOrders(3))  # 90
-PY
-
-# C++
-g++ -std=c++17 -O2 solution.cpp -o sol && ./sol
-```
+The DP method is the sweet spot for interview settings.
 
 ---
 
-### 8️⃣ FAQ
+## 🎯 Interview Tips
 
-| Question | Answer |
-|----------|--------|
-| *Can I use factorials?* | Yes, `dp[n] = (2n)! / (2^n)` mod 1e9+7, but you’d need pre‑computed factorials and modular inverses. The recurrence is simpler. |
-| *Why does the formula use `n` and `2n-1`?* | `n` is the number of positions after the new pickup; `2n-1` is the positions for the pickup itself. |
-| *What about memory constraints?* | O(1) – only a 64‑bit variable is used. |
+1. **Start with the combinatorial idea**: “I think the number of valid sequences equals (2n)! / 2ⁿ”.  
+2. **Explain why division by 2ⁿ works** (each pair over‑counts).  
+3. **Derive the recurrence** to show you can avoid heavy factorials.  
+4. **Mention modulo arithmetic** and how you handle multiplication safely.  
+5. **Time & space** – highlight that the solution is linear and constant space.
+
+---
+
+## 📚 Further Reading
+
+- [Catalan Numbers – Wikipedia](https://en.wikipedia.org/wiki/Catalan_number)  
+- [Modular Arithmetic in Programming Interviews](https://leetcode.com/articles/modular-arithmetic/)  
+- [Counting Valid Orders – LeetCode Discuss](https://leetcode.com/problems/count-all-valid-pickup-and-delivery-options/discuss/)
 
 ---
 
-### 9️⃣ Wrap‑Up & Job‑Interview Boost
+## 💼 SEO‑Optimized Blog Summary
 
-> **Why this problem matters**  
-> 1359 is a classic LeetCode “hard” that blends **combinatorics** and **dynamic programming**. Solving it demonstrates to hiring managers that you can:
-
-* Translate a story (orders, pickups, deliveries) into a formal recurrence.  
-* Spot hidden combinatorial patterns.  
-* Implement modulo arithmetic correctly.  
-* Write clean, efficient code in multiple languages.
-
-> **Show it in your portfolio**  
-> Add the three implementations as a single “code‑repo” and write the article above as a readme.  
-> Recruiters love to see both *thinking* and *coding* showcased.
-
-> **Final words**  
-> Keep the recurrence `dp[n] = dp[n‑1] · (2n‑1) · n` on your mental board – it’s your cheat‑sheet for this and many similar sequence‑counting problems. Good luck, and remember: interviewers are looking for *thoughtful* engineers, not just brute‑force solutions. 🚀
+- **Keywords**: “LeetCode 1359”, “Count All Valid Pickup and Delivery Options”, “Hard LeetCode problem”, “DP solution”, “modular arithmetic”, “coding interview”, “Java Python C++”, “job interview coding”, “algorithm interview”.
+- **Meta Description**: “Solve LeetCode 1359 – Count All Valid Pickup and Delivery Options – with elegant DP. Java, Python, C++ code, time/space analysis, interview tips, and SEO‑friendly article.”
+- **Header Structure**: H1 – Problem, H2 – Solution Approach, H3 – DP Recurrence, etc.  
+- **Internal Links**: Link to other interview blogs (e.g., “Hard LeetCode problems you should master”).  
+- **External Links**: LeetCode problem page, Wikipedia pages for combinatorics.
 
 ---
+
+### 🎉 Final Takeaway
+
+- The **core insight** is the combinatorial formula `(2n)! / 2ⁿ`.  
+- The **DP recurrence** `dp[i] = dp[i-1] * i * (2i-1)` gives a clean O(n) solution.  
+- **Java, Python, and C++ implementations** are concise, fast, and interview‑friendly.  
+
+Use this article as a reference when preparing for coding interviews, and feel free to adapt the snippets for your personal projects. Good luck with your next job interview! 🚀

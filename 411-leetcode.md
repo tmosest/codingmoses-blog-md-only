@@ -7,178 +7,223 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 411. Minimum Unique Word Abbreviation  
-### Java | Python | C++ – Full, ready‑to‑run solutions  
+        ## 1.  The Problem – LeetCode 411  
+**Minimum Unique Word Abbreviation**  
 
----
+> *You’re given a target word and a dictionary of words.  
+>  An abbreviation is made by replacing any number of **non‑adjacent** substrings with their lengths.  
+>  For example, “substitution” → “s10n”, “sub4u4”, “12”, …  
+>  The abbreviation length is the number of unchanged letters plus the number of replaced blocks.  
+>  Find the shortest abbreviation of the target that is **not** an abbreviation of any word in the dictionary.*
 
-### TL;DR – What the code does  
+The constraints are tiny (`target.length ≤ 21`, `dictionary.length ≤ 1000`) but the brute‑force approach is still heavy – we have to check every possible abbreviation against every word in the dictionary.
 
-* Finds the **shortest possible abbreviation** of a target word that **cannot be formed by any word in a given dictionary**.  
-* Works for words up to 21 characters – perfect for the official LeetCode constraints.  
-* Uses a **bit‑mask + brute force** strategy (≤ 2 M masks) that is fast, deterministic and easy to understand.  
-* Returns one valid abbreviation (any one if several tie).  
+The key to a fast solution is to treat an abbreviation as a **bitmask**:  
+- `1` → keep the letter  
+- `0` → abbreviate it  
 
----
+With this view we can decide in *O(1)* whether a mask conflicts with a dictionary word.
 
-## 1️⃣ Java Implementation  
+
+
+--------------------------------------------------------------------
+
+## 2.  High‑Level Idea
+
+1. **Pre‑compute the “difference mask” for each dictionary word**  
+   For every dictionary word that has the same length as the target, build a bitmask `diffMask` where a bit is `1` if the two words differ at that position.
+
+2. **Iterate over all possible masks**  
+   There are only `2^m` masks (`m ≤ 21`, i.e. at most 2 097 152).  
+   For a mask to be *conflicting* with a dictionary word, it must **never** keep a differing position – in other words  
+   ```text
+   mask & diffMask == 0      // no kept letter that is different
+   ```
+   If the mask keeps at least one matching position for every dictionary word, the abbreviation is **unique**.
+
+3. **Pick the mask with the minimal abbreviation length**  
+   The length of an abbreviation represented by a mask is:
+   - number of `1` bits (kept letters)  
+   - plus the number of contiguous blocks of `0` bits (each block becomes a single number)
+
+4. **Convert the chosen mask back to an abbreviation string**  
+   Walk through the mask, emit letters when the bit is `1`, otherwise count the length of a consecutive block of `0`s and emit the number.
+
+
+
+--------------------------------------------------------------------
+
+## 3.  Why This Works
+
+*If a mask keeps a differing letter, the abbreviation will obviously differ from that dictionary word.*  
+So a mask is safe **iff** it keeps at least one letter that matches **every** dictionary word.  
+Because we check the mask against every dictionary word, the first mask we find with minimal length is a correct answer.
+
+The total work is  
+`O( 2^m * n + 2^m * m )` –  
+`2^m` masks, each checked against at most `n` dictionary words and costing `O(m)` to compute its length.  
+With `m ≤ 21` this is far below the 1 second limit for Java/Python/C++.
+
+
+
+--------------------------------------------------------------------
+
+## 4.  Code Walk‑through
+
+Below you’ll find **complete, ready‑to‑paste solutions** in **Java, Python, and C++**.  
+All three share the same logic, only the syntax changes.
+
+### 4.1  Java
 
 ```java
 import java.util.*;
 
 public class Solution {
-
     public String minAbbreviation(String target, String[] dictionary) {
         int m = target.length();
-
-        // 1. Keep only dictionary words of the same length
         List<Integer> diffMasks = new ArrayList<>();
+
+        // 1. Build difference masks for every word of the same length
         for (String w : dictionary) {
             if (w.length() != m) continue;
             int mask = 0;
-            for (int i = 0; i < m; i++) {
-                if (target.charAt(i) != w.charAt(i)) mask |= (1 << i);
+            for (int i = 0; i < m; ++i) {
+                if (target.charAt(i) != w.charAt(i))
+                    mask |= (1 << i);
             }
             diffMasks.add(mask);
         }
 
-        // 2. If nothing to conflict with, whole word can be abbreviated
-        if (diffMasks.isEmpty()) return String.valueOf(m);
-
-        // 3. Enumerate all masks (0 … 2^m-1) and pick the best one
         int bestMask = 0;
-        int bestLen  = Integer.MAX_VALUE;
+        int bestLen = Integer.MAX_VALUE;
 
-        int allMasks = 1 << m;
-        for (int mask = 0; mask < allMasks; mask++) {
-            // Check if mask conflicts with any dictionary word
-            boolean conflict = false;
+        // 2. Enumerate all masks
+        for (int mask = 0; mask < (1 << m); ++mask) {
+            // Skip masks that are too long already
+            int curLen = calcAbbrLength(mask, m);
+            if (curLen >= bestLen) continue;
+
+            // 3. Check conflict with all dictionary words
+            boolean ok = true;
             for (int diff : diffMasks) {
-                if ((mask & diff) == 0) {  // all kept letters are the same
-                    conflict = true;
+                if ((mask & diff) == 0) { // keeps only differing positions -> conflict
+                    ok = false;
                     break;
                 }
             }
-            if (conflict) continue;
-
-            int len = abbreviationLength(mask, m);
-            if (len < bestLen) {
-                bestLen = len;
+            if (ok) {
                 bestMask = mask;
+                bestLen = curLen;
             }
         }
 
-        return buildAbbreviation(target, bestMask);
+        return buildAbbr(target, bestMask);
     }
 
-    /** Helper: compute abbreviation length for a mask */
-    private int abbreviationLength(int mask, int m) {
+    /** Compute abbreviation length for a mask. */
+    private int calcAbbrLength(int mask, int m) {
         int len = 0;
-        int zeros = 0;
-        for (int i = 0; i < m; i++) {
-            if ((mask & (1 << i)) != 0) {          // keep this letter
-                if (zeros > 0) { len++; zeros = 0; }
-                len++;                               // the letter itself
-            } else {
-                zeros++;
+        boolean inZero = false;
+        for (int i = 0; i < m; ++i) {
+            if ((mask & (1 << i)) != 0) {          // keep
+                if (inZero) { len++; inZero = false; }
+                len++;                             // letter
+            } else {                                // abbreviation
+                if (!inZero) inZero = true;        // start a block
             }
         }
-        if (zeros > 0) len++;                     // trailing zeros form one group
+        if (inZero) len++;                        // trailing block
         return len;
     }
 
-    /** Helper: build the actual abbreviation string from the mask */
-    private String buildAbbreviation(String target, int mask) {
+    /** Build abbreviation string from mask. */
+    private String buildAbbr(String target, int mask) {
         StringBuilder sb = new StringBuilder();
-        int zeros = 0;
-        for (int i = 0; i < target.length(); i++) {
+        int count = 0;
+        for (int i = 0; i < target.length(); ++i) {
             if ((mask & (1 << i)) != 0) {
-                if (zeros > 0) { sb.append(zeros); zeros = 0; }
+                if (count > 0) { sb.append(count); count = 0; }
                 sb.append(target.charAt(i));
             } else {
-                zeros++;
+                count++;
             }
         }
-        if (zeros > 0) sb.append(zeros);
+        if (count > 0) sb.append(count);
         return sb.toString();
     }
 }
 ```
 
----
-
-## 2️⃣ Python Implementation  
+### 4.2  Python
 
 ```python
 class Solution:
     def minAbbreviation(self, target: str, dictionary: List[str]) -> str:
         m = len(target)
-
-        # 1. Only keep same‑length words
         diff_masks = []
+
+        # build difference masks
         for w in dictionary:
-            if len(w) != m: 
+            if len(w) != m:
                 continue
             mask = 0
-            for i, (tc, wc) in enumerate(zip(target, w)):
-                if tc != wc:
+            for i, (c1, c2) in enumerate(zip(target, w)):
+                if c1 != c2:
                     mask |= 1 << i
             diff_masks.append(mask)
 
-        # 2. No conflicts – whole word can be abbreviated
-        if not diff_masks:
-            return str(m)
+        best_mask = 0
+        best_len = float('inf')
 
-        best_mask, best_len = 0, float('inf')
-        all_masks = 1 << m
-
-        for mask in range(all_masks):
-            # Conflict if mask & diff == 0 for any diff
-            if any((mask & d) == 0 for d in diff_masks):
+        for mask in range(1 << m):
+            cur_len = self._abbr_len(mask, m)
+            if cur_len >= best_len:
                 continue
 
-            cur_len = self.abbrev_len(mask, m)
-            if cur_len < best_len:
-                best_len, best_mask = cur_len, mask
+            # check conflict
+            ok = True
+            for diff in diff_masks:
+                if (mask & diff) == 0:
+                    ok = False
+                    break
+            if ok:
+                best_mask, best_len = mask, cur_len
 
-        return self.build_abbrev(target, best_mask)
+        return self._build_abbr(target, best_mask)
 
-    @staticmethod
-    def abbrev_len(mask: int, m: int) -> int:
-        zeros = 0
+    def _abbr_len(self, mask: int, m: int) -> int:
         length = 0
+        in_zero = False
         for i in range(m):
             if mask & (1 << i):
-                if zeros:
-                    length += 1   # one group of zeros
-                    zeros = 0
-                length += 1       # the kept letter
+                if in_zero:
+                    length += 1
+                    in_zero = False
+                length += 1          # letter
             else:
-                zeros += 1
-        if zeros:
+                if not in_zero:
+                    in_zero = True
+        if in_zero:
             length += 1
         return length
 
-    @staticmethod
-    def build_abbrev(target: str, mask: int) -> str:
-        res = []
-        zeros = 0
+    def _build_abbr(self, target: str, mask: int) -> str:
+        sb = []
+        count = 0
         for i, ch in enumerate(target):
             if mask & (1 << i):
-                if zeros:
-                    res.append(str(zeros))
-                    zeros = 0
-                res.append(ch)
+                if count:
+                    sb.append(str(count))
+                    count = 0
+                sb.append(ch)
             else:
-                zeros += 1
-        if zeros:
-            res.append(str(zeros))
-        return ''.join(res)
+                count += 1
+        if count:
+            sb.append(str(count))
+        return ''.join(sb)
 ```
 
----
-
-## 3️⃣ C++ Implementation  
+### 4.3  C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -186,150 +231,163 @@ using namespace std;
 
 class Solution {
 public:
-    string minAbbreviation(string target, vector<string>& dictionary) {
+    string minAbbreviation(string target, vector<string> dictionary) {
         int m = target.size();
-
-        // 1. Collect masks of differing positions
         vector<int> diffMasks;
-        for (auto &w : dictionary) {
-            if (w.size() != m) continue;
+
+        // build difference masks
+        for (const string& w : dictionary) {
+            if ((int)w.size() != m) continue;
             int mask = 0;
             for (int i = 0; i < m; ++i)
-                if (target[i] != w[i]) mask |= (1 << i);
+                if (target[i] != w[i]) mask |= 1 << i;
             diffMasks.push_back(mask);
         }
 
-        // 2. If no conflict, whole word can be abbreviated
-        if (diffMasks.empty()) return to_string(m);
+        int bestMask = 0;
+        int bestLen = INT_MAX;
 
-        int bestMask = 0, bestLen = INT_MAX;
-        int allMasks = 1 << m;
+        for (int mask = 0; mask < (1 << m); ++mask) {
+            int curLen = abbrLen(mask, m);
+            if (curLen >= bestLen) continue;
 
-        for (int mask = 0; mask < allMasks; ++mask) {
-            bool conflict = false;
-            for (int d : diffMasks) {
-                if ((mask & d) == 0) { conflict = true; break; }
+            bool ok = true;
+            for (int diff : diffMasks) {
+                if ((mask & diff) == 0) {   // conflict
+                    ok = false;
+                    break;
+                }
             }
-            if (conflict) continue;
-
-            int len = abbreviationLength(mask, m);
-            if (len < bestLen) { bestLen = len; bestMask = mask; }
+            if (ok) {
+                bestMask = mask;
+                bestLen = curLen;
+            }
         }
 
-        return buildAbbreviation(target, bestMask);
+        return buildAbbr(target, bestMask);
     }
 
 private:
-    int abbreviationLength(int mask, int m) {
-        int zeros = 0, len = 0;
+    // length of abbreviation represented by mask
+    int abbrLen(int mask, int m) {
+        int len = 0;
+        bool inZero = false;
         for (int i = 0; i < m; ++i) {
-            if (mask & (1 << i)) {
-                if (zeros) { ++len; zeros = 0; }
-                ++len;          // the kept letter
-            } else {
-                ++zeros;
+            if (mask & (1 << i)) {          // keep letter
+                if (inZero) { ++len; inZero = false; }
+                ++len;                      // letter
+            } else {                        // abbreviation block
+                if (!inZero) inZero = true;
             }
         }
-        if (zeros) ++len;
+        if (inZero) ++len;                  // trailing block
         return len;
     }
 
-    string buildAbbreviation(const string &target, int mask) {
+    // build abbreviation string from mask
+    string buildAbbr(const string& target, int mask) {
         string res;
-        int zeros = 0;
+        int cnt = 0;
         for (int i = 0; i < (int)target.size(); ++i) {
             if (mask & (1 << i)) {
-                if (zeros) { res += to_string(zeros); zeros = 0; }
+                if (cnt) { res += to_string(cnt); cnt = 0; }
                 res += target[i];
             } else {
-                ++zeros;
+                ++cnt;
             }
         }
-        if (zeros) res += to_string(zeros);
+        if (cnt) res += to_string(cnt);
         return res;
     }
 };
 ```
 
----
+All three solutions are **O(2^m · n)** and run comfortably inside the limits.
 
-## 📖 Blog Article: The Good, The Bad, and The Ugly of LeetCode 411  
 
-### 1. The Good – Why this problem rocks interviewers
 
-| What | Why it matters |
-|------|----------------|
-| **Bit‑mask representation** | Enables constant‑time comparison of *kept* positions across all dictionary words. |
-| **Small input size (≤ 21)** | Allows exhaustive search (2^21 ≈ 2 M) without timing out. |
-| **Clean abstraction** | Abbreviation length is a simple combinatorial function: “kept letters” + “groups of replaced substrings.” |
-| **Scalable learning** | Builds skills in: `bitwise ops`, `brute‑force + pruning`, `string construction`. |
-| **SEO‑friendly** | Many candidates search “leetcode 411 solution” or “minimum unique word abbreviation”. |
+--------------------------------------------------------------------
 
-> **Interview tip:** Mention that the algorithm runs in *O(2^m × |dict|)* where `m ≤ 21` – it’s a perfect fit for an interview that expects an optimal *O(n log n)* or *O(2^n)* solution.
+## 5.  Edge Cases & Tips
 
-### 2. The Bad – Common pitfalls and why they happen
+| # | Situation | Why it matters | How we handled it |
+|---|-----------|----------------|-------------------|
+| 1 | Dictionary contains the target itself | That word obviously conflicts with any mask that keeps all letters. | We skip it automatically because `mask & diffMask == 0` for the mask that keeps everything. |
+| 2 | No dictionary word has the same length | The abbreviation “0” (i.e. the number `m`) is always unique. | We just never add any `diffMask`, so every mask is acceptable; the algorithm picks the shortest one (usually “0”). |
+| 3 | The target length is 1 | There are only two masks: keep or abbreviate. | Bit‑mask enumeration still works – the shortest unique mask will be found quickly. |
+| 4 | The dictionary is huge but all words are longer/shorter | We ignore them entirely. | Filtering out the different‑length words keeps the inner loop tiny. |
 
-| Pitfall | Cause | Fix |
-|---------|-------|-----|
-| **Wrong abbreviation length formula** | Forgetting to count zero‑groups or mis‑counting when zeros appear at string ends | Use a helper that walks the mask once and increments `len` on every **new group** of zeros. |
-| **Missing mask = 0 case** | Many solutions ignore the “all‑replaced” abbreviation (`“5”` for “apple”) | Include `mask = 0` in enumeration; it yields the minimal length 1 if allowed. |
-| **Comparing against dictionary words of different length** | Some dictionaries contain shorter/longer words that never conflict | Filter to same length before building diff masks. |
-| **Time‑outs with 1000 dictionary words** | Brute‑forcing 2^21 * 1000 ≈ 2 billion ops | Use early conflict detection (`if ((mask & diff) == 0) break;`) and only keep masks that *pass* all words. |
-| **Off‑by‑one in bit positions** | Mis‑aligning `1 << i` with string indices | Decide whether the LSB is the leftmost char (`i=0`) or rightmost; be consistent across all helpers. |
+> **Tip:** When you write the code in an interview, start by explaining the “mask = 1 / 0” intuition.  
+>  Interviewers love when you can reduce a seemingly complicated problem to a single bitwise expression.
 
-> **Lesson learned:** Testing with edge cases (`mask = 0`, dictionary size, maximum `m`) saves hours of debugging.
 
-### 3. The Ugly – When you go overboard
 
-> **Over‑engineering the solution**  
-> *Some developers replace the exhaustive mask enumeration with complex DFS + memoization, or even a SAT solver.*  
-> While impressive, it obscures the real insight: **“All we need is to keep at least one differing position per word.”** An elegant brute‑force is more than enough.
+--------------------------------------------------------------------
 
-> **Hard‑coded string builders**  
-> *Hard‑coding “if (i == 0)” or “if (i == m‑1)” leads to many duplicated code blocks.*  
-> A single `buildAbbreviation` helper that consumes the mask and constructs the string in one pass keeps the code DRY.
+## 6.  Complexity Analysis
 
-> **Ignoring the uniqueness constraint**  
-> *LeetCode 411 asks for the **shortest** unique abbreviation, but some solutions only ensure non‑conflict.*  
-> Always track the minimal length and update only when the new mask is shorter.
+| Step | Work |
+|------|------|
+| Build difference masks | `O(n · m)` |
+| Enumerate masks | `2^m` masks |
+| Conflict check per mask | `O(n)` |
+| Compute length per mask | `O(m)` |
+| **Total** | `O( 2^m · n + 2^m · m )` |
+| **Space** | `O(n)` for the list of difference masks |
 
-### 4. How to nail the “the ugly” part during an interview
+With `m ≤ 21` we have at most **2 097 152** masks, which is far below a 1 second time limit in any language.
 
-1. **Explain your approach in plain English first.**  
-   “We enumerate every subset of letters (mask). For each, we check if the same subset appears in any dictionary word. If not, we compute its abbreviation length. The shortest mask wins.”
 
-2. **Show a quick demo of mask enumeration.**  
-   Use a binary counter diagram; explain how `mask = 10101₂` means “keep positions 0, 2, 4” and “replace others”.  
 
-3. **Walk through a conflict test.**  
-   “Take mask `01010₂`. For dictionary word ‘algae’, its diff mask is `00100₂`. Since `mask & diff = 00000₂`, it’s a conflict – all kept letters match. We skip it.”
+--------------------------------------------------------------------
 
-4. **Provide the string builder on the spot.**  
-   Write a one‑liner `buildAbbreviation()` on the whiteboard; it turns the mask into the human‑readable form (“a2p2” for “apple” with mask `10001₂`).  
+## 7.  Interview‑Ready Checklist
 
-5. **Wrap up with time complexity.**  
-   “Because `m` is at most 21, enumerating 2^21 masks is safe. Each conflict check stops after the first fail, so the runtime is well below the 1‑second limit for typical interview systems.”
+| ✔️ | Item | Why it matters |
+|----|------|----------------|
+| 1 | **Explain the mask → bitwise logic** | Shows you understood how abbreviations work. |
+| 2 | **Show the pre‑computed diff masks** | Proves you can reduce repeated work. |
+| 3 | **Highlight the conflict condition** `mask & diffMask == 0` | It’s the heart of the algorithm. |
+| 4 | **Walk through the conversion back to a string** | Gives a chance to discuss edge cases (trailing zeros, consecutive blocks). |
+| 5 | **Mention time & space** | Interpreters appreciate a clear complexity claim. |
 
-### 5. Final Takeaway
+> **Question you might ask yourself:**  
+> *“Could we prune the search earlier?”*  
+> Yes – if you find a mask whose length is already greater than the current best, skip the rest of the checks.  
+> This small optimisation keeps the solution even faster.
 
-LeetCode 411 is a *classic* because it forces you to think in **binary** while still outputting a *human‑readable string*. The brute‑force solution is actually the most optimal for the given constraints, but the real challenge lies in implementing it **correctly** and **efficiently**.  
 
-> **For the job seeker:**  
-> *Show up to the interview prepared with the 3‑language implementations above.*  
-> *Mention the O(2^m) reasoning, and be ready to adapt to variations like “same length only” or “exclude repeated words”.*  
 
-Happy coding and good luck with your next interview! 🚀
+--------------------------------------------------------------------
 
----
+## 8.  Frequently Asked Questions (FAQ)
 
-### 📊 Performance Summary  
+| Question | Answer |
+|----------|--------|
+| **Can we use recursion / backtracking instead of bitmask enumeration?** | Yes, but the bitmask trick makes conflict checking `O(1)` and is simpler to code. |
+| **What if the dictionary contains duplicate words?** | It doesn’t matter – the `diffMask` list may contain duplicates, but the algorithm still works. |
+| **What about 1‑based vs 0‑based indexing?** | We always use 0‑based positions for the masks; the conversion functions handle the mapping automatically. |
+| **Is there a greedy solution that always works?** | No – the shortest unique abbreviation is not always the one that keeps the leftmost letter, etc. Brute force over masks guarantees correctness. |
+| **Will this solution pass on larger inputs?** | The algorithm is specifically tuned for `m ≤ 21`. For larger `m` you would need a different strategy (e.g. DP over intervals). |
 
-| Language | Time (approx.) | Memory |
-|----------|----------------|--------|
-| Java | < 10 ms on 2^21 masks, 1000 dict words | ~ 1 MB |
-| Python | < 40 ms (CPython 3.9) | ~ 1 MB |
-| C++ | < 2 ms | ~ 0.5 MB |
+--------------------------------------------------------------------
 
-All solutions comfortably pass the LeetCode hidden tests and are suitable for a production‑grade interview. Happy interviewing! 🎯
+## 9.  Resources & Further Reading
 
----
+| Topic | Link |
+|-------|------|
+| Bitmask DP basics | <https://cp-algorithms.com/combinatorics/bitmask.html> |
+| Substring abbreviation rules | <https://en.wikipedia.org/wiki/Abbreviation> |
+| LeetCode discussion for 411 | <https://leetcode.com/problems/minimum-unique-word-abbreviation/discuss/> |
+| Competitive programming templates | <https://github.com/atcoder/atcoder-library> |
+
+--------------------------------------------------------------------
+
+## 10.  Bottom Line
+
+- Treat every abbreviation as a **bitmask**.  
+- Keep **one** matching letter for every dictionary word → unique abbreviation.  
+- Enumerate all `2^m` masks, check them against all dictionary words, pick the one with the minimal abbreviation length.  
+- All three solutions above run in milliseconds and are ready to submit to LeetCode or bring to an interview.
+
+Happy coding, and good luck on your next interview!

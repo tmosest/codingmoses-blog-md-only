@@ -7,76 +7,57 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. Problem Recap
+        ---
 
-**LeetCode 2200 – Find All K‑Distant Indices in an Array**
+## 1.  Code Solutions  
 
-> You’re given an array `nums`, a `key`, and a distance `k`.  
-> An index `i` is *k‑distant* if there exists a `j` such that `|i-j| ≤ k` and `nums[j] == key`.  
-> Return every k‑distant index in increasing order.
+Below you will find **three complete, self‑contained implementations** of the LeetCode 2200 problem – “Find All K‑Distant Indices in an Array” – written in **Java, Python, and C++**.  
+All solutions run in **O(n)** time and **O(1)** auxiliary space (apart from the output list).
 
-Constraints  
-- `1 ≤ nums.length ≤ 1000`  
-- `1 ≤ nums[i] ≤ 1000`  
-- `1 ≤ k ≤ nums.length`  
-- `key` is guaranteed to appear in `nums`.
+> **Problem Recap**  
+> Given an integer array `nums`, a `key` value that appears in the array, and an integer `k`, return **all indices** `i` such that there exists at least one index `j` with `nums[j] == key` and `|i-j| ≤ k`.  
+> The result must be sorted in ascending order.
 
 ---
 
-## 2. High‑Level Solution
-
-The brute‑force check would test every pair `(i, j)` → **O(n·k)**, which is fine for 1000 but still not optimal.  
-A cleaner, linear‑time algorithm is:
-
-1. **Compute the distance from each index to the nearest occurrence of `key`.**  
-   Two passes (left‑to‑right and right‑to‑left) give the minimal distance for every position.
-2. **Select indices whose minimal distance ≤ k.**  
-
-This runs in **O(n)** time and uses **O(n)** extra space (the distance array).  
-Because the array size is only 1000, the constant factor is negligible, but the approach scales well.
-
----
-
-## 3. Code Implementations
-
-Below are working solutions in **Java**, **Python**, and **C++**.  
-All three use the two‑pass distance‑to‑key strategy.
-
-### 3.1 Java (LeetCode Style)
+### 1.1 Java
 
 ```java
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Solution {
     public List<Integer> findKDistantIndices(int[] nums, int key, int k) {
-        int n = nums.length;
-        int[] dist = new int[n];
-        Arrays.fill(dist, Integer.MAX_VALUE);
-
-        // Forward pass: distance to last seen key
-        int last = -k - 1;          // effectively "infinite" distance
-        for (int i = 0; i < n; i++) {
-            if (nums[i] == key) last = i;
-            dist[i] = i - last;
-        }
-
-        // Backward pass: distance to next seen key
-        last = n + k;               // "infinite" on the right
-        for (int i = n - 1; i >= 0; i--) {
-            if (nums[i] == key) last = i;
-            dist[i] = Math.min(dist[i], last - i);
-        }
-
         List<Integer> result = new ArrayList<>();
-        for (int i = 0; i < n; i++) {
-            if (dist[i] <= k) result.add(i);
+        int n = nums.length;
+        int start = 0;                     // the first index that is not yet marked
+
+        for (int j = 0; j < n; j++) {
+            if (nums[j] == key) {
+                int left  = Math.max(start, j - k);
+                int right = Math.min(n - 1, j + k);
+
+                for (int i = left; i <= right; i++) {
+                    result.add(i);
+                }
+                start = right + 1;          // skip already added indices
+            }
         }
         return result;
+    }
+
+    // Simple test harness
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        int[] nums = {3,4,9,1,3,9,5};
+        System.out.println(s.findKDistantIndices(nums, 9, 1)); // [1, 2, 3, 4, 5, 6]
     }
 }
 ```
 
-### 3.2 Python (3.8+)
+---
+
+### 1.2 Python
 
 ```python
 from typing import List
@@ -84,238 +65,220 @@ from typing import List
 class Solution:
     def findKDistantIndices(self, nums: List[int], key: int, k: int) -> List[int]:
         n = len(nums)
-        dist = [float('inf')] * n
+        res = []
+        start = 0                         # first unmarked index
 
-        # Left to right
-        last = -k - 1
-        for i, val in enumerate(nums):
+        for j, val in enumerate(nums):
             if val == key:
-                last = i
-            dist[i] = i - last
+                left  = max(start, j - k)
+                right = min(n - 1, j + k)
+                res.extend(range(left, right + 1))
+                start = right + 1          # skip already marked indices
+        return res
 
-        # Right to left
-        last = n + k
-        for i in range(n - 1, -1, -1):
-            if nums[i] == key:
-                last = i
-            dist[i] = min(dist[i], last - i)
-
-        return [i for i, d in enumerate(dist) if d <= k]
+# Demo
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.findKDistantIndices([3,4,9,1,3,9,5], 9, 1))   # [1, 2, 3, 4, 5, 6]
 ```
 
-### 3.3 C++ (GNU++17)
+---
+
+### 1.3 C++
 
 ```cpp
-#include <vector>
-#include <algorithm>
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
 public:
-    std::vector<int> findKDistantIndices(std::vector<int>& nums, int key, int k) {
+    vector<int> findKDistantIndices(vector<int>& nums, int key, int k) {
         int n = nums.size();
-        std::vector<int> dist(n, INT_MAX);
+        vector<int> res;
+        int start = 0;                 // first index not yet marked
 
-        // Left to right
-        int last = -k - 1;
-        for (int i = 0; i < n; ++i) {
-            if (nums[i] == key) last = i;
-            dist[i] = i - last;
+        for (int j = 0; j < n; ++j) {
+            if (nums[j] == key) {
+                int left  = max(start, j - k);
+                int right = min(n - 1, j + k);
+                for (int i = left; i <= right; ++i) res.push_back(i);
+                start = right + 1;       // skip already marked indices
+            }
         }
-
-        // Right to left
-        last = n + k;
-        for (int i = n - 1; i >= 0; --i) {
-            if (nums[i] == key) last = i;
-            dist[i] = std::min(dist[i], last - i);
-        }
-
-        std::vector<int> res;
-        for (int i = 0; i < n; ++i)
-            if (dist[i] <= k) res.push_back(i);
         return res;
     }
 };
+
+int main() {
+    Solution s;
+    vector<int> nums{3,4,9,1,3,9,5};
+    auto res = s.findKDistantIndices(nums, 9, 1);
+    for (int x : res) cout << x << ' ';
+    cout << '\n';                     // 1 2 3 4 5 6
+}
 ```
 
 ---
 
-## 4. Why This Works – The “Good, the Bad, the Ugly”
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Time Complexity** | O(n) – linear, no nested loops | The naive O(n·k) solution would be unnecessary | O(n·k) would TLE on large tests |
-| **Space Complexity** | O(n) – distance array; unavoidable for clear logic | Could be O(1) if you process on the fly but more complex | None, we keep it simple |
-| **Readability** | Two clear passes, easy to understand | Might seem “magic” if you skip explanation | Over‑optimised tricks (bit‑mask, fancy DP) make code unreadable |
-| **Edge Cases** | Handles `k = n`, all elements equal to key, or no key at all (guaranteed at least one) | None | Not applicable |
-| **Maintainability** | Simple comments, standard library usage | None | Over‑engineering can harm maintainability |
-
----
-
-## 5. Step‑by‑Step Walkthrough (Illustrated)
-
-Consider `nums = [3,4,9,1,3,9,5]`, `key = 9`, `k = 1`.
-
-1. **Forward pass**  
-   ```
-   i   0 1 2 3 4 5 6
-   val 3 4 9 1 3 9 5
-   dist 3 2 0 1 2 0 1
-   ```
-   *Explanation:* The first key is at index 2, so distance at 0 is 2 (2-0). At 3, distance to last key is 1 (3-2).
-
-2. **Backward pass**  
-   ```
-   i   0 1 2 3 4 5 6
-   dist 2 1 0 0 1 0 1
-   ```
-   *Explanation:* The last key is at 5, so index 6 is distance 1.
-
-3. **Select indices with distance ≤ k**  
-   `dist = [2,1,0,0,1,0,1]`, `k=1` → indices `[1,2,3,4,5,6]`.
-
----
-
-## 6. Testing & Validation
-
-```python
-# Python example test
-sol = Solution()
-assert sol.findKDistantIndices([3,4,9,1,3,9,5], 9, 1) == [1,2,3,4,5,6]
-assert sol.findKDistantIndices([2,2,2,2,2], 2, 2) == [0,1,2,3,4]
-assert sol.findKDistantIndices([1], 1, 1) == [0]
-```
-
-Feel free to adapt the test harness for Java or C++.
-
----
-
-## 7. SEO‑Optimized Blog Post Outline
-
-Below is a full‑blown article skeleton you can paste into a CMS, complete with meta tags, headings, keyword focus, and a job‑hunting hook.
-
----
+## 2.  The Good, The Bad, and The Ugly – A SEO‑Optimized Blog Article
 
 ### Title
-**“Cracking LeetCode 2200: Find All K‑Distant Indices – A Complete Guide (Java, Python, C++)”**
-
-### Meta Description
-> Master LeetCode 2200 with our step‑by‑step solution in Java, Python, and C++. Learn the O(n) algorithm, explore pitfalls, and get interview‑ready. Perfect for software engineers seeking to land their dream job.
-
-### Keywords
-- LeetCode 2200
-- Find All K‑Distant Indices
-- Interview coding problems
-- Java solution LeetCode
-- Python algorithm LeetCode
-- C++ interview questions
-- Software engineering interview tips
-
-### H1
-**Cracking LeetCode 2200: Find All K‑Distant Indices – The Ultimate Solution Guide**
+**“LeetCode 2200 – The Good, The Bad, and The Ugly of Finding K‑Distant Indices”**
 
 ---
 
-#### Introduction (H2)
-
-- What the problem asks  
-- Why it’s common in technical interviews  
-- How solving it showcases algorithmic thinking
-
-#### Problem Statement (H3)
-
-> A concise restatement of the problem with examples.
-
-#### Naïve Approach (H3)
-
-- Brute‑force description  
-- Time complexity pitfalls  
-- Why it fails at scale
-
-#### The Optimal O(n) Strategy (H3)
-
-- Intuition: “distance to the nearest key”  
-- Two‑pass algorithm explained with a diagram  
-- Pseudocode (for quick mental reference)
-
-#### Code Implementations (H3)
-
-- Java snippet with comments  
-- Python snippet with typing hints  
-- C++ snippet using STL  
-
-*(Include a small “copy‑paste ready” block for each language)*
-
-#### Complexity Analysis (H3)
-
-- **Time:** O(n)  
-- **Space:** O(n) (can be optimized to O(1) with in‑place tricks but readability wins)
-
-#### Edge Cases & Common Mistakes (H3)
-
-- `k` equals array length  
-- All elements are the key  
-- Key appears only at the ends  
-
-#### Testing Strategy (H3)
-
-- Unit test examples  
-- Edge test cases  
-- How to integrate with LeetCode’s test harness
-
-#### Interview Tips (H3)
-
-- How to articulate your solution  
-- Discuss the trade‑offs between brute force and optimal  
-- Demonstrate how you handle constraints in real interviews
-
-#### Bonus: Quick Optimized One‑Liner (H3)
-
-- A concise Python or JavaScript one‑liner (optional)
-
-#### FAQ (H3)
-
-- “Can I use a deque?”  
-- “What if k is zero?”  
-- “Why isn’t a sliding window enough?”
-
-#### Wrap‑Up & Next Steps (H2)
-
-- Recap of key takeaways  
-- Encourage practice on similar “nearest element” problems  
-- Link to other LeetCode challenges (e.g., 1344, 1492)
-
-#### Call‑to‑Action (H2)
-
-> “Ready to ace your next interview? Sign up for our free coding interview prep newsletter and get weekly problem walkthroughs straight to your inbox.”
+#### Meta Description
+> Master LeetCode 2200 “Find All K‑Distant Indices” with a deep dive into the best O(n) solution, pitfalls, and a clean Java/Python/C++ implementation. Ideal for coding interview prep, algorithm tutorials, and boosting your software engineering résumé.
 
 ---
 
-### Final Thoughts
+### Introduction  
 
-- Emphasize that mastering problems like 2200 shows **clean algorithm design** and **problem‑decomposition skills**—exactly what hiring managers want.  
-- Highlight that the solution demonstrates familiarity with **array manipulation**, **two‑pass patterns**, and **efficient distance calculations**.
+When preparing for software‑engineering interviews, **LeetCode 2200** is a popular “easy” problem that tests your understanding of array traversal and range marking. Even though the statement is simple, many candidates fall into common traps that cost them runtime or memory.
 
----
+In this article we will dissect the problem, expose the “good”, “bad”, and “ugly” aspects, and provide a **ready‑to‑copy** solution in Java, Python, and C++. The goal is not just to solve the problem but to showcase the **clean, interview‑ready style** that recruiters look for.
 
-## 8. Ready‑to‑Use Boilerplate for Recruiters
-
-If you want to paste the solution directly into your resume or portfolio:
-
-```text
-// Java (LeetCode)
-public List<Integer> findKDistantIndices(int[] nums, int key, int k) { … }
-
-// Python
-def findKDistantIndices(self, nums, key, k): … 
-
-// C++
-vector<int> findKDistantIndices(vector<int>& nums, int key, int k) { … }
-```
-
-Add a short comment: *“Optimized O(n) algorithm that finds all indices within distance k of a given key in an array.”*
-
-Recruiters love clean, language‑agnostic snippets that show *you can write efficient, production‑ready code*.
+> **Keywords**: LeetCode 2200, K‑Distant Indices, algorithm interview, coding interview, job interview, software engineer, Java, Python, C++ solutions, time complexity, space complexity.
 
 ---
 
-**Happy coding—and good luck landing that dream software engineering job!**
+### 2.1 Problem Restatement (for context)
+
+> **Input**  
+> `nums` – integer array (size ≤ 10⁵)  
+> `key` – an integer that appears at least once in `nums`  
+> `k` – maximum allowed distance
+
+> **Output**  
+> All indices `i` such that ∃ `j` with `nums[j] == key` and `|i‑j| ≤ k`.  
+> The output must be sorted ascendingly.
+
+---
+
+### 2.2 The “Good” – Why this problem is a great interview teaching moment
+
+| Why | What it teaches |
+|-----|-----------------|
+| **Simple Input** | You can focus on algorithmic patterns instead of language syntax. |
+| **Linear Complexity** | Demonstrates that **O(n)** is achievable with clever marking – a key skill for interviewers. |
+| **No Additional Constraints** | Allows you to show clean code and comment style – essential for a professional résumé. |
+| **Reusable Pattern** | The “interval marking” trick is a micro‑variant of sweep‑line, useful in interval covering, scheduling, and range update problems. |
+
+---
+
+### 2.3 The “Bad” – Common pitfalls
+
+1. **Brute‑Force O(n²)**  
+   *Nested loops checking every pair of indices.*  
+   - *Runtime*: O(10⁵²) → TLE on LeetCode.  
+   - *Memory*: Unnecessary extra checks.
+
+2. **Over‑Marking with a Boolean Array**  
+   ```python
+   marked = [False] * n
+   for j in key_indices:
+       for i in range(max(0, j-k), min(n, j+k+1)):
+           marked[i] = True
+   ```
+   - *Time*: Still O(n²) in worst case (when many key positions).  
+   - *Space*: O(n) extra array – acceptable but not optimal.
+
+3. **Using `set` to Deduplicate**  
+   ```java
+   Set<Integer> res = new HashSet<>();
+   // ...
+   res.add(i);
+   ```
+   - *Problem*: HashSet insertion & conversion to sorted list adds overhead and defeats the “sorted‑output” requirement.
+
+---
+
+### 2.4 The “Ugly” – Why naive solutions are unattractive in interviews
+
+| Problem | What recruiters dislike |
+|---------|--------------------------|
+| **Excessive nested loops** | Shows lack of algorithmic thinking, leads to TLE, indicates weak problem‑solving skills. |
+| **Unnecessary extra memory** | In interviews, every byte counts. |
+| **Duplicate work** | Adds micro‑overheads and indicates sloppy implementation. |
+
+---
+
+### 3.  The “Best” – One‑Pass Interval Marking (Optimized Solution)
+
+#### 3.1 Core Idea  
+
+- **Key Observation**: If `nums[j] == key`, then every index `i` in the inclusive interval `[max(0, j‑k), min(n‑1, j+k)]` is automatically a valid k‑distant index.  
+- **Goal**: Collect all such intervals and **merge** them efficiently, **avoiding duplicates**.
+
+#### 3.2 Algorithm Walkthrough  
+
+1. **Initialize**  
+   - `start = 0` – the smallest index that has **not yet been added** to the result.  
+   - `result = []` – final list.
+
+2. **Traverse the array once** (`j = 0 … n-1`):  
+   - If `nums[j] == key`:
+     - Compute the left boundary `left = max(start, j - k)`.  
+     - Compute the right boundary `right = min(n-1, j + k)`.  
+     - Append all indices from `left` to `right` inclusive to `result`.  
+     - Update `start = right + 1` – we can safely skip indices already added.
+
+3. **Return** `result`.
+
+Because we skip already‑added indices (`start` always moves forward), every index is appended **exactly once**, guaranteeing both **uniqueness** and **sorted order** without any post‑sorting.
+
+---
+
+#### 3.3 Complexity Analysis  
+
+| Complexity | Explanation |
+|------------|-------------|
+| **Time** | Each array element is visited once. The inner loop that appends indices runs only for indices that are **new** (monotonic `start`). Thus total operations = O(n). |
+| **Space** | Only the output list is needed. No auxiliary arrays or hash sets. Hence O(1) extra space. |
+
+---
+
+#### 3.4 Ready‑to‑Copy Code (Java, Python, C++)
+
+*(Refer to the code section above for full implementations.)*
+
+---
+
+### 4.  Interview‑Friendly Tips  
+
+| Tip | Why it matters |
+|-----|----------------|
+| **Read the statement twice** – confirm that `key` *does* appear, and the result must be sorted. |
+| **Avoid nested loops** – think of intervals instead of pairs. |
+| **Use a moving pointer (`start`)** – prevents double‑counting and keeps linear time. |
+| **Test edge cases**:  
+  - All elements equal to `key`.  
+  - `k` = 0.  
+  - `key` at array boundaries. | Ensures robustness. |
+| **Explain your solution verbally** – recruiters love candidates who can articulate the algorithm, not just write code. |
+
+---
+
+### 5.  How This Helps Your Job Hunt  
+
+- **Showcasing the O(n) solution** demonstrates your ability to **optimize** naïve approaches, a highly prized skill in performance‑critical software roles.  
+- **Providing multi‑language implementations** signals versatility (Java for enterprise, Python for data science, C++ for systems).  
+- **Discussing pitfalls** reflects deep understanding of algorithmic complexity, which interviewers look for.  
+
+---
+
+### 6.  Take‑away Checklist  
+
+- ✅ Understand the **interval marking** pattern.  
+- ✅ Implement a **single‑pass** solution with a `start` pointer.  
+- ✅ Verify edge cases (`k = 0`, key at extremes, dense key occurrences).  
+- ✅ Comment code and explain complexity.  
+- ✅ Practice explaining the algorithm out loud.
+
+---
+
+#### Closing Thought  
+
+LeetCode 2200 is a *teachable micro‑problem*: it forces you to translate a mathematical condition into an efficient sweep. Mastering it, and being able to explain the pattern in interviews, signals to recruiters that you’re ready for **real‑world performance‑oriented coding**.
+
+Happy coding, and good luck with your next interview!

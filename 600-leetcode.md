@@ -7,323 +7,309 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 600 – Non‑Negative Integers Without Consecutive Ones  
-> **Full‑stack solution (Java, Python, C++) + a SEO‑friendly blog post**  
+        ## 🚀 LeetCode 600 – *Non‑Negative Integers Without Consecutive Ones*  
+**Languages:** Java | Python | C++  
+**Tags:** `Dynamic Programming`, `Bit Manipulation`, `Recursion`, `Interview Question`  
 
 ---
 
-## Table of Contents  
+### 📌 Problem Summary
 
-1. [Problem Overview](#problem-overview)  
-2. [Why This Question Matters for Interviews](#why-this-question-matters-for-interviews)  
-3. [Solution Idea](#solution-idea)  
-   * 3.1  Fibonacci / DP on bits  
-   * 3.2  Bit‑wise traversal  
-4. [Complexity Analysis](#complexity-analysis)  
-5. [Full Code](#full-code)  
-   * Java  
-   * Python  
-   * C++  
-6. [Blog Post – “The Good, The Bad, and The Ugly of LeetCode 600”](#blog-post)  
-7. [Key Take‑aways for Job Hunters](#key-takeaways-for-job-hunters)  
-8. [References & Further Reading](#references--further-reading)
-
----
-
-## 1. Problem Overview<a name="problem-overview"></a>
-
-> **LeetCode 600 – Non‑Negative Integers Without Consecutive Ones**  
-> **Difficulty:** Hard
-
-> **Given** a positive integer `n` (`1 ≤ n ≤ 10^9`).  
-> **Return** the count of integers `x` in the range `[0, n]` whose binary representation **does not contain two consecutive 1 bits**.
+> **Given** a positive integer `n` (1 ≤ n ≤ 10⁹).  
+> **Return** the number of integers in the inclusive range `[0, n]` whose binary representation **does not** contain two consecutive `1`s.
 
 **Examples**
 
-| n | Output | Explanation |
+| n | answer | Explanation |
 |---|--------|-------------|
-| 5 | 5 | 0, 1, 2, 4, 5 are valid (3 = 11 has consecutive 1’s) |
-| 1 | 2 | 0, 1 |
-| 2 | 3 | 0, 1, 2 |
-
-The problem is a classic example of *bit‑DP* (dynamic programming on binary digits).
+| 5 | 5 | `0,1,10,100,101` – only `11` (3) is invalid |
+| 1 | 2 | `0,1` |
+| 2 | 3 | `0,1,10` |
 
 ---
 
-## 2. Why This Question Matters for Interviews<a name="why-this-question-matters-for-interviews"></a>
+### 🎯 Why This Question Rocks for Interviews
 
-- **Conceptual Breadth** – It covers bit manipulation, DP, and greedy reasoning.  
-- **Edge‑Case Awareness** – Handling large `n` up to `10^9` (≈ 30 bits).  
-- **Optimization** – A naïve enumeration is `O(n)` → impossible for constraints.  
-- **Interview Signal** – Demonstrates the ability to spot *pattern* (no consecutive 1’s) and design an efficient algorithm.
+* Tests *dynamic programming* knowledge – the Fibonacci‑like recurrence is hidden behind binary constraints.  
+* Forces you to think about **bit‑level** operations and state representation.  
+* Can be solved in **O(log n)** time – a perfect showcase of algorithmic efficiency.  
 
----
-
-## 3. Solution Idea<a name="solution-idea"></a>
-
-### 3.1  Fibonacci / DP on Bits
-
-The core insight:
-
-> For any position `k` (starting from 0 = LSB), the number of valid strings of length `k` **ending with 0** and **ending with 1** form a Fibonacci sequence.
-
-Let:
-
-```
-dp[i][0] = #valid binary strings of length i that end with 0
-dp[i][1] = #valid binary strings of length i that end with 1
-```
-
-Transitions:
-
-```
-dp[i][0] = dp[i-1][0] + dp[i-1][1]   // can append 0 after any
-dp[i][1] = dp[i-1][0]                // can append 1 only after 0
-```
-
-Base: `dp[1][0] = 1` (just "0"), `dp[1][1] = 1` (just "1").
-
-The total number of valid strings of length `i` is `dp[i][0] + dp[i][1]`, which is the `(i+2)`‑th Fibonacci number.
-
-### 3.2  Bit‑wise Traversal
-
-We iterate over the bits of `n` from the most significant bit (MSB) to the least significant bit (LSB).  
-While traversing:
-
-1. **Keep track of the previous bit** (`prev`), initialized to `0`.  
-2. When the current bit is `1`:
-   - Add the number of valid strings that can be formed if we put a `0` at this position and then any valid suffix.  
-   - If the previous bit was also `1`, we found two consecutive ones → we stop (no more valid numbers greater than the current prefix).  
-3. Set `prev` to the current bit and continue.
-
-At the end (if we never encountered two consecutive ones), add `1` to include `n` itself.
-
-The key helper is the pre‑computed Fibonacci array `f[i]` – the number of valid strings of length `i`.
+If you can nail this problem (and explain it cleanly), you’ll stand out to hiring managers at **FAANG, Bloomberg, Google, Microsoft, etc.**  
 
 ---
 
-## 4. Complexity Analysis<a name="complexity-analysis"></a>
+## 🔧 Solution Idea – Digit DP + Fibonacci Cache
 
-| Operation | Time | Space |
-|-----------|------|-------|
-| Pre‑compute Fibonacci up to 31 | **O(31)** | **O(31)** |
-| Traverse bits of `n` | **O(log n)** (≤ 31) | **O(1)** |
+### 1️⃣ Observe the Structure
 
-So overall **O(log n)** time and **O(1)** extra space.
+* Let `dp[i]` be the number of valid binary strings of length `i` (i.e., `i` bits) that **do not** contain consecutive `1`s.  
+* The recurrence is simply the Fibonacci sequence:
+
+```
+dp[0] = 1   // empty string
+dp[1] = 2   // "0" and "1"
+dp[i] = dp[i-1] + dp[i-2]  (i ≥ 2)
+```
+
+Reason:  
+- If the first bit is `0`, the remaining `i‑1` bits can be any valid string of length `i‑1`.  
+- If the first bit is `1`, the second bit must be `0`, leaving `i‑2` free bits.
+
+### 2️⃣ Count Numbers ≤ n
+
+Walk through the bits of `n` from the most significant bit (MSB) to the least significant bit (LSB).  
+Maintain:
+
+- `prev` – whether the previous processed bit was `1`.  
+- `ans` – accumulated count of valid numbers discovered so far.
+
+At each bit position `i`:
+
+```
+if n has a 1 at bit i:
+    // If we set this bit to 0, the remaining lower bits can be any valid string of length i
+    ans += dp[i]
+    // If we set this bit to 1, we must check that prev==0 (no consecutive 1s)
+    if prev == 1:  // consecutive ones would appear
+        break   // no further numbers are valid
+    prev = 1
+else:
+    prev = 0
+```
+
+After finishing the loop, include `n` itself (if it has no consecutive ones) by adding 1.
+
+### 3️⃣ Complexity
+
+* **Time:** `O(log n)` – we scan at most 31 bits (`n ≤ 10⁹`).  
+* **Space:** `O(1)` – only a few integer variables and a small DP array of size ~32.
 
 ---
 
-## 5. Full Code<a name="full-code"></a>
+## 🧑‍💻 Code Implementations
 
-### 5.1 Java
+### 1. Java
 
 ```java
 public class Solution {
-    public int findIntegers(int n) {
-        // Pre‑compute Fibonacci numbers for lengths up to 31
-        int[] f = new int[32];
-        f[0] = 1;          // empty string
-        f[1] = 2;          // "0" and "1"
-        for (int i = 2; i < f.length; i++) {
-            f[i] = f[i - 1] + f[i - 2];
-        }
+    // Pre-computed dp[0..31] for Fibonacci-like sequence
+    private final int[] dp = new int[32];
 
+    public Solution() {
+        dp[0] = 1;
+        dp[1] = 2;
+        for (int i = 2; i < dp.length; i++) {
+            dp[i] = dp[i - 1] + dp[i - 2];
+        }
+    }
+
+    public int findIntegers(int n) {
         int ans = 0;
-        int prevBit = 0;           // previous processed bit
-        for (int i = 30; i >= 0; i--) {   // n ≤ 1e9 < 2^30
-            int currBit = (n >> i) & 1;
-            if (currBit == 1) {
-                // Put 0 at this position and any valid suffix
-                ans += f[i];
-                if (prevBit == 1) {
-                    // Two consecutive ones, stop
-                    return ans;
+        int prev = 0;          // previous bit processed
+        for (int i = 30; i >= 0; i--) {   // 31 bits are enough for n <= 1e9
+            if (((n >> i) & 1) == 1) {    // bit i is 1
+                ans += dp[i];             // put 0 here
+                if (prev == 1) {          // would create 11
+                    return ans;           // stop, rest are invalid
                 }
-                prevBit = 1;
+                prev = 1;                  // set this bit to 1
             } else {
-                prevBit = 0;
+                prev = 0;                  // bit is 0
             }
         }
-        // n itself has no consecutive ones
-        return ans + 1;
+        return ans + 1; // include n itself
     }
 }
 ```
 
----
-
-### 5.2 Python
+### 2. Python
 
 ```python
 class Solution:
-    def findIntegers(self, n: int) -> int:
-        # Pre‑compute Fibonacci up to 31
-        f = [0] * 32
-        f[0], f[1] = 1, 2
+    def __init__(self):
+        self.dp = [0] * 32
+        self.dp[0], self.dp[1] = 1, 2
         for i in range(2, 32):
-            f[i] = f[i-1] + f[i-2]
+            self.dp[i] = self.dp[i - 1] + self.dp[i - 2]
 
+    def findIntegers(self, n: int) -> int:
         ans = 0
         prev = 0
-        for i in range(30, -1, -1):          # 0‑based bits
-            cur = (n >> i) & 1
-            if cur == 1:
-                ans += f[i]
-                if prev == 1:
+        for i in range(30, -1, -1):          # 31 bits
+            if (n >> i) & 1:
+                ans += self.dp[i]            # set this bit to 0
+                if prev == 1:                # consecutive 1 would appear
                     return ans
                 prev = 1
             else:
                 prev = 0
-        return ans + 1
+        return ans + 1  # include n itself
 ```
 
----
-
-### 5.3 C++
+### 3. C++
 
 ```cpp
 class Solution {
 public:
-    int findIntegers(int n) {
-        // Fibonacci up to 31
-        int f[32] = {0};
-        f[0] = 1;  // empty string
-        f[1] = 2;  // "0", "1"
-        for (int i = 2; i < 32; ++i) f[i] = f[i-1] + f[i-2];
+    Solution() {
+        dp[0] = 1;
+        dp[1] = 2;
+        for (int i = 2; i < 32; ++i)
+            dp[i] = dp[i - 1] + dp[i - 2];
+    }
 
+    int findIntegers(int n) {
         int ans = 0;
         int prev = 0;
-        for (int i = 30; i >= 0; --i) {          // n <= 1e9
-            int cur = (n >> i) & 1;
-            if (cur == 1) {
-                ans += f[i];
-                if (prev == 1) return ans;      // two consecutive 1s
+        for (int i = 30; i >= 0; --i) {
+            if ((n >> i) & 1) {
+                ans += dp[i];
+                if (prev == 1) return ans; // consecutive 1 found
                 prev = 1;
             } else {
                 prev = 0;
             }
         }
-        return ans + 1;   // include n itself
+        return ans + 1; // include n itself
     }
+private:
+    int dp[32];
 };
 ```
 
 ---
 
-## 6. Blog Post – “The Good, The Bad, and The Ugly of LeetCode 600”<a name="blog-post"></a>
+## 📖 Blog Article – “The Good, The Bad, and The Ugly of LeetCode 600”
 
-> **SEO Title**: *LeetCode 600: Non‑Negative Integers Without Consecutive Ones – A Deep Dive into Bit‑DP and Interview Mastery*  
-> **Meta Description**: Master LeetCode 600 with a step‑by‑step explanation, Java/Python/C++ solutions, and interview‑ready insights on the Good, Bad, and Ugly aspects of this hard problem.
+### Title
+> **Non‑Negative Integers Without Consecutive Ones – The Good, The Bad, and The Ugly (A Winning Interview Guide)**  
 
----
-
-### 6.1 Introduction
-
-If you’re preparing for a **software‑engineering interview** at a tech giant, you’ve probably come across LeetCode 600 – *Non‑Negative Integers Without Consecutive Ones*. It’s a seemingly simple question that packs a surprising amount of algorithmic depth. In this article we dissect the problem, walk through an elegant solution, and give you the “good, the bad, and the ugly” perspective that will help you answer follow‑up questions with confidence.
+### Meta Description (SEO)
+> Master LeetCode 600 in Java, Python, and C++. Learn dynamic programming, bit tricks, pitfalls, and how to ace this hard interview problem. Perfect for software engineer job seekers.
 
 ---
 
-### 6.2 Problem Recap
+### Introduction
 
-> **Input**: `n` (1 ≤ n ≤ 10^9)  
-> **Goal**: Count integers `x` in `[0, n]` where binary representation has *no* two adjacent 1’s.
+In the world of coding interviews, one question keeps popping up at the top of the “hard” lists: **LeetCode 600 – *Non‑Negative Integers Without Consecutive Ones***.  
+Why? Because it forces you to blend **bitwise insight** with **dynamic programming**. If you can solve it cleanly and explain the reasoning, you’ll impress hiring managers at Google, Amazon, Microsoft, and beyond.
 
----
+This post dives into:
 
-### 6.3 Why It’s a Gold‑Mine Interview Question
+* The **good** – elegant DP solution that runs in O(log n).  
+* The **bad** – common pitfalls, misconceptions, and why naïve recursion fails.  
+* The **ugly** – over‑optimised or hacky attempts that break readability.  
 
-| Aspect | Why It Matters |
-|--------|----------------|
-| **Bit Manipulation** | Many interviews probe low‑level skills; this question tests them subtly. |
-| **Dynamic Programming** | It’s a *bit‑DP* problem; demonstrates you can adapt DP to non‑numeric states. |
-| **Greedy Insight** | The solution uses a greedy traversal of the bits, a classic technique. |
-| **Edge‑Case Sensitivity** | Need to handle `n = 10^9`, i.e., 30 bits – the interviewer may ask “What if n = 2^31−1?” |
+And yes – we’ll show you working code in **Java**, **Python**, and **C++** so you can pick the language you’re most comfortable with.
 
 ---
 
-### 6.4 The “Good” – What We Love
+### 1️⃣ The Problem in Plain English
 
-1. **Clear Pattern** – The constraint “no consecutive 1’s” immediately hints at Fibonacci.  
-2. **Optimized Runtime** – O(log n) is a must; naive `O(n)` fails instantly.  
-3. **Small Code Footprint** – All three major languages fit under 30 lines.  
-4. **Reusable DP Table** – The Fibonacci array can be pre‑computed once and reused.
+> **Given** an integer `n` (1 ≤ n ≤ 10⁹), count all numbers `x` in the range `[0, n]` such that the binary representation of `x` does *not* contain two adjacent `1`s.
 
----
-
-### 6.5 The “Bad” – Common Pitfalls
-
-| Pitfall | Fix |
-|---------|-----|
-| **Iterating all numbers** | Use `O(n)` enumeration → TLE for `n = 10^9`. |
-| **Wrong bit‑width** | Forget that `int` in Java/C++ is 32‑bit; `n < 2^30`. |
-| **Off‑by‑one on Fibonacci** | Mis‑align the index → wrong answer for small `n`. |
-| **Missing the final `+1`** | Forget to count `n` itself if it’s valid. |
+**Why is it hard?**  
+Because you can’t just brute‑force `0…n`. Even at 10⁹, that’s a billion checks. The challenge is to count *implicitly* using math.
 
 ---
 
-### 6.6 The “Ugly” – What’s Really Hard
+### 2️⃣ The Good – A Clean DP + Digit‑DP Approach
 
-1. **Understanding the DP State** – It’s not the classic DP on numbers; you’re DP on *bits* and *previous bit*.  
-2. **Deriving the Greedy Step** – Adding `f[i]` when you see a `1` is non‑obvious without thinking about the suffix.  
-3. **Proof of Correctness** – You need to articulate why the algorithm counts all and only the valid numbers.  
-4. **Handling Negative Numbers** – The problem guarantees positive `n`, but if you generalize you’ll hit two’s complement issues.
+1. **Build a Fibonacci‑like table**  
+   * `dp[i]` = number of valid binary strings of length `i`.  
+   * Recurrence: `dp[i] = dp[i-1] + dp[i-2]` (classic Fibonacci).  
+   * Complexity: constant pre‑computation (32 entries).
 
----
+2. **Process the bits of `n`**  
+   * Walk from the most significant bit down to 0.  
+   * When the current bit of `n` is `1`, we have two choices:
+     - Set it to `0`: all lower bits can be any valid string of that length (`dp[i]`).
+     - Set it to `1`: only possible if the previous bit wasn’t `1`.  
+   * Stop early if two consecutive `1`s would appear.
 
-### 6.7 Step‑by‑Step Walkthrough
+3. **Add the final number**  
+   * After the loop, we’ve counted all numbers *smaller* than `n`.  
+   * Include `n` itself if it has no consecutive `1`s.
 
-1. **Pre‑compute Fibonacci**  
-   `f[0] = 1` (empty), `f[1] = 2` (0,1), `f[i] = f[i-1] + f[i-2]`.  
-   This gives the number of valid strings of length `i`.
-
-2. **Traverse bits from MSB to LSB**  
-   - If current bit is `1`:  
-     - Add `f[remaining_bits]` to answer (setting current bit to `0` and all suffixes valid).  
-     - If previous bit was `1`, break – two consecutive ones found.  
-   - Update `prev` to current bit.
-
-3. **After loop** – If you never hit two consecutive ones, add `1` (to count `n` itself).
+**Result** – O(log n) time, O(1) space.
 
 ---
 
-### 6.8 Time / Space Cheat Sheet
+### 3️⃣ The Bad – What Goes Wrong
 
-| Language | Time | Space |
-|----------|------|-------|
-| Java |  **O(log n)** | **O(1)** |
-| Python |  **O(log n)** | **O(1)** |
-| C++ |  **O(log n)** | **O(1)** |
+| Bad Practice | Why It Fails |
+|--------------|--------------|
+| **Pure recursion** (append 0/1 and count) | Exponential blow‑up. For `n = 1e9`, recursion depth and number of calls explode beyond any feasible stack. |
+| **Dynamic programming without memoization** | Still O(n) time if you iterate through all numbers up to `n`. |
+| **Ignoring the bit‑length** | Failing to handle leading zeros correctly, causing miscounts for numbers with fewer bits. |
+| **Using `long` unnecessarily** | While `int` suffices for 10⁹, using 64‑bit arithmetic everywhere slows down the solution marginally and can mislead about the true complexity. |
 
----
-
-### 6.9 Sample Output
-
-```bash
-$ python3 solution.py
-5
-2
-3
-```
+> **Bottom line:** Aim for the O(log n) digit‑DP solution. It’s concise, fast, and scales to the maximum input.
 
 ---
 
-### 6.10 Take‑aways for Job Hunters
+### 4️⃣ The Ugly – Over‑Optimised / Hard‑to‑Read Code
 
-- **Highlight your bit‑DP skill** in your resume: “Solved LeetCode 600 using Fibonacci DP in O(log n)”.
-- **Show off clean code**: All three implementations are under 30 lines; easy to read and maintain.
-- **Prepare for follow‑ups**: “What happens if n = 2^31−1?” – the answer is still 30‑bit DP, just extend the table.
-- **Practice proving correctness**: Interviewers love candidates who can explain *why* an algorithm works.
+Sometimes candidates try to squeeze every millisecond by:
 
----
+* Writing a single line of bit‑wise magic that is cryptic (`ans += (1 << i) & ~((1 << (i+1)) - 1)`).
+* Unrolling loops or using manual stack simulation instead of recursion.
+* Over‑commenting every trivial operation, cluttering the logic.
 
-### 6.11 Final Verdict
-
-LeetCode 600 is a *soft‑hard* problem. Its surface simplicity is deceptive; the real challenge lies in bridging bit‑manipulation with dynamic programming. By mastering the “good, the bad, and the ugly”, you’ll not only nail the question itself but also gain a solid footing for a host of similar problems.
-
-Good luck, and happy coding!
+> **Pro tip:** *Readability = interview score.*  
+> A clean, well‑structured solution is usually better than a one‑liner that nobody else can understand.
 
 ---
 
-## 7. Conclusion<a name="conclusion"></a>
+### 5️⃣ Final Java / Python / C++ Code (See Above)
 
-LeetCode 600 teaches us that **patterns matter**. Once you spot the Fibonacci connection, the greedy traversal becomes natural. Whether you write it in Java, Python, or C++, the core idea stays the same. Mastering this problem will arm you with a powerful algorithmic technique that’s often asked in real‑world technical interviews. Happy solving!
+> Copy‑paste the snippet that matches your interview language. Don’t forget to test with the sample cases!
+
+---
+
+### 6️⃣ How to Use This Knowledge to Land a Job
+
+1. **Highlight the concept**  
+   * In your resume and LinkedIn: “Solved LeetCode 600 in O(log n) using DP + bit manipulation.”  
+   * In interviews: “I used a Fibonacci‑like DP table to count valid binary strings, then performed a digit‑DP traversal of `n`.”
+
+2. **Explain the trade‑offs**  
+   * “A naive recursion would hit exponential time; my solution scales to the 32‑bit limit.”  
+   * “I avoided heavy memory usage; the DP table fits in a fixed array.”
+
+3. **Show the code in the language of the company**  
+   * Many tech giants have Java or C++ in their tech stack; Python is often used for scripting.  
+   * Having all three versions demonstrates versatility.
+
+4. **Practice follow‑up questions**  
+   * *“What if `n` were 64‑bit?”* – Answer: Increase DP array to 64 entries.  
+   * *“Could you generalise for k consecutive `1`s?”* – Answer: Extend DP recurrence accordingly.
+
+---
+
+### Conclusion
+
+LeetCode 600 is more than a number‑counting puzzle. It’s a **micro‑cosm of interview challenges** – combine mathematical insight, algorithmic efficiency, and clear communication.  
+
+By mastering the **good**, avoiding the **bad**, and steering clear of the **ugly**, you’ll walk into an interview with confidence.  
+
+Happy coding—and good luck landing that dream software engineering role!
+
+---  
+
+### Author Bio
+> *Alex Chen* – Full‑stack engineer, 5+ years at cloud services, mentor on *LeetCode Solutions* and *Coding Interview Prep*. Follow me on Twitter @AlexCoding for more interview hacks.  
+
+---
+
+### References
+* LeetCode Problem 600 – [https://leetcode.com/problems/non-negative-integers-without-consecutive-ones/](https://leetcode.com/problems/non-negative-integers-without-consecutive-ones/)  
+* Classic Fibonacci DP – Wikipedia.  
+
+--- 
+
+*End of Blog Post*  
+
+---  
+
+This comprehensive post should help you master LeetCode 600, avoid common pitfalls, and impress interviewers—whether you’re coding in **Java**, **Python**, or **C++**. Happy interviewing!
