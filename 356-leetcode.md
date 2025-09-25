@@ -7,129 +7,137 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap – LeetCode 356: **Line Reflection**
+        ## 1.  Problem Recap (LeetCode 356 – **Line Reflection**)
 
-> **Given** `n` points on a 2‑D plane, determine whether a vertical line
-> (parallel to the `y`‑axis) exists that reflects the entire point set
-> onto itself.
+> **Goal**:  
+> Given an array of 2‑D points `points[i] = [x, y]`, determine whether there exists a vertical line (parallel to the y‑axis) that reflects every point onto another point in the set.  
+> The line may contain points of the set, and duplicate points are allowed.
 
-> **Duplicates are allowed.**
+**Constraints**
 
-The key observation is that if such a line exists, it must pass through
-the midpoint of the *smallest* and *largest* `x`‑coordinate among all
-points.  
-Once that candidate line is found, every point must have its mirror
-point in the original set.
+| Constraint | Value |
+|------------|-------|
+| `n == points.length` | 1 ≤ n ≤ 10⁴ |
+| `points[i][j]` | –10⁸ ≤ points[i][j] ≤ 10⁸ |
 
----
-
-## 2.  Why Brute‑Force Fails
-
-A naïve \(O(n^2)\) solution would try every point as a possible
-reflection partner.  
-With \(n \le 10^4\) this approach is far too slow (≈ 100 million
-comparisons).  
-Interviewers expect an \(O(n)\) or \(O(n \log n)\) solution that uses a
-hash‑based data structure to look up mirror points in constant time.
+The problem is a classic “reflection” check and is solvable in **O(n)** time and **O(n)** extra space by using a hash set.
 
 ---
 
-## 3.  Optimal \(O(n)\) Solution – The “Min + Max” Trick
+## 2.  Solution Overview (O(n) HashSet)
 
-1. **Find the extremes**  
-   * `minX` = minimum `x` in the list  
-   * `maxX` = maximum `x` in the list  
+1. **Compute the potential reflection line**  
+   - For any reflection line `x = k`, the average of every pair of reflected points must equal `k`.  
+   - Therefore, if a line exists, `k` is the same for all points, and it equals  
+     \[
+     k = \frac{\minX + \maxX}{2}
+     \]
+     where `minX` and `maxX` are the smallest and largest x‑coordinates in the list.
 
-   The candidate reflection line is at  
-   \[
-   c = \frac{minX + maxX}{2}
-   \]
-   (note that `c` can be fractional).
+2. **Verify the reflection**  
+   - Store all points in a hash set (using a string key `"x#y"` or a custom tuple hash).  
+   - For each point `(x, y)`, compute its mirrored coordinate  
+     \[
+     x_{\text{mirror}} = 2k - x
+     \]  
+     and check whether `(x_{\text{mirror}}, y)` exists in the set.  
+   - If any mirrored point is missing, the reflection is impossible.
 
-2. **Store all points in a hash set**  
-   Use a tuple `(x, y)` as the key (Java: `String`, Python: `tuple`,
-   C++: custom hash).
-
-3. **Verify each point**  
-   For every `(x, y)` compute its mirrored counterpart  
-   \[
-   (x_{\text{mirrored}}, y) = (minX + maxX - x, \; y)
-   \]  
-   If the mirrored point isn’t in the set → **return false**.
-
-4. **All points matched** → **return true**.
-
-The algorithm runs in \(O(n)\) time and uses \(O(n)\) extra memory.
+Because the set lookup is O(1), the total complexity remains O(n).
 
 ---
 
-## 4.  Code – Three Languages
+## 3.  Reference Code
 
-> ⚙️  **Tip:**  
-> All three implementations use the same idea; the only differences are
-> language‑specific data‑structure choices.
+Below are **Java, Python, and C++** implementations that follow the algorithm above.  
+All codes use the same logic: find the candidate line using min/max x, then verify each point.
 
-### 4.1 Java
+---
+
+### 3.1 Java
 
 ```java
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class Solution {
     public boolean isReflected(int[][] points) {
         if (points == null || points.length == 0) return true;
 
+        // Find min and max x
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
-
-        // First pass: find min and max x
         for (int[] p : points) {
             minX = Math.min(minX, p[0]);
             maxX = Math.max(maxX, p[0]);
         }
 
-        // Build a hash set of all points
-        Set<String> set = new HashSet<>();
+        // The potential reflection line is the midpoint between minX and maxX
+        // We keep the sum to avoid double precision issues.
+        int sum = minX + maxX; // 2 * k
+
+        // Build hash set of points
+        Set<Long> pointSet = new HashSet<>();
         for (int[] p : points) {
-            set.add(p[0] + "," + p[1]);          // encode as string
+            long key = ((long)p[0] << 32) | (p[1] & 0xffffffffL);
+            pointSet.add(key);
         }
 
-        int sum = minX + maxX;                   // 2 * c
-
-        // Verify all points have a mirror counterpart
+        // Verify each point
         for (int[] p : points) {
-            int mirrorX = sum - p[0];
-            String mirror = mirrorX + "," + p[1];
-            if (!set.contains(mirror)) {
-                return false;
-            }
+            int x = p[0], y = p[1];
+            int reflectedX = sum - x;
+            long reflectedKey = ((long)reflectedX << 32) | (y & 0xffffffffL);
+            if (!pointSet.contains(reflectedKey)) return false;
         }
         return true;
+    }
+
+    // Simple main for quick manual testing
+    public static void main(String[] args) {
+        Solution sol = new Solution();
+        int[][] p1 = {{1,1},{-1,1}};
+        int[][] p2 = {{1,1},{-1,-1}};
+        System.out.println(sol.isReflected(p1)); // true
+        System.out.println(sol.isReflected(p2)); // false
     }
 }
 ```
 
-### 4.2 Python
+---
+
+### 3.2 Python
 
 ```python
+from typing import List, Set, Tuple
+
 class Solution:
     def isReflected(self, points: List[List[int]]) -> bool:
         if not points:
             return True
 
-        min_x = min(p[0] for p in points)
-        max_x = max(p[0] for p in points)
-        s = min_x + max_x          # 2 * c
+        xs = [p[0] for p in points]
+        min_x, max_x = min(xs), max(xs)
+        sum_x = min_x + max_x           # 2 * k
 
-        point_set = {tuple(p) for p in points}   # hashable tuples
+        point_set: Set[Tuple[int, int]] = {(x, y) for x, y in points}
 
         for x, y in points:
-            if (s - x, y) not in point_set:
+            reflected_x = sum_x - x
+            if (reflected_x, y) not in point_set:
                 return False
         return True
+
+
+# Quick manual test
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.isReflected([[1, 1], [-1, 1]]))      # True
+    print(sol.isReflected([[1, 1], [-1, -1]]))    # False
 ```
 
-### 4.3 C++
+---
+
+### 3.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -141,132 +149,145 @@ public:
         if (points.empty()) return true;
 
         int minX = INT_MAX, maxX = INT_MIN;
-        for (auto& p : points) {
+        for (auto &p : points) {
             minX = min(minX, p[0]);
             maxX = max(maxX, p[0]);
         }
-        long long sum = 1LL * minX + maxX;   // avoid overflow
 
-        unordered_set<long long> hs;
-        auto encode = [](int x, int y) {
-            return (static_cast<long long>(x) << 32) ^ (y & 0xffffffffLL);
-        };
+        long long sumX = (long long)minX + maxX;   // 2 * k
 
-        for (auto& p : points)
-            hs.insert(encode(p[0], p[1]));
+        unordered_set<long long> pointSet;
+        pointSet.reserve(points.size() * 2);
+        for (auto &p : points) {
+            long long key = ((long long)p[0] << 32) ^ (p[1] & 0xffffffffLL);
+            pointSet.insert(key);
+        }
 
-        for (auto& p : points) {
-            long long mirrorX = sum - p[0];
-            if (!hs.count(encode(static_cast<int>(mirrorX), p[1])))
-                return false;
+        for (auto &p : points) {
+            int x = p[0], y = p[1];
+            int reflectedX = (int)(sumX - x);
+            long long reflectedKey = ((long long)reflectedX << 32) ^ (y & 0xffffffffLL);
+            if (!pointSet.count(reflectedKey)) return false;
         }
         return true;
     }
 };
 ```
 
-> ⚠️  **Why the 64‑bit encode in C++?**  
-> It packs two 32‑bit integers into one 64‑bit key so that the unordered
-> set can be used without a custom hash object.
+---
+
+## 4.  Blog Article – “Line Reflection: The Good, The Bad, & The Ugly (And Why It Makes a Great Interview Question)”
+
+> **SEO Keywords**: `line reflection`, `LeetCode 356`, `vertical line reflection`, `hash set solution`, `O(n) algorithm`, `job interview coding`, `Java/Python/C++ solution`, `data structures interview`
 
 ---
 
-## 5.  Edge Cases & Testing
+### 4.1 Introduction
 
-| # | Input | Expected | Reason |
-|---|-------|----------|--------|
-| 1 | `[[1,1],[-1,1]]` | `true` | Line `x=0` works |
-| 2 | `[[1,1],[-1,-1]]` | `false` | No vertical line reflects |
-| 3 | `[[0,0],[0,0],[0,0]]` | `true` | All points identical |
-| 4 | `[[2,3],[4,3]]` | `true` | Line `x=3` |
-| 5 | `[[1,2],[3,4],[5,2]]` | `false` | Asymmetry |
-
-Run a full test harness that covers duplicate points, negative coordinates,
-and the extreme bounds (`-10^8` to `10^8`).
+If you’re preparing for a software engineering interview, you’ll quickly discover that *symmetry problems* are a favourite of interviewers. One of the most common is **LeetCode 356 – Line Reflection**. This post walks through the problem, shows a clean O(n) solution in Java, Python, and C++, and explains why this question is a great showcase for data‑structure skills.
 
 ---
 
-## 6.  Complexity Analysis
+### 4.2 Problem Statement (Short & Sweet)
 
-| Aspect | Java | Python | C++ |
-|--------|------|--------|-----|
-| **Time** | \(O(n)\) | \(O(n)\) | \(O(n)\) |
-| **Space** | \(O(n)\) | \(O(n)\) | \(O(n)\) |
-| **Explanation** | Single pass to collect min/max, one set, one pass to check | Same | Same |
+> **Given** a list of 2‑D points, determine if there exists a vertical line `x = k` that reflects every point onto another point in the set.  
+> *Duplicate points are allowed.*  
 
-All languages use a single hash set lookup per point, giving linear
-performance even for the maximum constraints.
+**Example**  
+- `[[1, 1], [-1, 1]]` → **True** (line `x = 0`)  
+- `[[1, 1], [-1, -1]]` → **False**
 
 ---
 
-## 7.  “Good, Bad, & Ugly” – What Interviewers Want
+### 4.3 Why It’s a Great Interview Question
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Algorithmic Idea** | 2‑pointer / min‑max trick → \(O(n)\) | Brute‑force \(O(n^2)\) | Using sorting + binary search without hashing, still \(O(n \log n)\) but unnecessary |
-| **Data Structures** | HashSet (or unordered_set) | List or array with linear search | Custom hash collisions without handling |
-| **Code Clarity** | Clear variable names, short helper `encode` | Inline lambda for `encode` | Missing comments, magic numbers |
-| **Edge‑Case Handling** | Duplicates, negative values, single point | None | Overflows, floating‑point inaccuracies |
-| **Readability** | Comments, concise | None | Obscure logic, no documentation |
-| **Testing** | Unit tests, boundary checks | No tests | Test harness missing |
-
-> **Tip:** Always explain your choice of data structure in an interview.  
-> “I chose a hash set because I need constant‑time look‑ups; this keeps
-> the solution linear.” This demonstrates both technical skill and
-> communication ability.
+| Aspect | What Interviewers Look For |
+|--------|----------------------------|
+| **Mathematical Insight** | Spotting the “midpoint of minX and maxX” trick. |
+| **Data‑Structure Choice** | Using a hash set for O(1) point look‑ups. |
+| **Time Complexity** | Achieving O(n) instead of O(n²) brute force. |
+| **Language Agnostic** | Solvable in any language, so candidates can demonstrate their favorite stack. |
+| **Edge Cases** | Duplicates, negative coordinates, very large values (need 64‑bit handling). |
 
 ---
 
-## 8.  SEO‑Optimized Blog Article
+### 4.4 The “Good”: A Clean O(n) Algorithm
 
-### Title  
-**“LeetCode 356 – Line Reflection: Master the Vertical Symmetry Problem in Java, Python & C++”**
+1. **Compute `k` from extremes**  
+   ```text
+   k = (minX + maxX) / 2
+   ```
+   In integer math we keep `sum = minX + maxX` to avoid floating point.
 
-### Meta Description  
-Discover a clean \(O(n)\) solution to LeetCode 356 “Line Reflection”. Read the step‑by‑step guide, code snippets in Java, Python, and C++, and interview‑ready tips.
+2. **Hash All Points**  
+   Store every `(x, y)` as a key in a hash set.  
+   *Why?* Because we’ll look up the reflected counterpart in constant time.
 
-### Keywords  
-LeetCode 356, line reflection, vertical line symmetry, hash set solution, O(n) algorithm, coding interview, Java, Python, C++, data structures, job interview tips
+3. **Verify Each Point**  
+   For every `(x, y)`, compute the mirrored x:
+   ```text
+   mirroredX = sum - x
+   ```
+   Check that `(mirroredX, y)` exists in the set.
 
-### Headings & Content
+If all points pass, the reflection line exists.
 
-| Hn | Heading | Summary |
-|----|---------|---------|
-| H1 | LeetCode 356 – Line Reflection | Problem statement and why it matters |
-| H2 | The Brute‑Force Pitfall | Why \(O(n^2)\) is a dead end |
-| H2 | The Min‑Max Trick | How the reflection line is determined |
-| H2 | The Hash Set Magic | Constant‑time mirror lookup |
-| H2 | Code Walkthrough – Java | Full implementation with comments |
-| H2 | Code Walkthrough – Python | Full implementation with comments |
-| H2 | Code Walkthrough – C++ | Full implementation with comments |
-| H2 | Edge Cases & Test Cases | What to test for, sample tests |
-| H2 | Complexity Analysis | Big‑O, memory, and practical impact |
-| H2 | Interview Tips – Good, Bad & Ugly | What recruiters look for |
-| H3 | Bonus: Alternative Sorting Solution | If hashing is disallowed |
-| H2 | Final Thoughts | How mastering this problem boosts your résumé |
-
-### Sample Excerpt
-
-> **H2: The Min‑Max Trick**  
-> In a vertical reflection, every pair of mirrored points lies on opposite sides of a common line. The only line that can satisfy this for all points is the one that passes through the midpoint of the leftmost and rightmost points. Hence, the candidate line is simply
-> \[
-> c = \frac{minX + maxX}{2}.
-> \]
-> This observation reduces the problem to a single pass over the data.
-
-### Call‑to‑Action
-
-> **Want to ace your next coding interview?**  
-> Practice this problem and share your own solutions on GitHub. Tag your posts with `#LeetCode356 #CodingInterview` so recruiters can spot your expertise.
+**Complexity**  
+- Time: **O(n)** – single pass to find extremes, one pass to insert into set, one pass to verify.  
+- Space: **O(n)** – the hash set holds all points.
 
 ---
 
-## 9.  Closing Advice – Getting the Job
+### 4.5 The “Bad”: Common Pitfalls
 
-1. **Show the Full Pipeline** – From problem statement → algorithm → code → tests. Recruiters love clear problem‑solving flow.
-2. **Talk About Complexity** – Always mention time/space trade‑offs.
-3. **Highlight Edge‑Case Handling** – Duplicates, negatives, extreme bounds are interview test‑cases.
-4. **Link to Your Portfolio** – Post the solution on GitHub and reference it in your résumé.
-5. **Discuss Interview‑Friendly Points** – Use hash sets, explain why you chose them, and how you’d adapt if constraints changed.
+| Pitfall | Why it fails | Fix |
+|---------|--------------|-----|
+| **Using a list for look‑ups** | `O(n)` per query → total `O(n²)` | Use a hash set or map. |
+| **Floating‑point comparison** | Precision errors when `sum` is odd | Keep `sum` as an integer; use integer arithmetic. |
+| **Overflow** | `minX + maxX` may exceed 32‑bit int | Use 64‑bit (`long`/`long long`). |
+| **Neglecting duplicates** | Some solutions assume unique points | Hash set inherently handles duplicates. |
+| **Assuming line is always `x = 0`** | Wrong for asymmetrical point sets | Compute the true midpoint. |
 
-By mastering **LeetCode 356** and presenting the solution with clean, language‑specific code, you demonstrate algorithmic thinking, data‑structure expertise, and the communication skills recruiters seek in a software engineer. Good luck! 🚀
+---
+
+### 4.6 The “Ugly”: An O(n²) Brute Force
+
+A naïve solution pairs every point with every other point, tries all candidate lines, and checks reflection. That leads to quadratic time and is impractical for `n = 10⁴`. This serves as a cautionary example of why **hashing + linear passes** is the gold standard.
+
+---
+
+### 4.7 Language‑Specific Tips
+
+| Language | Recommendation |
+|----------|----------------|
+| **Java** | Use `HashSet<Long>` with bit‑shifting to combine `x` and `y`. Keep `sum` as `int` and cast to `long` when necessary. |
+| **Python** | Set of tuples `set((x, y) for x, y in points)`; integer arithmetic is unlimited precision. |
+| **C++** | `unordered_set<long long>` with a custom key `(x << 32) ^ y`. Reserve space to avoid rehashing. |
+
+---
+
+### 4.8 How This Helps Your Job Hunt
+
+- **Showcase Algorithmic Thinking**: The solution demonstrates a clear *problem‑to‑solution* pipeline, which is highly prized by hiring managers.
+- **Data‑Structure Mastery**: Using a hash set for look‑ups shows you know when and why to pick the right container.
+- **Code Quality**: Clean, well‑commented, and language‑idiomatic code is a signal of professionalism.
+- **Interview Confidence**: Practicing this problem will help you tackle similar symmetry and reflection questions in interviews.
+
+---
+
+### 4.9 Conclusion
+
+LeetCode 356 is deceptively simple but packs a lot of interview value. A fast, clean solution using a hash set and a single-pass computation of the reflection line is the optimal way to solve it. Avoid the pitfalls of quadratic time, floating‑point errors, and overflow, and you’ll have a winning explanation ready for any technical interview.
+
+> **Ready to impress?** Clone the reference code snippets above, run them on the test cases, and add your own optimizations. Good luck with your job hunt! 🚀
+
+---
+
+### 4.10 References
+
+- LeetCode 356 – [Line Reflection](https://leetcode.com/problems/line-reflection/)
+- Common interview patterns: hash set, symmetry, mid‑point, O(n) algorithms.
+
+---
+
+Happy coding!

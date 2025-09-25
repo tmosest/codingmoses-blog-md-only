@@ -7,361 +7,300 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 1.  LeetCode 759 – Employee Free Time  
-**Problem Summary**
+        # 759. **Employee Free Time** – Solutions in **Java**, **Python**, and **C++**  
+> *Get interview‑ready with a clean, production‑grade implementation for LeetCode 759.*
 
-You’re given a list `schedule` where each element is the list of non‑overlapping, sorted intervals that an employee works.  
-Return **all** finite intervals where *every* employee is free (i.e. the intersection of the complements of the given intervals).  
-Intervals with zero length (`[x, x]`) must be omitted.  
+---
 
-The output must also be sorted by start time.
+## 1. Problem Recap
 
+You are given a list of schedules – one list per employee.  
+Each employee’s schedule is a **sorted list of non‑overlapping intervals** `[start, end)`.
 
+```
+schedule[i] = [[1,2],[5,6]]
+```
 
---------------------------------------------------------------------
+Return **all finite intervals** that are free for **every** employee (i.e., the intersection of all employees’ “gaps”).  
+Intervals of zero length are excluded.
 
-## 2.  The “Good” – Clean, Intuitive, & Scalable
+> **Constraints**  
+> - 1 ≤ `schedule.length`, `schedule[i].length` ≤ 50  
+> - 0 ≤ `schedule[i].start` < `schedule[i].end` ≤ 10⁸
 
-The classic way to solve this problem is to **merge all intervals** from every employee into one sorted stream, then walk through that stream keeping the furthest end seen so far.  
-If the next interval starts after that furthest end, you’ve found a common free slot.
+---
 
-The key data structure is a **min‑heap (priority queue)** that always gives you the interval with the smallest start among the currently active employees.  
-Because each employee’s list is already sorted, you only need to push the next interval from an employee when you pop one – amortised `O(log k)` work per interval (`k = number of employees`).
+## 2. High‑Level Idea
 
-> **Why is this “good”?**  
-> * It runs in `O(N log k)` time, where `N` is the total number of intervals.  
-> * The heap size never exceeds `k` (≤ 50), so memory use is tiny.  
-> * The algorithm is *stable* – it keeps the input order inside each employee’s schedule.  
-> * It’s the same idea that powers many interview questions (e.g., *merge k sorted lists*, *meeting rooms*).  
+1. **Flatten** the 2‑D schedule into a single list of intervals.
+2. **Sort** the flattened list by `start`.
+3. **Merge** overlapping/adjacent intervals.
+4. **Collect** the gaps between the merged intervals → free time for everyone.
 
---------------------------------------------------------------------
+This is a classic “merge‑intervals” problem with an extra step to extract gaps.
 
-## 3.  The “Bad” – Things to Watch Out For
+**Complexity**  
+- `O(N log N)` time for sorting (`N` = total number of intervals).  
+- `O(N)` extra space to hold the flattened list and the result.
 
-| Issue | Why it hurts | How to avoid it |
-|-------|--------------|-----------------|
-| **Neglecting zero‑length gaps** | `[5,5]` is a legal interval but must be omitted. | Check `next.start > currentEnd` (strict inequality). |
-| **Using a sorted array copy** | Sorting all intervals (O(N log N)) is unnecessary and can blow up memory for large `N`. | Use a priority queue to maintain order on the fly. |
-| **Hard‑coding a fixed array size** | You’ll crash if an employee has more than the preset limit. | Use dynamic lists (`ArrayList` / `vector` / `list`). |
-| **Ignoring the “inf” intervals** | The problem description mentions infinite gaps, but you should not include them. | By definition, your algorithm only ever produces finite gaps between *actual* intervals, so no special case is needed. |
+---
 
---------------------------------------------------------------------
+## 3. Code Implementations
 
-## 4.  The “Ugly” – When the Code Gets Messy
+Below are idiomatic, production‑ready solutions in the three most popular interview languages.
 
-* **Wrong comparator** – mixing up `start` and `end` in the priority queue can lead to subtle bugs.  
-* **Off‑by‑one mistakes** – when advancing the pointer for an employee, forget to check bounds.  
-* **Inconsistent `Interval` class** – forgetting to expose getters/setters or to override `toString()` makes debugging a nightmare.  
+> **Tip** – All solutions share the same core logic; adapt the data structure (`Interval` class/struct, `Tuple`, etc.) to fit your language.
 
-The following code snippets eliminate those pitfalls with clear, well‑commented implementations.
+---
 
---------------------------------------------------------------------
-
-## 5.  Reference Implementations
-
-### 5.1 Java
+### 3.1 Java (OOP + Collections)
 
 ```java
 import java.util.*;
 
-/**
- * Definition for an interval.
- */
 class Interval {
-    public int start;
-    public int end;
-
-    public Interval() { this.start = 0; this.end = 0; }
-
-    public Interval(int start, int end) {
-        this.start = start;
-        this.end = end;
-    }
+    int start;
+    int end;
+    Interval(int s, int e) { start = s; end = e; }
 }
 
 public class Solution {
     public List<Interval> employeeFreeTime(List<List<Interval>> schedule) {
-        // Priority queue ordered by the start time of the interval.
-        PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparingInt(n -> n.interval.start));
+        List<Interval> all = new ArrayList<>();
+        for (List<Interval> emp : schedule) all.addAll(emp);
 
-        // Push the first interval of each employee.
-        for (int i = 0; i < schedule.size(); i++) {
-            List<Interval> emp = schedule.get(i);
-            if (!emp.isEmpty()) {
-                pq.offer(new Node(emp.get(0), i, 0));
+        // Sort by start time
+        all.sort(Comparator.comparingInt(a -> a.start));
+
+        List<Interval> free = new ArrayList<>();
+        if (all.isEmpty()) return free;
+
+        Interval prev = all.get(0);
+        for (int i = 1; i < all.size(); i++) {
+            Interval cur = all.get(i);
+            if (cur.start > prev.end) {           // a gap
+                free.add(new Interval(prev.end, cur.start));
+                prev = cur;
+            } else {                              // overlap – merge
+                prev.end = Math.max(prev.end, cur.end);
             }
         }
-
-        List<Interval> res = new ArrayList<>();
-        int curEnd = Integer.MIN_VALUE; // farthest end seen so far
-
-        while (!pq.isEmpty()) {
-            Node node = pq.poll();
-            Interval cur = node.interval;
-
-            // When we find a gap between curEnd and current interval start
-            if (cur.start > curEnd) {
-                // skip zero‑length gaps
-                res.add(new Interval(curEnd, cur.start));
-                curEnd = cur.end;
-            } else {
-                // extend the current coverage
-                curEnd = Math.max(curEnd, cur.end);
-            }
-
-            // Advance to next interval of the same employee
-            int nextIdx = node.idx + 1;
-            if (nextIdx < schedule.get(node.empIdx).size()) {
-                pq.offer(new Node(schedule.get(node.empIdx).get(nextIdx), node.empIdx, nextIdx));
-            }
-        }
-
-        return res;
+        return free;
     }
 
-    /** Helper class to keep track of where we are in each employee's list. */
-    private static class Node {
-        Interval interval;
-        int empIdx; // which employee
-        int idx;    // index inside that employee's list
+    // ---- Demo ----
+    public static void main(String[] args) {
+        List<List<Interval>> schedule = new ArrayList<>();
+        schedule.add(Arrays.asList(new Interval(1,2), new Interval(5,6)));
+        schedule.add(Arrays.asList(new Interval(1,3)));
+        schedule.add(Arrays.asList(new Interval(4,10)));
 
-        Node(Interval interval, int empIdx, int idx) {
-            this.interval = interval;
-            this.empIdx = empIdx;
-            this.idx = idx;
-        }
+        System.out.println(new Solution().employeeFreeTime(schedule)
+                .stream()
+                .map(iv -> "[" + iv.start + "," + iv.end + "]")
+                .toList());
+        // → [[3,4]]
     }
 }
 ```
 
 ---
 
-### 5.2 Python
+### 3.2 Python (Dataclass + Sorting)
 
 ```python
-import heapq
+from dataclasses import dataclass
 from typing import List
 
+@dataclass(order=True)
 class Interval:
-    def __init__(self, start: int = 0, end: int = 0):
-        self.start = start
-        self.end = end
+    start: int
+    end: int
 
-    def __repr__(self):
-        return f"[{self.start},{self.end}]"
+def employee_free_time(schedule: List[List[Interval]]) -> List[Interval]:
+    # Flatten
+    all_ints: List[Interval] = [iv for emp in schedule for iv in emp]
+    # Sort by start (dataclass ordering works)
+    all_ints.sort(key=lambda iv: iv.start)
 
-class Solution:
-    def employeeFreeTime(self, schedule: List[List[Interval]]) -> List[Interval]:
-        # (start, employee index, interval index)
-        heap = []
+    free: List[Interval] = []
+    if not all_ints:
+        return free
 
-        for emp_idx, emp in enumerate(schedule):
-            if emp:
-                heapq.heappush(heap, (emp[0].start, emp_idx, 0))
+    prev = all_ints[0]
+    for cur in all_ints[1:]:
+        if cur.start > prev.end:          # gap
+            free.append(Interval(prev.end, cur.start))
+            prev = cur
+        else:                             # merge
+            prev.end = max(prev.end, cur.end)
 
-        res = []
-        cur_end = -10**9  # farthest end seen
+    return free
 
-        while heap:
-            start, emp_idx, idx = heapq.heappop(heap)
-            cur = schedule[emp_idx][idx]
-
-            if start > cur_end:            # found a free slot
-                res.append(Interval(cur_end, start))
-                cur_end = cur.end
-            else:
-                cur_end = max(cur_end, cur.end)
-
-            # push next interval of this employee
-            if idx + 1 < len(schedule[emp_idx]):
-                nxt = schedule[emp_idx][idx + 1]
-                heapq.heappush(heap, (nxt.start, emp_idx, idx + 1))
-
-        return res
+# ---- Demo ----
+if __name__ == "__main__":
+    schedule = [
+        [Interval(1,2), Interval(5,6)],
+        [Interval(1,3)],
+        [Interval(4,10)]
+    ]
+    print([f"[{iv.start},{iv.end}]" for iv in employee_free_time(schedule)])
+    # → ['[3,4]']
 ```
 
 ---
 
-### 5.3 C++
+### 3.3 C++ (Struct + STL)
 
 ```cpp
-#include <vector>
-#include <queue>
+#include <bits/stdc++.h>
 using namespace std;
 
-class Interval {
-public:
+struct Interval {
     int start, end;
-    Interval() : start(0), end(0) {}
-    Interval(int s, int e) : start(s), end(e) {}
+    Interval(int s=0, int e=0) : start(s), end(e) {}
 };
 
-class Solution {
-public:
-    vector<Interval> employeeFreeTime(vector<vector<Interval>>& schedule) {
-        struct Node {
-            Interval it;
-            int empIdx; // employee index
-            int idx;    // index inside that employee's list
-        };
-        // Min‑heap ordered by interval.start
-        auto cmp = [](const Node& a, const Node& b) { return a.it.start > b.it.start; };
-        priority_queue<Node, vector<Node>, decltype(cmp)> pq(cmp);
+vector<Interval> employeeFreeTime(const vector<vector<Interval>>& schedule) {
+    vector<Interval> all;
+    for (const auto& emp : schedule)
+        all.insert(all.end(), emp.begin(), emp.end());
 
-        for (int i = 0; i < schedule.size(); ++i) {
-            if (!schedule[i].empty()) {
-                pq.push({schedule[i][0], i, 0});
-            }
+    sort(all.begin(), all.end(), [](const Interval& a, const Interval& b) {
+        return a.start < b.start;
+    });
+
+    vector<Interval> free;
+    if (all.empty()) return free;
+
+    Interval prev = all[0];
+    for (size_t i = 1; i < all.size(); ++i) {
+        const Interval& cur = all[i];
+        if (cur.start > prev.end) {                // gap
+            free.emplace_back(prev.end, cur.start);
+            prev = cur;
+        } else {                                   // merge
+            prev.end = max(prev.end, cur.end);
         }
-
-        vector<Interval> res;
-        int curEnd = INT_MIN; // farthest end seen
-
-        while (!pq.empty()) {
-            Node curNode = pq.top(); pq.pop();
-            Interval cur = curNode.it;
-
-            if (cur.start > curEnd) {            // found a gap
-                res.emplace_back(curEnd, cur.start);
-                curEnd = cur.end;
-            } else {
-                curEnd = max(curEnd, cur.end);
-            }
-
-            int nextIdx = curNode.idx + 1;
-            if (nextIdx < schedule[curNode.empIdx].size()) {
-                pq.push({schedule[curNode.empIdx][nextIdx], curNode.empIdx, nextIdx});
-            }
-        }
-        return res;
     }
-};
-```
+    return free;
+}
 
---------------------------------------------------------------------
+// ---- Demo ----
+int main() {
+    vector<vector<Interval>> schedule = {
+        {{1,2},{5,6}},
+        {{1,3}},
+        {{4,10}}
+    };
 
-## 6.  Blog Article – “Mastering LeetCode 759: Employee Free Time – The Good, the Bad, and the Ugly”
-
-> **Keywords**: LeetCode 759, Employee Free Time, interview algorithms, priority queue, sweep line, Java solution, Python solution, C++ solution, job interview, coding interview
-
----
-
-### 6.1 Introduction
-
-If you’re prepping for software engineering interviews, one of the hidden gems on LeetCode is **Problem 759 – Employee Free Time**.  It blends a classic sweep‑line idea with a *merge‑k‑sorted‑lists* trick, making it a perfect demonstration of data‑structure mastery.  
-
-In this post, we’ll dissect the problem, explore the *good* clean‑solution, warn about common pitfalls (*bad*), and show how sloppy code can trip you up (*ugly*).  By the end, you’ll have production‑ready Java, Python, and C++ implementations, and a deeper understanding of why this problem is a staple in technical interviews.
-
----
-
-### 6.2 Problem Recap
-
-> **Given**: A list of employees’ schedules, where each schedule is a sorted list of non‑overlapping intervals.  
-> **Return**: All finite intervals that are *common* free time for every employee.
-
-*Important*: Ignore zero‑length gaps and infinite intervals like `[-∞, 1]` or `[10, ∞]`.
-
----
-
-### 6.3 The “Good” – A Clean Priority‑Queue Solution
-
-The trick is to **stream** all intervals in ascending order of `start` without merging them all into one giant array.
-
-1. **Initialize a min‑heap** (priority queue) with the *first* interval of each employee.  
-2. **Pop** the interval with the smallest start.  
-3. Maintain a variable `curEnd` that tracks the farthest end seen so far.  
-4. If the next interval’s start is greater than `curEnd`, you’ve found a free slot `[curEnd, next.start]`.  
-5. Update `curEnd` to the maximum of itself and the current interval’s end.  
-6. **Push** the *next* interval from the same employee into the heap.  
-7. Repeat until the heap is empty.
-
-**Why it’s great**
-
-* **Linearithmic time**: `O(N log k)` where `N` is total intervals, `k` is number of employees (≤ 50).  
-* **Constant space**: The heap never exceeds `k`.  
-* **Intuitive**: It mirrors the “merge k sorted lists” pattern, which appears in many interview questions.
-
-**Java snippet**
-
-```java
-PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparingInt(n -> n.interval.start));
-...
-while (!pq.isEmpty()) {
-    Node node = pq.poll();
-    Interval cur = node.interval;
-    ...
+    auto res = employeeFreeTime(schedule);
+    for (auto& iv : res)
+        cout << "[" << iv.start << "," << iv.end << "] ";
+    // → [3,4]
 }
 ```
 
-**Python / C++** follow the same logic with `heapq` or `std::priority_queue`.
+---
+
+## 4. Blog Article – “The Good, the Bad, and the Ugly” of LeetCode 759
+
+> **Title:**  
+> **Employee Free Time – The Good, the Bad, and the Ugly | Java / Python / C++ Solutions**
+
+> **Meta Description:**  
+> Master LeetCode 759 with clean, production‑grade solutions in Java, Python, and C++. Discover the pitfalls, optimal strategies, and interview‑ready insights that will help you ace your coding interview.
+
+> **Keywords:**  
+> *Employee Free Time, LeetCode 759, Java solution, Python solution, C++ solution, interview algorithm, merge intervals, sweep line, coding interview tips, job interview coding, software engineering interview*
 
 ---
 
-### 6.4 The “Bad” – Common Mistakes
+### Introduction
 
-| Mistake | Consequence | Fix |
+The “Employee Free Time” problem is a favorite on LeetCode because it blends two classic concepts:
+
+1. **Interval merging** – a must‑know for many coding interviews.
+2. **Multi‑source scheduling** – the “real world” twist that keeps interviewers engaged.
+
+While the problem seems simple at first glance, subtle edge cases and implementation pitfalls can trip up even seasoned programmers. In this post we’ll dissect the **good**, **bad**, and **ugly** of solving LeetCode 759, and present polished solutions in **Java**, **Python**, and **C++**.
+
+---
+
+### The Good – Why This Problem Rocks
+
+| Benefit | Why it Matters |
+|---------|----------------|
+| **Real‑world relevance** | Scheduling and resource allocation are core to many applications (meeting rooms, CPU scheduling, cloud services). |
+| **Broad applicability** | The merge‑intervals pattern appears in problems like “Meeting Rooms II”, “Insert Interval”, etc. |
+| **Scalable solution** | With a clean algorithm you can handle up to 50 × 50 intervals in milliseconds – perfect for interview speed. |
+| **Showcases OOP & Collections** | Demonstrates mastery over data structures (`List`, `PriorityQueue`) and sorting tricks. |
+| **Cross‑language familiarity** | Solving it in Java, Python, and C++ shows you’re comfortable in multiple stacks – a huge plus in interviews. |
+
+---
+
+### The Bad – Common Pitfalls
+
+| Pitfall | Explanation | Fix |
 |---------|-------------|-----|
-| Using `<=` instead of `<` for gaps | Reports zero‑length intervals | Check `if (next.start > curEnd)` |
-| Sorting all intervals at once | Extra `O(N log N)` work and memory blow‑up | Use heap to stream in order |
-| Fixed‑size arrays for schedules | Crashes when an employee has > 50 intervals | Use dynamic lists (`ArrayList`, `vector`, `list`) |
-| Forgetting to push the next interval | Infinite loop or missing free slots | After popping, push `schedule[emp][idx+1]` if it exists |
+| **Overlooking the “inf” boundaries** | Some solutions mistakenly include `[-inf, first_start)` or `(last_end, inf)` as free intervals. | Discard any interval containing `-inf` or `inf`. |
+| **Assuming one employee only** | If you treat each employee separately, you’ll miss gaps that exist only after merging all schedules. | Flatten all intervals first, then merge. |
+| **Using wrong comparison** | `if (cur.start <= prev.end)` vs `if (cur.start > prev.end)` – subtle but crucial for adjacent intervals. | Treat adjacent intervals (`cur.start == prev.end`) as overlapping (no free time). |
+| **Modifying input lists** | In-place updates can corrupt the original schedule. | Work on a copy or build a new result list. |
+| **Time‑complexity confusion** | Sorting dominates; any nested loops that run on `N²` can kill the solution. | Keep the algorithm `O(N log N)` by sorting once. |
 
 ---
 
-### 6.5 The “Ugly” – How Sloppy Code Backfires
+### The Ugly – Hidden Tricks and Edge Cases
 
-- **Wrong comparator** – swapping `start` and `end` in the priority queue mis‑orders the stream.  
-- **Off‑by‑one** – advancing an employee’s pointer past the end of their list.  
-- **Missing bounds check** – accessing `schedule[emp][idx+1]` when `idx+1 == schedule[emp].size()` leads to runtime errors.  
-- **Inconsistent node structure** – not storing the employee index in the heap, making it impossible to fetch the next interval.
-
-**Pitfall example in C++**
-
-```cpp
-priority_queue<Node, vector<Node>, decltype(cmp)> pq(cmp); // cmp uses > for min‑heap
-// later we accidentally use
-int nextIdx = curNode.idx + 1;
-pq.push({schedule[curNode.empIdx][nextIdx], curNode.empIdx, nextIdx});
-```
-
-If `nextIdx` is out of bounds, the program crashes.  A small helper class (`Node`/`Node`) that encapsulates the employee index, interval index, and the interval itself eliminates this error.
+| Edge Case | Why it’s Ugly | Insight |
+|-----------|---------------|---------|
+| **Zero‑length intervals** | `[3,3)` is technically free but should be omitted. | Add a guard: `if (prev.end < cur.start)` when collecting gaps. |
+| **Identical intervals across employees** | Multiple employees can have exactly the same interval. | Still merge – duplicates vanish. |
+| **Large integer ranges** | The bounds go up to 10⁸; be careful with integer overflows in languages with 32‑bit `int`. | Use `long` in Java or `int64_t` in C++ if the language’s default int might overflow. |
+| **Stability of sorting** | When two intervals share the same `start`, the relative order of `end` values matters for correctness. | Sort by `start`, and if equal, by `end` (ascending). |
+| **Empty schedule** | If the input is empty, you should return an empty list, not a “null” interval. | Check `if (all.empty())` early. |
 
 ---
 
-### 6.6 Full Implementations – Ready to Paste
+### Interview‑Ready Talk‑Points
 
-| Language | File |
-|----------|------|
-| **Java** | `Solution.java` |
-| **Python** | `solution.py` |
-| **C++** | `solution.cpp` |
+During an interview, don’t just present the code – explain **why** you flattened, why you sorted, and how you handle boundaries. Show that you:
 
-Feel free to copy‑paste, run unit tests, and adapt the pattern for other interview problems.
+- Recognize that this is an *intersection of all gaps* problem.
+- Are comfortable using a single pass after sorting.
+- Understand the difference between *gaps* (free time) and *merged intervals* (busy time).
 
----
-
-### 6.6 Takeaway
-
-LeetCode 759 is more than a coding challenge; it’s a *data‑structure story*.  By mastering the priority‑queue streaming approach, you’ll:
-
-* **Demonstrate algorithmic elegance** in interviews.  
-* Show the ability to write **robust, production‑grade code**.  
-* Avoid the *bad* pitfalls that often turn a solid candidate into a missed opportunity.
-
-Use the code snippets above as your go‑to reference, test them against edge cases, and add a few `assert` or unit‑test statements.  Remember: clean code is the fastest way to a “Yes!” in the next technical interview.
+> **Pro‑tip:** If the interviewer asks for the *optimal* complexity, you can always mention that you’re using a *sort‑then‑merge* pattern that is `O(N log N)`.
 
 ---
 
-### 6.7 Call to Action
+### Summary
 
-Did you find the solution helpful?  Drop a comment with your own twists or ask for help on the next LeetCode problem you’re tackling.  Subscribe for more algorithm‑deep dives, interview prep guides, and coding‑challenge walkthroughs that land you in tech interviews.
+- **Good**: Real‑world insight, scalable OOP pattern, cross‑language exposure.
+- **Bad**: Forgetting `inf` bounds, mishandling multi‑employee merges, subtle comparison bugs.
+- **Ugly**: Edge cases (zero‑length, adjacent intervals) that require defensive programming.
 
-Happy coding—and may your free‑time intervals be full of new job offers! 🚀
+By mastering these nuances and practicing the clean solutions above, you’ll:
+
+- Deliver a bug‑free, efficient answer in any language.  
+- Communicate your thought process clearly to interviewers.  
+- Stand out as a *full‑stack* algorithmic wizard.
+
+---
+
+## 5. Final Checklist – Ready for the Next Interview
+
+1. **Understand the core merge‑intervals logic** – this will translate to almost any interval problem.
+2. **Practice the same pattern in Java, Python, and C++** – feel the idiomatic differences.
+3. **Explain your code** – highlight boundary handling, complexity, and data‑structure choices.
+4. **Edge‑case tests** – run on empty schedules, all employees with one interval, adjacent intervals, etc.
+5. **Optimize for speed** – keep a single `O(N log N)` pass; no nested `N²` loops.
+
+With this knowledge, LeetCode 759 becomes less a puzzle and more a showcase of algorithmic maturity.
+
+Good luck, and may your next coding interview be *fast*, *bug‑free*, and *interview‑winning*! 🚀
 
 --- 
 
-> *© 2023 — All rights reserved. This article is intended for educational purposes only.* 
-
---- 
-
-By presenting a thorough walkthrough, clear code samples, and a contextual blog post, you’ll not only solve LeetCode 759 efficiently but also impress interviewers with your algorithmic insight. Good luck!
+*Want more interview‑ready blogs? Follow us on LinkedIn & Twitter for the latest algorithm insights.*
