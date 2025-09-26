@@ -7,96 +7,84 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 2898 – “Maximum Linear Stock Score”  
-### 1️⃣ Problem Recap  
-You’re given a 1‑indexed array `prices`.  
-You must choose a **linear** subsequence – meaning for every consecutive pair in the chosen indices
+        ## 📈 2898 – Maximum Linear Stock Score  
+**Medium** – LeetCode  
+
+> **Goal** – Pick a subsequence of days such that for every consecutive pair  
+> `price[i] – price[j] == i – j`.  
+> Maximize the sum of the chosen prices.  
+
+Below is a **ready‑to‑copy** solution in **Java**, **Python** and **C++** (O(n) time, O(n) space) followed by a **SEO‑friendly blog post** that explains the trick, the trade‑offs, and why it’s a great interview‑talk‑point.
+
+---
+
+## 1.  Solution Overview
+
+| Language | Key idea | Complexity |
+|----------|----------|------------|
+| **Java** | `price - index` (1‑based) → bucket, sum per bucket | `O(n)` time, `O(n)` space |
+| **Python** | Same as Java – use `defaultdict` | `O(n)` time, `O(n)` space |
+| **C++** | `unordered_map<long long,long long>` | `O(n)` time, `O(n)` space |
+
+*Why does `price – index` work?*  
+For a linear subsequence the difference between any two consecutive prices equals the difference between the indices:
 
 ```
-prices[idx[j]] - prices[idx[j‑1]] == idx[j] - idx[j‑1]
+price[i] – price[j] = i – j   (i > j)
 ```
 
-The score of the subsequence is simply the sum of the selected prices.  
-Return the **maximum possible score**.
+Rearrange:
 
-> **Constraints**  
-> * `1 ≤ prices.length ≤ 10⁵`  
-> * `1 ≤ prices[i] ≤ 10⁹`  
+```
+price[i] – i = price[j] – j
+```
 
-The challenge is to do it in **O(n)** time and O(n) extra memory – ideal for a coding‑interview setting.
-
----
-
-## 2️⃣ Intuition & “Good, the Bad, and the Ugly”
-
-| Aspect | What to Do | Why It Matters |
-|--------|------------|----------------|
-| **Good – Reduce the condition** | Transform the linearity constraint `p[j] - p[i] = idx[j] - idx[i]` into a single key: `key = price - index`. | All elements that belong to the same linear subsequence will have **identical `key` values**. |
-| **Bad – Beware of overflow** | Scores can reach `10⁹ × 10⁵ = 10¹⁴`. | Use 64‑bit (`long` / `long long` / Python `int`) everywhere. |
-| **Ugly – Edge‑case indexing** | The array is 1‑indexed in the statement but Java/C++ arrays are 0‑indexed. | Subtract 1 (or adjust the key formula) to keep the math clean. |
+So all selected indices share the same **key** `price – index`.  
+We simply group prices by that key and pick the bucket with the largest sum.
 
 ---
 
-## 3️⃣ The Core Algorithm – One‑pass HashMap
+## 2.  Reference Code
 
-1. Iterate over the array once.  
-2. For each element `prices[i]` (0‑based), compute `diff = prices[i] - (i + 1)` (because the statement uses 1‑based indices).  
-3. Add `prices[i]` to the running sum of that `diff` in a hashmap.  
-4. Keep a global `maxSum` that tracks the largest value ever seen in the hashmap.  
-5. Return `maxSum` after the loop.
-
-The hashmap key `diff` groups all prices that can appear in the same linear subsequence.  
-The hashmap value is the total score for that group so far.  
-Because we always add the current price to its group, the value in the map is exactly the score of a linear subsequence ending at the current day.
-
-**Time Complexity:** `O(n)`  
-**Space Complexity:** `O(n)` (worst case every `diff` is unique)
-
----
-
-## 4️⃣ Full Code Samples
-
-### 4.1 Java
+### 2.1 Java
 
 ```java
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 class Solution {
     public long maxScore(int[] prices) {
-        Map<Integer, Long> diffSum = new HashMap<>();
-        long best = 0;
-        for (int i = 0; i < prices.length; i++) {
-            // 1‑based index = i+1
-            int diff = prices[i] - (i + 1);
-            long newSum = diffSum.getOrDefault(diff, 0L) + prices[i];
-            diffSum.put(diff, newSum);
-            best = Math.max(best, newSum);
+        Map<Integer, Long> bucket = new HashMap<>();
+        long answer = 0L;
+
+        for (int i = 0; i < prices.length; i++) {          // 0‑based index
+            int key = prices[i] - (i + 1);                 // 1‑based key
+            long newSum = bucket.getOrDefault(key, 0L) + prices[i];
+            bucket.put(key, newSum);
+            answer = Math.max(answer, newSum);
         }
-        return best;
+        return answer;
     }
 }
 ```
 
-### 4.2 Python
+### 2.2 Python
 
 ```python
-from typing import List
 from collections import defaultdict
+from typing import List
 
 class Solution:
     def maxScore(self, prices: List[int]) -> int:
-        diff_sum = defaultdict(int)
+        bucket = defaultdict(int)
         best = 0
-        for i, price in enumerate(prices):
-            # 1‑based index = i+1
-            diff = price - (i + 1)
-            diff_sum[diff] += price
-            best = max(best, diff_sum[diff])
+        for i, price in enumerate(prices):          # i is 0‑based
+            key = price - (i + 1)                   # 1‑based key
+            bucket[key] += price
+            best = max(best, bucket[key])
         return best
 ```
 
-### 4.3 C++
+### 2.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -105,156 +93,176 @@ using namespace std;
 class Solution {
 public:
     long long maxScore(vector<int>& prices) {
-        unordered_map<long long, long long> diffSum; // key: diff, value: sum
-        long long best = 0;
+        unordered_map<long long, long long> bucket;
+        long long ans = 0;
         for (size_t i = 0; i < prices.size(); ++i) {
-            long long diff = static_cast<long long>(prices[i]) - static_cast<long long>(i + 1);
-            diffSum[diff] += prices[i];
-            best = max(best, diffSum[diff]);
+            long long key = (long long)prices[i] - (long long)(i + 1);
+            bucket[key] += prices[i];
+            ans = max(ans, bucket[key]);
         }
-        return best;
+        return ans;
     }
 };
 ```
 
-> **Note on C++ unordered_map:**  
-> `unordered_map<long long, long long>` keeps the key and value in 64‑bit to avoid overflow.
+---
+
+## 3.  Blog Post – “Maximum Linear Stock Score: The Good, The Bad, and the Ugly”
+
+> **Target Audience:** Java/Python/C++ developers preparing for technical interviews, recruiters, and algorithm enthusiasts.  
+> **Primary Keywords:** *Maximum Linear Stock Score*, *LeetCode 2898*, *Java solution*, *Python solution*, *C++ solution*, *hashmap trick*, *interview problem*, *O(n) algorithm*.
 
 ---
 
-## 5️⃣ Blog Post: “Maximum Linear Stock Score – The Good, the Bad, and the Ugly”
+### 3.1 Introduction
 
-### 📝 Table of Contents  
-1. [What Is “Maximum Linear Stock Score”?](#what-is)  
-2. [Why This Problem Appears in Interviews](#why)  
-3. [Algorithm Walkthrough](#algorithm)  
-   * 3.1 Transforming the Condition  
-   * 3.2 One‑Pass HashMap Strategy  
-4. [Edge Cases & Gotchas](#edge)  
-5. [Alternative Approaches (and Why They’re Not Ideal)](#alternative)  
-6. [Time & Space Complexity](#complexity)  
-7. [Code Samples – Java / Python / C++](#samples)  
-8. [Interview Tips & How to Nail This Problem](#tips)  
-9. [Conclusion](#conclusion)
+> When you open LeetCode 2898 *Maximum Linear Stock Score*, the first thing that may bite you is the seemingly “odd” condition:  
+> `price[i] – price[j] == i – j`.  
+> It looks like a dynamic‑programming or two‑pointer puzzle, but the real trick is a one‑liner: **bucket by `price - index`**.  
+
+This article walks through why that bucket trick works, its pros and cons, and how to explain it confidently in an interview.
 
 ---
 
-### 1️⃣ What Is “Maximum Linear Stock Score”? <a name="what-is"></a>
+### 3.2 Restating the Problem
 
-LeetCode 2898 asks you to pick a subsequence of stock prices such that the difference between consecutive prices **exactly equals** the difference between their indices.  
-The goal is to maximize the sum of the chosen prices.  
-Think of it as finding the tallest mountain where the slope between each step is *exactly* the horizontal distance you move.
-
----
-
-### 2️⃣ Why This Problem Appears in Interviews <a name="why"></a>
-
-* **Linear time is expected.**  
-  Interviewers love problems that can be solved in **O(n)** – it shows you understand the input size and can craft efficient solutions.
-
-* **HashMap skills are tested.**  
-  The trick is to map `price - index` to a running sum, a classic “difference array” trick.
-
-* **Edge‑case awareness.**  
-  The need to use 64‑bit integers and handle 1‑ vs 0‑based indexing is a subtle but crucial point.
-
----
-
-### 3️⃣ Algorithm Walkthrough <a name="algorithm"></a>
-
-#### 3.1 Transforming the Condition
-
-The linearity requirement:
+We have an array `prices[1…n]` (1‑indexed).  
+Choose a subsequence `indexes = [i1 < i2 < … < ik]` such that for every adjacent pair
 
 ```
-prices[idx[j]] - prices[idx[j-1]] == idx[j] - idx[j-1]
+prices[ij] - prices[ij-1] = ij - ij-1      (1)
 ```
 
-Rearrange:
+The **score** is simply the sum of the selected prices.  
+We must maximize it.
+
+---
+
+### 3.3 Intuition & Transformation
+
+Rewrite (1) by moving terms:
 
 ```
-prices[idx[j]] - idx[j] == prices[idx[j-1]] - idx[j-1]
+prices[ij] - ij = prices[ij-1] - ij-1
 ```
 
-So **every element in a valid subsequence has the same value of `price - index`**.  
-We can call this value the *diff*.
+The left side is **constant** for all indices in a linear subsequence.  
+So all chosen days share the same value of
 
-#### 3.2 One‑Pass HashMap Strategy
+```
+key = price - index
+```
 
-1. **Iterate once** over the array.  
-2. Compute `diff = price - (index + 1)` (index is 0‑based).  
-3. Add the current price to `diffSum[diff]`.  
-4. Track the maximum value seen in `diffSum`.  
+If we group all days by this key and sum the prices inside each group, the group with the largest sum is the answer.
 
-Because all prices with the same `diff` can be chained together, the sum stored in `diffSum[diff]` is precisely the score of a valid linear subsequence ending at the current day.
-
----
-
-### 4️⃣ Edge Cases & Gotchas <a name="edge"></a>
-
-| Issue | Fix |
-|-------|-----|
-| 1‑based vs 0‑based indices | Subtract `i + 1` from `price` when computing `diff`. |
-| Large sums up to 10¹⁴ | Use `long` (Java), `long long` (C++), or Python’s built‑in `int`. |
-| Negative `diff` values | HashMap / unordered_map keys can be negative – no special handling needed. |
-| Duplicate `diff` values | `diffSum[diff] += price` merges them correctly, building the optimal subsequence. |
+> **Why does this not miss any optimal subsequence?**  
+> Any optimal subsequence must satisfy (1), thus all its keys are equal.  
+> Conversely, picking all indices with a particular key automatically satisfies (1).  
+> Therefore the best answer is the maximum bucket sum.
 
 ---
 
-### 5️⃣ Alternative Approaches (and Why They’re Not Ideal) <a name="alternative"></a>
+### 3.4 The “Good” – Simplicity and Speed
 
-| Approach | Complexity | Verdict |
-|----------|------------|---------|
-| Brute‑force over all subsequences | O(2ⁿ) | Exponential – infeasible for n = 10⁵. |
-| DP over indices with nested loops | O(n²) | Too slow. |
-| Sorting by `price - index` then greedy | O(n log n) | Works but uses extra sorting and is unnecessary; the hashmap approach is simpler and faster. |
+* **Time** – O(n) because we scan the array once.  
+* **Space** – O(n) worst case (every element has a distinct key).  
+* **Implementation** – 5‑line hash‑map update in Java/Python/C++.  
+* **Big‑O Friendly** – Handles `n = 10^5` comfortably; `price ≤ 10^9`, so we use `long`/`int64_t`.
 
----
-
-### 6️⃣ Time & Space Complexity <a name="complexity"></a>
-
-| Measure | Result |
-|---------|--------|
-| Time | **O(n)** – single pass, constant‑time hashmap ops. |
-| Space | **O(n)** – worst case every element has a distinct `diff`. |
+> *Interview‑Friendly*: You can explain it in < 30 seconds – “Group by price‑index difference”.
 
 ---
 
-### 7️⃣ Code Samples – Java / Python / C++ <a name="samples"></a>
+### 3.5 The “Bad” – Hidden Pitfalls
 
-*(See the “Full Code Samples” section above for language‑specific implementations.)*
-
----
-
-### 8️⃣ Interview Tips & How to Nail This Problem <a name="tips"></a>
-
-1. **Clarify the indexing.** Ask the interviewer whether the input is 0‑based or 1‑based – this saves a common mistake.  
-2. **Explain the transformation early.** Show that you’re turning a pairwise condition into a single key.  
-3. **Mention overflow early.** Highlight the need for 64‑bit integers – it demonstrates awareness of constraints.  
-4. **Talk about the hashmap strategy.** Mention that it’s a classic “difference” trick used in many problems (e.g., longest subarray with sum zero).  
-5. **Verify with examples.** Run the algorithm mentally on a small array to prove correctness.  
+| Pitfall | What happens? | How to fix |
+|---------|----------------|------------|
+| Using 0‑based index incorrectly | Off‑by‑one key → wrong bucket | Subtract `i+1` instead of `i` |
+| Overflow in sum | `price * n` may exceed 32‑bit | Use 64‑bit (`long`/`long long`) |
+| Forgetting the initial key | Map may contain zeros for unseen keys | `getOrDefault` or `unordered_map::operator[]` handles missing keys |
 
 ---
 
-### 9️⃣ Conclusion <a name="conclusion"></a>
+### 3.6 The “Ugly” – Over‑engineering
 
-LeetCode 2898 is a textbook example of how a clever mathematical reformulation (`price - index`) turns a seemingly complex condition into a simple hash grouping problem.  
-With an **O(n)** time, **O(n)** space solution and careful handling of 64‑bit arithmetic, you can confidently tackle this problem in an interview and impress recruiters with your algorithmic efficiency.
+Some interviewees try to use segment trees, Fenwick trees, or DP tables.  
+These approaches add unnecessary complexity and risk time‑outs or bugs.  
+Stick to the **hash‑map bucket** trick unless the interviewer explicitly wants a more elaborate solution.
 
-Happy coding! 🚀
+---
+
+### 3.7 Walk‑Through Example
+
+```
+prices = [1, 5, 3, 7, 8]
+indices (1‑based): 1  2  3  4  5
+
+key = price - index:
+1-1 = 0
+5-2 = 3
+3-3 = 0
+7-4 = 3
+8-5 = 3
+
+Buckets:
+0 → [1, 3]  sum = 4
+3 → [5, 7, 8] sum = 20   <-- max
+
+Answer = 20
+```
+
+---
+
+### 3.8 Testing Your Implementation
+
+| Test | Expected |
+|------|----------|
+| `[5, 6, 7, 8, 9]` | 35 |
+| `[10]` | 10 |
+| `[1, 2, 3, 4, 5]` | 15 |
+| `[1, 1000000000]` | 1000000000 |
+| `[1,2,4,8,16,32]` | 1+2+4+8+16+32 = 63 (all share key 0) |
+
+Write unit tests in your language’s framework or use the LeetCode playground.
+
+---
+
+### 3.9 Complexity Recap
+
+- **Time**: `O(n)` – single pass over the array.  
+- **Space**: `O(n)` – map size equals number of distinct keys.  
+- **Scalability**: Handles the maximum constraints (`n = 10^5`, `price ≤ 10^9`) in milliseconds.
+
+---
+
+### 3.10 Why This Is a Great Interview Question
+
+1. **Trick Revealed** – Demonstrates pattern recognition: converting a difference constraint into a key.  
+2. **Multiple Languages** – Show you can solve it in Java, Python, C++ (and even JavaScript).  
+3. **Time‑Efficient** – You can solve it with a single loop; no DP tables or recursion.  
+4. **Edge Cases** – Encourages discussion about overflow, indexing, and hash collisions.
+
+---
+
+### 3.11 Closing Advice
+
+- **Explain the transformation** clearly before writing code.  
+- **Show the map updates** step‑by‑step.  
+- **Mention overflow** if using languages with fixed integer widths.  
+- **Finish with complexity analysis** – recruiters love seeing that you think about performance.
+
+Happy coding, and may the `price - index` key always lead you to the highest score! 🚀
 
 --- 
 
-## 🎯 SEO‑Optimized Keywords
+### 3.12 SEO Snapshot
 
-* “Maximum Linear Stock Score”  
-* “LeetCode 2898 solution”  
-* “Java hash map linear stock score”  
-* “Python maximum linear stock score”  
-* “C++ 2898 LeetCode solution”  
-* “Interview coding problems 2025”  
-* “Dynamic programming linear subsequence”  
-* “Optimize stock price subsequence”  
-* “Job interview algorithm tips”  
+| Section | Keywords |
+|---------|----------|
+| Title | “Maximum Linear Stock Score – LeetCode 2898 Java Python C++ Solution” |
+| Meta Description | “Solve LeetCode 2898 in O(n) time. Read Java, Python, C++ code, and interview prep guide.” |
+| H1 | “Maximum Linear Stock Score – A Hash‑Map Trick” |
+| H2 | “Problem Restatement”, “Intuition”, “Java Code”, “Python Code”, “C++ Code”, “Complexity”, “Interview Tips” |
+| Alt Text | “LeetCode 2898 example diagram”, “Java hashmap code snippet”, “Python defaultdict example”, “C++ unordered_map code” |
 
-Use these keywords naturally throughout blog headings, meta descriptions, and the article body to boost visibility for recruiters searching for algorithmic expertise.
+Add the article to your blog, share it on LinkedIn, and watch the job‑search traffic grow!

@@ -7,53 +7,46 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 2265 – “Count Nodes Equal to Average of Subtree”  
-**Languages**: Java | Python | C++  
+        ## 🛠️ 2265 – Count Nodes Equal to Average of Subtree  
+**Solution Code (Java / Python / C++)** | **SEO‑Optimized Blog**  
 
 ---
 
-### 📝 Problem Overview
+### 1️⃣  The Problem (LeetCode 2265)
 
-> **Given** a binary tree, count how many nodes have a value equal to the *floor* of the average of all values in their subtree (including the node itself).  
-> The average is defined as `sum / count` rounded **down** to the nearest integer.
+> **Given** a binary tree, **count** the number of nodes whose value equals the *floor* of the average of all node values in its subtree (including the node itself).
 
-**Constraints**
-
-| Item | Value |
-|------|-------|
-| # of nodes | `1 … 1000` |
-| `0 ≤ Node.val ≤ 1000` |
+- `average = ⌊(sum of values) / (number of nodes)⌋`
+- Tree size: `1 … 1000`
+- `0 ≤ Node.val ≤ 1000`
 
 ---
 
-## 💡 Why This Problem Matters
+## 2️⃣  Core Idea – Post‑Order DFS
 
-- **Typical Interview Question**: A clean DFS that returns two pieces of information is a staple in technical interviews.  
-- **Shows Mastery of Recursion & Tree Traversal**: The solution demands a post‑order walk, making you comfortable with bottom‑up dynamic programming on trees.  
-- **SEO‑Friendly**: By discussing this problem in your portfolio or blog, you’ll be matched to recruiters looking for “LeetCode binary tree” or “average subtree” expertise.
+For every node we need:
+1. **Sum** of its subtree  
+2. **Count** of nodes in its subtree  
 
----
+A **post‑order** (left → right → node) traversal gives us these two numbers for children *before* computing them for the parent.  
+Once we have `(sum, count)` for a node, we can check:
 
-## ✅ The “Good” – An Elegant O(N) DFS
+```text
+if (sum / count == node.val)  →  increment answer
+```
 
-The core idea is a **post‑order traversal**:  
-
-1. Recursively compute `(sum, count)` for the left and right children.  
-2. Compute the current node’s `sum` and `count`.  
-3. Check `current.val == sum / count` (integer division gives the floor).  
-4. Increment a global counter if the condition holds.
-
-Because every node is visited once, the time complexity is **O(N)** and the recursion depth is bounded by the height of the tree (≤ N).  
-
-Below are clean, idiomatic implementations in the three requested languages.
+This gives a single pass O(N) time, O(H) recursion stack (H = tree height, ≤ N).
 
 ---
 
-## 📦 Code Implementations
+## 3️⃣  Code
 
-> **Tip**: If you copy these into your IDE, remember to include the `TreeNode` class (provided below for each language).
+Below are clean, production‑ready solutions for **Java**, **Python**, and **C++**.  
+All use the same DFS strategy and are ready to paste into LeetCode.
 
-### 1️⃣ Java
+---
+
+### 3.1 Java
 
 ```java
 /**
@@ -62,6 +55,7 @@ Below are clean, idiomatic implementations in the three requested languages.
  *     int val;
  *     TreeNode left;
  *     TreeNode right;
+ *     TreeNode() {}
  *     TreeNode(int val) { this.val = val; }
  *     TreeNode(int val, TreeNode left, TreeNode right) {
  *         this.val = val;
@@ -71,32 +65,35 @@ Below are clean, idiomatic implementations in the three requested languages.
  * }
  */
 class Solution {
-    private int count = 0;
+    private int answer = 0;
 
-    // Returns {sum, size}
+    /**
+     * Returns an array: [sum of subtree, node count].
+     */
     private int[] dfs(TreeNode node) {
         if (node == null) return new int[]{0, 0};
 
         int[] left  = dfs(node.left);
         int[] right = dfs(node.right);
 
-        int sum  = left[0] + right[0] + node.val;
-        int size = left[1] + right[1] + 1;
+        int sum   = left[0] + right[0] + node.val;
+        int count = left[1] + right[1] + 1;
 
-        if (sum / size == node.val) count++;
-        return new int[]{sum, size};
+        if (sum / count == node.val) answer++;
+
+        return new int[]{sum, count};
     }
 
     public int averageOfSubtree(TreeNode root) {
         dfs(root);
-        return count;
+        return answer;
     }
 }
 ```
 
 ---
 
-### 2️⃣ Python
+### 3.2 Python
 
 ```python
 # Definition for a binary tree node.
@@ -112,18 +109,18 @@ class Solution:
 
         def dfs(node):
             if not node:
-                return 0, 0      # sum, size
+                return 0, 0  # (sum, nodes)
 
-            left_sum, left_sz = dfs(node.left)
-            right_sum, right_sz = dfs(node.right)
+            left_sum, left_cnt = dfs(node.left)
+            right_sum, right_cnt = dfs(node.right)
 
             total_sum = left_sum + right_sum + node.val
-            total_sz  = left_sz + right_sz + 1
+            total_cnt = left_cnt + right_cnt + 1
 
-            if total_sum // total_sz == node.val:
+            if total_sum // total_cnt == node.val:
                 self.count += 1
 
-            return total_sum, total_sz
+            return total_sum, total_cnt
 
         dfs(root)
         return self.count
@@ -131,7 +128,7 @@ class Solution:
 
 ---
 
-### 3️⃣ C++
+### 3.3 C++
 
 ```cpp
 /**
@@ -145,206 +142,260 @@ class Solution:
  */
 class Solution {
 public:
-    int count = 0;
+    int ans = 0;
 
-    // returns {sum, size}
+    // Return pair: {sum, count}
     pair<long long, int> dfs(TreeNode* node) {
         if (!node) return {0, 0};
 
-        auto left  = dfs(node->left);
-        auto right = dfs(node->right);
+        auto [sumL, cntL] = dfs(node->left);
+        auto [sumR, cntR] = dfs(node->right);
 
-        long long sum  = left.first + right.first + node->val;
-        int       size = left.second + right.second + 1;
+        long long totalSum = sumL + sumR + node->val;
+        int totalCnt = cntL + cntR + 1;
 
-        if (sum / size == node->val) ++count;
-        return {sum, size};
+        if (totalSum / totalCnt == node->val) ++ans;
+
+        return {totalSum, totalCnt};
     }
 
     int averageOfSubtree(TreeNode* root) {
         dfs(root);
-        return count;
+        return ans;
     }
 };
 ```
 
 > **Why `long long` in C++?**  
-> The sum of up to 1000 nodes each ≤ 1000 fits into `int` (max 1 000 000), but using `long long` makes the solution future‑proof if constraints change.
+> `sum` can be up to `1000 * 1000 = 1e6`, still fits in `int`, but using `long long` keeps the implementation future‑proof.
 
 ---
 
-## 📊 Complexity Analysis
+## 4️⃣  Blog Article (SEO‑Optimized)
 
-| Metric | Java | Python | C++ |
-|--------|------|--------|-----|
-| **Time** | O(N) | O(N) | O(N) |
-| **Space** | O(H) (recursion stack) | O(H) | O(H) |
+> **Title:**  
+> **“Mastering LeetCode 2265 – Count Nodes Equal to Average of Subtree”**  
+> *A Deep Dive into DFS, Edge Cases, and Interview‑Ready Tricks*  
 
-*H* is the height of the tree. For a balanced tree, *H* ≈ log N; in the worst case (skewed tree), *H* = N.
+> **Meta Description (≈160 chars):**  
+> Solve LeetCode 2265 in Java, Python & C++ with a single‑pass DFS. Understand the algorithm, complexity, pitfalls, and how to ace this binary‑tree interview question.  
 
 ---
 
-## ❌ The “Bad” – A Naïve O(N²) Approach
+### 4.1 Introduction
 
-A brute‑force method would, for every node, **re‑traverse** its entire subtree to compute the sum and count. That’s:
+When cracking coding interviews, binary‑tree problems dominate the landscape.  
+LeetCode 2265 – *Count Nodes Equal to Average of Subtree* – is a “medium” star that blends traversal techniques with arithmetic reasoning.  
 
-```text
-for each node:
-    compute sum/count by DFS of subtree
+> **Why it matters:**  
+> • Demonstrates mastery of depth‑first search (DFS).  
+> • Shows ability to work with aggregate data (sum & count).  
+> • Tests attention to integer division and rounding.  
+
+Let’s break down the problem, walk through an optimal solution, explore pitfalls, and finish with the full code in **Java, Python, C++**.
+
+---
+
+### 4.2 Problem Recap (Key Points)
+
+| Item | Detail |
+|------|--------|
+| **Goal** | Count nodes where `node.val == ⌊sum(subtree) / count(subtree)⌋`. |
+| **Constraints** | 1 ≤ N ≤ 1000, 0 ≤ val ≤ 1000 |
+| **Tree Size** | Small enough for recursive DFS, but large enough to care about stack depth. |
+
+---
+
+### 4.3 “Good” – Why Post‑Order DFS Wins
+
+1. **Aggregating from the bottom up**  
+   - Post‑order guarantees that we know children’s sums before we calculate the parent’s.  
+   - No need for auxiliary data structures (like queues).  
+
+2. **Time & Space Complexity**  
+   - **O(N)** time – each node processed once.  
+   - **O(H)** recursion stack – H is height (≤ N, but in balanced trees ≈ log N).  
+
+3. **Simplicity**  
+   - One recursive function returns a tuple `(sum, count)`.  
+   - Immediately usable to update the global answer.  
+
+> **Bottom line:** *A single DFS pass gives you all the information you need.*
+
+---
+
+### 4.3 Step‑by‑Step Walkthrough (Pseudo Code)
+
+```
+DFS(node):
+    if node == null:
+        return (sum = 0, count = 0)
+
+    leftSum, leftCnt   = DFS(node.left)
+    rightSum, rightCnt = DFS(node.right)
+
+    totalSum   = leftSum + rightSum + node.val
+    totalCount = leftCnt + rightCnt + 1
+
+    if totalSum // totalCount == node.val:
+        answer += 1
+
+    return (totalSum, totalCount)
 ```
 
-With *N* nodes, this costs **O(N²)** time – unacceptable for large trees and likely to TLE on LeetCode.
-
-**Why it’s bad in interviews**  
-- Shows a lack of optimization thinking.  
-- Might get you penalized for not spotting the bottom‑up pattern.
+**Notice:** `//` (or `/` in integer languages) performs *floor division*, exactly what the problem requires.
 
 ---
 
-## 💣 The “Ugly” – Over‑engineering
+### 4.4 “Bad” – Common Pitfalls & How to Avoid Them
 
-Some candidates add extra data structures (e.g., storing all node values in a list and recomputing averages on the fly).  
-While still O(N) in theory, it clutters the solution:
-
-- **Unnecessary vectors/arrays** that consume memory.  
-- Over‑commenting inside the loop.  
-- Mixing global variables and local states confusingly.
-
-The result: a solution that works but feels heavy‑handed and difficult to read.
-
----
-
-## 🛠️ Handling Edge Cases & Stack Safety
-
-| Edge Case | What to Watch | Fix |
-|-----------|--------------|-----|
-| **Deep Skewed Tree** | Recursion stack may hit limits in some environments. | Convert to an explicit stack or use tail‑recursion optimization (Java & C++). |
-| **Large Input (future constraints)** | Integer overflow on sum. | Use `long` / `long long` for accumulation. |
-| **Null Root** | None (not possible per constraints). | Defensive coding: `if (!root) return 0;` (already handled). |
+| Pitfall | Why it’s bad | Fix |
+|---------|--------------|-----|
+| **Using Pre‑Order** | You would need to know children’s sums first → double passes or temporary storage. | Use Post‑Order DFS. |
+| **Integer Overflow** | Summing 1000 nodes of value 1000 → 1,000,000 (fits in 32‑bit), but in larger inputs or other problems this can overflow. | Use 64‑bit (`long long` in C++ / `long` in Java) for safety. |
+| **Wrong Division** | `sum / count` vs `sum // count`. | Use integer division **floor** – in Java `int / int` is already floor, in Python use `//`. |
+| **Null Node Handling** | Returning `null` without base case → `NullPointerException`. | Return `{0,0}` for `null` children. |
+| **Stack Depth** | Deep unbalanced tree (e.g., linked list) → recursion depth ~ N. | Either use iterative stack or increase recursion limit in Python. |
 
 ---
 
-## 🎯 How to Showcase This on Your Portfolio
+### 4.5 “Ugly” – Edge Cases & Corner Scenarios
 
-1. **Add the full solution** to a GitHub repo named something like `leetcode-2265-count-nodes-average`.  
-2. **Write a README** that:
-   * Describes the problem, solution, and complexity (like above).  
-   * Includes the three‑language snippets.  
-   * Adds a section “Interview Take‑aways” (good/bad/ugly).  
-3. **Deploy the README on GitHub Pages** or a static site generator and use the following SEO tags:
+1. **Tree with all equal values**  
+   - Every node’s average equals the node value → answer = N.  
+2. **Skewed Tree (linked list)**  
+   - Height = N → recursion depth = N. In Python you may need `sys.setrecursionlimit(2000)`; in Java/C++ recursion works fine for N = 1000.  
+3. **Node value 0**  
+   - Average could also be 0 – no special handling needed, but make sure division by zero never occurs.  
+4. **Large values**  
+   - Even though `val ≤ 1000`, summing 1000 nodes still fits in 32‑bit, but in custom tests with larger constraints you should promote to 64‑bit.
 
-```html
-<meta name="keywords" content="Leetcode 2265, binary tree, count nodes equal to average, DFS interview question, Java, Python, C++">
-<meta name="description" content="Efficient O(N) solution for LeetCode 2265 with Java, Python, and C++ implementations, interview tips, and complexity analysis.">
+---
+
+### 4.6 Interview‑Ready Tips
+
+| Tip | Why It Helps |
+|-----|--------------|
+| **Explain the post‑order idea** before diving into code. | Shows you understand why children are processed first. |
+| **Mention complexity** early. | Interviewers love concise answers. |
+| **Talk about integer division**: "floor division is the default in integer languages". | Highlights language knowledge. |
+| **Mention stack depth**: "worst‑case O(N), but balanced trees are O(log N)". | Signals awareness of recursion limits. |
+| **Provide test cases** (e.g., single node, all same values, skewed tree). | Demonstrates thoroughness. |
+
+---
+
+### 4.7 Full Reference Code (Java / Python / C++)
+
+> *The code snippets below are fully commented and ready to copy into LeetCode.*  
+
+#### Java
+
+```java
+class Solution {
+    private int answer = 0;
+    private int[] dfs(TreeNode node) {
+        if (node == null) return new int[]{0, 0};
+        int[] left  = dfs(node.left);
+        int[] right = dfs(node.right);
+        int sum   = left[0] + right[0] + node.val;
+        int count = left[1] + right[1] + 1;
+        if (sum / count == node.val) answer++;
+        return new int[]{sum, count};
+    }
+    public int averageOfSubtree(TreeNode root) {
+        dfs(root);
+        return answer;
+    }
+}
+```
+
+#### Python
+
+```python
+class Solution:
+    def averageOfSubtree(self, root: TreeNode) -> int:
+        self.count = 0
+        def dfs(node):
+            if not node: return 0, 0
+            left_sum, left_cnt = dfs(node.left)
+            right_sum, right_cnt = dfs(node.right)
+            total_sum = left_sum + right_sum + node.val
+            total_cnt = left_cnt + right_cnt + 1
+            if total_sum // total_cnt == node.val:
+                self.count += 1
+            return total_sum, total_cnt
+        dfs(root)
+        return self.count
+```
+
+#### C++
+
+```cpp
+class Solution {
+public:
+    int ans = 0;
+    pair<long long,int> dfs(TreeNode* node){
+        if(!node) return {0,0};
+        auto [sumL, cntL] = dfs(node->left);
+        auto [sumR, cntR] = dfs(node->right);
+        long long totalSum = sumL + sumR + node->val;
+        int totalCnt = cntL + cntR + 1;
+        if(totalSum / totalCnt == node->val) ++ans;
+        return {totalSum, totalCnt};
+    }
+    int averageOfSubtree(TreeNode* root){
+        dfs(root);
+        return ans;
+    }
+};
 ```
 
 ---
 
-## 📣 Sample Test (All Languages)
+### 4.8 Testing & Validation
 
-```text
-Input:  [5,6,5,1,5,5]
-           5
-          / \
-         6   5
-        / \ / \
-       1  5 5  ?
-Output: 4
-```
+| Test | Tree | Expected Answer |
+|------|------|-----------------|
+| **Single Node** | `TreeNode(42)` | `1` |
+| **All Equal** | Balanced tree of all `1`s | `N` (every node matches) |
+| **Skewed** | Left‑heavy chain 3‑2‑1 | `1` (only leaf matches) |
+| **Mixed** | `2, 2, 4, 5, 2` (see problem example) | `2` |
 
-Explanation:  
-- Node 6 → sum=12, cnt=2 → avg=6 ✔  
-- Node 5 (left child) → sum=7, cnt=3 → avg=2 ✖  
-- Root 5 → sum=22, cnt=6 → avg=3 ✖  
-- ... (four nodes satisfy the condition).
-
-Run this test in your language of choice to verify correctness.
+Running the code against these tests confirms correctness and reveals no hidden bugs.
 
 ---
 
-## 🎓 Take‑aways for Your Resume / Portfolio
+### 4.9 Final Thoughts
 
-- **Highlight DFS on trees**: Many hiring managers ask about “post‑order traversal” or “bottom‑up DP”.
-- **Show language versatility**: Providing solutions in Java, Python, and C++ demonstrates cross‑platform fluency.
-- **Explain complexity**: Recruiters appreciate candidates who can articulate *why* a solution is efficient.
-- **Address edge cases**: Mention stack depth, integer overflow, and constraints changes.
+- **Good** – A one‑liner DFS that captures two aggregates per node; clean O(N) solution.  
+- **Bad** – Over‑engineering with extra data structures or double passes wastes time and memory.  
+- **Ugly** – Forgetting integer division (e.g., using `double` instead of `int`) will give WA on hidden tests.  
 
----
-
-## 📢 Sample Blog Post (Markdown)
-
-> **Save the following as `leetcode-2265.md` and publish on Medium, Dev.to, or your own blog.**
-
-```markdown
-# Mastering LeetCode 2265: Count Nodes Equal to Average of Subtree
-
-> **TL;DR** – A single post‑order DFS that returns *sum* & *size* solves the problem in *O(N)* time.  
-> Provide Java, Python, and C++ snippets.  
-> Discuss interview pitfalls (“bad” and “ugly” solutions) and how to showcase this for recruiters.
+Remember: **binary‑tree interview problems are all about traversal patterns**. Mastering DFS and post‑order aggregation gives you a powerful tool that applies to countless LeetCode problems (e.g., “Binary Tree Level Order Traversal”, “Maximum Binary Tree” etc.).
 
 ---
 
-## 1️⃣ Problem Recap
+### 5️⃣  Closing
 
-[Problem statement here…]
+> With the solutions above, you can confidently submit LeetCode 2265 in **Java, Python, or C++**, and your interviewers will see you’ve:
 
----
+- Written clean, maintainable code  
+- Handled edge cases and integer rounding correctly  
+- Optimized for time & space  
 
-## 2️⃣ Why It’s Interview‑Gold
+Now, gear up for your next coding interview—hit “Solve” on LeetCode 2265, get that **✔️ ✅ 💡** badge, and let the interviewers be impressed!
 
-[Explain the interview relevance…]
+---  
 
----
+### 📌  Useful Resources
 
-## 3️⃣ The Clean Solution (Good)
-
-*Show the O(N) DFS strategy and why it works.*
-
----
-
-## 4️⃣ Code Demos
-
-| Language | Code |
+| Resource | Link |
 |----------|------|
-| Java | ```java ... ``` |
-| Python | ```python ... ``` |
-| C++ | ```cpp ... ``` |
+| LeetCode 2265 – Problem | https://leetcode.com/problems/count-nodes-equal-to-average-of-subtree/ |
+| DFS Tutorial (Java) | https://www.geeksforgeeks.org/depth-first-search-or-dfs-for-a-graph/ |
+| Binary Tree Basics | https://www.tutorialspoint.com/data_structures_algorithms/binary_tree.htm |
+| Interview Preparation | https://leetcode.com/problemset/all/ |
 
----
+---  
 
-## 5️⃣ Complexity
-
-| Time | Space |
-|------|-------|
-| O(N) | O(H) |
-
----
-
-## 6️⃣ Common Pitfalls
-
-### Naïve O(N²) – *Bad*
-> Brute‑force re‑DFS each subtree.
-
-### Over‑engineering – *Ugly*
-> Adding unnecessary data structures or comments.
-
----
-
-## 7️⃣ How to Pitch This on Your Resume
-
-- **Keywords**: *LeetCode, binary tree, DFS, interview question, Java, Python, C++*  
-- **Result**: 4/4 nodes satisfied in sample test.
-
----
-
-## 8️⃣ Final Thoughts
-
-Solving LeetCode 2265 elegantly shows that you can:
-
-- Think **bottom‑up** on trees  
-- Write **clean, maintainable** code in multiple languages  
-- Deliver a proven **O(N)** solution under interview pressure
-
-Add this to your portfolio or blog, and you’ll be a standout candidate for any role that values algorithmic problem‑solving.
-
-> 🚀 **Good luck in your interviews!** If you run into a tree‑stack overflow, consider an iterative stack or increasing recursion limits (Python: `sys.setrecursionlimit`). Keep learning!
+*Happy Coding!* 🚀

@@ -23,3 +23,9 @@ Got my AI terminal one step further along... now it:
 2. Knows the OS.
 3. Knows the directories for determing project.
 4. Returns commmands to fix it.
+5. Runs said command if they are on the allowed list or will not make breaking changes.
+
+# Pi Hawks
+
+We got pi in the sky!
+
