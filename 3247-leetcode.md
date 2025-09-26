@@ -7,70 +7,51 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 3247. **Number of Subsequences with Odd Sum**  
-### Problem (LeetCode 3247) – Medium
-
-> **Given** an integer array `nums`, return the number of subsequences whose sum is odd.  
-> The answer can be very large, so return it modulo `1 000 000 007`.  
+        ## 1️⃣ Problem Recap – LeetCode 3247  
+**Number of Subsequences with Odd Sum**  
+> Given an integer array `nums`, count all subsequences whose element sum is **odd**.  
+> Return the answer modulo \(10^9+7\).
 
 > **Constraints**  
-> * `1 ≤ nums.length ≤ 10⁵`  
-> * `1 ≤ nums[i] ≤ 10⁹`  
-
-> **Example**  
-> ```text
-> Input : nums = [1,1,1]
-> Output: 4
-> ```
-> The odd‑sum subsequences are:  
-> `[1]`, `[1]`, `[1]`, `[1,1,1]` (each `[1]` appears 3 times because we can pick any of the three ones).
+> - \(1 \leq n = \text{nums.length} \le 10^5\)  
+> - \(1 \leq \text{nums}[i] \le 10^9\)
 
 ---
 
-## The “Good, the Bad, and the Ugly”
+## 2️⃣ Key Insight  
 
-|  | What’s nice | What’s painful | What’s ugly |
-|---|-------------|----------------|-------------|
-| **Good** | Only two parity states (odd / even). | Linear time, constant memory. | None! |
-| **Bad** | Must handle modulo arithmetic carefully. | Very large counts may overflow 64‑bit if not modulo‑ded. | Recursion depth can explode for `n = 10⁵`. |
-| **Ugly** | The naïve DP that remembers all intermediate sums is impossible (2ⁿ states). | A recursive solution with memoization can blow the call stack. | Forgetting to add the empty subsequence when needed can lead to off‑by‑one errors. |
+For a subsequence only the **parity** of its sum matters.
 
----
+* If we add an **odd** number to an existing subsequence, its parity flips.  
+* Adding an **even** number keeps the parity unchanged.
 
-## Intuition
+This allows us to keep **just two counters**:
 
-When you read an element `x` in the array:
+| `oddCnt` | `evenCnt` | Meaning |
+|----------|-----------|---------|
+| # of subsequences seen so far with an odd sum | # of subsequences seen so far with an even sum | Updated after inspecting each array element |
 
-1. **If `x` is even**  
-   - Adding `x` to any subsequence does *not* change its parity.  
-   - So the number of odd subsequences stays the same.  
-   - The number of even subsequences increases by 1 (the subsequence `[x]` itself).
+When we encounter a new number `x` we can decide:
 
-2. **If `x` is odd**  
-   - Adding `x` flips the parity of every subsequence it joins.  
-   - Every *even* subsequence becomes *odd*.  
-   - The odd subsequences remain odd if you *don’t* pick `x`.  
-   - Additionally, the single‑element subsequence `[x]` is odd.
+| `x` parity | New `oddCnt` | New `evenCnt` |
+|------------|--------------|---------------|
+| **Odd** | `oddCnt + evenCnt + 1`  *(existing odds, existing evens flipped, new subsequence `[x]`)* | `oddCnt + evenCnt` |
+| **Even**| `2 * oddCnt`  *(existing odds duplicated, with or without `x`)* | `2 * evenCnt + 1` *(existing evens duplicated + `[x]`)* |
 
-Thus we only need to keep two counters:
+All operations are performed modulo \(10^9+7\).
 
-|  | Current odd count (`odd`) | Current even count (`even`) |
-|---|---------------------------|----------------------------|
-| **Start** | `0` | `0` |
-| **After processing `x`** |  
-| `x` odd | `odd' = even + 1` | `even' = odd` |  
-| `x` even | `odd' = odd` | `even' = even + 1` |
-
-All operations are done modulo `M = 1 000 000 007`.
+The algorithm is a single pass: **O(n)** time, **O(1)** extra space.
 
 ---
 
-## Solution Code
+## 3️⃣ Solution Code  
 
-Below are three complete, idiomatic implementations: **Java**, **Python**, and **C++**.  
-Each runs in `O(n)` time, `O(1)` extra memory, and safely handles the modulo.
+Below are clean, production‑ready implementations in **Java**, **Python**, and **C++**.  
+Each implementation follows the same O(n) DP logic described above.
 
-### 1. Java (Top‑Down DP → O(n) Iterative)
+---
+
+### 3.1 Java
 
 ```java
 import java.util.*;
@@ -79,309 +60,121 @@ public class Solution {
     private static final long MOD = 1_000_000_007L;
 
     public int subsequenceCount(int[] nums) {
-        long odd = 0, even = 0;   // long to avoid overflow before modulo
+        long odd  = 0;
+        long even = 0;
 
-        for (int val : nums) {
-            if ((val & 1) == 1) {          // odd number
-                long newOdd = (even + 1) % MOD; // even subsequences become odd + [val]
-                long newEven = odd % MOD;       // odd subsequences stay odd if we skip val
-                odd = newOdd;
+        for (int num : nums) {
+            if ((num & 1) == 1) {          // odd number
+                long newOdd  = (odd + even + 1) % MOD;
+                long newEven = (odd + even) % MOD;
+                odd  = newOdd;
                 even = newEven;
             } else {                       // even number
-                long newOdd = odd % MOD;        // parity unchanged
-                long newEven = (even + 1) % MOD; // new even subsequence [val]
-                odd = newOdd;
+                long newOdd  = (odd * 2) % MOD;
+                long newEven = (even * 2 + 1) % MOD;
+                odd  = newOdd;
                 even = newEven;
             }
         }
-        return (int) (odd % MOD);
+        return (int) odd;                  // oddCnt holds the answer
     }
 }
 ```
 
-> **Why iterative?**  
-> The original problem statement talks about “top‑down DP”. However, a recursive
-> solution with memoization would require `O(n)` stack frames and
-> `O(n)` memory for the memo table—unnecessary overhead for a problem that
-> is essentially a two‑state counter.
+---
 
-### 2. Python (Simple Iterative DP)
+### 3.2 Python
 
 ```python
-MOD = 1_000_000_007
-
 class Solution:
-    def subsequenceCount(self, nums: list[int]) -> int:
+    MOD = 1_000_000_007
+
+    def subsequenceCount(self, nums: List[int]) -> int:
         odd, even = 0, 0
-
-        for val in nums:
-            if val & 1:                     # odd
-                new_odd = (even + 1) % MOD
-                new_even = odd % MOD
+        for num in nums:
+            if num % 2:                 # odd
+                new_odd  = (odd + even + 1) % self.MOD
+                new_even = (odd + even) % self.MOD
                 odd, even = new_odd, new_even
-            else:                           # even
-                new_odd = odd % MOD
-                new_even = (even + 1) % MOD
+            else:                       # even
+                new_odd  = (odd * 2) % self.MOD
+                new_even = (even * 2 + 1) % self.MOD
                 odd, even = new_odd, new_even
-
-        return odd % MOD
+        return odd
 ```
 
-> **Python’s readability** makes the two‑state logic extremely clear.
+---
 
-### 3. C++ (Iterative DP, 64‑bit integer)
+### 3.3 C++
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
 class Solution {
 public:
     int subsequenceCount(vector<int>& nums) {
         const long long MOD = 1'000'000'007LL;
-        long long odd = 0, even = 0;
+        long long odd  = 0, even = 0;
 
-        for (int val : nums) {
-            if (val & 1) {   // odd
-                long long newOdd  = (even + 1) % MOD;
-                long long newEven = odd % MOD;
-                odd = newOdd;
-                even = newEven;
-            } else {        // even
-                long long newOdd  = odd % MOD;
-                long long newEven = (even + 1) % MOD;
-                odd = newOdd;
-                even = newEven;
-            }
-        }
-        return static_cast<int>(odd % MOD);
-    }
-};
-```
-
-> **C++** leverages `long long` to keep the intermediate values safe before applying the modulo.
-
----
-
-## Complexity Analysis
-
-| Approach | Time | Space | Modulo Operations |
-|----------|------|-------|-------------------|
-| Iterative (Java/Python/C++) | **O(n)** | **O(1)** | O(1) per iteration |
-| Recursive DP (Top‑down) | **O(n)** | **O(n)** stack + memo | Same but more overhead |
-
-> The iterative solution is optimal and is what interviewers expect for this problem.
-
----
-
-## Common Pitfalls & How to Avoid Them
-
-| Pitfall | Symptom | Fix |
-|---------|---------|-----|
-| Forgetting the modulo after each update | Overflow or wrong answer for large inputs | Apply `% MOD` right after each addition |
-| Using `int` for counters in Java/Python/C++ | Integer overflow before modulo | Use `long` (Java `long`, Python `int`, C++ `long long`) |
-| Recursion depth > 10⁵ | StackOverflowError (Java), RecursionError (Python) | Switch to iterative DP |
-| Off‑by‑one: counting empty subsequence | Wrong answer for all‑even array | Do *not* count the empty subsequence – only subsequences with at least one element |
-| Mis‑interpreting the parity of 0 | 0 is even, but input guarantees nums[i] ≥ 1 | No special case needed |
-
----
-
-## SEO‑Optimized Blog Article
-
----
-
-### Title
-**Mastering LeetCode 3247: Number of Subsequences with Odd Sum – Java, Python & C++ Solutions + Interview Tips**
-
----
-
-### Meta Description
-> Learn how to solve LeetCode 3247 – “Number of Subsequences with Odd Sum” – in Java, Python, and C++. Understand the optimal O(n) DP approach, avoid common pitfalls, and boost your coding interview preparation.
-
----
-
-### Introduction
-
-If you’re hunting for that next coding interview question to ace, “Number of Subsequences with Odd Sum” (LeetCode 3247) is a perfect candidate.  
-It’s **medium** difficulty, yet it teaches you a valuable dynamic‑programming pattern: **parity tracking**.  
-In this post we’ll walk through the problem, reveal a clean solution in **Java**, **Python**, and **C++**, and highlight the *good*, *bad*, and *ugly* parts you’ll encounter on interview day.
-
----
-
-#### Why This Problem Rocks
-
-1. **Simplicity** – only two states: odd and even.  
-2. **Scalability** – works for arrays of size up to `10⁵`.  
-3. **Real‑World Relevance** – parity checks pop up in hashing, cryptography, and network protocols.
-
----
-
-### The Problem Statement (Summarized)
-
-> **Input** – Integer array `nums` (`1 ≤ len ≤ 10⁵`, `1 ≤ nums[i] ≤ 10⁹`).  
-> **Output** – Count of subsequences whose sum is **odd**, modulo `1 000 000 007`.
-
-A subsequence is any set of indices in increasing order; the empty set is *not* counted.
-
----
-
-### The Key Insight
-
-Adding an **even** number does **not** change the sum’s parity.  
-Adding an **odd** number flips it.  
-
-Thus, you only need two counters:
-
-- `odd` – number of odd‑sum subsequences seen so far.
-- `even` – number of even‑sum subsequences seen so far.
-
-The recurrence is:
-
-```text
-if x is odd:
-    newOdd  = even + 1          // even subsequences become odd + the single [x]
-    newEven = odd               // odd subsequences stay odd if we skip x
-else:    // x is even
-    newOdd  = odd
-    newEven = even + 1
-```
-
-All arithmetic is modulo `1 000 000 007`.
-
----
-
-### Full Code Examples
-
-#### Java
-
-```java
-import java.util.*;
-
-public class Solution {
-    private static final long MOD = 1_000_000_007L;
-
-    public int subsequenceCount(int[] nums) {
-        long odd = 0, even = 0;
-
-        for (int val : nums) {
-            if ((val & 1) == 1) {          // odd
-                long newOdd  = (even + 1) % MOD;
-                long newEven = odd % MOD;
+        for (int num : nums) {
+            if (num & 1) {                    // odd
+                long long newOdd  = (odd + even + 1) % MOD;
+                long long newEven = (odd + even) % MOD;
                 odd  = newOdd;
                 even = newEven;
-            } else {                       // even
-                long newOdd  = odd % MOD;
-                long newEven = (even + 1) % MOD;
+            } else {                          // even
+                long long newOdd  = (odd * 2) % MOD;
+                long long newEven = (even * 2 + 1) % MOD;
                 odd  = newOdd;
                 even = newEven;
             }
         }
-        return (int) (odd % MOD);
-    }
-}
-```
-
-#### Python
-
-```python
-MOD = 1_000_000_007
-
-class Solution:
-    def subsequenceCount(self, nums: list[int]) -> int:
-        odd, even = 0, 0
-
-        for val in nums:
-            if val & 1:  # odd
-                odd, even = (even + 1) % MOD, odd % MOD
-            else:        # even
-                odd, even = odd % MOD, (even + 1) % MOD
-
-        return odd % MOD
-```
-
-#### C++
-
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-class Solution {
-public:
-    int subsequenceCount(vector<int>& nums) {
-        const long long MOD = 1'000'000'007LL;
-        long long odd = 0, even = 0;
-
-        for (int val : nums) {
-            if (val & 1) {          // odd
-                long long newOdd  = (even + 1) % MOD;
-                long long newEven = odd % MOD;
-                odd  = newOdd;
-                even = newEven;
-            } else {                // even
-                long long newOdd  = odd % MOD;
-                long long newEven = (even + 1) % MOD;
-                odd  = newOdd;
-                even = newEven;
-            }
-        }
-        return static_cast<int>(odd % MOD);
+        return static_cast<int>(odd);
     }
 };
 ```
 
 ---
 
-### Complexity Recap
+## 4️⃣ The Good, The Bad, and The Ugly  
 
-| Language | Time Complexity | Space Complexity |
-|----------|------------------|------------------|
-| Java / Python / C++ | **O(n)** | **O(1)** |
+| Aspect | What’s Good | What’s Bad | The Ugly |
+|--------|-------------|------------|----------|
+| **Concept** | Simple parity‑based DP → O(n) time, O(1) space | None | None |
+| **Brute‑Force** | Exponential subsets (2^n) | Exponential time & memory → TLE/MLE | Stack overflow if recursion not careful |
+| **Top‑Down Memoization** | Easy to reason about (state = `index, parity`) | Needs O(n) recursion depth, extra memo table | Recursion depth of 10^5 → stack overflow; slower than iterative |
+| **Bottom‑Up DP** | Matches the iterative solution above | Slightly more code if you store arrays | Overkill – you don’t need an array of size n |
 
-No recursion, no memo tables, no backtracking.
-
----
-
-### Interview Tips
-
-| Question | What Interviewer Might Ask |
-|----------|---------------------------|
-| *Why does an odd number flip parity?* | Because `odd + odd = even` and `odd + even = odd`. |
-| *Can you explain why we add 1 when encountering an odd number?* | The single‑element subsequence `[x]` is odd, giving one extra odd subsequence. |
-| *What if the array were all even?* | The answer would be 0 (no odd sums). |
-| *How do you handle the modulo?* | Apply `% MOD` after every addition. |
-| *Why not use recursion?* | It would risk stack overflow on `n = 10⁵`. |
+> **Why the iterative DP is the star of interviews**  
+> *Fast*: one scan, constant work per element.  
+> *Robust*: no risk of recursion limits, no large auxiliary arrays.  
+> *Clear*: two numbers, two rules – easy to explain on a whiteboard.
 
 ---
 
-### Common Interview Pitfalls
+## 5️⃣ Complexity Analysis  
 
-1. **Off‑by‑one errors** – forgetting to exclude the empty subsequence.  
-2. **Integer overflow** – using 32‑bit ints in Java or C++ before modulo.  
-3. **Unnecessary recursion** – leads to time & space overhead.  
-4. **Not handling large `MOD`** – misreading the problem’s modulo requirement.
-
----
-
-### Final Thoughts
-
-LeetCode 3247 is a lightweight problem that elegantly demonstrates parity‑based DP.  
-The same approach applies to many other “sum parity” questions, such as counting subarrays with an even sum.  
-Master the two‑state counter, practice the code in the language you’re most comfortable with, and you’ll be ready to hit that “Number of Subsequences with Odd Sum” question with confidence.
-
-Happy coding and best of luck on your next interview!
+| Metric | Calculation |
+|--------|-------------|
+| **Time** | `O(n)` – one pass over the array |
+| **Space** | `O(1)` – only two 64‑bit counters |
+| **Modulo Operations** | `O(n)` as well – each step uses a few `% MOD` ops |
 
 ---
 
-### Call to Action
+## 6️⃣ Interview‑Ready Tips  
 
-> Want to see more **medium‑level** LeetCode problems?  
-> Subscribe to our newsletter for weekly interview‑ready solutions and interview‑hacking tips.
+1. **Explain the parity observation first** – this shows you understand why only two states are enough.  
+2. **Walk through a tiny example** (e.g., `[1, 2, 3]`) while updating `oddCnt` and `evenCnt`.  
+3. **Mention the modulo** – many interviewers expect you to avoid overflow early.  
+4. **Talk about alternatives** (brute force, DP with array) and why you discarded them.  
+5. **Show the code** in your preferred language, keeping variable names self‑descriptive (`odd`, `even`).  
 
 ---
 
-#### End of Article
+## 7️⃣ Wrap‑Up  
 
---- 
+The “Number of Subsequences with Odd Sum” problem is a classic example of how a simple observation (parity flipping) can turn a seemingly exponential combinatorial problem into a linear‑time DP.  
+The solution is compact, efficient, and language‑agnostic – making it a great interview talking point.  
 
-With this comprehensive walkthrough and ready‑to‑copy code snippets, you’re fully equipped to tackle LeetCode 3247 in any language you prefer.  
-Drop your questions in the comments below or share your own solutions – let’s keep the interview prep community thriving!
+> **SEO Keywords**: LeetCode 3247, number of subsequences with odd sum, Java DP solution, Python DP solution, C++ DP solution, interview coding, algorithm interview, job interview prep, O(n) DP, dynamic programming parity, modulo 1e9+7.
+
+Good luck on your coding journey! 🚀

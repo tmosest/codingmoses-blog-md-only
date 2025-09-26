@@ -7,96 +7,135 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🛠️ 1335 – Minimum Difficulty of a Job Schedule  
-*Hard – LeetCode* | **Dynamic Programming** | **Java / Python / C++**  
+        # LeetCode 1335 – Minimum Difficulty of a Job Schedule  
+> **Hard | DP | Recursion + Memoization | O(n·d) Time | O(n·d) Space**
 
-> **Goal** – Schedule `n` dependent jobs in `d` days so that the total
-> difficulty is minimal.  
-> Each day you must complete **at least one job**; the difficulty of a day
-> is the maximum difficulty of any job finished that day.  
-> Return the minimum total difficulty, or `-1` if the schedule is impossible.
-
----
-
-## 📑 Problem Recap (Short & Sweet)
-
-| Item | Value |
-|------|-------|
-| `jobDifficulty` length `n` | 1 … 300 |
-| Job difficulty | 0 … 1000 |
-| Number of days `d` | 1 … 10 |
-| Jobs are *dependent*: job `i` can be done only after jobs `0…i‑1`. |
-
-You must split the array into **exactly `d` contiguous groups** (each group = one day) and minimize the sum of each group’s maximum value.
+## Table of Contents  
+1. [Problem Restatement](#problem-restatement)  
+2. [Why It’s Hard](#why-its-hard)  
+3. [Brute‑Force Idea (The Ugly)](#brute-force-idea-the-ugly)  
+4. [Optimal DP Solution (The Good)](#optimal-dp-solution-the-good)  
+5. [Edge Cases & Common Pitfalls (The Bad)](#edge-cases--common-pitfalls-the-bad)  
+6. [Java / Python / C++ Code](#code)  
+   * Java  
+   * Python  
+   * C++  
+7. [Complexity Analysis](#complexity-analysis)  
+8. [SEO‑Friendly Takeaway](#seo-friendly-takeaway)  
 
 ---
 
-## 📌 Why It’s Hard
+## Problem Restatement  
 
-* **Exponential possibilities** – each day can take 1 … n jobs.
-* **Dependencies** – jobs must be taken in order, ruling out arbitrary assignments.
-* **Small `d` but large `n`** – brute force would be \(O(n^{d})\), impossible for `n=300`.
+You are given an array `jobDifficulty` where `jobDifficulty[i]` is the difficulty of the *i*‑th job, and an integer `d` – the number of days you have to finish all jobs.
 
-The key is to use **dynamic programming** with a **recursive + memoization** or **iterative** solution that runs in **\(O(n \cdot d)\)** time and **\(O(n \cdot d)\)** memory.
+- Jobs must be completed **in order**.  
+- Every day you must finish **at least one** job.  
+- The difficulty of a day = the **maximum** difficulty among the jobs completed that day.  
+- The total difficulty of a schedule = sum of the daily difficulties.  
+
+**Goal:** Minimize the total difficulty.  
+If you can’t finish all jobs in exactly `d` days (i.e. `jobDifficulty.length < d`), return `-1`.
 
 ---
 
-## 🧠 Intuition
+## Why It’s Hard  
 
-Imagine you are on the first day.  
-If you decide to finish the first `k` jobs today, the rest of the schedule becomes a **smaller sub‑problem**:
+1. **Partitioning** – you need to split the array into `d` contiguous segments.  
+2. **Exponential search space** – every day’s split point is a choice.  
+3. **Non‑linear objective** – the cost of a segment is its maximum, not a sum.  
+4. **Small `d` but large `n`** – `n` can be 300 while `d` ≤ 10, meaning an algorithm that is `O(n²·d)` is fine, but anything worse starts to bite.
+
+---
+
+## Brute‑Force Idea (The Ugly)
+
+A naïve recursion tries every split point for every day:
+
+```text
+helper(idx, daysLeft):
+    if daysLeft == 1:
+        return max(jobDifficulty[idx..end])
+    best = ∞
+    maxDay = -∞
+    for i in idx … end - daysLeft + 1:      // choose split after i
+        maxDay = max(maxDay, jobDifficulty[i])
+        best = min(best, maxDay + helper(i+1, daysLeft-1))
+    return best
+```
+
+**Problems:**
+
+- Exponential time (`O(2^n)` worst‑case).  
+- Repeated sub‑problems cause massive recomputation.  
+- Stack depth can reach `n` (risk of stack overflow on large inputs).  
+- Hard to read and maintain.
+
+> *The “ugly” part:* this is the first code you’ll write; it shows the *concept*, but it fails on larger tests.
+
+---
+
+## Optimal DP Solution (The Good)
+
+### 1. DP State
+
+`dp[i][k]` = minimal difficulty to finish **first `i` jobs** in **exactly `k` days**.
+
+- `i` ranges from `1 … n`  
+- `k` ranges from `1 … d`  
+
+### 2. Transition
+
+For the last day (day `k`) we pick a split point `t` (`k-1 ≤ t < i`):
 
 ```
-minDifficulty(jobs[k … n-1], d-1)
+dp[i][k] = min over t ( dp[t][k-1] + max(jobDifficulty[t+1 … i]) )
 ```
 
-The difficulty of today is `max(jobs[0 … k-1])`.  
-You want the minimum over all valid `k` (the last job of today).
+During the inner loop we maintain the running maximum so that computing  
+`max(jobDifficulty[t+1 … i])` is `O(1)` for each `t`.
 
-This “divide and conquer” idea translates cleanly into recursion with memoization.
+### 3. Initialization
 
----
+- `dp[i][1]` = `max(jobDifficulty[1 … i])`  
+  (All jobs of day 1 are fixed – you can’t split further.)
 
-## 🔍 DP Formulation
+### 4. Result
 
-Let  
-`dp[idx][days] = minimum total difficulty to finish jobs[idx … n-1] in 'days' days`.
+`dp[n][d]` (first `n` jobs in `d` days).  
+If `n < d` → `-1` immediately.
 
-* **Base**  
-  * `days == 1` → you must take all remaining jobs in one day →  
-    `dp[idx][1] = max(jobDifficulty[idx … n-1])`
-* **Recurrence**  
-  For `days > 1`:
+### 5. Why It Works
 
-  ```
-  dp[idx][days] = min over k (max(jobDifficulty[idx … k]) + dp[k+1][days-1])
-  where k ranges from idx to n - days  (at least one job per remaining day)
-  ```
+The partition of the array is implicitly encoded in the choice of `t`.  
+Since `d ≤ 10`, the 3‑nested loops (`n·d·n`) are at most `300·10·300 ≈ 9×10⁵` operations – comfortably fast.
 
-* **Answer** – `dp[0][d]` (unless impossible).
+### 6. Implementation Tips
 
-**Impossible case** – if `n < d`, return `-1`.
-
----
-
-## ⚙️ Complexity
-
-| Approach | Time | Space |
-|----------|------|-------|
-| Recursion + memo | **O(n · d)** | **O(n · d)** |
-| Bottom‑up DP (iterative) | **O(n · d · n)** (worst‑case) | **O(n · d)** |
-
-The recursive version is the most common LeetCode implementation because it’s concise and naturally handles the “at least one job per day” constraint.
+| Good | Reason |
+|------|--------|
+| **Iterative DP** | Avoids recursion overhead & stack depth issues. |
+| **Forward max** | Updates `maxDay` inside the inner loop – no extra `max()` calls. |
+| **Sentinel row** | A row of `-1` or `∞` signals “uncomputed”. |
 
 ---
 
-## 🏆 The Code (Java, Python, C++)
+## Edge Cases & Common Pitfalls (The Bad)
 
-> **LeetCode signature** –  
-> `int minDifficulty(int[] jobDifficulty, int d)`  
-> `List<int>` or `vector<int>&` in Python / C++.
+| Bad practice | What can go wrong |
+|--------------|------------------|
+| Using `dp[0][*]` as 0 | The problem guarantees *at least one* job per day; `dp[0][k]` should be `∞` for `k > 0`. |
+| Off‑by‑one errors in indices | Remember array indices in Java/Python/C++ start at 0, but `dp` uses `1‑based` for readability. |
+| Forgetting the `n < d` check | LeetCode’s tests include this case; you must return `-1` immediately. |
+| Over‑optimizing with `O(n²·d)` → `O(n·d)` via prefix maxima? | Not necessary here; keep it simple and clear. |
 
-> All implementations use **int** for the final answer – the maximum possible answer is \(10 \times 1000 = 10\,000\).
+---
+
+## Code  
+Below are **three** implementations – one in each language – with extensive comments so you can copy, paste, and run them on your own test cases.
+
+> **All codes use the DP formulation described above.**  
+> They run in **O(n·d·n)** time and **O(n·d)** memory, which is optimal for LeetCode’s limits.
 
 ### Java
 
@@ -104,60 +143,53 @@ The recursive version is the most common LeetCode implementation because it’s 
 import java.util.Arrays;
 
 public class Solution {
-    // Memoization table: -1 means “not computed yet”
-    private int[][] memo;
-    private int[] jobs;
-    private int n;
-
     public int minDifficulty(int[] jobDifficulty, int d) {
-        jobs = jobDifficulty;
-        n = jobs.length;
+        int n = jobDifficulty.length;
+        if (n < d) return -1;               // not enough jobs
 
-        // Impossible if we have fewer jobs than days
-        if (n < d) return -1;
+        // dp[i][k] : minimal difficulty for first i jobs in k days
+        int[][] dp = new int[n + 1][d + 1];
+        for (int[] row : dp) Arrays.fill(row, Integer.MAX_VALUE);
 
-        memo = new int[n][d + 1];
-        for (int[] row : memo) Arrays.fill(row, -1);
+        // base case: one day -> take max of the segment
+        for (int i = 1; i <= n; i++) {
+            int max = 0;
+            for (int j = 1; j <= i; j++) max = Math.max(max, jobDifficulty[j - 1]);
+            dp[i][1] = max;
+        }
 
-        return solve(0, d);
+        // fill DP table
+        for (int k = 2; k <= d; k++) {          // days
+            for (int i = k; i <= n; i++) {     // jobs
+                int maxDay = 0;
+                // try all split points t (last day ends at i)
+                for (int t = i - 1; t >= k - 1; t--) {
+                    maxDay = Math.max(maxDay, jobDifficulty[t]); // job t
+                    int candidate = dp[t][k - 1] + maxDay;
+                    dp[i][k] = Math.min(dp[i][k], candidate);
+                }
+            }
+        }
+
+        return dp[n][d];
     }
 
-    // Recursive helper: min difficulty for jobs[start …] in 'days' days
-    private int solve(int start, int days) {
-        // Base: only one day left → take all remaining jobs
-        if (days == 1) {
-            int max = 0;
-            for (int i = start; i < n; ++i) {
-                max = Math.max(max, jobs[i]);
-            }
-            return max;
-        }
-
-        if (memo[start][days] != -1) return memo[start][days];
-
-        int best = Integer.MAX_VALUE;
-        int dayMax = 0;
-
-        // k is the last job of this day
-        // We must leave at least 'days-1' jobs for the remaining days
-        for (int k = start; k <= n - days; ++k) {
-            dayMax = Math.max(dayMax, jobs[k]);          // max for this day
-            int rest = solve(k + 1, days - 1);          // optimal rest
-            best = Math.min(best, dayMax + rest);
-        }
-
-        memo[start][days] = best;
-        return best;
+    // Simple main for quick sanity check
+    public static void main(String[] args) {
+        int[] jobs = {6, 5, 4, 3, 2, 1};
+        System.out.println(new Solution().minDifficulty(jobs, 2)); // 7
     }
 }
 ```
+
+> **Why this is good:**  
+> *Clean, iterative DP, single‑pass over splits, no recursion.*
 
 ---
 
 ### Python
 
 ```python
-from functools import lru_cache
 from typing import List
 
 class Solution:
@@ -166,21 +198,28 @@ class Solution:
         if n < d:
             return -1
 
-        @lru_cache(None)
-        def dfs(idx: int, days: int) -> int:
-            # Base: one day left → take all remaining jobs
-            if days == 1:
-                return max(jobDifficulty[idx:])
+        # dp[i][k] minimal difficulty for first i jobs in k days
+        dp = [[float('inf')] * (d + 1) for _ in range(n + 1)]
 
-            best = float('inf')
-            day_max = 0
-            # last job of the current day
-            for k in range(idx, n - days + 1):
-                day_max = max(day_max, jobDifficulty[k])
-                best = min(best, day_max + dfs(k + 1, days - 1))
-            return best
+        # base: one day
+        for i in range(1, n + 1):
+            dp[i][1] = max(jobDifficulty[:i])
 
-        return dfs(0, d)
+        # DP transition
+        for k in range(2, d + 1):
+            for i in range(k, n + 1):
+                max_day = 0
+                # split before i: last job index t
+                for t in range(i - 1, k - 2, -1):
+                    max_day = max(max_day, jobDifficulty[t])
+                    dp[i][k] = min(dp[i][k], dp[t][k - 1] + max_day)
+
+        return dp[n][d]
+
+# quick test
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.minDifficulty([6,5,4,3,2,1], 2))  # 7
 ```
 
 ---
@@ -197,99 +236,69 @@ public:
         int n = jobDifficulty.size();
         if (n < d) return -1;
 
-        vector<vector<int>> memo(n, vector<int>(d + 1, -1));
+        vector<vector<int>> dp(n + 1, vector<int>(d + 1, INT_MAX));
 
-        function<int(int,int)> dfs = [&](int idx, int days) -> int {
-            if (days == 1) {               // last day – take all remaining jobs
+        // base case: one day
+        for (int i = 1; i <= n; ++i) {
+            int mx = 0;
+            for (int j = 0; j < i; ++j) mx = max(mx, jobDifficulty[j]);
+            dp[i][1] = mx;
+        }
+
+        // DP
+        for (int k = 2; k <= d; ++k) {
+            for (int i = k; i <= n; ++i) {
                 int mx = 0;
-                for (int i = idx; i < n; ++i) mx = max(mx, jobDifficulty[i]);
-                return mx;
+                // last day ends at i, split after t
+                for (int t = i - 1; t >= k - 1; --t) {
+                    mx = max(mx, jobDifficulty[t]);
+                    dp[i][k] = min(dp[i][k], dp[t][k - 1] + mx);
+                }
             }
-
-            if (memo[idx][days] != -1) return memo[idx][days];
-
-            int best = INT_MAX;
-            int dayMax = 0;
-            for (int k = idx; k <= n - days; ++k) {
-                dayMax = max(dayMax, jobDifficulty[k]);       // today
-                best = min(best, dayMax + dfs(k + 1, days - 1));
-            }
-            return memo[idx][days] = best;
-        };
-
-        return dfs(0, d);
+        }
+        return dp[n][d];
     }
 };
+
+int main() {
+    Solution s;
+    vector<int> jobs = {6,5,4,3,2,1};
+    cout << s.minDifficulty(jobs, 2) << endl; // 7
+}
 ```
 
-> *Note* – All three snippets follow the same DP recurrence and run in **\(O(n \cdot d)\)** time thanks to memoization.
+---
+
+## Complexity Analysis  
+
+| Method | Time | Space |
+|--------|------|-------|
+| Brute‑Force Recursion | Exponential (`O(2^n)`) | `O(n)` recursion depth |
+| DP (iterative) | **O(n² · d)** ≤ 9 × 10⁵ | **O(n·d)** |
+| DP (recursion + memoization) | **O(n² · d)** | **O(n·d)** + recursion stack |
+
+Given `n ≤ 300` and `d ≤ 10`, the DP is comfortably fast on LeetCode.
 
 ---
 
-## ✅ Edge‑Case Checklist
+## SEO‑Friendly Takeaway  
 
-| Situation | Expected Result |
-|-----------|-----------------|
-| `n < d` | `-1` |
-| `d == 1` | `max(jobDifficulty)` |
-| Some jobs have difficulty `0` | Works – the max in a segment still counts |
-| All jobs same difficulty | `d * sameDifficulty` |
-| Large `n` (300) & `d` (10) | Still fast – ~3,000 DP states |
-
----
-
-## 🔍 Quick Test Harness (Python)
-
-```python
-def test():
-    s = Solution()
-    assert s.minDifficulty([6,5,4,3,2,1], 2) == 7
-    assert s.minDifficulty([1,1,1], 3) == 3
-    assert s.minDifficulty([11,111,22,222,33,333], 2) == 444
-    assert s.minDifficulty([1], 2) == -1
-    print("All tests passed!")
-test()
-```
-
-Run the snippet on any Python environment (Python 3.8+).
+- **Keywords to target:** *LeetCode 1335*, *Minimum Difficulty of a Job Schedule*, *Hard LeetCode problem*, *Java DP solution*, *Python DP solution*, *C++ DP solution*, *job scheduling algorithm*, *dynamic programming interview*, *job difficulty*.
+- Use descriptive headings (`#`, `##`) that contain those keywords – Google loves them.
+- Add a short summary paragraph at the very beginning:  
+  ```markdown
+  ## LeetCode 1335 – Minimum Difficulty of a Job Schedule  
+  Hard DP solution in Java, Python and C++ that runs in O(n·d) time.  
+  Solve the hard job‑scheduling problem with contiguous partitions and segment maximums.
+  ```
+- Keep the article under 1,200 words, sprinkle the keywords naturally, and finish with a “call‑to‑action” (e.g., “Try it out on LeetCode and tag your solution with #Leetcode1335”).
 
 ---
 
-## ⚠️ Common Pitfalls & “Ugly” Traps
+## Final Words  
 
-| Mistake | Why it fails | Fix |
-|---------|--------------|-----|
-| **Iterate `k` to `n-1`** for all days | Leaves 0 jobs for remaining days → schedule invalid | Stop at `n - days` |
-| **Base case `days == 0`** | You’ll try to read outside the array | Use `days == 1` as the only base |
-| **Using `int[][] dp` with 0‑initialized** | 0 may be a legitimate answer, ambiguous | Use `-1` as “unset” |
-| **Large recursion depth** | Python stack may overflow for `n=300` | Use `lru_cache` or iterative DP |
-| **Missing impossible case** | `n < d` → you’ll get an array‑index error | Explicitly check early |
+- **Good** – The DP solution is clean, fast, and passes all tests.  
+- **Bad** – Forgetting the `n < d` check or mixing 0‑based/1‑based indices will crash the solution.  
+- **Ugly** – The first naïve recursion is easy to write but impractical; use it only as a learning tool.
 
----
-
-## 📈 Interview‑Prep Takeaway
-
-1. **Understand the partition nature** – you’re always splitting the array.  
-2. **Leverage the small `d`** – the DP dimension `days` is tiny.  
-3. **Memoize** – even the simplest recursive formula is \(O(n·d)\) when cached.  
-4. **Edge‑case first** – check `n < d` and `d == 1` before diving in.  
-
-With this pattern, you can solve many “schedule‑partition” problems that surface in interviews.
-
----
-
-## 🎯 SEO‑Friendly Closing
-
-* **Keywords**: LeetCode 1335, Minimum Difficulty of a Job Schedule, Dynamic Programming, Recursion, Memoization, Job Scheduling, Hard Interview Problem, Java, Python, C++, DP, Interview Prep.  
-* **Meta description**: “Solve LeetCode 1335 – Minimum Difficulty of a Job Schedule – with an O(n·d) DP solution. Get Java, Python, and C++ code examples plus interview‑friendly explanations.”  
-* **Header Tags**: `# LeetCode 1335`, `## Problem Statement`, `## DP Approach`, `## Complexity`, `## Code (Java/Python/C++)`, `## Testing`, `## Conclusion`.  
-
----
-
-### 📢 Call‑to‑Action
-
-> **Got a LeetCode “hard” that’s giving you headaches?**  
-> Share this article, drop a comment, or fork the repo.  
-> Let’s conquer more interview questions together! 🚀  
-
-Happy coding!
+Happy coding, and good luck nailing that interview!

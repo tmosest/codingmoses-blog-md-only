@@ -7,141 +7,167 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # Longest Subsequence Repeated **k** Times – LeetCode 2014  
-*(Hard | 2025‑09‑24)*  
-
-> “Find the longest subsequence that appears at least **k** times in a string.  
->  If several subsequences have the same maximum length, return the
->  lexicographically largest one.”
-
-The solution below works for **Java**, **Python** and **C++**.  
-It follows a *Breadth‑First Search + Greedy* strategy – the most straightforward
-and interview‑friendly approach – but it is also fast enough for the given
-constraints.
+        # The Longest Subsequence Repeated *k* Times – A Job‑Ready Blog Post  
+*(LeetCode 2014 – Hard, “Longest Subsequence Repeated k Times”)*  
 
 ---
 
-## 1.  Problem Recap & Constraints
+## 1️⃣ Why This Problem Matters
 
-| Field | Value |
-|-------|-------|
-| String length `n` | `2 ≤ n < min(2001, k·8)` |
-| Repetition count `k` | `2 ≤ k ≤ 2000` |
-| Alphabet | lowercase English letters |
-| Time limit | ~1 s (typical LeetCode) |
-| Memory | < 512 MB |
+- **Interview‑buzzword** – LeetCode Hard problems are a gold‑mine for data‑structure & algorithm interviews.  
+- **Real‑world relevance** – Subsequence matching is at the heart of DNA sequencing, text mining, and compression.  
+- **Show‑case** – Solving it in **Java, Python and C++** demonstrates mastery of language‑specific tricks (streams, iterators, fast I/O).
 
-**Goal** – return the longest subsequence `seq` such that `seq` repeated `k`
-times (`seq * k`) is still a subsequence of `s`.  
-If multiple longest subsequences exist, return the lexicographically **largest**
-one.  
-If none exists, return an empty string.
+If you can explain the idea, complexity and present clean code in three major languages, you’ll be a strong candidate for roles that ask you to write “clever, production‑ready code”.
 
 ---
 
-## 2.  Intuition
+## 2️⃣ Problem Recap
 
-A subsequence is built by deleting characters while keeping order.  
-If we can **count** how many times a candidate subsequence can be matched
-inside `s`, we can decide whether it satisfies the *k‑repetition* condition.
+> **Input**  
+> - `s` – a string of lowercase English letters (`2 ≤ |s| < min(2001, k·8)`)  
+> - `k` – the number of repetitions (`2 ≤ k ≤ 2000`)  
+> **Output**  
+> The longest subsequence `seq` such that `seq` repeated `k` times (`seq·k`) is still a subsequence of `s`.  
+> If several subsequences share the maximum length, return the lexicographically largest one. Return `""` if none exist.
 
-The naïve search would examine all `26^L` strings of length `L`.  
-But:
-
-* The answer length is bounded by `n / k` (you need at least `k` copies of each
-  character).
-* `n < 2001` → the branching factor is modest for the constraints.
-
-Thus a **Breadth‑First Search** over all candidate strings is perfectly fine
-and guarantees that the first time we reach a longer length, we have found the
-maximum length.  
-To get the *lexicographically largest* among candidates of the same length,
-we simply process letters from **'a' to 'z'** and keep the **last** valid
-candidate we encounter for a particular length.  
-(Alternatively, process `'z'` → `'a'` and keep the first.)
+Examples  
+| `s` | `k` | result |
+|------|-----|--------|
+| `letsleetcode` | 2 | `let` |
+| `bb` | 2 | `b` |
+| `ab` | 2 | `""` |
 
 ---
 
-## 3.  Algorithm
+## 3️⃣ The Core Insight
 
-```
-function longestSubsequenceRepeatedK(s, k):
-    answer = ""
-    queue = [""]                      // start with the empty string
+> **A subsequence `seq` repeats `k` times iff we can find `k` non‑overlapping copies of `seq` in order.**  
+> In other words, walking once through `s` we should be able to “consume” the characters of `seq` `k` times.
 
-    while queue not empty:
-        cur = queue.pop()             // current candidate
-        for ch from 'a' to 'z':
-            next = cur + ch
-            if isRepeatedK(next, s, k):
-                answer = next          // longer or lexicographically larger
-                queue.push(next)
+This gives us a linear‑time helper:
 
-    return answer
-```
-
-`isRepeatedK(sub, s, k)` – *two‑pointer* counter
-
-```
-function isRepeatedK(sub, s, k):
-    count = 0
-    idx = 0                           // position inside sub
-    for ch in s:
-        if ch == sub[idx]:
-            idx += 1
-            if idx == len(sub):      // a full copy matched
-                idx = 0
-                count += 1
-                if count == k:
-                    return true
-    return false
+```text
+count = 0, i = 0          // i indexes seq
+for ch in s:
+    if ch == seq[i]:
+        i += 1
+        if i == len(seq):          // one copy finished
+            i = 0
+            count += 1
+            if count == k: return True
+return False
 ```
 
-*Time Complexity*  
-`O(N · 26^L)` where `L = |answer| ≤ N / k`.  
-In practice the branching is far below `26^L` because many extensions fail
-immediately.
-
-*Space Complexity*  
-`O(26^L)` for the queue and the candidate strings (same bound as time).
+The helper works for *any* `seq` in `O(|s|)` time.
 
 ---
 
-## 4.  Code
+## 4️⃣ Brute‑Force vs. Optimised Search
 
-Below are clean, beginner‑friendly implementations in **Java**, **Python** and
-**C++**.  All three use the same algorithm and helper function.
+- **Brute‑force** – Enumerate all subsequences (`2^n`) → impossible.  
+- **Dynamic Programming** – Too many states (`26^L`) if we store every possible subsequence.  
+- **Breadth‑First Search (BFS) with Greedy Ordering** – Explore subsequences level‑by‑level, always extending with `a…z`.  
+  - The **last** valid subsequence of a given length will be the lexicographically largest (since we try letters in ascending order).  
+  - We stop when the queue becomes empty; the answer is the longest valid one we have seen.
 
-### 4.1 Java
+With the constraints (`|s| < 2001, k ≤ 2000, |s| < k·8`), the maximal possible subsequence length is `|s| / k` (≈ 8).  
+Thus the BFS explores at most `26^8 ≈ 2·10^11` strings *in theory*, but in practice the `isK` check cuts the search drastically.
+
+---
+
+## 5️⃣ The Algorithm (Greedy BFS)
+
+1. **Initialize**  
+   - `queue` ← `[""]` (empty subsequence).  
+   - `answer` ← `""`.
+
+2. **While queue not empty**  
+   - Pop `curr`.  
+   - For each `c` in `'a'` … `'z'`:  
+     - `next = curr + c`.  
+     - If `isK(next, s, k)` is true:  
+       - Update `answer = next` (longest found so far).  
+       - Push `next` into the queue.
+
+3. **Return** `answer`.
+
+> **Why greedy?**  
+> Because we iterate letters in natural order, the *last* valid subsequence of a given length is automatically the lexicographically largest.  
+> **Why BFS?**  
+> It guarantees we finish exploring all subsequences of length `L` before moving to `L+1`, so we naturally discover the longest one.
+
+---
+
+## 6️⃣ Complexity Analysis
+
+| Aspect | Estimate |
+|--------|----------|
+| `isK` time | `O(|s|)` |
+| Max levels | `⌊|s| / k⌋` (≈ 8) |
+| Total visited strings | `≤ 26^{|s|/k}` but practically far less. |
+| **Time** | `O( |s| · visited )` – in practice a few milliseconds. |
+| **Space** | `O( visited · average_length )` – also tiny for given limits. |
+
+---
+
+## 7️⃣ The Good, The Bad, and The Ugly
+
+| Category | Good | Bad | Ugly |
+|----------|------|-----|------|
+| **Concept** | Clear linear‑time helper, intuitive greedy BFS | BFS can explode combinatorially in pathological cases | None – the search space is naturally bounded by constraints |
+| **Code** | Clean, short, uses only standard library | Requires manual string concatenation which can be slower in Python | None – no external dependencies |
+| **Readability** | Inline comments, step‑by‑step | `isK` name may be confusing – “canRepeatedK?” | None |
+
+---
+
+## 8️⃣ SEO‑Optimised Takeaway
+
+- **Title**: “LeetCode 2014 – Longest Subsequence Repeated k Times (Java/Python/C++ Solutions)”
+- **Meta‑Description**: “Master the Hard LeetCode problem ‘Longest Subsequence Repeated k Times’ with step‑by‑step BFS and greedy solutions in Java, Python, and C++. Learn time‑complexity, code snippets, and interview‑friendly explanations.”
+- **Keywords**: LeetCode Hard, Longest Subsequence, Repeated k Times, Interview Problem, BFS, Greedy, Java, Python, C++, Algorithm, Data Structures.
+
+---
+
+## 9️⃣ Full Code (Three Languages)
+
+> **Note** – All three solutions use the same algorithmic idea but adapt to language idioms.  
+> They are ready to paste into LeetCode’s editor.
+
+---
+
+### 9.1 Java 17
 
 ```java
 import java.util.*;
 
-class Solution {
+public class Solution {
+    // Main entry
     public String longestSubsequenceRepeatedK(String s, int k) {
         String best = "";
-        Queue<String> q = new ArrayDeque<>();
-        q.offer("");
+        Queue<String> q = new LinkedList<>();
+        q.add("");          // start with empty subsequence
 
         while (!q.isEmpty()) {
             String cur = q.poll();
             for (char ch = 'a'; ch <= 'z'; ch++) {
                 String nxt = cur + ch;
-                if (isRepeatedK(nxt, s, k)) {
-                    best = nxt;          // longer or lexicographically larger
-                    q.offer(nxt);
+                if (isK(nxt, s, k)) {
+                    best = nxt;        // longest found so far
+                    q.offer(nxt);      // explore extensions
                 }
             }
         }
         return best;
     }
 
-    private boolean isRepeatedK(String sub, String s, int k) {
-        int count = 0, idx = 0, n = sub.length();
-        for (char ch : s.toCharArray()) {
-            if (ch == sub.charAt(idx)) {
+    // Check if nxt repeated k times is a subsequence of s
+    private boolean isK(String nxt, String s, int k) {
+        int idx = 0, count = 0;          // idx -> position in nxt
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == nxt.charAt(idx)) {
                 idx++;
-                if (idx == n) {        // completed one copy
+                if (idx == nxt.length()) { // one copy finished
                     idx = 0;
                     count++;
                     if (count == k) return true;
@@ -153,7 +179,9 @@ class Solution {
 }
 ```
 
-### 4.2 Python 3
+---
+
+### 9.2 Python 3.10
 
 ```python
 from collections import deque
@@ -161,23 +189,24 @@ from collections import deque
 class Solution:
     def longestSubsequenceRepeatedK(self, s: str, k: int) -> str:
         best = ""
-        q = deque([""])
+        q = deque([""])                 # BFS queue
+
         while q:
             cur = q.popleft()
-            for ch in map(chr, range(ord('a'), ord('z') + 1)):
+            for ch in "abcdefghijklmnopqrstuvwxyz":
                 nxt = cur + ch
-                if self.is_repeated_k(nxt, s, k):
+                if self.is_k(nxt, s, k):
                     best = nxt
                     q.append(nxt)
         return best
 
     @staticmethod
-    def is_repeated_k(sub: str, s: str, k: int) -> bool:
-        count, idx, n = 0, 0, len(sub)
+    def is_k(nxt: str, s: str, k: int) -> bool:
+        idx, count = 0, 0
         for ch in s:
-            if ch == sub[idx]:
+            if ch == nxt[idx]:
                 idx += 1
-                if idx == n:
+                if idx == len(nxt):     # one copy finished
                     idx = 0
                     count += 1
                     if count == k:
@@ -185,7 +214,11 @@ class Solution:
         return False
 ```
 
-### 4.3 C++ (GNU++17)
+> *Python string concatenation is fine for the short strings produced by the BFS.*
+
+---
+
+### 9.3 C++ (17)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -196,15 +229,15 @@ public:
     string longestSubsequenceRepeatedK(string s, int k) {
         string best = "";
         queue<string> q;
-        q.push("");
+        q.push("");                    // start from empty subsequence
 
         while (!q.empty()) {
             string cur = q.front(); q.pop();
             for (char ch = 'a'; ch <= 'z'; ++ch) {
                 string nxt = cur + ch;
-                if (isRepeatedK(nxt, s, k)) {
-                    best = nxt;               // longer or lexicographically larger
-                    q.push(nxt);
+                if (isK(nxt, s, k)) {
+                    best = nxt;            // longest so far
+                    q.push(nxt);           // explore deeper
                 }
             }
         }
@@ -212,12 +245,12 @@ public:
     }
 
 private:
-    bool isRepeatedK(const string& sub, const string& s, int k) {
-        int cnt = 0, idx = 0, n = sub.size();
-        for (char ch : s) {
-            if (ch == sub[idx]) {
+    bool isK(const string& nxt, const string& s, int k) {
+        int idx = 0, cnt = 0;          // idx -> position in nxt
+        for (char c : s) {
+            if (c == nxt[idx]) {
                 ++idx;
-                if (idx == n) {            // finished one copy
+                if (idx == (int)nxt.size()) {   // copy finished
                     idx = 0;
                     ++cnt;
                     if (cnt == k) return true;
@@ -229,119 +262,15 @@ private:
 };
 ```
 
-All three snippets compile in the LeetCode online judge and pass the full
-test suite.
+> *The use of `queue<string>` and simple loops keeps the code concise and fast.*
 
 ---
 
-## 5.  Good, Bad & Ugly – What Interviewers Actually Care About
+## 🔚 Final Thoughts
 
-| Aspect | What to Show | What to Avoid |
-|--------|--------------|---------------|
-| **Good** | 1. Clear separation of *search* and *verification* logic.<br>2. Intuitive BFS that guarantees the longest length.<br>3. Use of a two‑pointer counter – a standard interview pattern. |  |
-| **Bad** | • A naive `O(26^L · N)` recursion can blow up if `k` is tiny and `n` is large.<br>• Hard‑coded letter order (`'a'` → `'z'`) that might confuse someone looking for lexicographic order. | • Forgetting to store the *lexicographically largest* candidate.<br>• Using recursion without memoization → stack overflow. |
-| **Ugly** | • Building whole strings on every level (`cur + ch`) can be expensive in Java if you use `StringBuilder` incorrectly.<br>• Over‑optimizing the helper (`isRepeatedK`) with pre‑computed “next occurrence” tables may hide the core idea. | • Too many nested loops or an excessive number of queues (memory blow‑up). |
+- **Show your ability** to translate a problem statement into a clear algorithmic strategy.  
+- **Mention the helper** `isK` – it’s the “magic” that makes the whole solution linear in `|s|`.  
+- **Discuss complexity** – interviewers love seeing you talk about time & space.  
+- **Provide all three languages** – demonstrates versatility and readiness for a diverse tech stack.
 
-**Takeaway:**  
-A *simple BFS + greedy* solution is usually the best “clean” interview answer.
-It demonstrates:
-
-* Understanding of subsequences & string manipulation.
-* Mastery of BFS/DFS traversal.
-* Familiarity with two‑pointer techniques for counting matches.
-
----
-
-## 6.  Edge‑Case Checklist
-
-| Case | Expected Output |
-|------|-----------------|
-| `k` > `n` | `""` – you cannot match even one copy. |
-| `s` contains a single repeated letter, e.g. `s = "aaaaaa", k = 3` | `"a"` |
-| All characters are distinct, e.g. `s = "abcde", k = 2` | `""` – no subsequence can be repeated twice. |
-| Multiple longest answers, e.g. `s = "ababab", k = 2` | `"ab"` – `ab` repeated twice is still a subsequence. |
-
----
-
-## 7.  Why This Solution Is Interview‑Friendly
-
-1. **Readability** – No fancy data structures, only queues and simple loops.  
-2. **Proof of Correctness** – BFS guarantees maximum length, greedy gives the
-   lexicographically largest.  
-3. **Low Risk of Runtime Errors** – The helper runs in linear time per check,
-   so the overall runtime is easy to reason about.  
-4. **Language‑agnostic** – The same idea works in Java, Python, C++,
-   Ruby, Go, etc.  
-
-If you’re preparing for coding‑interviews or want to showcase your LeetCode
-skills on your résumé, mention the *BFS + Greedy* approach and the
-two‑pointer counter.  It’s concise, it covers all edge‑cases, and it is
-straightforward to write on a whiteboard.
-
----
-
-## 8.  Variations & Extensions
-
-* **Dynamic Programming** – Build a `next[pos][c]` table that tells you the
-  next occurrence of each character after `pos`.  
-  Matching a subsequence becomes `O(L)` instead of `O(N)`.  
-  However, the BFS + two‑pointer method is usually simpler to explain in an
-  interview.
-
-* **DFS with Memoization** – Explore deeper first, store the longest answer
-  seen for each prefix.  This saves the queue overhead but still guarantees
-  correctness.
-
-* **Pruning** – If the remaining part of `s` cannot supply `k` copies of a
-  candidate, you can skip checking it.  This can be implemented with the
-  same two‑pointer helper.
-
----
-
-## 9.  Interview Tips
-
-| Tip | Why it matters |
-|-----|----------------|
-| **State your plan before coding** | Shows you understand the problem and can reason about
-  complexity. |
-| **Explain the two‑pointer counter** | Demonstrates familiarity with subsequence
-  matching and counting techniques. |
-| **Discuss why BFS gives the longest length** | Highlights the relationship between
-  breadth‑first traversal and optimality. |
-| **Mention the lexicographic tie‑breaker** | Reveals you read the full statement
-  (not just “longest” but also “lexicographically largest”). |
-| **Show a small test suite** | Instantly convinces the interviewer you’ve handled
-  edge cases (empty answer, maximum length, etc.). |
-
----
-
-## 10.  Conclusion
-
-The **Longest Subsequence Repeated k Times** problem is a perfect interview
-exercise that blends string manipulation, search strategy, and a classic
-two‑pointer counting trick.  
-The BFS‑plus‑greedy solution above is easy to write, easy to prove correct,
-and fast enough for LeetCode’s hard constraints.
-
-Feel free to copy the code snippets into your favorite IDE, run the LeetCode
-test suite, and practice explaining the algorithm to a friend or an
-interviewer.  Good luck – you’re now one step closer to acing the next
-coding challenge!  
-
----  
-
-## 📖 Want to learn more?
-
-* **[Two Approach With Example Walkthrough – Easy](https://leetcode.com/problems/longest-subsequence-repeated-k-times/)**
-* **[Optimal DP Approach – Beats 100%](https://leetcode.com/problems/longest-subsequence-repeated-k-times/)**  
-* **[Interview‑Ready C++ / Python / Java Templates](https://leetcode.com/)**
-
----  
-
-> **Keywords for SEO**:  
-> *Longest Subsequence Repeated k Times* | *LeetCode 2014* | *BFS* | *Greedy* | *Lexicographically largest subsequence* | *Java solution* | *Python solution* | *C++ solution* | *algorithm* | *coding interview*  
-
----  
-
-Happy coding, and may your interview answers always be the longest, the most
-optimal, and the most impressive!
+Good luck cracking the problem and landing that next interview! 🚀

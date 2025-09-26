@@ -7,231 +7,332 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🎯 LeetCode 1770 – “Maximum Score from Performing Multiplication Operations”
+        ---
 
-> **Problem**  
-> You have two arrays:  
-> • `nums` (size *n*,  *n* ≥ *m*)  
-> • `multipliers` (size *m*)  
-> Starting with score = 0, you perform exactly *m* operations.  
-> In operation *i* you pick an element from the *start* or the *end* of the current `nums`, multiply it by `multipliers[i]`, add it to the score and delete that element from `nums`.  
-> Return the **maximum possible score** after all *m* operations.
+## 🚀 LeetCode 1770 – Maximum Score from Performing Multiplication Operations  
+**Hard | DP | O(m²) time, O(m²) memory**  
 
-> **Constraints**  
-> * 1 ≤ *m* ≤ 300  
-> * *m* ≤ *n* ≤ 10⁵  
-> * –1000 ≤ nums[i], multipliers[i] ≤ 1000  
-
-> **Links**  
-> • LeetCode problem page  
-> • Various community solutions (see the prompt for a list)
+> *“A problem that looks simple on the surface but is actually a great interview weapon.”* – **Mr Coder**
 
 ---
 
-## 🧩 Why the “Brute‑Force” TLEs
-
-A direct recursion that tries both ends at every step is **O(2ᵐ)**.  
-With *m* = 300 the worst‑case number of states is astronomically huge –  
-you would try over 10⁸⁵ possibilities.  
-
-Even a simple `for` loop that recomputes every state from scratch would need  
-`O(n · m)` memory if you store the whole DP table – far beyond the 1 e5 size of `nums`.
-
-Hence we need a *state reduction* trick.
-
----
-
-## ✅ The Optimal DP – “Only the Edges Matter”
-
-Observe that after *i* operations you will have taken exactly *i* elements from `nums`.  
-The **only** thing that matters for future decisions is *how many* you took from the **left side**.
-
-*Let* `dp[i][k]` = maximum score we can obtain after processing the first *i* multipliers **and** taking exactly `k` elements from the left.  
-Consequently we have taken `i‑k` elements from the right, because we removed `i` elements in total.
-
-**Transition**
-
-```
-rightIndex = n - 1 - (i - k)          // the element we would pick from the right
-dp[i+1][k+1] = max( dp[i+1][k+1],
-                    dp[i][k] + nums[k]           * multipliers[i] )
-dp[i+1][k]   = max( dp[i+1][k],
-                    dp[i][k] + nums[rightIndex] * multipliers[i] )
-```
-
-You only need a table of size *(m+1) × (m+1)* – about 90 000 cells –  
-well within the limits.
-
-**Why this works**
-
-* When *n* ≥ 2·*m*, the middle part of `nums` is **never reachable**.  
-  You can drop it and only keep the first *m* and the last *m* elements.
-* The DP only considers those at most *2·m* candidates, which is why the
-  algorithm stays fast even for *n* = 10⁵.
+### Table of Contents  
+1. [Problem Recap](#problem-recap)  
+2. [Why This Problem is a *Must‑Know* Interview Question](#why-this-problem-is-a-must‑know-interview-question)  
+3. [The Good – The Clear, Intuitive DP Approach](#the-good-the-clear-intuitive-dp-approach)  
+4. [The Bad – What Happens If You Don’t Use DP?](#the-bad-what-happens-if-you-dont-use-dp)  
+5. [The Ugly – Edge Cases & Common Pitfalls](#the-ugly-edge-cases-common-pitfalls)  
+6. [Solution Walk‑Through](#solution-walk‑through)  
+7. [Code Snippets](#code-snippets)  
+   - [Java](#java)  
+   - [Python](#python)  
+   - [C++](#c++)  
+8. [How to Explain It in an Interview (and Land That Job)](#how-to-explain-it-in-an-interview)  
+9. [SEO Checklist – Make Your Blog Stand Out](#seo-checklist)  
+10. [TL;DR](#tl‑dr)
 
 ---
 
-## 📐 Complexity Analysis
+## 📌 Problem Recap  
 
-| Approach | Time | Space | Notes |
-|----------|------|-------|-------|
-| Naïve recursion (`2ᵐ`) | O(2ᵐ) | O(m) | Exponential – always TLE |
-| Recursion + memo (`m²` states) | **O(m²)** | **O(m²)** | 300² = 90 000 ≈ 0.09 M – trivial |
-| Bottom‑up tabulation (iterative) | **O(m²)** | **O(m)** (row‑by‑row) | Even less memory |
-| Greedy / two‑pointer (wrong) | O(m) | O(1) | Produces sub‑optimal answer |
+> **Given**  
+> *   `nums[0 … n-1]` – an integer array (1 ≤ n ≤ 10⁵)  
+> *   `multipliers[0 … m-1]` – an integer array (1 ≤ m ≤ 300, and **m ≤ n**)  
 
-With the optimal DP you are guaranteed to finish in less than a millisecond.
+> **Action** – Perform **exactly `m` operations**.  
+> In the *i‑th* operation you may **remove** either the **leftmost** or the **rightmost** element from `nums`.  
+> The removed element is multiplied by `multipliers[i]` and added to your total score.  
 
----
-
-## 📄 Implementation – Three Languages
-
-Below are clean, ready‑to‑paste implementations for **Java, Python, and C++**.
-
-> **Tip:** The three solutions all use *the same idea* – a recursive memo that stores the maximum score for the pair `(leftIndex, operationsDone)` – only the syntax changes.
+> **Goal** – Maximize the total score after all `m` operations.
 
 ---
 
-### Java (Recursive + Memoization)
+### 🔍 Why This Problem is a *Must‑Know* Interview Question  
+
+| Reason | Why It Matters |
+|--------|----------------|
+| **Choice DP** | Demonstrates *how to decide between two future states* – a core interview theme. |
+| **Greedy + DP** | You might be tempted to take a greedy approach; showing you know **when greedy fails** is impressive. |
+| **Large `n`** | The trick of trimming the array to the first and last `m` elements shows you can reason about *reachability* and *space‑saving*. |
+| **Constraints** | With `m ≤ 300`, an `O(m³)` brute force is infeasible – proves you can design an *efficient* solution. |
+| **Negative Numbers** | Must handle negative products correctly – not just `max()` on positives. |
+
+> **Job Interview Hack:** If you can nail this question in a 45‑minute slot, you’ll get the “DP” badge on your résumé – a coveted keyword for many tech recruiters.
+
+---
+
+## 🛠️ The Good – The Clear, Intuitive DP Approach  
+
+1. **State Definition**  
+   - `dp[l][k]` – the maximum score we can obtain **after we have already taken `k` elements from the left** of the trimmed array and are currently at operation `k`.  
+   - The number of elements taken from the right is `k - l`.  
+   - The index of the rightmost usable element in the original array is  
+     `right = n - 1 - (k - l)`.
+
+2. **Transition**  
+   - Take from the left: `nums[l] * multipliers[k] + dp[l+1][k+1]`.  
+   - Take from the right: `nums[right] * multipliers[k] + dp[l][k+1]`.  
+   - Choose the maximum.
+
+3. **Base Case**  
+   - When `k == m`, all multipliers are used → score `0`.
+
+4. **Optimization**  
+   - Only the first `m` and the last `m` elements of `nums` can ever be chosen.  
+   - If `n > 2*m`, we can safely *trim* `nums` to a new array of size `2*m`.  
+   - This reduces the DP table size to at most `m × m` (≈ 90 000 entries when `m = 300`).
+
+The algorithm runs in `O(m²)` time and `O(m²)` memory – perfectly fine for the constraints.
+
+---
+
+## ❌ The Bad – What Happens If You Don’t Use DP?  
+
+A straight‑forward recursive implementation that tries all left/right choices will produce **exponential time** (`O(2^m)`).  
+With `m = 300`, that’s astronomically huge – you’ll hit **Time‑Limit Exceeded** in 0.01 s.  
+
+Even a memoised recursion that does **not** trim the array still uses `O(n²)` memory when `n` is large, which will blow up to > 2 GB.  
+That’s why the *naive* solution is a **dead end**.
+
+---
+
+## 😱 The Ugly – Edge Cases & Common Pitfalls  
+
+| Pitfall | Explanation | Fix |
+|---------|-------------|-----|
+| **Negative Products** | Multipliers and `nums` can be negative. A simple “take the larger absolute value” heuristic fails. | Use the full DP comparison (`max(left, right)`). |
+| **Overflow** | Max score ≈ `1000 * 1000 * 300 = 300 000 000` – fits in `int`, but adding many operations can exceed 32‑bit in some languages. | Use `long long` (C++/Java) or `int64` (Python’s `int` is unbounded). |
+| **Large `n`** | `n` can be 10⁵, but you only need `2*m` elements. | Trim the array first; otherwise you allocate `n × n` DP table. |
+| **Recursive Stack Overflow** | Recursive depth `m ≤ 300` is safe in most runtimes, but in strict environments you might hit stack limits. | Provide an iterative (bottom‑up) implementation or use `@lru_cache` in Python. |
+| **Wrong Index Calculations** | Off‑by‑one errors when computing the right index `n - 1 - (k - l)` are common. | Keep a clear invariant: `l` always points to the next unused left element. |
+| **Memory Explosion** | `dp` size `m × m` is fine, but `dp` of size `n × n` is not. | Trim `nums` to `2*m` first. |
+
+---
+
+## 🧩 Solution Walk‑Through  
+
+1. **Trim the array**  
+   ```text
+   if n > 2*m:
+       nums = nums[:m] + nums[-m:]
+   ```
+   Now `len(nums) == 2*m`.
+
+2. **DP table**  
+   `dp[l][k]` – best score after using `k` multipliers and already removed `l` elements from the left.  
+   The right side removed count is `k - l`.
+
+3. **Recurrence**  
+   ```text
+   left  = nums[l] * multipliers[k] + dp[l+1][k+1]
+   right = nums[right_index] * multipliers[k] + dp[l][k+1]
+   dp[l][k] = max(left, right)
+   ```
+
+4. **Base** – `k == m` → 0.
+
+5. **Answer** – `dp[0][0]`.
+
+---
+
+## 🖥️ Code Snippets  
+
+> All three solutions use **memoised DP** (top‑down).  
+> Time complexity: **O(m²)**, Memory: **O(m²)**.  
+> `m ≤ 300`, so the DP table is at most 90 000 entries.
+
+---
+
+### Java
 
 ```java
+import java.util.Arrays;
+
 class Solution {
-    private int n, m;
-    private int[] nums, mult;
-    // dp[left][op] = max score with 'left' elements already taken from the left
-    // at operation 'op'
-    private int[][] dp;
+    /* 1. Keep a reference to the trimmed array  */
+    private int[] nums;
+    private int[] multipliers;
+    private int m, n;                 // n == nums.length, m == multipliers.length
+    private long[][] memo;            // long to avoid overflow
 
     public int maximumScore(int[] nums, int[] multipliers) {
-        this.n = nums.length;
+        this.multipliers = multipliers;
         this.m = multipliers.length;
-        this.nums = nums;
-        this.mult = multipliers;
-        dp = new int[m][m + 1];   // we only need m×m (op <= m, left <= op)
-        for (int[] row : dp) Arrays.fill(row, Integer.MIN_VALUE);
-
-        return solve(0, 0);
+        /* Trim only the needed part of nums */
+        if (nums.length > 2 * m) {
+            int[] trimmed = new int[2 * m];
+            System.arraycopy(nums, 0, trimmed, 0, m);
+            System.arraycopy(nums, nums.length - m, trimmed, m, m);
+            this.nums = trimmed;
+        } else {
+            this.nums = nums;
+        }
+        this.n = this.nums.length;
+        memo = new long[m][m];   // indices: left, taken
+        for (long[] row : memo) Arrays.fill(row, Long.MIN_VALUE);
+        return (int) dfs(0, 0);   // start from left=0, used multipliers=0
     }
 
-    private int solve(int left, int op) {
-        if (op == m) return 0;                         // all multipliers used
+    /* dp(left, k) → best score after using k multipliers and having removed left elements from the left side */
+    private long dfs(int left, int k) {
+        if (k == m) return 0;
+        if (memo[left][k] != Long.MIN_VALUE) return memo[left][k];
+        int right = n - 1 - (k - left);          // corresponding right index
 
-        if (dp[left][op] != Integer.MIN_VALUE)         // already computed
-            return dp[left][op];
+        long takeLeft  = (long) nums[left] * multipliers[k] + dfs(left + 1, k + 1);
+        long takeRight = (long) nums[right] * multipliers[k] + dfs(left, k + 1);
 
-        int rightIdx = n - 1 - (op - left);            // current rightmost element
-        int pickLeft  = nums[left] * mult[op] + solve(left + 1, op + 1);
-        int pickRight = nums[rightIdx] * mult[op] + solve(left, op + 1);
-
-        dp[left][op] = Math.max(pickLeft, pickRight);
-        return dp[left][op];
+        return memo[left][k] = Math.max(takeLeft, takeRight);
     }
 }
 ```
 
-> **Why this works**  
-> *`left`* ranges from `0 … op`, so at most 300 × 300 cells.  
-> The `rightIdx` computation is the only “ugly” part – it is a little tricky but stays constant‑time.
+> **Why `long`?**  
+> Even though `int` fits the limits, using `long` guarantees safety if the constraints are relaxed.
 
 ---
 
-### Python (Bottom‑Up DP – O(m²) time & O(m) space)
+### Python
 
 ```python
+from functools import lru_cache
+
 class Solution:
-    def maximumScore(self, nums: List[int], multipliers: List[int]) -> int:
-        n, m = len(nums), len(multipliers)
-        # We only need the first m and the last m elements of nums
-        if n > 2 * m:
+    def maximumScore(self, nums, multipliers):
+        m = len(multipliers)
+
+        # Only the first m and last m elements can be used
+        if len(nums) > 2 * m:
             nums = nums[:m] + nums[-m:]
 
-        # dp[k] = best score after taking k left elements at current multiplier
-        dp = [0] * (m + 1)
-        for i in range(m - 1, -1, -1):          # from the last multiplier to the first
-            new = [0] * (m + 1)
-            for k in range(i + 1):              # k can be 0 … i
-                left  = dp[k + 1] + multipliers[i] * nums[k]
-                right = dp[k] + multipliers[i] * nums[len(nums) - 1 - (i - k)]
-                new[k] = max(left, right)
-            dp = new
-        return dp[0]
+        n = len(nums)
+
+        @lru_cache(maxsize=None)
+        def dfs(left, k):
+            """left – how many left elements already taken
+               k   – how many multipliers already used"""
+            if k == m:
+                return 0
+            right = n - 1 - (k - left)        # index of the current right element
+            take_left  = nums[left] * multipliers[k] + dfs(left + 1, k + 1)
+            take_right = nums[right] * multipliers[k] + dfs(left, k + 1)
+            return max(take_left, take_right)
+
+        return dfs(0, 0)
 ```
 
-> **Why the slice `nums[:m] + nums[-m:]`?**  
-> If *n* > 2·*m*, the middle numbers can never be chosen – pruning them saves memory.
+> **`lru_cache`** replaces the manual DP table, keeping the recursion stack minimal.
 
 ---
 
-### C++ (Iterative Tabulation – O(m²) memory)
+### C++ (Top‑Down with Memoisation)
 
 ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
 public:
     int maximumScore(vector<int>& nums, vector<int>& multipliers) {
-        int n = nums.size(), m = multipliers.size();
+        int m = multipliers.size();
 
-        // keep only reachable ends
-        if (n > 2 * m) {
-            vector<int> tmp(2 * m);
-            copy(nums.begin(), nums.begin() + m, tmp.begin());
-            copy(nums.end() - m, nums.end(), tmp.begin() + m);
-            nums.swap(tmp);
-            n = 2 * m;
+        /* Trim the array to 2*m if needed */
+        if ((int)nums.size() > 2 * m) {
+            vector<int> trimmed(2 * m);
+            copy(nums.begin(), nums.begin() + m, trimmed.begin());
+            copy(nums.end() - m, nums.end(), trimmed.begin() + m);
+            nums.swap(trimmed);
         }
+        int n = nums.size();
 
-        vector<vector<long long>> dp(m + 1, vector<long long>(m + 1, 0));
+        vector<vector<long long>> memo(m, vector<long long>(m, LLONG_MIN));
 
-        for (int i = m - 1; i >= 0; --i) {
-            for (int left = 0; left <= i; ++left) {
-                int right = n - 1 - (i - left);
-                long long takeLeft  = 1LL * nums[left] * multipliers[i] + dp[left + 1][i + 1];
-                long long takeRight = 1LL * nums[right] * multipliers[i] + dp[left][i + 1];
-                dp[left][i] = max(takeLeft, takeRight);
-            }
-        }
-        return (int)dp[0][0];
+        function<long long(int,int)> dfs = [&](int left, int k) -> long long {
+            if (k == m) return 0;
+            if (memo[left][k] != LLONG_MIN) return memo[left][k];
+            int right = n - 1 - (k - left);
+            long long takeLeft  = 1LL * nums[left] * multipliers[k] + dfs(left + 1, k + 1);
+            long long takeRight = 1LL * nums[right] * multipliers[k] + dfs(left, k + 1);
+            return memo[left][k] = max(takeLeft, takeRight);
+        };
+        return (int)dfs(0, 0);
     }
 };
 ```
 
-> The C++ solution follows the same logic as the Java & Python ones – only the syntax changes.
+> The lambda `dfs` captures `nums` and `multipliers` by reference, keeping the code concise.
 
 ---
 
-## 🔍 Understanding the Good, Bad, and Ugly
+## 📑 TL;DR  
 
-| Aspect | What’s Good | What’s Bad | What’s Ugly |
-|--------|-------------|------------|-------------|
-| **Intuition** | Think of *k* picks from the left. The remaining *i‑k* picks come from the right. | None | None |
-| **State space** | `dp[left][op]` – only *m²* states, not *n · m*. | Too many states if you accidentally use full `n × m` array. | Index arithmetic (`rightIdx = n - 1 - (op - left)`) is easy to get wrong. |
-| **Memory** | 300 × 300 ≈ 90 k ints (≈ 0.7 MB) – trivial. | If you keep the whole `nums` in DP, you’ll hit 1 e5 × 300 cells. | If you forget to prune the middle part of `nums` when `n > 2·m`, you’ll still allocate an array of size *n* – wasteful. |
-| **Speed** | Linear in *m²* → ≈ 90 k operations – instant. | Exponential naïve recursion → TLE. | A common bug: using `long long` (C++) or `int` (Java) without checking overflow? Not an issue here because each multiplication fits in 32‑bit, but summing up to 300 times still fits in 32‑bit (`300 × 1000 × 1000` = 3 × 10⁸). |
-| **Edge Cases** | *n* = *m* → you must use all elements. | *n* ≫ *m* → you can safely drop the middle part of `nums`. | Off‑by‑one errors in the `rightIdx` calculation are common – double‑check with a small test. |
+- **Trim `nums` to `2*m`** to avoid huge memory.  
+- Use a memoised DP with state `dp[left][used]`.  
+- Transition: compare taking left vs. taking right.  
+- Complexity: `O(m²)` time, `O(m²)` memory.  
+- All three implementations run in a fraction of a second for the given constraints.
 
 ---
 
-## 📈 Complexity Summary
+## 🚀 SEO Checklist – Make Your Blog Stand Out  
 
-* **Time**: `O(m²)` – at most 90 000 operations.  
-* **Space**: `O(m²)` for the memo table, or `O(m)` for the iterative version.  
-* **Why it passes**:  
-  * The middle of `nums` is pruned when unnecessary.  
-  * The DP table never touches *n* directly, so the huge *n* does not hurt.
+1. **Title** – Include the keyword “DP” and mention the constraints.  
+2. **Meta Description** – 150–160 chars: “Master the LeetCode DP problem in 45 min – trim arrays, avoid overflow, and pass recruiters’ filter.”  
+3. **Headers** – Use H1, H2, H3 for readability; search engines love structured content.  
+4. **Images/Diagrams** – Visual state transition diagram (can be an SVG).  
+5. **Code Highlighting** – Use `<pre><code class="language-java">...</code></pre>` tags.  
+6. **Internal Links** – Link to your other blog posts on DP, greedy, or interview prep.  
+7. **External Sources** – Cite the LeetCode problem page.  
+8. **Canonical URL** – If you’re reposting on Medium, use the original URL as canonical.  
+9. **Alt Text** – Add descriptive alt text for any images.  
+10. **Social Sharing** – Add Twitter card meta tags to show code snippets in the preview.
+
+> **Result:** Your article will rank higher for “DP LeetCode solution”, and recruiters scrolling job boards will spot it instantly.
 
 ---
 
-## 📣 Final Word
+## 🏁 TL;DR  
 
-When you see a problem that asks for “maximum score / minimum cost” with a limited number of operations, always try to:
+*Trim the array → memoised DP → `O(m²)` time.*  
+All three languages are ready to copy‑paste into your next interview or blog post.  
 
-1. **Reduce the problem** – remove unreachable items.
-2. **Define a state** that captures only what future decisions need.
-3. **Memoize / tabulate** – avoid recomputation.
-
-These implementations are concise, free of boilerplate, and demonstrate the elegant DP trick that lets you win in interviews and contests alike.
-
-Happy coding! 🚀
+Good luck! 🚀
 
 --- 
 
-**Happy Interviewing!** If you have questions about any part, feel free to ask.
+### 📎 Links  
+- LeetCode Problem 1770: [Maximum Score from Performing Multiplication Operations](https://leetcode.com/problems/maximum-score-from-performing-multiplication-operations/)
+
+---
+
+> *Enjoyed this walkthrough? Leave a comment, share on LinkedIn, and let recruiters know you can crack DP in minutes!*
+
+--- 
+
+## ✍️ TL;DR  
+
+- Trim `nums` to the first/last `m` elements.  
+- DP state: `dp[left][k]`.  
+- Transition: `max(take left, take right)`.  
+- Base: `k == m → 0`.  
+- Time: `O(m²)`, Memory: `O(m²)`.  
+- All three language snippets above illustrate the approach.  
+
+> **Result:** You can solve the LeetCode problem in less than a minute and add “DP” to your résumé. 🎉
+
+--- 
+
+**Happy coding and interview hacking!** 🚀
+
+--- 
+
+*This article is licensed under CC BY-SA. Feel free to adapt and share!* 
+
+--- 
+
+## 🎉 TL;DR
+
+**Trim**, **DP**, **Memoise** – 90 000 states max.  
+Java/Python/C++ all work with `O(m²)` time.  
+Avoid exponential recursion and memory blow‑ups.  
+Nail this on your résumé and recruiters will take notice.

@@ -7,85 +7,98 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🎯 LeetCode 1906 – *Minimum Absolute Difference Queries*  
-**A complete, production‑ready solution in Java, Python & C++ + an SEO‑friendly interview‑blog**
+        ## 🎯 LeetCode 1906 – Minimum Absolute Difference Queries  
+### The Good, The Bad, & The Ugly – Plus a Full‑stack Solution in Java, Python & C++
+
+> **Keywords** – *LeetCode 1906, Minimum Absolute Difference Queries, interview coding problem, prefix sums, time complexity, job interview, algorithm design*  
 
 ---
 
-### 1. 📌 Problem Recap  
+### 1. Problem Recap
 
-> **Minimum absolute difference** of an array `a` is the smallest `|a[i] - a[j]|` for `i < j` where `a[i] != a[j]`.  
-> If all elements are identical, the answer is `-1`.
+Given
 
-You are given:  
-- `nums[0 … n‑1]` (1 ≤ `n` ≤ 10⁵, 1 ≤ `nums[i]` ≤ 100)  
-- `queries[0 … q‑1]`, each query is `[l, r]` (0 ≤ `l` < `r` < `n`)
+* `nums` – an array of `n` integers (`2 ≤ n ≤ 10⁵`, `1 ≤ nums[i] ≤ 100`)  
+* `queries` – an array of `m` ranges, each `queries[i] = [lᵢ, rᵢ]` (`1 ≤ m ≤ 2·10⁴`, `0 ≤ lᵢ < rᵢ < n`)
 
-For every query you must return the minimum absolute difference of the sub‑array `nums[l … r]`.
+For every query compute the **minimum absolute difference** between any two *different* elements in the sub‑array `nums[lᵢ … rᵢ]`.  
+If the sub‑array contains only one distinct value, the answer is `-1`.
 
-**Constraints**
-
-|   |  |   |
-|---|---|---|
-| `n` | 2 … 10⁵ | |
-| `q` | 1 … 2 × 10⁴ | |
-| `nums[i]` | 1 … 100 | (small domain) |
+> **Examples**  
+> ```text
+> nums = [1,3,4,8]
+> queries = [[0,1],[1,2],[2,3],[0,3]]
+> output = [2,1,4,1]
+> ```
 
 ---
 
-### 2. 🤔 Naïve & Sub‑optimal Approaches  
+### 2. Why This Problem Is Interview‑worthy
 
-| Approach | Time per query | Total time | Comments |
-|----------|----------------|------------|----------|
-| Scan sub‑array, sort, check adjacent pairs | `O(k log k)` (`k = r-l+1`) | `O(q · n log n)` | Works only for tiny `n`. |
-| Sliding window with balanced BST (multiset) | `O(k log k)` | Same | Still too slow for worst case. |
-| Segment tree + bitset | `O(log n)` per query (bitset operations) | `O(q log n)` | Requires 100‑bit bitsets; more code. |
+* **Edge‑case heavy** – you have to remember that identical elements do **not** yield a difference of `0`.  
+* **Large input sizes** – a naive O(`n·m`) solution would blow up.  
+* **Limited value range** – `nums[i]` is capped at `100`, which hints at a counting‑based trick.  
+* **Multiple queries** – encourages the use of **prefix sums** or *offline* techniques.
 
-All of the above are unnecessary because **`nums[i]` is bounded by 100**. That small range allows a *prefix‑sum* trick that turns every query into a handful of integer operations.
-
----
-
-### 3. ✅ The Optimal Idea – Prefix Count Matrix  
-
-For each value `v` in `[1, 100]` we pre‑compute how many times it appears up to every index:
-
-```
-cnt[i+1][v] = cnt[i][v] + (nums[i] == v ? 1 : 0)
-```
-
-`cnt` has dimensions `(n+1) × 101`.  
-With this matrix, the number of occurrences of `v` in sub‑array `[l, r]` is:
-
-```
-occ(v, l, r) = cnt[r+1][v] - cnt[l][v]
-```
-
-**Answering a query**
-
-1. For each `v` (1 … 100) check if `occ(v, l, r) > 0`.  
-   *If yes* → `v` is present in the sub‑array.  
-2. Keep the present values in increasing order (we naturally scan from 1 to 100).  
-3. The minimum absolute difference is the minimum gap between consecutive present values.  
-   *If only one value exists* → answer `-1`.
-
-Because we only touch 100 numbers per query, the work is *O(100 · q)* ≈ *O(q)*.
-
-**Space**: `(n+1) × 101` integers ≈ 40 MB in Java/C++ (fine for the limits).  
-**Time**:  
-- Pre‑processing: `O(n · 100)`  
-- Each query: `O(100)`  
-Total: `O((n + q) · 100)` – easily fast enough.
+These constraints make the problem a perfect playground for demonstrating algorithmic thinking and coding style – exactly what recruiters love.
 
 ---
 
-### 4. 📦 Code Implementations  
+## 3. The “Good” – Prefix‑Sum Count Matrix
 
-Below are clean, self‑contained implementations in **Java, Python, and C++**.  
-All use the same prefix‑count logic described above.
+Because each `nums[i]` is in `[1, 100]`, we can build a **frequency prefix matrix**:
+
+| i | count[1] | count[2] | … | count[100] |
+|---|----------|----------|---|-------------|
+| 0 | 0        | 0        | … | 0           |
+| 1 | …        | …        | … | …           |
+| … | …        | …        | … | …           |
+
+* `count[i][v]` = how many times the value `v` appears in the first `i` elements (`nums[0 … i‑1]`).  
+* `count[n][v]` holds the full frequency of `v`.
+
+**Query Processing**
+
+For a query `[l, r]` (inclusive):
+
+1. `freq[v] = count[r+1][v] - count[l][v]` – frequency of `v` inside the sub‑array.  
+2. Collect all `v` with `freq[v] > 0` (i.e., the distinct values present).  
+3. If only one distinct value → answer `-1`.  
+4. Otherwise, the distinct values are already in ascending order (1…100).  
+   The minimum absolute difference is the minimum difference between consecutive distinct values.
+
+This approach is **O(100)** per query – independent of sub‑array length.
 
 ---
 
-#### 4.1 Java
+## 4. The “Bad” – What to Avoid
+
+| Issue | Why It’s Bad |
+|-------|--------------|
+| **Quadratic loops** – `O(n·m)` or `O(n·m·100)` naïve scans | For `n = 100 000`, `m = 20 000` this is astronomical. |
+| **Large memory per query** – building a hash map for each query | Hash maps have overhead and slowdowns; unnecessary given the tiny value domain. |
+| **Ignoring the value bound** – treating `nums` as arbitrary ints | Missing the opportunity for a `O(100)` solution. |
+
+---
+
+## 5. The “Ugly” – Trying to Force a Generic Solution
+
+Some interviewees might attempt:
+
+* **Mo’s algorithm** (offline processing with block decomposition) – works but is overkill for this value‑bounded problem.  
+* **Segment tree with bitset** – a clever data structure but adds implementation complexity and memory overhead.  
+* **Sorting each sub‑array** – `O((r-l+1) log(r-l+1))` per query; far slower than the prefix‑sum trick.
+
+While these “ugly” solutions can pass, they sacrifice readability and performance – both of which are important in production code interviews.
+
+---
+
+## 6. Full Implementations
+
+Below are clean, ready‑to‑run solutions in **Java, Python, and C++**.  
+All share the same prefix‑sum counting logic.
+
+### 6.1 Java
 
 ```java
 import java.util.*;
@@ -93,52 +106,52 @@ import java.util.*;
 public class Solution {
     public int[] minDifference(int[] nums, int[][] queries) {
         int n = nums.length;
-        int[][] pref = new int[n + 1][101]; // 1‑based values
+        // count[i][v] -> freq of value v (1‑based) in first i elements
+        int[][] count = new int[n + 1][101]; // 101 because values are 1…100
 
-        // Build prefix counts
         for (int i = 0; i < n; i++) {
-            for (int v = 1; v <= 100; v++) {
-                pref[i + 1][v] = pref[i][v];
-            }
-            pref[i + 1][nums[i]]++;      // increment count of current value
+            System.arraycopy(count[i], 0, count[i + 1], 0, 101);
+            count[i + 1][nums[i]]++;          // increment the value that appears
         }
 
-        int[] ans = new int[queries.length];
+        int m = queries.length;
+        int[] ans = new int[m];
 
-        for (int qi = 0; qi < queries.length; qi++) {
+        for (int qi = 0; qi < m; qi++) {
             int l = queries[qi][0];
             int r = queries[qi][1];
-            int prev = -1;        // previous present value
-            int best = 101;       // large sentinel
+            int prev = -1;
+            int best = Integer.MAX_VALUE;
+            int distinct = 0;
 
-            for (int v = 1; v <= 100; v++) {
-                if (pref[r + 1][v] - pref[l][v] > 0) {
+            for (int val = 1; val <= 100; val++) {
+                int freq = count[r + 1][val] - count[l][val];
+                if (freq > 0) {
+                    distinct++;
                     if (prev != -1) {
-                        best = Math.min(best, v - prev);
+                        best = Math.min(best, val - prev);
                     }
-                    prev = v;
+                    prev = val;
                 }
             }
-            ans[qi] = (prev == -1 || best == 101) ? -1 : best;
-        }
 
+            ans[qi] = (distinct <= 1) ? -1 : best;
+        }
         return ans;
     }
 
-    // For quick local testing
+    // Driver to test the implementation
     public static void main(String[] args) {
-        Solution s = new Solution();
-        int[] nums = {4,5,2,2,7,10};
-        int[][] queries = {{2,3},{0,2},{0,5},{3,5}};
-        System.out.println(Arrays.toString(s.minDifference(nums, queries)));
-        // → [-1, 1, 1, 3]
+        Solution sol = new Solution();
+        int[] nums = {1,3,4,8};
+        int[][] queries = {{0,1},{1,2},{2,3},{0,3}};
+        System.out.println(Arrays.toString(sol.minDifference(nums, queries)));
+        // Expected: [2, 1, 4, 1]
     }
 }
 ```
 
----
-
-#### 4.2 Python
+### 6.2 Python
 
 ```python
 from typing import List
@@ -146,34 +159,38 @@ from typing import List
 class Solution:
     def minDifference(self, nums: List[int], queries: List[List[int]]) -> List[int]:
         n = len(nums)
-        # prefix counts: (n+1) x 101, 1-indexed values
-        pref = [[0] * 101 for _ in range(n + 1)]
-        for i, v in enumerate(nums, 1):
-            pref[i][:] = pref[i - 1][:]          # copy previous row
-            pref[i][v] += 1
+        # count[i][v] : freq of value v in first i elements
+        count = [[0] * 101 for _ in range(n + 1)]
+        for i, num in enumerate(nums, 1):
+            # copy previous row
+            count[i] = count[i-1].copy()
+            count[i][num] += 1
 
         ans = []
         for l, r in queries:
             prev = -1
             best = 101
-            for v in range(1, 101):
-                if pref[r + 1][v] - pref[l][v]:
+            distinct = 0
+            for val in range(1, 101):
+                freq = count[r+1][val] - count[l][val]
+                if freq:
+                    distinct += 1
                     if prev != -1:
-                        best = min(best, v - prev)
-                    prev = v
-            ans.append(-1 if prev == -1 or best == 101 else best)
+                        best = min(best, val - prev)
+                    prev = val
+            ans.append(-1 if distinct <= 1 else best)
         return ans
 
-# quick demo
+
 if __name__ == "__main__":
     sol = Solution()
-    print(sol.minDifference([4,5,2,2,7,10], [[2,3],[0,2],[0,5],[3,5]]))
-    # → [-1, 1, 1, 3]
+    nums = [1, 3, 4, 8]
+    queries = [[0, 1], [1, 2], [2, 3], [0, 3]]
+    print(sol.minDifference(nums, queries))
+    # Output: [2, 1, 4, 1]
 ```
 
----
-
-#### 4.3 C++ (GNU++17)
+### 6.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -183,126 +200,105 @@ class Solution {
 public:
     vector<int> minDifference(vector<int>& nums, vector<vector<int>>& queries) {
         int n = nums.size();
-        // prefix counts: (n+1) x 101
-        vector<array<int, 101>> pref(n + 1);
-        pref[0].fill(0);
+        // count[i][v] : frequency of value v in first i elements
+        vector<array<int, 101>> count(n + 1);
         for (int i = 0; i < n; ++i) {
-            pref[i + 1] = pref[i];
-            pref[i + 1][nums[i]]++;
+            count[i + 1] = count[i];          // copy previous row
+            count[i + 1][nums[i]]++;         // increment the present value
         }
 
         vector<int> ans;
         for (auto &q : queries) {
             int l = q[0], r = q[1];
-            int prev = -1, best = 101;
-            for (int v = 1; v <= 100; ++v) {
-                if (pref[r + 1][v] - pref[l][v]) {
-                    if (prev != -1) best = min(best, v - prev);
-                    prev = v;
+            int prev = -1;
+            int best = 101;
+            int distinct = 0;
+            for (int val = 1; val <= 100; ++val) {
+                int freq = count[r + 1][val] - count[l][val];
+                if (freq > 0) {
+                    ++distinct;
+                    if (prev != -1) best = min(best, val - prev);
+                    prev = val;
                 }
             }
-            ans.push_back((prev == -1 || best == 101) ? -1 : best);
+            ans.push_back(distinct <= 1 ? -1 : best);
         }
         return ans;
     }
 };
 
 int main() {
-    Solution s;
-    vector<int> nums = {4,5,2,2,7,10};
-    vector<vector<int>> queries = {{2,3},{0,2},{0,5},{3,5}};
-    auto res = s.minDifference(nums, queries);
+    Solution sol;
+    vector<int> nums = {1, 3, 4, 8};
+    vector<vector<int>> queries = {{0, 1}, {1, 2}, {2, 3}, {0, 3}};
+    auto res = sol.minDifference(nums, queries);
     for (int x : res) cout << x << ' ';
-    // Output: -1 1 1 3
+    // Expected: 2 1 4 1
 }
 ```
 
----
-
-> **Tip:**  
-> In Java the inner loop `for (int v = 1; v <= 100; ++v) pref[i + 1][v] = pref[i][v];` can be replaced with a `System.arraycopy` for a tiny speed boost.  
-> In C++ you can also store the prefix matrix as `vector<vector<int>> pref(n + 1, vector<int>(101));` – the array version just saves one dynamic allocation per row.
+> **Why this works**  
+> * `array<int, 101>` keeps the value domain fixed, giving O(100) time and O(n·100) memory.  
+> * All language versions copy the row in O(100) time, not using any heavy data structures.
 
 ---
 
-### 5. 📊 Complexity Summary
+## 7. Alternative “Nice” Approaches
 
-| Stage | Operation | Complexity |
-|-------|-----------|------------|
-| Build prefix matrix | `n × 100` | **O(n · 100)** |
-| Query answer | `100` | **O(q · 100)** |
-| **Total** | | **O((n + q) · 100)** |
-| **Memory** | `(n + 1) × 101` ints | ≈ **40 MB** (Java) / **4 MB** (Python) / **4 MB** (C++) |
+| Approach | When It Makes Sense | Trade‑off |
+|----------|---------------------|-----------|
+| **Mo’s Algorithm** (offline) | If you’re given an *unbounded* value domain. | More code, but still `O((n+m)√n)` ≈ `O(2·10⁵)` for this input – still fine but unnecessary. |
+| **Segment Tree + Bitset** | If you need fast *range OR* queries on larger values. | Each node stores a 100‑bit bitset → `O(log n)` per query; great for contests but verbose for interviews. |
+| **Binary Indexed Tree + Bitset** | Similar to the segment tree but uses fenwick trees. | Same trade‑off: more complex than a prefix sum. |
 
-All constraints are comfortably satisfied.
-
----
-
-### 6. 🚧 Common Pitfalls & “What if?”  
-
-| Issue | Fix |
-|-------|-----|
-| Forget the “all‑identical → –1” rule | After the scan, if `prev == -1` or `best == 101` push `-1`. |
-| Using 0‑based value indices in the prefix matrix | Stick to a 1‑based index for the values (1…100). |
-| Memory overload when `n` is 10⁵ in Java | `pref` is `int[n+1][101]` → ≈ 40 MB; safe but test on the platform’s memory limit. |
-| If the domain grew beyond 100 | The approach still works but the constant factor rises linearly (`value_range`). |
-| Edge case: `l == r` | Problem guarantees `l < r`, but you can guard against it: return `-1`. |
+For most interview scenarios, the **prefix‑sum counting matrix** is the sweet spot:  
+*Fast*, *memory‑efficient*, *easy to read*, and *guaranteed correct* because it leverages the hard‑coded bound on `nums[i]`.
 
 ---
 
-### 7. 🔗 Extending the Idea  
+## 8. Quick‑Reference: Complexity Summary
 
-| Scenario | Adaptation |
-|----------|------------|
-| **Domain larger (e.g., 10⁴)** | Replace the 101‑length array with a `bitset<MAX>` per prefix. Each query becomes a bitwise OR‑plus‑shift operation – still *O(log n)*. |
-| **Need to support updates** | Use a Fenwick/BIT per value or a segment tree of 100‑bit bitsets. |
-| **Return the actual pair** | While scanning keep the two values with minimal gap. |
+| Step | Complexity (Java / Python / C++) | Memory |
+|------|----------------------------------|--------|
+| Build prefix matrix | **O(n·100)** |  `(n+1)·101` integers ≈ **40 MB** |
+| Each query | **O(100)** | – |
+| Total | **O((n + m)·100)** | – |
 
----
-
-### 8. 🗣️ How to Pitch This in an Interview  
-
-1. **Explain the domain constraint first** – “Notice `nums[i] ≤ 100`, we can treat the values as buckets.”  
-2. **State the prefix‑sum approach** – “We’ll build a `cnt` matrix so that each query reduces to checking 100 counts.”  
-3. **Show a sketch** (hand‑drawn 2‑row example) so the interviewer sees you understand the math.  
-4. **Mention complexity** – pre‑processing `O(n·100)`, query `O(100)`.  
-5. **Code** – provide the skeleton; talk through the nested loops and the gap‑finding logic.  
-6. **Edge‑cases** – highlight `-1` and the single‑value situation.  
-7. **Testing** – give a few hand‑crafted tests (e.g., all identical, all distinct, mixed).  
-8. **If pressed for memory** – propose using a compressed representation (`short` array) or a bitset trick.
+Given the constraints (`n ≤ 10⁵`, `m ≤ 2·10⁴`, `nums[i] ≤ 100`), this solution runs in well under a second and uses less than 50 MB – perfect for a coding interview.
 
 ---
 
-### 9. 📚 Take‑away Checklist
+## 9. Take‑away for Job Interviews
 
-- **Domain insight** is often the secret to O(1)/O(log n) solutions.  
-- **Prefix counts** transform “count in range” into constant‑time queries.  
-- **Keep code clean** – avoid over‑engineering unless the constraints truly demand it.  
-- **Document your logic** on paper or whiteboard; interviewers love a clear explanation.  
-- **Test edge cases** – identical elements, single distinct value, whole array query, overlapping queries.  
+1. **Spot the hidden constraint** – the value bound of `100` is your “golden key”.  
+2. **Use prefix sums** – they’re a classic tool for answering range queries quickly.  
+3. **Keep it simple** – avoid over‑engineering; a straightforward counting array beats a fancy segment tree in readability.  
+4. **Test edge cases** – identical elements, single distinct value, and queries that span the whole array.  
 
----
+By presenting this problem with the prefix‑sum trick, you demonstrate:
 
-### 10. 🚀 Final Thought  
-
-With the prefix‑count matrix you can answer any number of queries in milliseconds, even on the largest allowed inputs.  
-
-> **Ready for the next job interview?**  
-> Keep this pattern in your toolbox for any problem where the value domain is small – it will impress interviewers and win you a job!  
+* **Problem decomposition** (value bound → counting)  
+* **Space–time trade‑off awareness** (prefix matrix vs. hash maps)  
+* **Clean code** that would shine in a real‑world setting.
 
 ---
 
-## 🔑 SEO‑Friendly Keywords (for LinkedIn / Medium posts)
+### 🚀 Bonus: Quick Test Harness (All Languages)
 
-- Minimum Absolute Difference Queries  
-- LeetCode 1906  
-- Java solution for LeetCode 1906  
-- Python solution for LeetCode 1906  
-- C++ solution LeetCode 1906  
-- Competitive programming segment tree bitset  
-- Interview algorithm interview  
-- Prefix sum technique  
-- Array difference problem  
-- Coding interview prep  
+```text
+Input:
+nums    = [1, 3, 4, 8]
+queries = [[0,1], [1,2], [2,3], [0,3]]
 
-Happy coding, and good luck on your next interview! 🚀
+Output:
+[2, 1, 4, 1]
+```
+
+You can paste the Java, Python, or C++ snippet above into your IDE or an online compiler and run the test harness. All three will output the expected array.
+
+---
+
+Good luck with your interview! Remember:  
+**Spot the bound ➜ build a prefix matrix ➜ process queries in O(100)** – that’s the recipe for a clean, interview‑ready solution.  
+
+Happy coding! 🧑‍💻💡

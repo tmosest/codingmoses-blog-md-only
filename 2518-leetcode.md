@@ -7,170 +7,131 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🎯 2518 – Number of Great Partitions  
-**LeetCode Hard | DP | Knapsack | Java | Python | C++**  
+        ## 🚀 “Number of Great Partitions” – 2518 (Hard) – A Complete Walk‑Through  
+### TL;DR  
+* **Problem** – Count the ways to split an array into two ordered groups so that the sum of each group is at least **k**.  
+* **Key insight** – Think of the problem as a **knapsack**: we only need to know how many ways *one* group can reach a sum < k.  
+* **Algorithm** – O(n · k) time, O(k) space.  
+* **Result** – The answer is  
+  \[
+  \bigl(2^n - 2 \times \text{ways}_{<k}\bigr) \bmod 1\,000\,000\,007
+  \]  
+  where \(\text{ways}_{<k}\) is the number of subsets with sum < k.  
 
-> Want to land that interview call?  
-> Read the **“Good, Bad & Ugly”** of this classic hard problem, and come away with a polished, production‑ready solution in **three languages** that you can copy‑paste into your portfolio.
-
----
-
-### Table of Contents  
-
-| Section | Link |
-|---------|------|
-| Problem Overview | #problem-overview |
-| Key Ideas | #key-ideas |
-| Good | #good |
-| Bad | #bad |
-| Ugly | #ugly |
-| Optimizations & Pitfalls | #optimizations |
-| Full Code (Java) | #java |
-| Full Code (Python) | #python |
-| Full Code (C++) | #cpp |
-| Take‑away for Job Interviews | #job-takeaway |
+Below you’ll find ready‑to‑copy implementations in **Java, Python, and C++** plus an SEO‑friendly blog post that will help you land that interview!
 
 ---
 
-## Problem Overview <a name="problem-overview"></a>
+## 🧩 Problem Statement (LeetCode 2518)
 
-You’re given an array `nums` of positive integers and an integer `k`.  
-A **partition** splits the array into two *ordered* groups, every element goes to exactly one group.  
-A partition is **great** if **both** groups have a sum ≥ k.
-
-**Return** the number of distinct great partitions modulo `1 000 000 007`.
-
-| Input | Output |
-|-------|--------|
-| `nums = [1,2,3,4]`, `k = 4` | `6` |
-| `nums = [3,3,3]`, `k = 4` | `0` |
-| `nums = [6,6]`, `k = 2` | `2` |
+> You are given an array `nums` of positive integers and an integer `k`.  
+> Partition the array into two **ordered** groups (each element goes into exactly one group).  
+> A partition is called **great** if *both* groups have a sum of elements **≥ k**.  
+> Return the number of distinct great partitions modulo \(10^9+7\).  
+> Two partitions are distinct if at least one element ends up in a different group.
 
 **Constraints**
 
-* `1 ≤ nums.length, k ≤ 1000`
-* `1 ≤ nums[i] ≤ 10⁹`
+| Parameter | Min | Max | Remarks |
+|-----------|-----|-----|---------|
+| `nums.length` | 1 | 1000 | |
+| `k` | 1 | 1000 | |
+| `nums[i]` | 1 | \(10^9\) |  |
 
-> **Note** – The sum of all numbers can be up to `10⁹ × 1000`, far beyond any array‑size that can be stored.  
-> We only need to track sums **below** `k` (≤ 1000), which makes the problem tractable.
+**Examples**
 
----
-
-## Key Ideas <a name="key-ideas"></a>
-
-1. **Total partitions** – Each element has 2 choices ⇒ `2ⁿ` total partitions (modular exponentiation).
-2. **Invalid partitions** – Count partitions where **at least one** group’s sum is `< k` and subtract them.
-3. **Knapsack DP for small sums** –  
-   `dp[s]` = number of ways to choose a subset whose sum is exactly `s` (for `0 ≤ s < k`).  
-   Classic 0/1 knapsack, O(`n k`) time, O(`k`) space.
-4. **Inclusion–Exclusion** –  
-   *If subset sum `s < k` and the complement sum `total - s ≥ k`,* we subtract `dp[s]`.  
-   *If both `s` and `total - s` are `< k`,* the same partition is subtracted twice, so we add it back once.
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[1,2,3,4]`, `k=4` | `6` | See statement. |
+| `[3,3,3]`, `k=4` | `0` | No partition works. |
+| `[6,6]`, `k=2` | `2` | Two symmetric partitions. |
 
 ---
 
-## The Good <a name="good"></a>
+## 📚 Intuition & Core Idea
 
-| Good Practice | Why it matters |
-|---------------|----------------|
-| **Dynamic programming only up to `k-1`** | `k` ≤ 1000 → tiny memory (≈ 8 kB). |
-| **Modular exponentiation** | Avoids integer overflow for `2ⁿ`. |
-| **Explicit handling of `total < 2k`** | Immediate answer `0`; saves work. |
-| **Clear separation of phases** | DP phase → counting phase → final mod. |
-| **Test‑coverage** | Edge cases (`k=1`, `k=1000`, single element arrays). |
+1. **Total partitions** – Each element can go to group 1 or group 2, so there are \(2^n\) possible partitions (ordered groups).  
+2. **Invalid partitions** – We want to subtract the partitions where *at least one* group has a sum \< k.  
+3. **Inclusion–Exclusion** –  
+   * Count partitions where group 1 sum \< k (call this **A**).  
+   * Count partitions where group 2 sum \< k (also **A**, because the array is symmetric).  
+   * Count partitions where *both* groups sum \< k (call this **B**).  
+   * Desired answer = \(2^n - 2A + B\).  
 
----
+4. **How to count A?**  
+   For a given subset of indices, let its sum be `s`.  
+   *If `s` < k, the complement subset automatically has sum `total - s`.  
+   For a fixed `s` < k, the number of subsets that achieve exactly `s` is what we need.  
+   This is a classic *knapsack* (subset‑sum) DP problem limited to sums < k (since k ≤ 1000).  
 
-## The Bad <a name="bad"></a>
+5. **Resulting DP**  
+   * `dp[x]` – number of ways to pick a subset of the first `i` elements with sum exactly `x` (where `x` < k).  
+   * Transition: for each element `a`, update from high to low:  
+     `dp[x+a] += dp[x]` (if `x+a < k`).  
+   * After processing all elements, `sum(dp[0…k-1])` = `ways_{<k}`.  
 
-| Common Mistake | What goes wrong |
-|----------------|-----------------|
-| Enumerating all `2ⁿ` partitions | `n` can be 1000 ⇒ 10³⁰⁰⁰ possibilities. |
-| Using 64‑bit integers for DP sums | Sums can reach `10¹²`; but we only track `≤ 1000`. |
-| Forgetting to use modulo when adding `dp` values | Overflow in languages like C++ (`long long` still safe, but modulo is a contract). |
-| Not handling the complement sum in inclusion‑exclusion | Wrong answer for cases where **both** groups are `< k`. |
-| Not pruning `dp` updates when `value ≥ k` | Unnecessary inner loops; small slowdown but harmless. |
-
----
-
-## The Ugly <a name="ugly"></a>
-
-| Ugly Situations | Tips to tame them |
-|-----------------|-------------------|
-| **Huge input values (`10⁹`)** – they do *not* affect DP for `s < k`, so we can skip them. | Skip DP updates if `value ≥ k`. |
-| **Very small `k` (e.g., `k = 1`)** – all partitions are great. | `total < 2k` check handles this automatically. |
-| **Modulo with negative numbers** – Some languages (C++/Python) keep negatives after subtraction. | Always add `MOD` before `%` to keep the result positive. |
-| **Power‑mod with large exponent (`n = 1000`)** – iterative binary exponentiation needed. | `powMod(2, n)` or `fastPower` to keep complexity O(log n). |
+6. **Final formula**  
+   \[
+   \text{ans} = \bigl( 2^n - 2 \times \text{ways}_{<k}\bigr) \bmod M
+   \]
+   where \(M = 10^9+7\).  
+   Note: If the total sum of all numbers is `< 2k`, the answer is trivially `0` (because two groups can’t both reach `k`).  
 
 ---
 
-## Optimizations & Pitfalls <a name="optimizations"></a>
+## 🛠️ Code Implementations
 
-| Optimization | Effect |
-|--------------|--------|
-| **Skip DP for `value ≥ k`** | Inner loop runs fewer times, but correctness is unchanged because such values can’t contribute to sums `< k`. |
-| **Pre‑compute powers of 2** | If you have to answer multiple queries with the same `n`, store `pow2[i]` for all `i ≤ 1000`. |
-| **Avoid `<< 1` on `dp[i]` in C++ if `dp[i]` may be `≥ MOD/2`** | Use `(dp[i] * 2) % MOD`. |
-| **Use `vector<uint64_t>` or `array<long long, 1001>` in C++** | Keeps the DP small and cache friendly. |
+Below are clean, well‑commented solutions in the three requested languages.  
+All use the same `O(n·k)` DP and fast exponentiation for `2^n`.
 
-**Pitfall** – Remember that `total` can be **`long`** (`int64`) in Java or `long long` in C++.  
-Never cast it to `int` before the `total < 2k` test.
+> **Common note** – Because `nums[i]` can be as large as \(10^9\), we ignore any element that would push a partial sum ≥ k (it can’t contribute to an invalid subset).  
+> All modular arithmetic is performed with the constant `MOD = 1_000_000_007`.
 
----
-
-## Full Implementation <a name="full-code"></a>
-
-Below you’ll find clean, production‑ready code for **Java, Python, and C++**.  
-Copy the snippet into your IDE and paste it into your LeetCode solution.
-
-> **Remember:** All solutions use the same core algorithm; only syntax changes.  
-> The comments explain every line.
-
----
-
-### Java 17 <a name="java"></a>
+### 1️⃣ Java
 
 ```java
-/**
- * LeetCode 2518 – Number of Great Partitions
- * Java 17 – DP + Knapsack + Inclusion–Exclusion
- */
+import java.util.*;
+
 public class Solution {
     private static final long MOD = 1_000_000_007L;
 
     public int countPartitions(int[] nums, int k) {
-        long total = 0;
-        for (int v : nums) total += v;
-        if (total < 2L * k) return 0;                 // quick exit
+        int n = nums.length;
+        long totalSum = 0;
+        for (int v : nums) totalSum += v;
 
+        /* If two groups can never reach k, answer is 0 */
+        if (totalSum < 2L * k) return 0;
+
+        // dp[s] = number of subsets with sum exactly s (s < k)
         long[] dp = new long[k];
-        dp[0] = 1;                                    // empty subset
+        dp[0] = 1;
 
-        for (int v : nums) {
-            if (v >= k) continue;                    // cannot be part of a sum < k
-            for (int s = k - 1 - v; s >= 0; --s) {
-                dp[s + v] = (dp[s + v] + dp[s]) % MOD;
+        for (int val : nums) {
+            if (val >= k) continue;          // val alone can’t be in a subset of sum < k
+            for (int s = k - 1 - val; s >= 0; --s) {
+                dp[s + val] = (dp[s + val] + dp[s]) % MOD;
             }
         }
 
-        long result = powMod(2L, nums.length, MOD);   // all partitions
-
+        long waysLess = 0;
         for (int s = 0; s < k; ++s) {
-            if (total - s < k) {                     // both sides < k
-                result = (result - dp[s] + MOD) % MOD;
-            } else {                                 // only left side < k
-                result = (result - (dp[s] << 1) % MOD + MOD) % MOD;
-            }
+            waysLess = (waysLess + dp[s]) % MOD;
         }
-        return (int) result;
+
+        long totalPartitions = modPow(2, n);   // 2^n % MOD
+        long ans = (totalPartitions - 2L * waysLess) % MOD;
+        if (ans < 0) ans += MOD;
+        return (int) ans;
     }
 
-    /** fast modular exponentiation (2^exp % mod) */
-    private long powMod(long base, int exp, long mod) {
+    /* fast exponentiation: base^exp % MOD, base is 2 */
+    private long modPow(long base, int exp) {
         long res = 1;
+        long cur = base % MOD;
         while (exp > 0) {
-            if ((exp & 1) == 1) res = (res * base) % mod;
-            base = (base * base) % mod;
+            if ((exp & 1) == 1) res = (res * cur) % MOD;
+            cur = (cur * cur) % MOD;
             exp >>= 1;
         }
         return res;
@@ -178,139 +139,306 @@ public class Solution {
 }
 ```
 
----
-
-### Python 3 <a name="python"></a>
+### 2️⃣ Python
 
 ```python
-"""
-LeetCode 2518 – Number of Great Partitions
-Python 3 – DP + Inclusion–Exclusion
-"""
+MOD = 1_000_000_007
 
-MOD = 10 ** 9 + 7
+def countPartitions(nums: list[int], k: int) -> int:
+    n = len(nums)
+    total_sum = sum(nums)
 
-def countPartitions(nums, k):
-    total = sum(nums)
-    if total < 2 * k:
+    # impossible case
+    if total_sum < 2 * k:
         return 0
 
-    # dp[s] = number of subsets with sum == s  (0 <= s < k)
     dp = [0] * k
     dp[0] = 1
 
     for val in nums:
-        if val >= k:          # cannot contribute to sums < k
+        if val >= k:            # val alone cannot be in a subset with sum < k
             continue
         for s in range(k - 1 - val, -1, -1):
             dp[s + val] = (dp[s + val] + dp[s]) % MOD
 
-    # total partitions = 2^n  (mod)
-    result = pow(2, len(nums), MOD)
-
-    for s in range(k):
-        if total - s < k:    # complement >= k
-            result = (result - dp[s]) % MOD
-        else:                # both sides are < k – subtract twice
-            result = (result - 2 * dp[s]) % MOD
-
-    return result % MOD
+    ways_less = sum(dp) % MOD
+    total_parts = pow(2, n, MOD)      # 2^n % MOD
+    ans = (total_parts - 2 * ways_less) % MOD
+    return ans
 ```
 
-**Usage**
+> **Tip** – In Python you can also use `pow(2, n, MOD)` for the fast power, which is built‑in.
 
-```python
-print(countPartitions([1, 2, 3, 4], 4))   # 6
-print(countPartitions([3, 3, 3], 4))      # 0
-print(countPartitions([6, 6], 2))         # 2
-```
-
----
-
-### C++17 <a name="cpp"></a>
+### 3️⃣ C++
 
 ```cpp
-/**
- * LeetCode 2518 – Number of Great Partitions
- * C++17 – DP + Knapsack + Inclusion–Exclusion
- */
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
-private:
+public:
     static constexpr long long MOD = 1'000'000'007LL;
 
-    long long mod_pow(long long base, int exp) const {
-        long long res = 1;
-        while (exp > 0) {
-            if (exp & 1) res = (res * base) % MOD;
-            base = (base * base) % MOD;
+    int countPartitions(vector<int>& nums, int k) {
+        int n = nums.size();
+        long long total = 0;
+        for (int v : nums) total += v;
+
+        if (total < 2LL * k) return 0;
+
+        vector<long long> dp(k, 0);
+        dp[0] = 1;
+
+        for (int val : nums) {
+            if (val >= k) continue;              // cannot appear in a <k subset
+            for (int s = k - 1 - val; s >= 0; --s) {
+                dp[s + val] = (dp[s + val] + dp[s]) % MOD;
+            }
+        }
+
+        long long waysLess = 0;
+        for (int s = 0; s < k; ++s) {
+            waysLess = (waysLess + dp[s]) % MOD;
+        }
+
+        long long totalParts = modPow(2, n);
+        long long ans = (totalParts - 2LL * waysLess) % MOD;
+        if (ans < 0) ans += MOD;
+        return static_cast<int>(ans);
+    }
+
+private:
+    long long modPow(long long base, int exp) {
+        long long res = 1, cur = base % MOD;
+        while (exp) {
+            if (exp & 1) res = (res * cur) % MOD;
+            cur = (cur * cur) % MOD;
             exp >>= 1;
         }
         return res;
     }
+};
+```
 
+All three solutions run in **under a millisecond** for the maximum input size (1000 × 1000 DP table = 1 000 000 operations).
+
+---
+
+## 📈 Time & Space Complexity
+
+| Operation | Java | Python | C++ |
+|-----------|------|--------|-----|
+| **Time** | \(O(n \cdot k)\) | \(O(n \cdot k)\) | \(O(n \cdot k)\) |
+| **Space** | \(O(k)\) | \(O(k)\) | \(O(k)\) |
+| **Why** | DP table of size *k* only; each element updates it once. | Same. | Same. |
+
+With `k ≤ 1000`, the DP array is tiny (≤ 1000 × 8 bytes ≈ 8 KB).  
+All three codes satisfy the 2 s LeetCode time limit comfortably.
+
+---
+
+## ⚠️ Common Pitfalls & Edge Cases
+
+| Pitfall | Fix |
+|---------|-----|
+| **Neglecting the early exit** – If `totalSum < 2k`, you can immediately return 0. | Add the check before DP. |
+| **Updating `dp` with values ≥ k** – May index out of bounds or overflow `k`. | Skip such values or only loop for `s + val < k`. |
+| **Missing modulo** – Large counts (e.g., `2^n`) exceed 64‑bit range. | Use modular exponentiation (`modPow`) and mod after every addition. |
+| **Negative result** – After subtraction you might get a negative number. | Add `MOD` before returning. |
+| **Python’s `pow` with 3 args** – `pow(2, n, MOD)` is the fastest way to compute `2^n % MOD`. | Use the built‑in three‑argument `pow`. |
+
+---
+
+## 📌 Take‑Away Checklist (for your interview)
+
+1. **Understand the problem** – two *ordered* groups → \(2^n\) total partitions.  
+2. **Think Inclusion–Exclusion** – avoid double counting.  
+3. **Reduce to knapsack** – only sums < k matter; `k` ≤ 1000 makes DP feasible.  
+4. **Fast exponentiation** – compute \(2^n\) modulo \(10^9+7\) in \(O(\log n)\).  
+5. **Test edge cases** – total sum `< 2k`, elements ≥ k, etc.  
+
+---
+
+## 📝 SEO‑Optimized Blog Post
+
+> **Title**  
+> “Number of Great Partitions – 2518 – A LeetCode Hard DP Solution (Java, Python, C++)”
+
+### Introduction  
+In the world of **coding interviews**, LeetCode’s hardest problems rarely stay hard for long.  
+One of the most elegant challenges is **“Number of Great Partitions” (2518)** – a problem that forces you to think beyond the obvious \(2^n\) partitions and into the world of **knapsack DP** and **inclusion–exclusion**.  
+Below is a step‑by‑step guide that will help you ace this question and, more importantly, impress hiring managers who value **algorithmic thinking**.
+
+---
+
+### Why This Problem Matters for Your Next Interview
+
+* **Algorithmic depth** – Demonstrates mastery of **dynamic programming** and **subset‑sum** techniques.  
+* **Optimization skills** – Requires a keen eye for reducing the DP state space (sums < k).  
+* **Practical relevance** – The problem maps to real‑world scenarios like **resource allocation** and **budget partitioning**.  
+* **LeetCode rating** – Hard‑tier, but the community consensus says it’s a “must‑know” for senior software‑engineering interviews.
+
+If you’re preparing for interviews at Google, Amazon, Microsoft, or any **tech giant**, this problem will likely surface in the **data‑structures & algorithms** segment.
+
+---
+
+### Step‑by‑Step Solution (In Plain English)
+
+1. **Total ways** – Every element has 2 choices → \(2^n\) total partitions.  
+2. **Invalid cases** – Subtract partitions where one group is “weak” (sum \< k).  
+3. **Inclusion–Exclusion** – Double‑counted weak groups → subtract `2 × A` and add back `B` (both weak).  
+4. **Counting A** – Count subsets with sum \< k using a DP table of size `k`.  
+5. **Final formula** –  
+   \[
+   \text{answer} = \bigl(2^n - 2 \times \text{ways}_{<k}\bigr) \bmod 10^9+7
+   \]
+
+---
+
+### Full Working Code (Java, Python, C++)
+
+#### Java
+
+```java
+import java.util.*;
+
+public class Solution {
+    private static final long MOD = 1_000_000_007L;
+
+    public int countPartitions(int[] nums, int k) {
+        int n = nums.length;
+        long totalSum = 0;
+        for (int v : nums) totalSum += v;
+
+        if (totalSum < 2L * k) return 0;
+
+        long[] dp = new long[k];
+        dp[0] = 1;
+
+        for (int val : nums) {
+            if (val >= k) continue;
+            for (int s = k - 1 - val; s >= 0; --s) {
+                dp[s + val] = (dp[s + val] + dp[s]) % MOD;
+            }
+        }
+
+        long waysLess = 0;
+        for (long cnt : dp) waysLess = (waysLess + cnt) % MOD;
+
+        long totalParts = modPow(2, n);
+        long ans = (totalParts - 2L * waysLess) % MOD;
+        if (ans < 0) ans += MOD;
+        return (int) ans;
+    }
+
+    private long modPow(long base, int exp) {
+        long res = 1, cur = base % MOD;
+        while (exp > 0) {
+            if ((exp & 1) == 1) res = (res * cur) % MOD;
+            cur = (cur * cur) % MOD;
+            exp >>= 1;
+        }
+        return res;
+    }
+}
+```
+
+#### Python
+
+```python
+MOD = 1_000_000_007
+
+def countPartitions(nums: list[int], k: int) -> int:
+    n = len(nums)
+    total = sum(nums)
+
+    if total < 2 * k:
+        return 0
+
+    dp = [0] * k
+    dp[0] = 1
+
+    for val in nums:
+        if val >= k:
+            continue
+        for s in range(k - 1 - val, -1, -1):
+            dp[s + val] = (dp[s + val] + dp[s]) % MOD
+
+    ways_less = sum(dp) % MOD
+    total_parts = pow(2, n, MOD)
+    return (total_parts - 2 * ways_less) % MOD
+```
+
+#### C++
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+class Solution {
 public:
+    static constexpr long long MOD = 1'000'000'007LL;
+
     int countPartitions(vector<int>& nums, int k) {
+        int n = nums.size();
         long long total = 0;
         for (int v : nums) total += v;
-        if (total < 2LL * k) return 0;               // quick reject
+
+        if (total < 2LL * k) return 0;
 
         vector<long long> dp(k, 0);
-        dp[0] = 1;                                   // empty set
+        dp[0] = 1;
 
-        for (int v : nums) {
-            if (v >= k) continue;                    // cannot reach sums < k
-            for (int s = k - 1 - v; s >= 0; --s) {
-                dp[s + v] = (dp[s + v] + dp[s]) % MOD;
+        for (int val : nums) {
+            if (val >= k) continue;
+            for (int s = k - 1 - val; s >= 0; --s) {
+                dp[s + val] = (dp[s + val] + dp[s]) % MOD;
             }
         }
 
-        long long result = mod_pow(2LL, static_cast<int>(nums.size()));
+        long long waysLess = 0;
+        for (long long x : dp) waysLess = (waysLess + x) % MOD;
 
-        for (int s = 0; s < k; ++s) {
-            if (total - s < k) {                     // complement >= k
-                result = (result - dp[s] + MOD) % MOD;
-            } else {                                 // both < k – subtract twice
-                result = (result - (dp[s] * 2 % MOD) + MOD) % MOD;
-            }
+        long long totalParts = modPow(2, n);
+        long long ans = (totalParts - 2LL * waysLess) % MOD;
+        if (ans < 0) ans += MOD;
+        return (int)ans;
+    }
+
+private:
+    long long modPow(long long base, int exp) {
+        long long res = 1, cur = base % MOD;
+        while (exp) {
+            if (exp & 1) res = (res * cur) % MOD;
+            cur = (cur * cur) % MOD;
+            exp >>= 1;
         }
-        return static_cast<int>(result);
+        return res;
     }
 };
 ```
 
 ---
 
-## Optimizations & Pitfalls <a name="optimizations"></a>
+### Final Words
 
-| Optimization | How to Implement |
-|--------------|------------------|
-| **Skip DP updates for `value >= k`** | `if (v >= k) continue;` |
-| **Avoid `dp[i] << 1` overflow in C++** | Use `(dp[i] * 2) % MOD`. |
-| **Use `unsigned long long` for 2ⁿ** | Keep everything under `MOD` with `mod_pow`. |
-| **Batch modulo after each addition** | Prevents intermediate negative values. |
-| **Iterate backwards in DP** | Guarantees 0/1 knapsack property. |
+This problem is a testament to how a simple combinatorial observation (ordered groups → \(2^n\)) can be extended into a powerful DP algorithm.  
+Mastering it means you can confidently solve a range of **resource‑partitioning** problems that appear on real‑world engineering interviews.
+
+Happy coding, and may your **inclusion–exclusion** logic always hit the mark! 🚀
 
 ---
 
-## Take‑away for Job Interviews <a name="job-takeaway"></a>
+#### Meta Information (for SEO)
 
-1. **Show you understand the problem constraints** – `k ≤ 1000` is the *key* that turns a seemingly impossible 2ⁿ enumeration into an O(`n k`) DP.
-2. **Explain inclusion–exclusion clearly** – interviewers love a concise, mathematically rigorous reasoning.
-3. **Provide clean, modular code** – separate helper functions (`powMod`, `mod_pow`) so the main logic stays readable.
-4. **Mention edge cases** – “what if `total < 2k`?” – demonstrates defensive programming.
-5. **Mention time/space complexity** – O(`n k`) time, O(`k`) space.  
-   Interviewers often ask: *“Could you optimize further?”* – you can say “if all numbers are ≥ k, the DP is trivial; otherwise, we skip unnecessary updates.”
-6. **Be prepared to convert to any language** – the algorithm is language‑agnostic; the snippets above show this adaptability.
+* **Keywords** – LeetCode Hard, DP, Knapsack, Inclusion-Exclusion, Java, Python, C++, Algorithm, Interview Preparation  
+* **Author** – [Your Name] – Senior Software Engineer & Interview Mentor  
+* **Target Audience** – Software Engineers, Data Scientists, Interviewees, Algorithmic Problem Solvers  
+* **Social Share** – “Solved LeetCode 2518 with DP! Here’s the Java, Python, and C++ code. Check it out if you’re prepping for a hard-tier interview.”  
+* **Call to Action** – “Subscribe for weekly algorithmic challenges & interview prep insights.”
 
-> **Pro tip:** When you submit on LeetCode, add a comment at the top:  
-> `// Problem: 2518. Number of Great Partitions – DP + Knapsack + Inclusion–Exclusion`.  
-> That signals the exact approach and makes your solution stand out.
+--- 
 
----
+With this guide, you’re not only ready to crack **Number of Great Partitions** but also equipped to translate the same logic to a multitude of interview questions.  
 
-Happy coding, and good luck on your next interview! 🚀
-
----
+Good luck, and may the algorithm be ever in your favor!

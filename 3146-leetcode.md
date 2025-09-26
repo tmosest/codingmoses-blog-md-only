@@ -7,244 +7,203 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. Problem Overview
+        # Permutation Difference Between Two Strings – LeetCode 3146  
+**A Deep Dive (Java / Python / C++) + SEO‑Optimized Blog Post**
 
-**Leetcode #3146 – “Permutation Difference between Two Strings”**
-
-* **Input**  
-  * `s` – a string of unique lowercase letters (length ≤ 26).  
-  * `t` – a permutation of `s`.  
-* **Goal**  
-  Compute  
-  \[
-  \sum_{c \in s} \bigl|\,\text{index}_s(c) - \text{index}_t(c)\bigr|
-  \]
-  where `index_s(c)` is the 0‑based position of character `c` in `s` and similarly for `t`.
-
-The task is straightforward but it is a classic “hash‑map + array” interview problem that appears in many coding‑interview prep sets.
+> **Tags:** #LeetCode #Java #Python #C++ #HashMap #StringAlgorithms #InterviewPreparation
 
 ---
 
-## 2. Solution Idea
+## 1. Problem Overview  
 
-* Build a mapping from character → position for `s`.  
-* Iterate over `t`, lookup each character’s original index from the map, and add the absolute difference to a running sum.  
-* Time complexity: **O(n)**, where *n* = `s.length()` (≤ 26).  
-* Space complexity: **O(n)** for the hash map (or a 26‑element array).
+**LeetCode 3146 – “Permutation Difference Between Two Strings”**  
 
-Because the alphabet is only lowercase letters, an array of size 26 is a perfectly fine alternative that avoids the overhead of a hash table.
+> You are given two strings `s` and `t` such that:
+> * Every character in `s` appears **at most once**.
+> * `t` is a permutation of `s`.
+>  
+> The **permutation difference** between `s` and `t` is defined as  
+> \[
+> \sum_{c\in s} |\,\text{index}_s(c) - \text{index}_t(c)\,|
+> \]  
+>  
+> Return this sum.
+
+**Example**
+
+| s | t | Result |
+|---|---|--------|
+| "abc" | "bac" | 2 (|0‑1| + |1‑0| + |2‑2|) |
+| "abcde" | "edbac" | 12 |
+
+**Constraints**
+
+* `1 ≤ s.length ≤ 26`
+* Each character in `s` appears once.
+* `t` is a permutation of `s`.
 
 ---
 
-## 3. Reference Implementations
+## 2. Brute‑Force vs. Optimal Approach
+
+### 2.1 Brute‑Force  
+Iterate over every character in `s`, find its index in `t` by scanning the whole string, and sum the absolute differences.
+
+*Time:* `O(n²)` – each lookup scans up to `n` characters.  
+*Space:* `O(1)` – only a few counters.
+
+This is fine for `n ≤ 26`, but for interview practice you should aim for an `O(n)` solution.
+
+### 2.2 Optimal Approach – HashMap / Array
+
+Because each character is unique, we can map a character → its position in **O(1)** time.
+
+1. **Build a map for `s`**: `posInS[char] = index`.
+2. **Traverse `t`**: for each `char` at index `i`, look up `posInS[char]` and add `abs(i - posInS[char])` to the answer.
+
+*Time:* `O(n)`  
+*Space:* `O(n)` (the hash map / array)
+
+Since the alphabet is only lowercase English letters (`a–z`), a simple integer array of length 26 works just as well as a HashMap, giving us the fastest constant‑time lookup.
+
+---
+
+## 3. Code Implementations
+
+Below are clean, idiomatic solutions in **Java**, **Python**, and **C++**. Each includes:
+
+* Clear variable names
+* In‑line comments
+* Edge‑case safety (though constraints guarantee validity)
 
 ### 3.1 Java
 
 ```java
-// Java 17
-import java.util.*;
+import java.util.HashMap;
 
 public class Solution {
     public int findPermutationDifference(String s, String t) {
-        // Map character to its index in s
-        int[] pos = new int[26];
+        // Map each character to its index in 's'
+        HashMap<Character, Integer> indexInS = new HashMap<>();
         for (int i = 0; i < s.length(); i++) {
-            pos[s.charAt(i) - 'a'] = i;
+            indexInS.put(s.charAt(i), i);
         }
 
-        int diff = 0;
+        int diffSum = 0;
+        // Traverse 't', compute absolute differences
         for (int i = 0; i < t.length(); i++) {
-            diff += Math.abs(pos[t.charAt(i) - 'a'] - i);
+            char ch = t.charAt(i);
+            int posInS = indexInS.get(ch);
+            diffSum += Math.abs(i - posInS);
         }
-        return diff;
-    }
-
-    // Simple main to demo
-    public static void main(String[] args) {
-        Solution sol = new Solution();
-        System.out.println(sol.findPermutationDifference("abc", "bac"));   // 2
-        System.out.println(sol.findPermutationDifference("abcde", "edbac")); // 12
+        return diffSum;
     }
 }
 ```
 
-*Why arrays?*  
-The input constraints guarantee at most 26 distinct characters, so an array indexed by `'a'..'z'` is O(1) per lookup and uses constant memory.
-
----
+> **Why HashMap?**  
+> For a general solution; if you know the alphabet is small you could replace `HashMap` with an `int[26]`.
 
 ### 3.2 Python
 
 ```python
-# Python 3.11
 class Solution:
     def findPermutationDifference(self, s: str, t: str) -> int:
-        # char → index in s
-        pos = {c: i for i, c in enumerate(s)}
-        return sum(abs(pos[c] - i) for i, c in enumerate(t))
+        # Build dictionary: char -> index in s
+        pos_in_s = {ch: i for i, ch in enumerate(s)}
 
-# Demo
-if __name__ == "__main__":
-    sol = Solution()
-    print(sol.findPermutationDifference("abc", "bac"))   # 2
-    print(sol.findPermutationDifference("abcde", "edbac")) # 12
+        diff_sum = 0
+        for i, ch in enumerate(t):
+            diff_sum += abs(i - pos_in_s[ch])
+
+        return diff_sum
 ```
 
-Python’s dictionary provides a clean, readable solution; the `sum` generator expression keeps the code compact.
-
----
+> **Pythonic Touches**  
+> List comprehensions and dictionary literals make the code concise.  
+> `abs` is built‑in, so no extra imports needed.
 
 ### 3.3 C++
 
 ```cpp
-// C++17
-#include <bits/stdc++.h>
-using namespace std;
+#include <string>
+#include <unordered_map>
+#include <cmath>
 
 class Solution {
 public:
-    int findPermutationDifference(string s, string t) {
-        vector<int> pos(26, -1);
-        for (int i = 0; i < (int)s.size(); ++i)
-            pos[s[i] - 'a'] = i;
+    int findPermutationDifference(std::string s, std::string t) {
+        std::unordered_map<char, int> posInS;
+        for (int i = 0; i < s.size(); ++i)
+            posInS[s[i]] = i;
 
-        int diff = 0;
-        for (int i = 0; i < (int)t.size(); ++i)
-            diff += abs(pos[t[i] - 'a'] - i);
+        int diffSum = 0;
+        for (int i = 0; i < t.size(); ++i)
+            diffSum += std::abs(i - posInS[t[i]]);
 
-        return diff;
+        return diffSum;
     }
 };
-
-int main() {
-    Solution sol;
-    cout << sol.findPermutationDifference("abc", "bac") << '\n';   // 2
-    cout << sol.findPermutationDifference("abcde", "edbac") << '\n'; // 12
-}
 ```
 
-Using a `std::vector<int>` gives the same constant‑time lookup as the Java array. The code stays simple and efficient.
+> **Why `unordered_map`?**  
+> Provides average‑case O(1) lookup.  
+> For an even faster constant factor you could use `int[26]` and index by `c - 'a'`.
 
 ---
 
-## 4. Blog Article: “Permutation Difference – The Good, The Bad, The Ugly”
+## 4. Complexity Analysis
 
-### Title  
-**Mastering Leetcode 3146 – “Permutation Difference Between Two Strings”**  
-*A deep dive for interview‑ready developers (Java / Python / C++)*
+| Approach | Time | Space |
+|----------|------|-------|
+| Brute‑Force | `O(n²)` | `O(1)` |
+| HashMap / Array | **`O(n)`** | **`O(n)`** |
 
----
-
-### Meta Description  
-Want to ace the *Permutation Difference* interview question? This article explains the problem, walks through optimal Java, Python, and C++ solutions, discusses edge cases, and offers SEO‑friendly tips for landing your next software‑engineering job.
+With `n ≤ 26`, either approach works, but interviewers expect the linear solution and will discuss your choice.
 
 ---
 
-### 1. The Good
+## 5. Good, Bad, Ugly – Lessons Learned
 
-| What | Why It’s Good |
-|------|---------------|
-| **Clear Problem Statement** | Every character is unique → no ambiguity about “occurrence”. |
-| **Small Input Size** | Length ≤ 26 → allows constant‑time lookups with an array. |
-| **Linear Complexity** | O(n) time & O(n) space, optimal for any string length. |
-| **Language‑agnostic Approach** | Same idea works in Java, Python, C++, and even JavaScript. |
+| Category | Good | Bad | Ugly |
+|----------|------|-----|------|
+| **Algorithmic Choice** | Using a hash map gives linear time – the “sweet spot” for interviewers. | Skipping the map and using nested loops is easy but wastes time. | Over‑engineering: building a balanced tree (`TreeMap`), sorting, or using recursion. |
+| **Code Clarity** | One‑liner dictionary in Python, short loops in Java/C++. | Heavy variable names (`map1`, `map2`) or overly verbose comments can clutter the solution. | Mixing languages or platform‑specific constructs (e.g., Java’s `TreeMap` when `HashMap` suffices). |
+| **Edge Cases** | None – constraints guarantee valid input. | Forgetting to handle empty strings (though not allowed). | Unnecessary null checks that make the code longer without benefit. |
+| **Readability** | Inline `abs(i - posInS[ch])` shows intent clearly. | Splitting the logic into multiple helper functions unnecessarily. | Using magic numbers or unclear indices (e.g., `s.charAt(i)`, `t.charAt(i)`). |
+| **Performance** | Using an array of size 26 gives constant lookup – fastest in practice. | Using `HashMap` in Java still fine, but slower than array. | Using `TreeMap` leads to `O(n log n)` even though input size is tiny. |
 
-#### Code‑Snippets (One‑liner style)
-
-*Java*  
-```java
-int diff = 0;
-int[] pos = new int[26];
-for (int i = 0; i < s.length(); i++) pos[s.charAt(i)-'a'] = i;
-for (int i = 0; i < t.length(); i++) diff += Math.abs(pos[t.charAt(i)-'a'] - i);
-```
-
-*Python*  
-```python
-pos = {c:i for i,c in enumerate(s)}
-diff = sum(abs(pos[c]-i) for i,c in enumerate(t))
-```
-
-*C++*  
-```cpp
-vector<int> pos(26,-1);
-for (int i=0;i<s.size();++i) pos[s[i]-'a']=i;
-int diff=0;
-for (int i=0;i<t.size();++i) diff+=abs(pos[t[i]-'a']-i);
-```
+**Takeaway:**  
+Keep the solution *simple*, *fast*, and *clear*. Avoid over‑complicating when the problem constraints are tight and straightforward.
 
 ---
 
-### 2. The Bad
+## 6. SEO‑Optimized Blog Summary
 
-| Issue | Impact | Mitigation |
-|-------|--------|------------|
-| **Using `HashMap` in Java** | Slight overhead; not necessary given the alphabet constraint. | Replace with `int[]` of size 26. |
-| **Assuming Input Is Valid** | If `t` isn’t a permutation, map look‑ups could return `null` (Java) or undefined. | Add input validation or rely on problem guarantees in interviews. |
-| **Complexity Misunderstanding** | Some candidates think O(n²) due to nested loops or repeated searches. | Emphasize that the optimal solution is linear. |
+- **Title:** “LeetCode 3146 – Permutation Difference Between Two Strings: HashMap & Array Solutions (Java, Python, C++)”
+- **Meta Description:** “Learn how to solve LeetCode 3146 – Permutation Difference Between Two Strings – with efficient HashMap and array approaches. Complete Java, Python, and C++ code examples plus a performance analysis.”
+- **Keywords:** LeetCode 3146, permutation difference, string algorithm, hash map solution, Java string problem, Python string challenge, C++ interview question, algorithm complexity, interview prep.
+- **Header Structure:**  
+  - H1: LeetCode 3146 – Permutation Difference Between Two Strings  
+  - H2: Problem Statement  
+  - H2: Brute‑Force vs. Optimal Approach  
+  - H2: Code Implementations (Java, Python, C++)  
+  - H2: Complexity Analysis  
+  - H2: Good, Bad, Ugly – Lessons Learned  
+  - H2: Final Thoughts & Interview Tips
 
----
-
-### 3. The Ugly
-
-*Why some solutions go wrong:*
-
-1. **Brute Force (O(n²))** – looping through `s` for each char in `t`.  
-   - **Why bad?** For n=26 it’s still fine, but in interviews, a quadratic solution screams lack of insight.  
-2. **Wrong Data Structures** – using `HashSet` instead of a map, losing the positional data.  
-3. **Off‑by‑One Errors** – mixing 1‑based vs. 0‑based indices.  
-   - **Debug tip:** Print both positions during the loop; you’ll immediately spot mismatches.
+Adding an engaging introduction, illustrative examples, and a concise conclusion will keep readers hooked and help the post rank for job‑related search queries. Include a “Next Steps” section encouraging readers to explore related LeetCode problems or to share the article on LinkedIn, boosting its social signals.
 
 ---
 
-### 4. Interview‑Ready Tips
+## 7. Final Checklist for a Winning Interview
 
-| Tip | How It Helps |
-|-----|--------------|
-| **Mention Constraints Early** | You’ll naturally steer to the array solution. |
-| **Explain Complexity** | “We can’t afford O(n²) because we’re guaranteed at most 26 chars.” |
-| **Show Edge‑Case Awareness** | “If the strings are identical, the answer is 0; if they are reversed, the answer is …” |
-| **Time‑Space Trade‑off** | “Using an array gives constant‑time lookups; a HashMap would add overhead but still meet O(n) time.” |
-| **Mention Language‑Specific Tricks** | Python’s dict comprehension, C++ `std::array`, Java’s `int[]`. |
+1. **Understand the constraints** – single unique characters → constant‑size alphabet.  
+2. **Choose the right data structure** – `HashMap` or `int[26]`.  
+3. **Keep the code concise** – one loop for mapping, one for summation.  
+4. **Explain your thought process** – talk about time/space trade‑offs.  
+5. **Test edge cases** – small strings, reverse order, identical strings.  
 
----
-
-### 5. SEO & Job‑Search Value
-
-*Keywords to Sprinkle:*  
-- Leetcode 3146  
-- Permutation Difference problem  
-- Java interview coding challenge  
-- Python algorithmic problem  
-- C++ string manipulation interview  
-- Job interview preparation  
-- Software engineer interview tips  
-
-*Why these matter:*  
-- Recruiters search for “Leetcode 3146” or “Permutation Difference” when looking for candidates who have solved similar problems.  
-- Your article will surface in search results for *“how to solve permutation difference in Java”* or *“Python solution for Leetcode 3146”*.  
-- By covering multiple languages, you demonstrate versatility – a key trait for tech roles.
+With the code snippets above and the lessons from the *Good, Bad, Ugly* analysis, you’re ready to ace this LeetCode problem—and land that interview! 🚀
 
 ---
-
-### 6. Takeaway
-
-The *Permutation Difference* problem is a textbook example of mapping indices and summing absolute differences. A single linear pass with an array suffices. Mastering this solution shows you can:
-
-* Read and parse constraints quickly.  
-* Translate a problem statement into an optimal data‑structure choice.  
-* Write clean, language‑specific code that would impress interviewers.
-
-Now go implement, practice, and nail that next coding interview!
-
----
-
-## 7. Quick‑Start Summary
-
-| Language | Code Snippet | Complexity |
-|----------|--------------|------------|
-| Java | `int[] pos = new int[26]; … sum(abs(...))` | O(n) time, O(1) space |
-| Python | `pos = {c:i for i,c in enumerate(s)}; sum(abs(...))` | O(n) time, O(n) space |
-| C++ | `vector<int> pos(26,-1); … sum(abs(...))` | O(n) time, O(1) space |
-
-Happy coding!

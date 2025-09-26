@@ -7,156 +7,156 @@ author: moses
 tags: []
 hideToc: true
 ---
-        **🧩 LeetCode 483 – “Smallest Good Base”**  
-*Hard – 2025 Interview‑Ready Solution in Java, Python, & C++*  
-
----  
-
-## 1. Problem Recap
-
-> **Given** a string `n` (3 ≤ n ≤ 10¹⁸), find the smallest base `k ≥ 2` such that the representation of `n` in base `k` consists solely of 1’s (e.g. `13` → base 3 is `111`).  
-> Return the base as a **string**.
-
-The task looks simple, but handling the large range (`10¹⁸`) while staying in **O(log n)** time requires a clever observation.
+        ## 483. Smallest Good Base  
+**Hard – Interview‑Style Problem**  
+**Keywords:** Smallest Good Base, LeetCode 483, base‑conversion, binary search, integer root, algorithm interview
 
 ---
 
-## 2. Core Idea
+### 1.  Problem Recap  
 
-If `n` in base `k` is all 1’s, then for some `m ≥ 1`:
+Given an integer `n` (as a string) with  
+`3 ≤ n ≤ 10^18`, find the **smallest base** `k (k ≥ 2)` such that the representation of `n` in base `k` consists solely of `1`’s.  
+For example  
 
-```
-n = 1 + k + k² + … + k^m
-  = (k^(m+1) – 1) / (k – 1)          (geometric series)
-```
+* `n = 13` → base `3` → `111`  
+* `n = 4681` → base `8` → `11111`  
+* `n = 10^18` → base `999999999999999999` → `11`
 
-- `m+1` is the **number of digits** in the base‑`k` representation.  
-- `k` is the **base** we are looking for.  
-
-The **key observation**:  
-*For a fixed `m`, there is at most one integer `k` that satisfies the equation.*  
-Therefore we can iterate over all possible `m` values (from the maximum possible number of digits down to 1) and, for each, solve for `k`.  
-If we find a valid integer `k`, it is guaranteed to be the *smallest* base because a larger `m` ⇒ smaller `k`.
-
-The maximum possible digits is bounded by  
-`m+1 ≤ log₂(n) + 1 ≤ 61` (since `n ≤ 10¹⁸`).  
-So we only have to check at most 60 candidates.
+If no base other than `n‑1` works, the answer is `n‑1` (because `n` in base `n‑1` is always `11`).
 
 ---
 
-## 3. Implementation Strategy
+### 2.  Core Insight  
 
-| Language | Core Technique | Why it Works |
-|----------|----------------|--------------|
-| **Java** | Binary search on `k` for each `m` | Handles 64‑bit overflow safely with helper method |
-| **Python** | Direct integer arithmetic (unbounded ints) | Simpler code – Python’s `int` is arbitrary precision |
-| **C++** | Binary search with `__int128` for overflow protection | Fast and memory‑efficient |
-
-All three use the same **helper**:  
+For a base `k` and a representation length `m`  
+```
+n = 1 + k + k^2 + … + k^(m-1)
+```
+The right‑hand side is a geometric series:
 
 ```
-value(k, m) = 1 + k + k² + … + k^m
+n = (k^m – 1) / (k – 1)
 ```
 
-computed iteratively to avoid explicit exponentiation (prevents overflow).
+So for a fixed `m` we only need to find an integer `k` that satisfies this equation.  
+- The larger the `m`, the smaller the possible `k`.  
+- The maximum useful `m` is `⌊log2(n)⌋ + 1` (because `k ≥ 2`).
+
+Therefore the search strategy is:  
+1. Iterate `m` from the largest possible value down to `3`.  
+2. For each `m` use binary search to find a candidate `k`.  
+3. Verify the candidate by computing the sum safely (watch out for overflow).  
+4. The first match is the smallest base.
+
+If no match is found, return `n-1`.
 
 ---
 
-## 4. Code
+### 3.  Complexity  
 
-Below you’ll find clean, well‑commented solutions in **Java**, **Python**, and **C++**. Each one returns the correct base as a string.
+* **Time**:  
+  - `O(log n)` iterations of `m`.  
+  - For each `m`, binary search takes `O(log n)` steps.  
+  - Each step evaluates the sum in `O(m)` (but `m ≤ 60`).  
+  Overall `O((log n)^2)` which is negligible for `n ≤ 10^18`.
+
+* **Space**: `O(1)` auxiliary.
 
 ---
 
-### 4.1 Java
+### 4.  Reference Implementations  
+
+Below are clean, production‑ready solutions in **Java, Python, and C++**.  
+All handle overflow safely and run in a fraction of a millisecond.
+
+---
+
+#### 4.1  Java
 
 ```java
 import java.math.BigInteger;
 
-class Solution {
+public class Solution {
     public String smallestGoodBase(String nStr) {
         long n = Long.parseLong(nStr);
-        // maximum number of digits (m+1) for base >= 2
+        if (n == 3) return "2";                     // special case
+
+        // max possible length of the representation
         int maxM = (int) (Math.log(n) / Math.log(2)) + 1;
 
-        for (int m = maxM; m >= 2; m--) {
-            long base = findBase(n, m);
-            if (base != -1) return Long.toString(base);
+        for (int m = maxM; m >= 3; --m) {
+            long k = binarySearchK(n, m);
+            if (k != -1) return Long.toString(k);
         }
-        // if no base found, answer is n-1 (representation 11)
-        return Long.toString(n - 1);
+        return Long.toString(n - 1);                // fallback
     }
 
-    // binary search for base k that gives m+1 digits of 1
-    private long findBase(long n, int m) {
-        long low = 2;
-        // upper bound for k is n^(1/m) + 1
-        long high = (long) Math.pow(n, 1.0 / m) + 1;
+    private long binarySearchK(long n, int m) {
+        long low = 2, high = (long) Math.pow(n, 1.0 / (m - 1)) + 1;
         while (low <= high) {
             long mid = low + (high - low) / 2;
-            long val = value(mid, m);
-            if (val == n) return mid;
-            if (val < n) low = mid + 1;
+            long sum = computeSum(mid, m, n);
+            if (sum == n) return mid;
+            if (sum < n) low = mid + 1;
             else high = mid - 1;
         }
-        return -1;  // not found
+        return -1;
     }
 
-    // compute 1 + k + k^2 + ... + k^m with overflow check
-    private long value(long k, int m) {
-        long res = 1;
-        for (int i = 1; i <= m; i++) {
-            // if multiplication would overflow, stop early
-            if (res > Long.MAX_VALUE / k) return Long.MAX_VALUE;
-            res = res * k + 1;
-            if (res > Long.MAX_VALUE) return Long.MAX_VALUE;
+    // computes 1 + k + k^2 + … + k^(m-1) with overflow guard
+    private long computeSum(long k, int m, long limit) {
+        long sum = 1;
+        long term = 1;
+        for (int i = 1; i < m; ++i) {
+            if (term > limit / k) return limit + 1; // overflow → > limit
+            term *= k;
+            if (sum > limit - term) return limit + 1;
+            sum += term;
         }
-        return res;
+        return sum;
     }
 }
 ```
 
+**Why this is safe**  
+- The helper `computeSum` stops early if an overflow would happen (`term > limit / k`).  
+- Binary search bounds are derived from the integer `m`‑th root of `n`, guaranteeing the search space is minimal.
+
 ---
 
-### 4.2 Python
+#### 4.2  Python
 
 ```python
-class Solution:
-    def smallestGoodBase(self, n: str) -> str:
-        n = int(n)
-        max_m = int(n.bit_length())  # log2(n)+1
+def smallestGoodBase(n: str) -> str:
+    n = int(n)
+    if n == 3:
+        return "2"
 
-        for m in range(max_m, 1, -1):
-            k = self._find_base(n, m)
-            if k != -1:
-                return str(k)
-        return str(n - 1)  # representation 11
-
-    def _find_base(self, n, m):
-        """Binary search for k."""
-        low, high = 2, int(n ** (1.0 / m)) + 1
+    max_m = n.bit_length()          # floor(log2(n)) + 1
+    for m in range(max_m, 2, -1):   # m >= 3
+        low, high = 2, int(n ** (1.0 / (m - 1))) + 1
         while low <= high:
             mid = (low + high) // 2
-            val = self._value(mid, m)
-            if val == n:
-                return mid
-            elif val < n:
+            # compute 1 + mid + mid^2 + ... + mid^(m-1)
+            total, term = 1, 1
+            for _ in range(1, m):
+                term *= mid
+                total += term
+            if total == n:
+                return str(mid)
+            if total < n:
                 low = mid + 1
             else:
                 high = mid - 1
-        return -1
-
-    def _value(self, k, m):
-        """Compute 1 + k + k^2 + ... + k^m."""
-        res = 1
-        for _ in range(1, m + 1):
-            res = res * k + 1
-        return res
+    return str(n - 1)
 ```
+
+Python’s built‑in arbitrary precision integers mean we never overflow.
 
 ---
 
-### 4.3 C++
+#### 4.3  C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -165,134 +165,103 @@ using namespace std;
 class Solution {
 public:
     string smallestGoodBase(string nStr) {
-        long long n = stoll(nStr);
-        int maxM = 64 - __builtin_clzll(n) + 1;   // log2(n)+1
+        unsigned long long n = stoull(nStr);
+        if (n == 3) return "2";
 
-        for (int m = maxM; m >= 2; --m) {
-            long long base = findBase(n, m);
-            if (base != -1) return to_string(base);
+        int maxM = log2(n) + 1;
+        for (int m = maxM; m >= 3; --m) {
+            unsigned long long k = binarySearch(n, m);
+            if (k != 0) return to_string(k);
         }
-        return to_string(n - 1);  // representation 11
+        return to_string(n - 1);
     }
 
 private:
-    long long findBase(long long n, int m) {
-        long long low = 2;
-        long long high = pow(n, 1.0 / m) + 1;
+    // binary search for base k
+    unsigned long long binarySearch(unsigned long long n, int m) {
+        unsigned long long low = 2;
+        unsigned long long high = pow(n, 1.0 / (m - 1)) + 1;
         while (low <= high) {
-            long long mid = low + (high - low) / 2;
-            __int128 val = value(mid, m);
-            if (val == n) return mid;
-            if (val < n) low = mid + 1;
+            unsigned long long mid = low + (high - low) / 2;
+            if (check(mid, m, n)) return mid;
+            else if (sum(mid, m, n) < n) low = mid + 1;
             else high = mid - 1;
         }
-        return -1;
+        return 0;
     }
 
-    __int128 value(long long k, int m) {
-        __int128 res = 1;
-        for (int i = 1; i <= m; ++i) {
-            res = res * k + 1;
-            if (res > ( (__int128)LLONG_MAX)) break;
+    // check if mid^m-1 == n*(mid-1)+1  (i.e., the geometric sum equals n)
+    bool check(unsigned long long k, int m, unsigned long long n) {
+        __int128 sum = 1, term = 1;
+        for (int i = 1; i < m; ++i) {
+            term *= k;
+            sum += term;
+            if (sum > n) return false;
         }
-        return res;
+        return sum == n;
+    }
+
+    unsigned long long sum(unsigned long long k, int m, unsigned long long limit) {
+        __int128 sum = 1, term = 1;
+        for (int i = 1; i < m; ++i) {
+            term *= k;
+            sum += term;
+            if (sum > limit) return limit + 1;
+        }
+        return (unsigned long long)sum;
     }
 };
 ```
 
----
-
-## 5. Blog Article
-
-> **Title:** *Smallest Good Base – The Ultimate LeetCode 483 Guide (Java / Python / C++)*  
-> **Meta Description:** Master LeetCode 483 “Smallest Good Base” with step‑by‑step solutions in Java, Python, and C++. Learn the math trick, avoid overflow pitfalls, and impress interviewers.
+C++ uses `__int128` for the intermediate sum, so we avoid overflow up to `10^18`.
 
 ---
 
-### 5.1 Introduction
+### 5.  The Good, the Bad, and the Ugly  
 
-When you land on LeetCode 483, you’re immediately faced with a puzzle that looks deceptively simple: “Find the smallest base that turns a number into all 1’s.”  
-What makes it *hard*? The answer is the **large input range (10¹⁸)** and the requirement for an **O(log n)** solution that fits comfortably into interview time limits.
-
-Below is a complete, production‑ready walkthrough—complete with code for **Java, Python, and C++**—and an analysis of what makes this problem great for technical interviews.
-
----
-
-### 5.2 The “Good, Bad, and Ugly” of the Problem
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Concept** | Elegant math: geometric series | Requires careful handling of large numbers | Edge‑case overflow can break naive solutions |
-| **Algorithm** | O(log n) via binary search over digits | Must determine max digits accurately | Searching over all possible bases (`2…n‑1`) is impossible |
-| **Coding** | Clean iterative power computation | Must avoid built‑in pow() due to precision | BigInteger/`__int128` required in some languages |
-| **Interview Value** | Shows understanding of number theory & bit tricks | Tests attention to detail with overflow | Exposes candidate’s ability to think under constraints |
+| Category | What worked | What made me careful | How we fixed it |
+|----------|-------------|----------------------|-----------------|
+| **Good** | *Geometric series* reduces a complex base‑check to a single equation. | • Binary search over `k` gives `O(log n)` per `m`. | • Iterate `m` from large to small to stop early. |
+| **Bad** | *Large exponent* may overflow `long`/`int`. | • Calculating `k^m` naively can exceed 64‑bit. | • Use safe multiplication checks or `__int128`/`BigInteger`. |
+| **Ugly** | *Edge cases* like `n = 3` or `n` being a perfect power of 2. | • The fallback `n-1` must be returned only when no other base works. | • Handle `n==3` separately; always return `n-1` if loop fails. |
 
 ---
 
-### 5.3 Why It’s Interview‑worthy
+### 6.  Why This Solution Rocks in an Interview  
 
-1. **Math Meets Programming** – Interviewers love problems where you can show a concise mathematical insight that drastically reduces complexity.  
-2. **Large‑Integer Awareness** – Handling 64‑bit values safely demonstrates low‑level knowledge that’s hard to find on whiteboards.  
-3. **Multiple Languages** – Being able to adapt the same logic to Java, Python, and C++ shows versatility.  
-4. **Edge‑Case Handling** – Discussing how you guard against overflow or precision loss signals strong defensive coding skills.
-
----
-
-### 5.4 The Solution in Detail
-
-1. **Convert the string to a 64‑bit integer (`long long` / `long`).**  
-2. **Maximum possible digits** – `m+1 ≤ log₂(n) + 1`.  
-3. **Iterate `m` from that maximum down to `2`** (because `m = 1` leads to base `n‑1`, the trivial case).  
-4. **For each `m`** use binary search on `k` in the range `[2, n^(1/m)+1]`.  
-5. **Check the geometric sum** `1 + k + k² + … + k^m` iteratively.  
-6. **Return the first valid `k`** (guaranteed to be the smallest).  
-7. **If none found**, return `n‑1` (`11` in any base).
-
-The core arithmetic is *iterative*, avoiding explicit exponentiation which would otherwise overflow.  
-
-In Java we guard against overflow with a helper that caps at `Long.MAX_VALUE`.  
-Python’s `int` is unbounded, so we can be a bit more relaxed.  
-C++ leverages `__int128` to stay within 128‑bit precision while keeping runtime fast.
+1. **Math‑y, Not Brute‑Force** – Interviewers love seeing you derive the formula `n = (k^m – 1)/(k – 1)` instead of trying every base.  
+2. **Efficient and Precise** – The algorithm runs in microseconds and never overflows if written carefully.  
+3. **Showcases Multiple Skills**  
+   * Big‑Integer handling (Python, Java BigInteger).  
+   * Binary search + integer root estimation.  
+   * Careful overflow checks (`__int128` in C++).  
+4. **Clean Code** – The logic is split into small helper methods (`binarySearchK`, `computeSum`, etc.), making it easy to reason about.  
 
 ---
 
-### 5.5 Common Pitfalls and How to Avoid Them
+### 7.  SEO‑Optimized Takeaway  
 
-| Pitfall | Fix |
-|---------|-----|
-| Using `Math.pow()` (Java) or `pow()` (C++) | Replace with binary search + iterative sum |
-| Not capping the upper bound `high` | Add `+1` after computing `n^(1/m)` |
-| Forgetting to convert to string at the end | Always use `Long.toString()` / `to_string()` |
-| Overlooking the trivial `m = 1` case | Handle `n-1` as a fallback |
+- **Title:** *LeetCode 483 – Smallest Good Base: Java, Python, C++ Solutions + Interview Tips*  
+- **Meta‑Description:** *Master LeetCode 483 (Smallest Good Base) with clean Java, Python, and C++ code. Learn the geometric‑series trick, binary search, and how to avoid overflow. Great interview prep.*  
+- **Key Phrases:**  
+  * LeetCode 483  
+  * Smallest Good Base solution  
+  * Java base conversion algorithm  
+  * Python integer root binary search  
+  * C++ __int128 overflow handling  
+  * Coding interview base‑conversion  
 
----
-
-### 5.6 Take‑Away: Interview Prep Tips
-
-- **Practice the bit trick**: `log₂(n) + 1` is simply `Integer.bitLength(n)` in Java or `n.bit_length()` in Python.  
-- **Understand `__int128`** in C++ – it’s the most efficient way to stay safe with 64‑bit multiplications.  
-- **Write helper functions** (like `value(k, m)`) to keep your main loop readable.  
-- **Explain overflow handling** on the whiteboard; this often turns a simple code‑submission into an *excellent* interview answer.
+Include these tags in your blog post header, anchor texts, and image alt‑text.  
 
 ---
 
-### 5.7 Conclusion
+### 8.  Final Thoughts  
 
-LeetCode 483 is more than a number puzzle; it’s a showcase of clean mathematical reduction, efficient binary search, and robust coding across languages.  
+The “Smallest Good Base” problem is a perfect example of how a solid mathematical insight can turn a seemingly hard “search” problem into a clean, efficient algorithm.  
+When you present it in an interview, highlight the steps:  
+1. Recognize the geometric sum.  
+2. Reduce the search space.  
+3. Apply binary search over integer roots.  
+4. Tidy up edge cases and overflow.
 
-With the three solutions above, you can confidently tackle the problem in any interview setting.  
-Remember: the *beauty* lies in the observation that **a fixed digit count leads to a unique base**—once you lock that in, the rest is just a matter of safe arithmetic.
-
-Happy coding—and good luck on your next technical interview!
-
----
-
-
---- 
-
-**End of Article**
-
-
---- 
-
-Feel free to use this guide as a reference or share it with peers preparing for coding interviews.
+With the reference code above, you’re ready to ace this LeetCode question—and impress hiring managers with your algorithmic maturity. Happy coding!

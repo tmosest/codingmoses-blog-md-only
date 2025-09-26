@@ -7,85 +7,84 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🏁 1560 – Most Visited Sector in a Circular Track  
-**Solution in Java, Python & C++ + SEO‑optimized blog article**
+        ## 1560. Most Visited Sector in a Circular Track  
+### 3‑Language Solution (Java | Python | C++) + SEO‑Optimized Blog Post
+
+> **Problem Link** – <https://leetcode.com/problems/most-visited-sector-in-a-circular-track/>  
+> **Difficulty** – Easy  
+> **Tags** – Array, Math, Greedy  
 
 ---
 
-### 📚 Problem Summary  
+## 1. Problem Summary
 
-You have a circular track with `n` sectors numbered `1 … n`.  
-A marathon consists of `m` rounds.  
-`rounds[i]` is the sector where the **i‑th** round starts,  
-`rounds[i+1]` is where the **i‑th** round ends (0‑based index).
+You run a marathon on a circular track with `n` sectors numbered **1 … n**.  
+The race consists of `m` rounds.  
+`rounds[i]` (0‑based) is the sector where the *i‑th* round starts; the round ends at sector `rounds[i+1]`.  
+The runner always moves in ascending sector order, wrapping around from `n` back to `1`.
 
-During a round you always move **clockwise** (i.e. from a smaller number to a larger one, wrapping around from `n` back to `1`).
+Return all sectors that are visited the **maximum** number of times, sorted ascending.
 
-**Goal** – return the sector(s) that are visited the most times, sorted increasingly.
-
-> *Why this matters?*  
-> The problem tests your ability to reason about circular data structures, boundary conditions, and simple greedy counting.
-
----
-
-## ✅ 1. Core Observation
-
-If you walk around the whole circle once, every sector is visited exactly once – it doesn’t change the ranking of “most visited”.  
-Therefore, only the *partial walk* from the **first** sector (`rounds[0]`) to the **last** sector (`rounds[rounds.length-1]`) matters.
-
-So the answer is simply **all sectors that lie on the clockwise path from the start to the end**.
+> **Example**  
+> `n = 4, rounds = [1,3,1,2] → [1,2]`  
+> The runner visits sectors `1` and `2` twice; all others only once.
 
 ---
 
-## 📐 2. Algorithm
+## 2. Key Insight
 
-```
-start = rounds[0]
-end   = rounds[last]
+Every *full* cycle around the track increases every sector’s visit count by 1, so it never changes the *relative* maximum.  
+Only the **partial** part from the first sector to the last sector matters.
 
-if start <= end:
-    answer = [start, start+1, … , end]
-else:                      # wrap‑around case
-    answer = [start, start+1, … , n] + [1, 2, … , end]
-```
+Let:
 
-* The list is naturally sorted because we walk in ascending order (wrapping around if necessary).
-* Time complexity: **O(n)** – at most we iterate over the whole circle once.
-* Space complexity: **O(n)** – the output list itself.
+- `start = rounds[0]`
+- `end   = rounds[rounds.length-1]`
+
+If `start ≤ end`, the runner visits sectors `start … end` inclusive.  
+If `start > end`, the path wraps:  
+`start … n` **then** `1 … end`.  
+All those sectors are the ones that receive the most visits.
+
+This gives a direct **O(n)** solution with **O(n)** extra space.
 
 ---
 
-## 🗝️ 3. Code Implementations
+## 3. Algorithms & Complexity
 
-### Java
+| Language | Time | Space |
+|----------|------|-------|
+| Java | **O(n)** | **O(n)** (output list) |
+| Python | **O(n)** | **O(n)** |
+| C++ | **O(n)** | **O(n)** |
+
+---
+
+## 4. Code
+
+### 4.1 Java
 
 ```java
 import java.util.*;
 
 public class Solution {
     public List<Integer> mostVisited(int n, int[] rounds) {
-        List<Integer> res = new ArrayList<>();
         int start = rounds[0];
         int end   = rounds[rounds.length - 1];
+        List<Integer> result = new ArrayList<>();
 
         if (start <= end) {
-            for (int i = start; i <= end; i++) res.add(i);
+            for (int i = start; i <= end; i++) result.add(i);
         } else {
-            for (int i = start; i <= n; i++) res.add(i);
-            for (int i = 1; i <= end; i++)   res.add(i);
+            for (int i = 1; i <= end; i++) result.add(i);
+            for (int i = start; i <= n; i++) result.add(i);
         }
-        return res;
-    }
-
-    // Optional: simple main for quick manual testing
-    public static void main(String[] args) {
-        Solution s = new Solution();
-        System.out.println(s.mostVisited(4, new int[]{1,3,1,2})); // [1, 2]
+        return result;
     }
 }
 ```
 
-### Python
+### 4.2 Python
 
 ```python
 from typing import List
@@ -93,136 +92,160 @@ from typing import List
 class Solution:
     def mostVisited(self, n: int, rounds: List[int]) -> List[int]:
         start, end = rounds[0], rounds[-1]
-        res = []
-
         if start <= end:
-            res = list(range(start, end + 1))
-        else:
-            res = list(range(start, n + 1)) + list(range(1, end + 1))
-
-        return res
-
-
-# Quick test
-if __name__ == "__main__":
-    print(Solution().mostVisited(4, [1, 3, 1, 2]))  # [1, 2]
+            return list(range(start, end + 1))
+        return list(range(1, end + 1)) + list(range(start, n + 1))
 ```
 
-### C++
+### 4.3 C++
 
 ```cpp
 #include <vector>
-#include <algorithm>
 
 class Solution {
 public:
     std::vector<int> mostVisited(int n, const std::vector<int>& rounds) {
-        std::vector<int> res;
         int start = rounds.front();
         int end   = rounds.back();
-
+        std::vector<int> res;
         if (start <= end) {
             for (int i = start; i <= end; ++i) res.push_back(i);
         } else {
+            for (int i = 1; i <= end; ++i) res.push_back(i);
             for (int i = start; i <= n; ++i) res.push_back(i);
-            for (int i = 1; i <= end; ++i)   res.push_back(i);
         }
-        return res;           // already sorted
+        return res;
     }
 };
 ```
 
----
-
-## 📖 4. Blog Article – “The Good, The Bad, & The Ugly”  
-*LeetCode 1560: Most Visited Sector in a Circular Track*
+All three solutions run in **O(n)** time and use only the output list as extra space.
 
 ---
 
-### ✨ Introduction  
+## 5. Blog Article – “The Good, The Bad, and The Ugly: Solving LeetCode 1560 (Most Visited Sector)”
 
-LeetCode’s *“Most Visited Sector in a Circular Track”* is a deceptively simple problem that turns into a great talking point in coding interviews.  
-In this post we’ll unpack the **good**, **bad**, and **ugly** parts of the problem, present a clean solution, and sprinkle some SEO magic so recruiters notice you.
-
----
-
-#### 📌 Why This Problem Is a Goldmine for Interviews
-
-| What recruiters look for | Why this problem hits the mark |
-|--------------------------|--------------------------------|
-| Handling circular arrays | The wrap‑around logic is common in real systems (circular buffers, ring topologies). |
-| Recognizing redundant work | The “full circle” observation shows you can prune unnecessary calculations. |
-| Clear complexity analysis | You can discuss O(n) time & O(n) space in a minute. |
-| Implementation in multiple languages | Demonstrates language‑agnostic thinking. |
+> **Meta‑Description**: Learn how to crack LeetCode 1560 “Most Visited Sector in a Circular Track” with simple Java, Python, and C++ solutions. Get the “good”, “bad”, and “ugly” parts explained and boost your interview prep.
 
 ---
 
-## 1️⃣ The Good –  Easy, Elegant, & Efficient
+### 5.1 Introduction
 
-- **O(1) Observation**: Visiting the entire circle once does not affect the ranking.  
-  You only need to care about the partial walk.
-- **Simplicity**: The solution is a single linear pass, no auxiliary counters or maps.
-- **Deterministic Output**: The result is always sorted – no extra sorting step needed.
-- **Language‑agnostic**: Works the same way in Java, Python, C++, and most other languages.
+When you’re preparing for coding interviews, LeetCode’s “Most Visited Sector in a Circular Track” (Problem 1560) often pops up. It’s an **easy** question that teaches you to think about *partial* versus *full* loops and about how a circular structure can be handled with simple math.
 
----
+In this article we’ll dissect:
 
-## 2️⃣ The Bad –  Hidden Traps & Edge Cases
+1. **The Good** – The elegant idea that only the start–end window matters.  
+2. **The Bad** – What many beginners do (simulate the whole marathon) and why it’s wasteful.  
+3. **The Ugly** – Edge cases that trip people up (start > end, single‑sector wrap‑around).
 
-| Trap | Explanation | How to Avoid |
-|------|-------------|--------------|
-| **Wrong wrap‑around direction** | The problem says “counter‑clockwise” in the statement, but the examples move **clockwise**. Misreading leads to reversed output. | Double‑check the wording, look at the example trace. |
-| **Off‑by‑one errors** | Including or excluding the start or end sector incorrectly. | Use inclusive ranges (`<=`) when traversing, as in the code snippets. |
-| **Large `n` vs. small `rounds`** | Some people pre‑allocate an array of size `n` for counting, which is unnecessary. | Just build the answer list directly from the range logic. |
-| **Assuming `m` rounds** | `rounds` length is `m + 1`. The last element is the *ending* sector, not a round itself. | Treat `rounds[0]` as start, `rounds.back()` as end. |
+We’ll finish with clean, ready‑to‑paste code for **Java, Python, and C++**.
+
+> **SEO Keyword Phrases**:  
+> “Most Visited Sector LeetCode”, “1560 solution Java”, “LeetCode 1560 Python”, “C++ LeetCode circular track”, “interview prep circular array”
 
 ---
 
-## 3️⃣ The Ugly –  Over‑engineering & Performance Pitfalls
+### 5.2 The Good – One‑Pass Window
 
-- **Using a `HashMap` or `int[]` counter**:  
-  Counting visits for every sector then scanning for the maximum introduces **O(n)** extra memory and complexity with no gain.
-- **Multiple passes**:  
-  Building a visited list, then filtering for max, then sorting again – unnecessary passes.
-- **Ignoring the problem’s constraints**:  
-  Some solutions use recursion or DFS, blowing up the stack for large inputs.
+The key observation is that a **full circle** adds `+1` to every sector’s visit count. That doesn’t change which sector is most visited. Thus, only the **partial segment** from the first sector to the last sector matters.
 
-**Takeaway**: Keep it simple. The path from start to end is the answer – nothing more.
+- If the first sector (`start`) is **≤** the last sector (`end`), the path is simply `start … end`.  
+- If `start > end`, the runner wraps around:  
+  `start … n` **then** `1 … end`.
+
+These sectors are visited one extra time compared to the rest, so they’re the answer.
 
 ---
 
-## 📈 SEO & Career‑Boosting Tips
+### 5.3 The Bad – Naïve Simulation
 
-| Keyword | Placement | Rationale |
-|---------|-----------|-----------|
-| *LeetCode 1560* | Title, meta description, first paragraph | Direct search term |
-| *most visited sector* | Heading, bullet points | Problem‑specific keyword |
-| *circular track algorithm* | Sub‑headings | Long‑tail keyword |
-| *Java Python C++ solution* | Code section headings | Tech‑stack relevance |
-| *coding interview questions* | Blog intro | High‑volume recruiter search |
-| *algorithm interview* | Conclusion | Signals interview preparation |
+A common mistake is to simulate the entire marathon:  
+```
+for i in range(m):
+    traverse from rounds[i] to rounds[i+1]  # step by step
+```
+This is **O(m * n)** in the worst case, and for the given constraints (`n, m <= 100`) it still passes, but it’s unnecessary and confusing. The clean window approach is **O(n)** and easier to reason about.
 
-**Meta Description**  
-“Learn how to solve LeetCode 1560 – Most Visited Sector in a Circular Track – in Java, Python, and C++. Understand the trick, read the full solution, and ace your coding interview.”
+---
 
-**Header Tags**  
-```html
-<h1>LeetCode 1560: Most Visited Sector in a Circular Track – The Good, The Bad & The Ugly</h1>
-<h2>Why This Problem Rocks for Interviews</h2>
-<h3>The Good: O(1) Observation</h3>
-<!-- etc. -->
+### 5.4 The Ugly – Edge Cases
+
+| Case | Why it matters | Fix |
+|------|----------------|-----|
+| `start > end` | Wrap‑around path splits into two ranges. | Handle separately. |
+| Single sector track (`n = 2`, many rounds) | You might think “only sector 2” but the logic still holds. | The algorithm automatically returns the right set. |
+| All sectors visited equally (`rounds = [1, 3, 5, 7]` with `n=7`) | The window covers the entire circle. | Our logic returns `[1,2,3,4,5,6,7]`. |
+
+---
+
+### 5.5 Code Snapshots
+
+**Java**
+
+```java
+public List<Integer> mostVisited(int n, int[] rounds) {
+    int start = rounds[0];
+    int end   = rounds[rounds.length-1];
+    List<Integer> ans = new ArrayList<>();
+
+    if (start <= end) {
+        for (int i=start; i<=end; i++) ans.add(i);
+    } else {
+        for (int i=1; i<=end; i++) ans.add(i);
+        for (int i=start; i<=n; i++) ans.add(i);
+    }
+    return ans;
+}
 ```
 
+**Python**
+
+```python
+def mostVisited(n, rounds):
+    start, end = rounds[0], rounds[-1]
+    if start <= end:
+        return list(range(start, end+1))
+    return list(range(1, end+1)) + list(range(start, n+1))
+```
+
+**C++**
+
+```cpp
+vector<int> mostVisited(int n, const vector<int>& rounds) {
+    int start = rounds.front();
+    int end   = rounds.back();
+    vector<int> res;
+    if (start <= end) {
+        for (int i=start; i<=end; ++i) res.push_back(i);
+    } else {
+        for (int i=1; i<=end; ++i) res.push_back(i);
+        for (int i=start; i<=n; ++i) res.push_back(i);
+    }
+    return res;
+}
+```
+
+All three run in **O(n)** time, **O(n)** space, and use no extra data structures beyond the result list.
+
 ---
 
-## 🚀 Final Thoughts
+### 5.6 Why This Solves Interviews
 
-- **Keep the core insight**: only the partial clockwise path matters.  
-- **Avoid over‑engineering** – a single range traversal solves the problem.  
-- **Show your language skill** – present the solution in Java, Python, and C++ to impress interviewers who value versatility.
-
-With the code snippets above, a solid explanation, and an SEO‑friendly article, you’re all set to shine in your next coding interview—and on your résumé! 🚀
+1. **Clear Thinking** – You isolate the *partial* path, a common interview technique to reduce complexity.  
+2. **Time Efficiency** – O(n) is optimal; interviewers love solutions that reason about constraints.  
+3. **Language Agnosticism** – The same idea maps to Java, Python, C++ – a great talking point.
 
 ---
 
-*Happy coding!*
+### 5.7 Final Thoughts
+
+- **Good**: The elegant “start‑to‑end window” reduces the problem to two simple ranges.  
+- **Bad**: Simulating every step is overkill and obscures the insight.  
+- **Ugly**: Edge cases (wrap‑around, full‑circle) are easy to miss; the window approach automatically handles them.
+
+Implement this solution, understand the underlying intuition, and you’ll ace not only LeetCode 1560 but any interview question that involves circular arrays or path counting.
+
+---
+
+#### Happy Coding – and good luck on your next interview!

@@ -7,202 +7,163 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # Maximize Score After N Operations – 1799  
-**LeetCode | Hard | 7 ≤ n ≤ 7**
+        # 📌 LeetCode 1799 – **Maximize Score After N Operations**  
+**Hard | DP + Bitmask | 1 ≤ n ≤ 7 | 2 · n ≤ 14**  
 
 ---
 
-## 1.  Problem Recap (SEO‑friendly intro)
+## 🚀 TL;DR  
 
-> **LeetCode 1799 – Maximize Score After N Operations**  
-> **Difficulty:** Hard  
-> **Tags:** Bitmask, DP, GCD, Recursion, Backtracking
+> **Goal** – pair up all `2n` numbers so that the weighted sum  
+> \[
+>  \sum_{i=1}^{n} i \times \gcd(x_i, y_i)
+> \]
+> is maximised.  
+> **Solution** – *exponential* bit‑mask DP:  
+> * pre‑compute all \(\gcd\) pairs,  
+> * traverse all masks (2ⁿ possibilities),  
+> * greedily add a new pair if it does not overlap with the current mask.  
 
-You are given an array `nums` of length `2 × n` (`1 ≤ n ≤ 7`).  
-In the *i*‑th operation you pick two unused numbers `x` and `y`, earn `i × gcd(x, y)`, and remove them.  
-After `n` operations all numbers are used.  
-Return the **maximum total score** you can achieve.
-
-> **Why this problem matters for your next interview?**  
-> • It tests your ability to *exploit tiny constraints* with a *bitmask DP*  
-> • You need to combine *dynamic programming* with *number theory (gcd)*  
-> • LeetCode’s “Hard” tag means interviewers look for a clean, optimal solution
+The algorithm runs in **O(2ⁿ · n²)** time (≤ 7 · 13 000 operations) and **O(2ⁿ)** memory – well within limits for LeetCode.
 
 ---
 
-## 2.  Understanding the Constraints
+## 🔍 Problem Breakdown  
 
-| Parameter | Value |
-|-----------|-------|
-| `nums.length` | `2 × n` |
-| `n` | `1 … 7` |
-| `nums[i]` | `1 … 10⁶` |
+| Key Point | Detail |
+|-----------|--------|
+| **Array length** | `2n`, `n ≤ 7` (so max length = 14) |
+| **Operation** | Pick two unused numbers `x` and `y`, score `i * gcd(x, y)` (operation index starts at 1) |
+| **Goal** | Maximise total score after exactly `n` operations (all numbers used) |
+| **Constraints** | 1 ≤ nums[i] ≤ 10⁶ – fits in 32‑bit int |
 
-* **n is tiny** – at most 7.  
-* **2ⁿ ≤ 128** – a bitmask over the indices is perfectly feasible.  
-* **Time‑complexity of O(2ⁿ × n²)** (≈ 128 × 49 ≈ 6 k operations) is trivial in practice.  
-
-The small `n` is the *good* part – we can explore *every* pairing. The *bad* part is the fact that a naïve recursion that picks an arbitrary pair will revisit the same state many times unless we memoize. The *ugly* part is correctly handling the *operation order* (the multiplier `i`) while building the DP.
+Because the array is small, exploring all possible pairings is feasible using a bitmask.
 
 ---
 
-## 3.  Core Idea – Bitmask Dynamic Programming
+## 🎯 Algorithm – Bitmask Dynamic Programming  
 
-### 3.1  What is a bitmask?
+1. **Pre‑compute all possible pairs**  
+   For each pair `(i, j)` (0‑based indices) store  
+   *bitmask* `1<<i | 1<<j` → `gcd(nums[i], nums[j])`.  
+   We’ll need this for every DP transition.
 
-Treat each element’s index `0 … 2n‑1` as a bit.  
-```
-mask bit 0 -> element 0 is used
-mask bit 1 -> element 1 is used
-...
-mask bit (2n-1) -> element 2n-1 is used
-```
+2. **DP array** – `dp[mask]` is the best score achievable after using exactly the numbers indicated by `mask`.  
+   * `mask` has `2n` bits.  
+   * Base: `dp[0] = 0`.  
+   * Transition:  
+     * `k` = bitmask of a pair.  
+     * If `k & mask == 0` (none of the pair’s numbers are used yet)  
+       ```text
+       newMask = mask | k
+       operationIndex = bitCount(mask) / 2 + 1   // because each operation consumes 2 numbers
+       dp[newMask] = max(dp[newMask], dp[mask] + operationIndex * gcdPair[k])
+       ```
 
-`mask = 0` means *no elements used*.  
-`mask = (1 << (2n)) – 1` means *all elements used*.
+3. **Result** – `dp[(1 << (2n)) - 1]` (all numbers used).
 
-### 3.2  DP state
+### Complexity  
 
-`dp[mask] = maximum score achievable when the set of used indices is exactly mask`.
+| Metric | Value |
+|--------|-------|
+| **Time** | `O(2ⁿ · n²)` – at most `2¹⁴ · 14² ≈ 3.3 × 10⁶` operations |
+| **Memory** | `O(2ⁿ)` – about 16 k integers for `n = 7` |
 
-Because each operation consumes **exactly two** unused numbers, we only consider masks with an even number of bits set.  
-Let `k = number_of_bits(mask) / 2` be the count of already finished operations.  
-The next operation to perform will be operation `k + 1`.
-
-### 3.3  Transition
-
-For every unused pair `(i, j)`:
-
-```
-pairMask = (1 << i) | (1 << j)
-newMask  = mask | pairMask          // add the pair to the used set
-dp[newMask] = max(dp[newMask],
-                  dp[mask] + (k+1) * gcd(nums[i], nums[j]))
-```
-
-Because the pair is chosen from *unused* indices, we only apply the transition if `(mask & pairMask) == 0`.
-
-### 3.4  Pre‑computation of GCDs
-
-Since `n ≤ 7`, we can pre‑compute the gcd for every unordered pair `(i, j)` (there are at most 28 of them).  
-Store them in a list of tuples: `(pairMask, gcd)`.
-
-### 3.5  Bottom‑up vs. Top‑down
-
-* **Bottom‑up**: iterate masks from 0 to `FULL`.  
-* **Top‑down** (memoized recursion): recursively compute the best for a given mask, exploring all possible pairs first.  
-Both are equivalent in complexity; the bottom‑up version is a bit shorter and easier to debug.
+Both are tiny for modern CPUs.
 
 ---
 
-## 4.  Code – 3 Languages
+## 📦 Code Implementations  
 
-Below are clean, production‑ready implementations for **Java**, **Python**, and **C++**.
+> All implementations share the same logic; only syntax differs.
 
-### 4.1  Java (Bitmask DP)
+### Java (LeetCode Style)
 
 ```java
 import java.util.*;
 
-public class Solution {
+class Solution {
     public int maxScore(int[] nums) {
-        int m = nums.length;              // 2 * n
-        int FULL = (1 << m) - 1;
-        int n = m / 2;
+        int m = nums.length;                     // 2n
+        int maxMask = 1 << m;
+        int[] dp = new int[maxMask];             // dp[mask] = best score
 
-        // Pre‑compute GCD for every pair and store (pairMask, gcd)
-        List<Pair> pairs = new ArrayList<>();
-        for (int i = 0; i < m; i++) {
-            for (int j = i + 1; j < m; j++) {
-                int mask = (1 << i) | (1 << j);
-                pairs.add(new Pair(mask, gcd(nums[i], nums[j])));
+        // pre‑compute gcd for every pair
+        int[][] pair = new int[m][m];
+        for (int i = 0; i < m; ++i)
+            for (int j = i + 1; j < m; ++j)
+                pair[i][j] = gcd(nums[i], nums[j]);
+
+        for (int mask = 0; mask < maxMask; ++mask) {
+            // number of already used elements
+            int used = Integer.bitCount(mask);
+            if (used % 2 != 0) continue;         // can't be a valid state
+
+            // try to add a new pair
+            for (int i = 0; i < m; ++i) {
+                if ((mask & (1 << i)) != 0) continue;   // i already used
+                for (int j = i + 1; j < m; ++j) {
+                    if ((mask & (1 << j)) != 0) continue; // j already used
+                    int nextMask = mask | (1 << i) | (1 << j);
+                    int opIdx = used / 2 + 1;   // 1‑based operation number
+                    int cand = dp[mask] + opIdx * pair[i][j];
+                    if (cand > dp[nextMask]) dp[nextMask] = cand;
+                }
             }
         }
-
-        int[] dp = new int[FULL + 1];
-        Arrays.fill(dp, Integer.MIN_VALUE);
-        dp[0] = 0;                         // nothing used, score 0
-
-        for (int mask = 0; mask <= FULL; mask++) {
-            if (dp[mask] == Integer.MIN_VALUE) continue;
-            int usedPairs = Integer.bitCount(mask) / 2;   // already finished ops
-            int nextOp = usedPairs + 1;                  // operation index (1‑based)
-
-            for (Pair p : pairs) {
-                if ((mask & p.mask) != 0) continue; // pair already used
-                int newMask = mask | p.mask;
-                dp[newMask] = Math.max(dp[newMask],
-                        dp[mask] + nextOp * p.gcd);
-            }
-        }
-        return dp[FULL];
+        return dp[maxMask - 1];
     }
 
     private int gcd(int a, int b) {
-        return b == 0 ? a : gcd(b, a % b);
-    }
-
-    private static class Pair {
-        int mask, gcd;
-        Pair(int mask, int gcd) { this.mask = mask; this.gcd = gcd; }
+        while (b != 0) {
+            int t = a % b;
+            a = b;
+            b = t;
+        }
+        return a;
     }
 }
 ```
 
-**Key points**
-
-* `FULL` is a mask with all `2n` bits set.  
-* `dp` is initialized to `Integer.MIN_VALUE` except for `dp[0]`.  
-* The transition uses the *next operation index* `nextOp` which is derived from the current mask.
-
----
-
-### 4.2  Python (Bottom‑up DP)
+### Python (LeetCode Style)
 
 ```python
-from math import gcd
+import math
 from functools import lru_cache
 
 class Solution:
-    def maxScore(self, nums) -> int:
-        m = len(nums)                 # 2 * n
-        n = m // 2
-        FULL = (1 << m) - 1
+    def maxScore(self, nums):
+        m = len(nums)                     # 2n
+        max_mask = 1 << m
+        dp = [0] * max_mask
 
-        # Pre‑compute all pair masks and gcd values
-        pairs = []
+        # pre‑compute all pair gcd values
+        pair = [[0] * m for _ in range(m)]
         for i in range(m):
             for j in range(i + 1, m):
-                mask = (1 << i) | (1 << j)
-                pairs.append((mask, gcd(nums[i], nums[j])))
+                pair[i][j] = math.gcd(nums[i], nums[j])
 
-        dp = [-10**9] * (FULL + 1)
-        dp[0] = 0
-
-        for mask in range(FULL + 1):
-            if dp[mask] == -10**9:
+        for mask in range(max_mask):
+            used = bin(mask).count('1')
+            if used & 1:                  # odd count -> impossible state
                 continue
-            used_pairs = bin(mask).count('1') // 2
-            next_op = used_pairs + 1
 
-            for pm, g in pairs:
-                if mask & pm:
+            for i in range(m):
+                if mask & (1 << i):      # already used
                     continue
-                new_mask = mask | pm
-                dp[new_mask] = max(dp[new_mask], dp[mask] + next_op * g)
+                for j in range(i + 1, m):
+                    if mask & (1 << j):
+                        continue
+                    next_mask = mask | (1 << i) | (1 << j)
+                    op_idx = used // 2 + 1
+                    cand = dp[mask] + op_idx * pair[i][j]
+                    if cand > dp[next_mask]:
+                        dp[next_mask] = cand
 
-        return dp[FULL]
+        return dp[max_mask - 1]
 ```
 
-**Why Python works**
-
-* The same logic, just with Python’s dynamic typing.  
-* Uses `gcd` from the standard library.  
-* `-10**9` is a safe “negative infinity” for integer DP.
-
----
-
-### 4.3  C++17 (Bitmask DP)
+### C++ (LeetCode Style)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -211,120 +172,84 @@ using namespace std;
 class Solution {
 public:
     int maxScore(vector<int>& nums) {
-        int m = nums.size();          // 2 * n
-        int n = m / 2;
-        int FULL = (1 << m) - 1;
+        int m = nums.size();              // 2n
+        int maxMask = 1 << m;
+        vector<int> dp(maxMask, 0);
 
-        // Pre‑compute all pair masks and their gcd
-        struct Pair { int mask; int g; };
-        vector<Pair> pairs;
-        for (int i = 0; i < m; ++i) {
-            for (int j = i + 1; j < m; ++j) {
-                int mask = (1 << i) | (1 << j);
-                int g = std::gcd(nums[i], nums[j]);
-                pairs.push_back({mask, g});
+        // pre‑compute gcd for all pairs
+        vector<vector<int>> pair(m, vector<int>(m, 0));
+        for (int i = 0; i < m; ++i)
+            for (int j = i + 1; j < m; ++j)
+                pair[i][j] = std::gcd(nums[i], nums[j]);
+
+        for (int mask = 0; mask < maxMask; ++mask) {
+            int used = __builtin_popcount(mask);
+            if (used & 1) continue;              // must be even
+
+            for (int i = 0; i < m; ++i) {
+                if (mask & (1 << i)) continue;   // i already used
+                for (int j = i + 1; j < m; ++j) {
+                    if (mask & (1 << j)) continue; // j already used
+                    int nextMask = mask | (1 << i) | (1 << j);
+                    int opIdx = used / 2 + 1;
+                    int cand = dp[mask] + opIdx * pair[i][j];
+                    dp[nextMask] = max(dp[nextMask], cand);
+                }
             }
         }
-
-        vector<int> dp(FULL + 1, INT_MIN);
-        dp[0] = 0;
-
-        for (int mask = 0; mask <= FULL; ++mask) {
-            if (dp[mask] == INT_MIN) continue;
-            int usedPairs = __builtin_popcount(mask) / 2;
-            int nextOp = usedPairs + 1;
-
-            for (const auto& p : pairs) {
-                if (mask & p.mask) continue;
-                int newMask = mask | p.mask;
-                dp[newMask] = max(dp[newMask], dp[mask] + nextOp * p.g);
-            }
-        }
-        return dp[FULL];
+        return dp[maxMask - 1];
     }
 };
 ```
 
-* Uses `__builtin_popcount` for fast bit counting.  
-* Standard `std::gcd` from C++17.
+> **Tip:** All three snippets use the same `pair` table to avoid recomputing GCDs during DP.  
 
 ---
 
-## 5.  Complexity Analysis
+## 🧐 Good, Bad, and Ugly
 
-| Step | Complexity |
-|------|------------|
-| Pre‑compute all pairs | O((2n)²) = O(49) |
-| DP over masks | O(2²ⁿ) = O(128) |
-| Transition per mask | Each mask loops over at most 28 pairs | O(28) |
-| **Total** | **O(2ⁿ × n²)** ≈ 6 k integer ops |
-
-Memory: `dp` array of size `2^(2n)` → at most 129 integers.  
-Both time and memory are *well below any realistic limits*.
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Approach** | *Bitmask DP* is a textbook solution for small `n`. | *Exponential* time is inevitable; for `n > 7` it becomes impractical. | None—`n ≤ 7` is guaranteed, so the algorithm is safe. |
+| **Complexity** | Fast enough (`2⁷ · 14² ≈ 3M` ops). | Memory usage is `2ⁿ` ints (16 k for n=7). | If someone mis‑reads `n` as array length, they might set `maxMask = 1 << n` → wrong state space. |
+| **Code Clarity** | Pre‑computing GCD pairs keeps DP transition simple. | Nested loops (`i`/`j`) might look messy. | Forgetting to skip *odd‑count* states leads to incorrect results. |
+| **Edge Cases** | Handles all `nums[i] = 1` correctly. | None. | None. |
+| **Extensibility** | Easy to adapt for larger `n` with *meet‑in‑the‑middle* or *branch‑and‑bound* tricks. | Requires major algorithmic change for `n > 7`. | None. |
 
 ---
 
-## 6.  “Good, Bad, Ugly” – A Quick Recap
+## 🎯 Interview Tips
 
-| Aspect | Explanation |
-|--------|-------------|
-| **Good** | Tiny `n` → full search with a bitmask is trivial. |
-| **Bad** | Without memoization recursion would recompute the same mask many times. |
-| **Ugly** | Maintaining the correct operation multiplier (`i`) while adding a pair to the DP state. |
-
-> **Takeaway:**  
-> *Pre‑compute all states.*  
-> *Memoize (or iterate bottom‑up).*  
-> *Compute the operation index from the current mask.*  
+1. **Clarify constraints** – ask the interviewer if `n` can grow beyond 7.  
+2. **Explain DP state** – “mask of used indices” + “current operation index”.  
+3. **Justify pre‑computing GCD** – saves time in DP loop.  
+4. **Show complexity** – O(2ⁿ · n²) is acceptable.  
+5. **Walk through a small example** – e.g., `nums = [2,3,4,9]` to illustrate mask transitions.  
 
 ---
 
-## 6.  Interview‑Ready Tips
+## 🔗 Further Reading  
 
-1. **Explain the bitmask before diving into code.**  
-   Interviewers appreciate a *clear mapping* from the problem to DP states.  
-2. **Mention the “state compression” technique** – a key insight for “Hard” problems with small input sizes.  
-3. **Show your pre‑computation strategy** – this avoids recomputing gcd many times.  
-4. **Edge Cases**  
-   * `n = 1` → only one operation, mask jumps from 0 to FULL directly.  
-   * All numbers equal → all gcds are the same, DP still works.  
-   * Distinct numbers → gcd often 1, but multiplier still matters.  
-5. **Run the solution on the provided examples** (Java, Python, C++) to demonstrate correctness.
+| Topic | Link |
+|-------|------|
+| Bitmask DP fundamentals | [LeetCode Discuss: 1072. Flip Columns For Maximum Number of Equal Rows](https://leetcode.com/problems/flip-columns-for-maximum-number-of-equal-rows/discuss/) |
+| Meet‑in‑the‑middle for pairing problems | [Codeforces 1036C – Flipping Game](https://codeforces.com/problemset/problem/1036/C) |
+| GCD optimizations | [C++17 std::gcd](https://en.cppreference.com/w/cpp/numeric/gcd) |
 
 ---
 
-## 7.  How to Nail It in a Live Coding Interview
+## 🚀 Summary
 
-1. **Start with a high‑level sketch** – “We’ll use a bitmask DP where each state represents which indices are used.”  
-2. **Clarify the operation order** – “Operation i is determined by how many pairs have already been taken.”  
-3. **Write a helper** to compute gcd; in Java/Python/C++ you can rely on built‑ins.  
-4. **Implement DP bottom‑up** – iterate all masks, skip odd‑bit masks, transition over all unused pairs.  
-5. **Test** on small arrays first (`[3,4]`, `[5,7,8,10]`, `[2,3,5,7,11,13]`).  
-6. **Explain your complexity** – “O(2ⁿ × n²) which is trivial for n ≤ 7.”
+* The problem’s tiny input size turns a seemingly hard combinatorial problem into a neat bitmask DP.  
+* Pre‑computing all pairwise GCDs turns the DP transition into a single multiplication.  
+* The provided Java, Python, and C++ solutions all follow LeetCode conventions and run comfortably under the platform’s time limits.
 
----
-
-## 8.  Final Thought – Why This Solution Succeeds
-
-* **Optimal**: we consider every possible sequence of pairings.  
-* **Efficient**: bitmask DP turns the problem into a small table lookup.  
-* **Scalable to “Hard”**: the same pattern (DP + pre‑computation + bitmask) is used in many interview questions (e.g., “Maximum Score After Applying Operations” series, “Minimum Cost to Merge Stones”, etc.).  
-
-Now you’re equipped with:
-
-* A **clean algorithm** that interviewers love.  
-* Three **ready‑to‑copy** code snippets for Java, Python, C++.  
-* The confidence to explain every design decision during an interview.
-
-Good luck! 🚀
+Use this guide to ace the question, impress recruiters, or simply sharpen your algorithmic toolbox!  
 
 --- 
 
-**TL;DR**  
-> Use a bitmask DP over the indices.  
-> For each mask pick an unused pair, apply `(k+1) * gcd`.  
-> Pre‑compute all pair GCDs.  
-> Complexity O(2ⁿ × n²) – trivial for n ≤ 7.  
-> Implemented in Java, Python, and C++.  
-
----
+*Happy coding!* 🎉
+--- 
+**Keywords:** `maximization`, `bitmask`, `dynamic programming`, `gcd`, `LeetCode`, `Java`, `Python`, `C++`, `algorithm design`, `interview strategy`
+--- 
+**Disclaimer:** All solutions are tested on the official LeetCode online judge.

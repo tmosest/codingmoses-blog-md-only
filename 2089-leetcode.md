@@ -7,328 +7,361 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. Problem Recap – LeetCode 2089  
-**Find Target Indices After Sorting Array**  
-Given a 0‑indexed array `nums` and an integer `target`, return all indices `i` such that `nums[i] == target` **after** sorting `nums` in non‑decreasing order.  
-If the target does not exist, return an empty list.  
-All returned indices must be in ascending order.
+        ## 1.  LeetCode 2089 – Find Target Indices After Sorting Array  
+**Languages:** Java | Python | C++  
+**Difficulty:** Easy  
+**Complexity:** O(n log n) time, O(m) auxiliary space ( m = number of target occurrences)
+
+---
+
+### 1.1 Problem Summary  
+Given an integer array `nums` and a target value `target`, return **all indices** of the array *after* sorting it in non‑decreasing order.  
+If the target is not present, return an empty list.  
+Indices must be returned in ascending order.
+
+| Example | Input | Output | Explanation |
+|---------|-------|--------|-------------|
+| 1 | `[1,2,5,2,3]`, `2` | `[1,2]` | Sorted → `[1,2,2,3,5]`; indices of `2` are `1` and `2`. |
+| 2 | `[1,2,5,2,3]`, `3` | `[3]` | Sorted → `[1,2,2,3,5]`; index of `3` is `3`. |
+| 3 | `[1,2,5,2,3]`, `5` | `[4]` | Sorted → `[1,2,2,3,5]`; index of `5` is `4`. |
 
 **Constraints**
 
-| Parameter | Range |
-|-----------|-------|
-| `nums.length` | 1 – 100 |
-| `nums[i]`, `target` | 1 – 100 |
-
-> The constraints are small, but we’ll still demonstrate a *canonical* `O(n log n)` solution (sort + linear scan) and a *tiny‑optimization* `O(n)` counting‑sort solution that leverages the limited value range.
+* `1 ≤ nums.length ≤ 100`
+* `1 ≤ nums[i], target ≤ 100`
 
 ---
 
-## 2. Algorithm Overview
+### 1.2 Intuition
 
-1. **Sort** the array (non‑decreasing order).  
-2. **Scan** the sorted array once and record the positions where the value equals `target`.  
-3. Return the list of collected indices.
+The simplest approach is:
 
-### Complexity
+1. Sort the array.
+2. Scan the sorted array once and record every index that equals `target`.
 
-| Step | Time | Space |
-|------|------|-------|
-| Sort | `O(n log n)` | `O(1)` (in‑place) |
-| Scan | `O(n)` | `O(m)` (`m` = number of target occurrences) |
-| Total | **`O(n log n)`** | **`O(m)`** |
-
-> With `nums[i] ≤ 100`, a counting‑sort version would reduce the time to `O(n)` and use only `O(1)` extra space. We’ll show that below.
+Because the array is small (`≤ 100`), this brute‑force method is fast enough and easy to understand.  
+For larger inputs, we could avoid sorting by counting occurrences (frequency array) – a linear‑time O(n) solution – but the problem explicitly asks for the indices **after** sorting, so we keep the sort step.
 
 ---
 
-## 3. Reference Implementations
+### 1.3 Algorithm
 
-### 3.1 Java
+```text
+targetIndices(nums, target):
+    sort(nums)                     // O(n log n)
+    ans = empty list
+    for i from 0 to nums.length-1:
+        if nums[i] == target:
+            ans.append(i)          // record 0‑based index
+    return ans                     // already sorted
+```
+
+---
+
+### 1.4 Correctness Proof  
+
+We prove that the algorithm returns exactly the set of target indices after sorting.
+
+1. **Sorting**  
+   After `sort(nums)`, the array `nums` is in non‑decreasing order.  
+   Therefore, any occurrence of `target` in the original array will appear at some position `i` in the sorted array, and the sorted array contains *exactly* those elements that were originally present (no duplicates removed or added).
+
+2. **Scanning**  
+   The loop iterates over every index `i` in the sorted array.  
+   For each `i`, if `nums[i] == target`, the algorithm appends `i` to `ans`.  
+   Thus, `ans` contains all and only the indices `i` for which `nums[i] == target`.
+
+3. **Ordering**  
+   Because the loop processes indices in increasing order, `ans` is sorted ascending, as required.
+
+Therefore the algorithm returns precisely the target indices after sorting, satisfying the specification. ∎
+
+---
+
+### 1.5 Complexity Analysis
+
+* **Time**  
+  *Sorting*: `O(n log n)`  
+  *Scanning*: `O(n)`  
+  Overall: **`O(n log n)`**.
+
+* **Space**  
+  *Result list*: `O(m)` where `m` is the number of target occurrences (worst case `n`).  
+  *No extra data structures*: **`O(m)`** auxiliary space.
+
+---
+
+### 1.6 Edge Cases & Pitfalls
+
+| Edge case | Why it matters | How the algorithm handles it |
+|-----------|----------------|-----------------------------|
+| `nums` contains no `target` | Should return empty list | Loop never appends → returns empty list |
+| All elements equal `target` | Result is `[0,1,2,…,n‑1]` | Loop appends all indices |
+| `nums` already sorted | Still works, sorting is idempotent | Sorting still runs but costs minimal |
+| `target` appears multiple times non‑contiguously | Sorting groups them | Indices captured correctly |
+
+---
+
+## 2.  Code Implementations
+
+Below are fully commented, ready‑to‑paste solutions for **Java**, **Python**, and **C++**.
+
+---
+
+### 2.1 Java 17
 
 ```java
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Solution {
+    /**
+     * Return the list of indices where the target appears after sorting.
+     *
+     * @param nums   input array (mutable)
+     * @param target target value
+     * @return list of target indices in sorted array
+     */
     public List<Integer> targetIndices(int[] nums, int target) {
-        // 1. Sort the array in-place
+        // 1. Sort the array
         Arrays.sort(nums);
 
-        // 2. Collect indices of target
-        List<Integer> indices = new ArrayList<>();
+        // 2. Scan and collect indices
+        List<Integer> ans = new ArrayList<>();
         for (int i = 0; i < nums.length; i++) {
             if (nums[i] == target) {
-                indices.add(i);
+                ans.add(i);           // 0‑based index
             }
         }
-        return indices;
+        return ans;                   // already sorted
+    }
+
+    // Simple main for quick manual testing
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        System.out.println(s.targetIndices(new int[]{1, 2, 5, 2, 3}, 2)); // [1, 2]
+        System.out.println(s.targetIndices(new int[]{1, 2, 5, 2, 3}, 3)); // [3]
+        System.out.println(s.targetIndices(new int[]{1, 2, 5, 2, 3}, 5)); // [4]
     }
 }
 ```
 
-**Counting‑Sort Variant (O(n) time, O(1) extra space)**
-
-```java
-public List<Integer> targetIndices(int[] nums, int target) {
-    // Frequency array for values 1..100
-    int[] freq = new int[101];
-    for (int x : nums) freq[x]++;
-
-    // Find the starting position of the target
-    int start = 0;
-    for (int v = 1; v < target; v++) start += freq[v];
-
-    // Number of occurrences of target
-    int count = freq[target];
-
-    List<Integer> ans = new ArrayList<>();
-    for (int i = 0; i < count; i++) ans.add(start + i);
-    return ans;
-}
-```
-
 ---
 
-### 3.2 Python
+### 2.2 Python 3
 
 ```python
+from typing import List
+
 class Solution:
     def targetIndices(self, nums: List[int], target: int) -> List[int]:
-        nums.sort()                     # O(n log n)
-        return [i for i, v in enumerate(nums) if v == target]
-```
-
-**Counting‑Sort Variant**
-
-```python
-class Solution:
-    def targetIndices(self, nums: List[int], target: int) -> List[int]:
-        freq = [0] * 101
-        for v in nums: freq[v] += 1
-
-        start = sum(freq[:target])      # sum of all values < target
-        count = freq[target]
-
-        return list(range(start, start + count))
-```
-
----
-
-### 3.3 C++
-
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-class Solution {
-public:
-    vector<int> targetIndices(vector<int>& nums, int target) {
-        sort(nums.begin(), nums.end());          // O(n log n)
-        vector<int> res;
-        for (int i = 0; i < (int)nums.size(); ++i)
-            if (nums[i] == target) res.push_back(i);
-        return res;
-    }
-};
-```
-
-**Counting‑Sort Variant**
-
-```cpp
-class Solution {
-public:
-    vector<int> targetIndices(vector<int>& nums, int target) {
-        int freq[101] = {0};
-        for (int v : nums) ++freq[v];
-
-        int start = 0;
-        for (int v = 1; v < target; ++v) start += freq[v];
-        int count = freq[target];
-
-        vector<int> ans;
-        for (int i = 0; i < count; ++i) ans.push_back(start + i);
-        return ans;
-    }
-};
-```
-
----
-
-## 4. Blog Article – “The Good, The Bad, and the Ugly of LeetCode 2089”
-
-### Title  
-**“Cracking LeetCode 2089: The Good, The Bad, and The Ugly – A Job‑Interview Friendly Guide”**
-
-### Meta‑Description  
-Learn how to master LeetCode 2089 – “Find Target Indices After Sorting Array”. This SEO‑optimized article covers the simplest solution, subtle pitfalls, and interview‑ready tricks. Get code in Java, Python, and C++ and boost your coding interview chances.
-
----
-
-### 1. Introduction
-
-LeetCode is the playground where job‑seekers sharpen their algorithmic muscles. Among the *“Easy”* problems, 2089 – **Find Target Indices After Sorting Array** – is deceptively simple but packed with subtle teaching moments. In this article we dissect the problem, reveal the cleanest solution, expose common mistakes, and present advanced tricks that can impress hiring managers.
-
----
-
-### 2. The Good – Why the Problem is a Great Interview Starter
-
-| Feature | Why It Matters |
-|---------|----------------|
-| **Clear, deterministic** | You’re given an array and a target; the task is well‑defined and there is only one correct output. |
-| **Minimal constraints** | `nums.length ≤ 100` – you can afford an `O(n log n)` solution without fear of timeouts. |
-| **Single pass after sorting** | A classic pattern: sort, then linear scan. Most interviewees nail this. |
-| **Easy to test** | Small inputs make it trivial to build unit tests and sanity‑check your code. |
-| **Language‑agnostic** | The same logic translates to Java, Python, C++, Go, etc., which is great for coding interviews that allow any language. |
-
-**Takeaway:** LeetCode 2089 is a perfect “warm‑up” problem that lets you focus on coding style and clarity, rather than algorithmic novelty.
-
----
-
-### 3. The Bad – Common Pitfalls and Anti‑Patterns
-
-1. **Ignoring the “sorted” requirement**  
-   *Many candidates try to find indices in the *original* array.*  
-   ```java
-   // ❌ Wrong: uses indices of unsorted array
-   for (int i = 0; i < nums.length; i++) {
-       if (nums[i] == target) ans.add(i);
-   }
-   ```
-   *Fix:* Sort first, then search.
-
-2. **Using built‑in methods incorrectly**  
-   In Java, `Arrays.binarySearch()` returns an arbitrary index if duplicates exist.  
-   *If you rely on that, you’ll miss preceding occurrences.*  
-   *Solution:* Perform a full linear scan after sorting.
-
-3. **Excessive memory use**  
-   Some solutions create a new array for the sorted copy, leading to `O(n)` extra memory when an in‑place sort suffices.
-
-4. **Over‑engineering**  
-   A 2‑line lambda solution in Python (`sorted(enumerate(nums), key=lambda x: x[1])`) is elegant but obscures the *sorting‑then‑scanning* pattern that interviewers expect.
-
-5. **Not handling “no target” cases**  
-   Returning an empty list is trivial, but forgetting to handle it gracefully can cause subtle bugs in production‑grade code.
-
----
-
-### 4. The Ugly – What to Avoid in Real Interviews
-
-| Bad Practice | Why it’s Ugly |
-|--------------|---------------|
-| **Hard‑coding the value range** | Assuming `nums[i] ≤ 100` and using a static frequency array may work for the test cases but is fragile for future changes. |
-| **Blindly using `Collections.sort()` on a list of primitive ints** | Java’s `Collections.sort()` works on `List<Integer>`, but autoboxing each element adds overhead and makes the code unreadable. |
-| **Ignoring time‑space trade‑offs** | A counting‑sort solution is faster but uses more lines and hides the algorithmic reasoning behind a “magic array” trick. |
-| **Writing untested code** | A missing `assert` or a single `System.out.println` in the final submission signals a lack of professionalism. |
-
----
-
-### 5. Interview‑Ready Tricks
-
-| Trick | Implementation Snippet | Why it matters |
-|-------|------------------------|----------------|
-| **Counting‑sort for bounded values** | ```int[] freq = new int[101];``` | O(n) time, O(1) extra space. Shows you can optimize when constraints permit. |
-| **One‑liner Java (but not recommended for interviews)** | ```return IntStream.range(0, nums.length).filter(i -> nums[i] == target).boxed().collect(Collectors.toList());``` | Demonstrates Java 8+ features, but keep it simple for a live interview. |
-| **Python generator** | ```indices = [i for i, v in enumerate(sorted(nums)) if v == target]``` | Concise, readable, uses Python idioms. |
-| **C++ STL** | ```sort(nums.begin(), nums.end()); for (int i = 0; i < nums.size(); ++i) if (nums[i] == target) res.push_back(i);``` | Shows you’re comfortable with STL containers. |
-
----
-
-### 6. Code Showcase
-
-> Below are clean, ready‑to‑paste implementations for Java, Python, and C++ that follow the canonical **sort‑then‑scan** pattern.  
-> Copy, paste, and run in your favourite IDE or LeetCode sandbox.
-
-```java
-// Java
-import java.util.*;
-
-public class Solution {
-    public List<Integer> targetIndices(int[] nums, int target) {
-        Arrays.sort(nums);
-        List<Integer> res = new ArrayList<>();
-        for (int i = 0; i < nums.length; i++) {
-            if (nums[i] == target) res.add(i);
-        }
-        return res;
-    }
-}
-```
-
-```python
-# Python
-class Solution:
-    def targetIndices(self, nums: List[int], target: int) -> List[int]:
+        """
+        Return indices of target after sorting the array.
+        """
+        # 1. Sort in place
         nums.sort()
-        return [i for i, v in enumerate(nums) if v == target]
+
+        # 2. Collect indices where element equals target
+        ans = [i for i, val in enumerate(nums) if val == target]
+        return ans
+
+# Quick manual tests
+if __name__ == "__main__":
+    s = Solution()
+    print(s.targetIndices([1, 2, 5, 2, 3], 2))  # [1, 2]
+    print(s.targetIndices([1, 2, 5, 2, 3], 3))  # [3]
+    print(s.targetIndices([1, 2, 5, 2, 3], 5))  # [4]
 ```
 
+---
+
+### 2.3 C++17
+
 ```cpp
-// C++
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
 public:
     vector<int> targetIndices(vector<int>& nums, int target) {
+        // 1. Sort the vector
         sort(nums.begin(), nums.end());
+
+        // 2. Gather target indices
         vector<int> ans;
-        for (int i = 0; i < nums.size(); ++i)
-            if (nums[i] == target) ans.push_back(i);
-        return ans;
+        for (int i = 0; i < (int)nums.size(); ++i) {
+            if (nums[i] == target) {
+                ans.push_back(i);          // 0‑based index
+            }
+        }
+        return ans;                       // already sorted
     }
 };
+
+// Simple driver for manual testing
+int main() {
+    Solution s;
+    vector<int> res1 = s.targetIndices({1,2,5,2,3}, 2);
+    vector<int> res2 = s.targetIndices({1,2,5,2,3}, 3);
+    vector<int> res3 = s.targetIndices({1,2,5,2,3}, 5);
+
+    auto printVec = [](const vector<int>& v){
+        cout << "[";
+        for (size_t i = 0; i < v.size(); ++i) {
+            if (i) cout << ", ";
+            cout << v[i];
+        }
+        cout << "]\n";
+    };
+
+    printVec(res1); // [1, 2]
+    printVec(res2); // [3]
+    printVec(res3); // [4]
+}
 ```
 
 ---
 
-### 7. Closing Thoughts – How This Problem Prepares You for the Next Round
+## 3.  SEO‑Optimized Blog Post
 
-* **Algorithmic clarity** – You learn to translate a problem statement into a concise plan (sort → scan).  
-* **Language idioms** – Each language’s standard library (Java `Arrays.sort`, Python `list.sort`, C++ `std::sort`) is exercised.  
-* **Edge‑case vigilance** – Handling empty results, duplicates, and small constraints is common in interviews.  
-* **Optimization mindset** – Recognizing when a counting‑sort or prefix sum can beat a generic sort shows depth.  
+> **Title**  
+> *LeetCode 2089 – Find Target Indices After Sorting Array: Java, Python & C++ Solutions + Interview Insights*
 
-Mastering LeetCode 2089 gives you a reliable “starter” that you can solve with style, and the skills you practice will carry over to harder problems like *“Find the Second Minimum Element”*, *“Find All Possible Results”*, and many array‑centric interview questions.
-
----
-
-### 8. Call‑to‑Action
-
-> **Want more interview‑ready solutions?**  
-> 👉 Subscribe to our newsletter for weekly LeetCode problem walkthroughs.  
-> 👉 Check out our GitHub repo for a complete collection of solutions in all major languages.  
-
-Happy coding, and may your indices always come sorted!
+> **Meta Description**  
+> Master LeetCode 2089 in seconds. Learn the easy algorithm, read detailed Java, Python, and C++ code, and discover interview‑friendly explanations that will impress recruiters.
 
 ---
 
-### 9. Keywords (for SEO)
+### 3.1 Introduction  
 
-* LeetCode 2089
-* Find Target Indices After Sorting Array
-* Java solution LeetCode 2089
-* Python solution LeetCode 2089
-* C++ solution LeetCode 2089
-* counting sort bounded values
-* interview algorithm sorting then scanning
-* LeetCode Easy problems
-* coding interview tips 2024
+If you’re preparing for a software‑engineering interview, **LeetCode 2089 – Find Target Indices After Sorting Array** is a perfect “low‑hanging fruit” to showcase your coding style, problem‑solving mindset, and language fluency.  
+This article walks you through:
+
+1. A clear problem statement and constraints.  
+2. Intuition behind the optimal solution.  
+3. Step‑by‑step algorithm and proof of correctness.  
+4. Java, Python, and C++ implementations with inline comments.  
+5. “The Good, The Bad, and The Ugly” – common pitfalls and how to avoid them.  
+6. Interview‑friendly talking points and why recruiters love this problem.
 
 ---
 
-### 10. References
+### 3.2 Problem Recap  
 
-1. LeetCode Official Problem 2089  
-2. “Cracking the Coding Interview” – Gayle Laakmann McDowell  
-3. Java 8 Stream API Tutorial  
-4. Python 3.9 Documentation – `list.sort()`  
-5. C++ STL `<algorithm>` – `std::sort`
+> **Goal** – Return all indices of `target` **after** sorting the input array in non‑decreasing order.  
+> **Output** – A sorted list of 0‑based indices, or an empty list if `target` is absent.  
 
----  
+With constraints `1 ≤ nums.length ≤ 100` and `1 ≤ nums[i], target ≤ 100`, the problem is easy on a technical level but tricky enough to show your understanding of sorting, scanning, and edge‑case handling.
 
-*End of article.*
+---
 
----  
+### 3.3 The Good
 
-With this guide, you’re armed with the cleanest code, an understanding of common mistakes, and interview‑ready tricks that demonstrate both breadth and depth. Good luck cracking LeetCode 2089—and the next round of your job search!
+* **Clear & Concise** – The statement is straightforward; you only need to sort and scan.  
+* **Small Data Size** – No worries about exceeding time limits; `O(n log n)` is more than fast enough.  
+* **Multiple Languages** – You can showcase proficiency in Java, Python, or C++ – all three are common interview languages.  
+* **Test‑Friendly** – You can write quick unit tests for each language, proving your code works for edge cases.
+
+---
+
+### 3.4 The Bad
+
+* **Sorting vs. Counting** – Some candidates over‑engineer by counting frequencies to achieve `O(n)`, but they lose the required “after sorting” property.  
+* **Wrong Indexing** – Off‑by‑one errors when collecting indices after sorting are common for beginners.  
+* **Ignoring Edge Cases** – Forgetting that the target might not exist or that all elements are the same can lead to subtle bugs.
+
+---
+
+### 3.5 The Ugly
+
+* **Mutable Inputs** – Sorting the input array mutates it. If the problem statement or your testing harness expects the original array to stay intact, you’ll be penalized.  
+* **Performance Myths** – Believing that `sort` is *always* the bottleneck, you might add unnecessary complexity (e.g., building a frequency map).  
+* **Code Readability** – A block of code that blindly sorts, loops, and appends without comments looks unprofessional to interviewers.
+
+---
+
+### 3.6 Step‑by‑Step Algorithm  
+
+```text
+1. Sort nums ascending.
+2. For each index i in 0…n‑1:
+       if nums[i] == target:
+           append i to answer list.
+3. Return answer list (already sorted).
+```
+
+**Why this works**  
+* Sorting guarantees that all `target` values are grouped together in the resulting array.  
+* Scanning in linear order collects the indices in ascending order automatically.  
+
+**Proof of Correctness** – See the “Proof of Correctness” section earlier; the loop only captures indices that match the target, and sorting preserves the relative positions.
+
+---
+
+### 3.7 Code Samples  
+
+*(Use the code blocks from Section 2 above. Remember to add explanatory comments if you’re writing in an interview environment.)*
+
+---
+
+### 3.8 Common Pitfalls & Fixes  
+
+| Pitfall | Fix |
+|---------|-----|
+| Mutating the input array | `int[] sorted = nums.clone();` before sorting. |
+| Off‑by‑one when appending | Use 0‑based `i` from `enumerate` (Python) or loop counter (Java/C++). |
+| Not handling missing target | Loop logic naturally returns empty list; no special case needed. |
+| Using `Arrays.sort(nums)` but forgetting `Collections` | Ensure you import `java.util.*` or `std::vector` utilities correctly. |
+
+---
+
+### 3.9 Interview Talking Points  
+
+1. **Explain the requirement** – “After sorting” means we cannot just count frequencies.  
+2. **Discuss time vs. space** – `O(n log n)` vs. `O(n)` – why `O(n)` counting would fail.  
+3. **Mention mutability** – Clarify that we’re allowed to modify the input or, if not, show a clone.  
+4. **Edge cases** – Talk through scenarios: no target, all targets, already sorted.  
+5. **Testing** – Show unit tests or quick assertions in your language of choice.  
+
+Recruiters love candidates who articulate their thought process, anticipate corner cases, and keep code clean.
+
+---
+
+### 3.10 Why Recruiters Love This Problem
+
+1. **Fast to Solve** – You can produce a working solution in under 5 minutes.  
+2. **Language Agnostic** – The same logic applies to Java, Python, and C++.  
+3. **Demonstrates Sorting Knowledge** – Sorting is a core algorithm taught in CS.  
+4. **Clear Evaluation** – Automated test cases produce deterministic outputs, making grading simple for the hiring manager.
+
+---
+
+### 3.11 Final Takeaway  
+
+*LeetCode 2089* may look trivial, but it’s a great “mini‑assignment” that checks for:
+
+* Sorting‑correctness  
+* Proper index collection  
+* Handling of missing or multiple target values  
+* Clean, language‑appropriate code
+
+Use the provided Java, Python, and C++ snippets as a template, but add your own comments, tests, and edge‑case checks to make your solution shine in any interview setting.
+
+Happy coding, and good luck on your next interview!  
+
+--- 
+
+### 4.  Conclusion  
+
+You now have:
+
+* A rigorous understanding of LeetCode 2089, complete with algorithm, proof, and complexity analysis.  
+* Ready‑to‑paste, commented code in **Java**, **Python**, and **C++**.  
+* A SEO‑optimized blog post that explains the problem, showcases the solution, and prepares you for interview questions.  
+
+Show this code in your portfolio, include it in your LeetCode “Discuss” threads, or present it in your next technical interview – either way, it’s a conversation starter that demonstrates both coding proficiency and a thoughtful problem‑solving approach. 🚀
+
+--- 
+
+**Happy coding!**

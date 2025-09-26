@@ -7,225 +7,277 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
+        # Find the Pivot Integer (LeetCode 2485) – A Complete Job‑Interview Guide  
 
-## 1.  The Code – 3 Languages in One
+> **SEO‑Optimized Title:**  
+> **“LeetCode 2485 – Find the Pivot Integer – Java / Python / C++ Solutions + Interview Tips”**  
 
-Below are three **ready‑to‑run** solutions for LeetCode #2485 – *Find the Pivot Integer*.  
-Each implementation follows the same O(1) math‑based logic, but they are written in Java, Python, and C++ so you can copy‑paste them into the language of your choice.
-
-> **Key Idea**  
-> Let  
-> *S(n) = 1 + 2 + … + n = n(n+1)/2*  
-> For a pivot *x* we need  
-> `S(x) = x(x+1)/2`  =  `S(n) – S(x-1)`  
-> Simplifying gives **x² = n(n+1)/2** → *x = sqrt(n(n+1)/2)*.  
-> If that square root is an integer, that integer is the pivot; otherwise there is no pivot.
+> **Meta Description:**  
+> Master LeetCode 2485 with clear explanations, O(1) math solutions, edge‑case handling, and code in Java, Python, and C++. Learn the “good, the bad, and the ugly” of this problem to ace your next coding interview.
 
 ---
 
-### Java
+## 1. Problem Overview
+
+> **Find the Pivot Integer**  
+> *Difficulty:* Easy (LeetCode 2485)  
+> **Goal**:  
+> For a given `n` (1 ≤ n ≤ 1000), find an integer `x` such that  
+
+```
+sum(1 … x)  ==  sum(x … n)
+```
+
+If no such integer exists, return `-1`.  
+It is guaranteed that there will be **at most one** pivot integer for any input.
+
+> **Example**  
+> `n = 8 → x = 6`  
+> `1 + 2 + 3 + 4 + 5 + 6 = 6 + 7 + 8 = 21`
+
+---
+
+## 2. Intuition & Math
+
+The sum of the first `k` natural numbers is `k(k+1)/2`.  
+Let:
+
+```
+S_total = n(n+1)/2          // sum(1 … n)
+S_left  = x(x+1)/2          // sum(1 … x)
+S_right = S_total - sum(1 … (x-1))
+```
+
+The pivot condition is:
+
+```
+S_left = S_right
+```
+
+Using the formula for sums:
+
+```
+x(x+1)/2 = n(n+1)/2 - (x-1)x/2
+```
+
+Simplify → `x² = n(n+1)/2`.  
+So the pivot integer is the **integer square root** of `n(n+1)/2`.  
+If that square root is an integer, it is the answer; otherwise, no pivot exists.
+
+---
+
+## 3. Algorithm (O(1) Time, O(1) Space)
+
+1. Compute `total = n*(n+1)/2`.  
+2. Compute `root = sqrt(total)` (double).  
+3. If `root` is an integer (`root == floor(root)`), return `(int)root`.  
+4. Otherwise return `-1`.
+
+Because `n ≤ 1000`, `total` fits comfortably in 32‑bit signed integers, and the square root is exact for all valid pivots.
+
+---
+
+## 4. Edge‑Case Handling
+
+| Case | Reason | Result |
+|------|--------|--------|
+| `n = 1` | `total = 1`, sqrt = 1 | Pivot = 1 |
+| `n = 4` | `total = 10`, sqrt ≈ 3.16 | No pivot → `-1` |
+| `n = 8` | `total = 36`, sqrt = 6 | Pivot = 6 |
+| Large `n` (e.g., 1000) | Still fits 32‑bit, sqrt ≈ 223.6 | `-1` (unless square) |
+
+---
+
+## 5. Good, Bad, and Ugly
+
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Mathematical elegance** | One line of math → constant time | Requires familiarity with arithmetic series | Relying on floating‑point sqrt can introduce precision errors if not handled carefully |
+| **Implementation** | Very short, clean code | None | Need to guard against integer overflow for larger constraints (not a problem here) |
+| **Scalability** | Works for any `n` that fits 64‑bit | None | If constraints changed (e.g., `n > 10⁹`), the formula still holds but you must use 64‑bit ints and double precision sqrt |
+| **Readability** | Clear, self‑documented | Some may prefer an explicit loop | Using `ceil(a)` to test integerness can be confusing; better use `Math.floor` or `root == (int)root` |
+
+---
+
+## 6. Alternative Approaches
+
+| Method | Complexity | Pros | Cons |
+|--------|------------|------|------|
+| **Iterative Search** (for‑loop 1…n) | O(n) | Simple, no math | Slower, unnecessary for `n ≤ 1000` |
+| **Binary Search on `x`** | O(log n) | Generalizable to other constraints | Overkill for an easy problem |
+| **Math + Integer Check** (preferred) | O(1) | Fastest, minimal code | Requires double → check for integer |
+
+---
+
+## 7. Code Implementations
+
+### Java (LeetCode Style)
 
 ```java
-//  LeetCode 2485 – Find the Pivot Integer (Java)
 class Solution {
     public int pivotInteger(int n) {
-        // Sum of 1..n
         int total = n * (n + 1) / 2;
-        // Exact integer square root of total
-        int root = (int) Math.round(Math.sqrt(total));
-
-        // Check that root*root == total (no floating point drift)
-        return (root * root == total) ? root : -1;
+        double root = Math.sqrt(total);
+        if (root == Math.floor(root)) {
+            return (int) root;
+        }
+        return -1;
     }
 }
 ```
 
----
-
-### Python
+### Python 3
 
 ```python
-#  LeetCode 2485 – Find the Pivot Integer (Python 3)
 class Solution:
     def pivotInteger(self, n: int) -> int:
-        total = n * (n + 1) // 2          # sum 1..n
-        root = int(round(total ** 0.5))   # integer square root
+        total = n * (n + 1) // 2
+        root = int(total ** 0.5)
         return root if root * root == total else -1
 ```
 
----
-
-### C++
+### C++ (C++17)
 
 ```cpp
-//  LeetCode 2485 – Find the Pivot Integer (C++)
 class Solution {
 public:
     int pivotInteger(int n) {
-        long long total = 1LL * n * (n + 1) / 2;           // sum 1..n
-        long long root  = llround(sqrt((long double)total)); // integer sqrt
-        return (root * root == total) ? (int)root : -1;
+        long long total = 1LL * n * (n + 1) / 2;
+        long long root = sqrt((long double)total);
+        return (root * root == total) ? root : -1;
     }
 };
 ```
 
-> **Why `llround` / `round`?**  
-> For safety against floating‑point drift we round the square root back to the nearest integer and then verify `root*root == total`.  
-> (With `n ≤ 1000` all arithmetic stays comfortably inside 64‑bit.)
+> **Tip:** In C++, cast to `long double` before calling `sqrt` to preserve precision for large values.
 
 ---
 
-## 2.  Blog Article – “The Good, The Bad, and The Ugly” of LeetCode 2485
+## 8. SEO‑Friendly Closing
 
-> **Title (SEO‑optimized):**  
-> **Find the Pivot Integer (LeetCode 2485) – Java, Python & C++ Solutions + Interview Insights**  
+**Key Takeaways for Interviewers & Recruiters**
 
-> **Meta description (SEO‑optimized):**  
-> Master LeetCode 2485 “Find the Pivot Integer” with clean O(1) Java, Python, and C++ code. Understand the math, pitfalls, and how to ace this problem in your next software‑engineering interview.  
-
-> **Keywords:** LeetCode 2485, Find the Pivot Integer, interview coding, Java solution, Python solution, C++ solution, algorithm interview, job interview, software engineer, O(1) algorithm, math trick.
+- The solution demonstrates **math fluency** and **O(1) thinking**—highly valued in technical interviews.
+- Clean, concise code in multiple languages shows **polyglot proficiency**.
+- Discussing edge cases and potential pitfalls (floating‑point precision) reflects **robustness**.
 
 ---
 
-### 1. Introduction
+## 9. Blog Post (Markdown)
 
-In the world of coding interviews, LeetCode’s “Find the Pivot Integer” (Problem 2485) is a deceptively simple *Easy* problem that often catches candidates off guard.  
-The goal is to find an integer `x` such that the sum of all integers from `1` to `x` equals the sum from `x` to `n`. If no such integer exists, return `-1`.  
+```markdown
+# LeetCode 2485 – Find the Pivot Integer (Java / Python / C++)
 
-> **Why this problem matters**  
-> 1. **Math intuition** – Demonstrates your ability to turn a verbal problem into algebra.  
-> 2. **Time/Space mastery** – Shows you can produce an O(1) solution.  
-> 3. **Precision handling** – Tests awareness of floating‑point quirks.
+*Difficulty:* Easy  
+*Time Complexity:* **O(1)**  
+*Space Complexity:* **O(1)**  
 
----
+## Problem Recap
 
-### 2. Problem Statement (Plain English)
+Given a positive integer `n`, find an integer `x` such that
 
-> *Given a positive integer `n` (1 ≤ n ≤ 1000), find the pivot integer `x` (1 ≤ x ≤ n) such that:*
-
-> `1 + 2 + … + x  =  x + (x+1) + … + n`
-
-> *Return `x`. If there is no such integer, return `-1`.*
-
----
-
-### 3. The Good – A Clean, O(1) Math‑Based Solution
-
-#### 3.1 Derivation
-
-1. Sum of first `k` integers: `S(k) = k(k+1)/2`.  
-2. Pivot condition: `S(x) = S(n) – S(x-1)`  
-   → `x(x+1)/2 = n(n+1)/2 – (x-1)x/2`  
-3. Simplify → `x² = n(n+1)/2`  
-4. Pivot candidate: `x = sqrt( n(n+1)/2 )`  
-
-If the square root is an integer, that integer is the pivot. Otherwise, no pivot exists.
-
-#### 3.2 Implementation Highlights
-
-- Compute `total = n*(n+1)/2`.  
-- Take an integer square root (`root = round(sqrt(total))`).  
-- Verify `root * root == total`.  
-- Return `root` or `-1`.
-
-All operations are **O(1)** in time and **O(1)** in space.
-
-#### 3.3 Code Snippets
-
-*(See the Java/Python/C++ code above.)*
-
----
-
-### 4. The Bad – A Naïve O(n) Loop
-
-A quick but inefficient approach is to loop through every `x` from `1` to `n`, compute both sums, and compare.  
-While correct, it runs in O(n) time, which is unnecessary for `n ≤ 1000` but still considered a *bad* solution because:
-
-- **Missed opportunity** to showcase mathematical thinking.  
-- In interview settings, a naïve solution may raise concerns about algorithmic efficiency.
-
-**Pseudo‑code**:
-
-```text
-for x in 1..n:
-    left  = x*(x+1)/2
-    right = total - (x-1)*x/2
-    if left == right: return x
-return -1
+```
+1 + 2 + … + x  =  x + (x+1) + … + n
 ```
 
+Return the pivot `x`; if none exists, return `-1`.  
+`1 <= n <= 1000`.
+
 ---
 
-### 5. The Ugly – Floating‑Point Pitfalls
+## Intuition
 
-If you compute the square root using a floating‑point type (`double` or `float`) and then cast to `int`, you risk:
+Using the formula for the sum of the first `k` natural numbers:
 
-- **Precision errors** (e.g., sqrt(36) might become 5.99999998).  
-- **Wrong pivot detection** (failing to recognize that 6 is a valid pivot).
+```
+sum(1 … k) = k(k+1)/2
+```
 
-**What to avoid**:
+The pivot condition turns into:
+
+```
+x² = n(n+1)/2
+```
+
+So the pivot is the integer square root of `n(n+1)/2`.
+
+---
+
+## Algorithm (O(1))
+
+1. `total = n*(n+1)/2`
+2. `root = sqrt(total)`
+3. If `root` is an integer → return `(int)root`
+4. Else → return `-1`
+
+---
+
+## Edge Cases
+
+- `n = 1` → pivot `1`
+- `n = 4` → `total = 10`, sqrt ≈ 3.16 → `-1`
+
+---
+
+## Good, Bad, Ugly
+
+| Good | Bad | Ugly |
+|------|-----|------|
+| One‑liner math | None | Floating‑point sqrt can be tricky |
+| Constant time |  | Must guard against overflow for larger `n` |
+| Clear code |  | `ceil(a)` vs `floor(a)` may confuse |
+
+---
+
+## Code (Java / Python / C++)
+
+**Java**
 
 ```java
-int root = (int) Math.sqrt(total); // unsafe
+class Solution {
+    public int pivotInteger(int n) {
+        int total = n * (n + 1) / 2;
+        double root = Math.sqrt(total);
+        if (root == Math.floor(root)) return (int) root;
+        return -1;
+    }
+}
 ```
 
-**What to do instead**:
+**Python**
 
-1. Round the square root (`Math.round()` / `llround`).  
-2. Verify with integer multiplication (`root * root == total`).
+```python
+class Solution:
+    def pivotInteger(self, n: int) -> int:
+        total = n * (n + 1) // 2
+        root = int(total ** 0.5)
+        return root if root * root == total else -1
+```
 
----
+**C++**
 
-### 6. Time & Space Complexity
-
-| Approach | Time | Space |
-|----------|------|-------|
-| O(1) Math | **O(1)** | **O(1)** |
-| Naïve loop | **O(n)** | **O(1)** |
-| Binary search | **O(log n)** | **O(1)** |
-
-Given `n ≤ 1000`, all solutions finish instantly, but the O(1) approach is the gold standard for interviews.
-
----
-
-### 7. Variations & Extensions
-
-1. **Large `n` (e.g., 10⁹)** – Use 64‑bit arithmetic to avoid overflow.  
-2. **Multiple test cases** – Precompute sums once if many queries share the same `n`.  
-3. **Floating‑point comparison** – For languages without integer sqrt, use `floor` + check or `isclose` in Python.
+```cpp
+class Solution {
+public:
+    int pivotInteger(int n) {
+        long long total = 1LL * n * (n + 1) / 2;
+        long long root = sqrt((long double)total);
+        return (root * root == total) ? root : -1;
+    }
+};
+```
 
 ---
 
-### 8. Interview Tips
+## Final Thoughts
 
-| Scenario | What to Say | Why it Helps |
-|----------|-------------|--------------|
-| Asked to code in Java | "I'll use the closed‑form derivation and verify the root with integer math." | Shows you understand the math and precision. |
-| Asked for complexity | "O(1) time and space, because we compute a single formula." | Demonstrates algorithmic efficiency. |
-| Asked about edge cases | "For `n = 1`, the pivot is 1; for `n` where `n(n+1)/2` is not a perfect square, we return -1." | Highlights comprehensive handling. |
-| Asked about overflow | "Since `n ≤ 1000`, 32‑bit ints are safe, but for safety I'd use long in C++/Java." | Shows defensive coding. |
+- This problem is a **great interview snippet**: it checks your math knowledge, coding brevity, and attention to edge cases.
+- Highlight the O(1) insight in your interview to impress recruiters.
+- Practice the same pattern on other “sum‑equal” problems to reinforce the technique.
 
----
-
-### 9. Conclusion
-
-LeetCode 2485 is a perfect interview playground to show off:
-
-- **Mathematical insight** (transform a sum equality into a simple equation).  
-- **Precision awareness** (avoid floating‑point drift).  
-- **Coding elegance** (compact, O(1) solution).
-
-By mastering this problem in Java, Python, and C++, you’re ready to impress hiring managers with clean, efficient code and a clear explanation—exactly the skill set that lands software‑engineering roles.
-
-> **Ready to ace your next interview?**  
-> Pull up the code snippets above, practice explaining the derivation, and watch recruiters nod in approval.
+Good luck cracking LeetCode 2485—and landing that tech job! 🚀
+```
 
 ---
 
-### 10. Final Thought
-
-> *Math is everywhere you can’t escape it.*  
-> By turning a seemingly arithmetic puzzle into an elegant algorithm, you’re not only solving a problem—you’re proving you can think like an engineer. Good luck! 🚀
-
----
+**End of Article**

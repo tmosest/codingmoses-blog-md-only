@@ -7,262 +7,286 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🧭 Shortest Path in a Grid with Obstacles Elimination (LeetCode 1293)
-
-> **Problem type:** Hard – BFS + State Tracking  
-> **Tags:** *Breadth‑First Search*, *Matrix*, *DP*, *Sliding Window*, *Path‑Finding*, *Dynamic Programming*  
-
----
-
-## 1. Problem Recap
-
-You are given an `m x n` grid (`grid[i][j] ∈ {0,1}`) where `0` is an empty cell and `1` is an obstacle.  
-You can move in the four cardinal directions (up, down, left, right) in one step.  
-You start at `(0,0)` and want to reach `(m-1, n-1)`.  
-
-You are allowed to eliminate **at most `k` obstacles**.  
-Return the *minimum number of steps* needed to reach the goal, or `-1` if it’s impossible.
-
-**Constraints**
-
-```
-1 ≤ m, n ≤ 40
-0 ≤ k ≤ m * n
-grid[0][0] == grid[m-1][n-1] == 0
-```
+        # Shortest Path in a Grid with Obstacles Elimination  
+**(LeetCode 1293 – Hard)**  
+*Python | Java | C++ – 3‑language solution + a job‑ready blog post*
 
 ---
 
-## 2. Why This Problem is a Good Interview Question
-
-| Good | Bad | Ugly |
-|------|-----|------|
-| **Good** – Demonstrates your ability to reason about **stateful BFS** and **multi‑dimensional visited** structures. | **Bad** – Many candidates forget that the same cell can be reached with a different number of remaining eliminations, leading to premature pruning. | **Ugly** – A naïve DFS + pruning will TLE; a DP without BFS will produce an incorrect answer because the *shortest* path may use more eliminations earlier than a longer but “cheaper” path later. |
-
----
-
-## 3. High‑Level Solution Idea
-
-1. **Breadth‑First Search (BFS)** guarantees the shortest path in an un‑weighted graph.  
-2. **State = (x, y, remaining‑k)**.  
-   * We need a 3‑D `visited` array `vis[x][y][rem]` to remember if we’ve already visited cell `(x,y)` with `rem` eliminations left.  
-3. Push the starting state `(0,0,k,0)` onto a queue (`steps` starts at `0`).  
-4. While the queue is not empty, pop the front state and explore its 4 neighbours:
-   * If the neighbour is an obstacle (`grid[nx][ny]==1`) **and** `rem>0`, we can step there after spending one elimination (`rem-1`).
-   * If the neighbour is empty, we just step there (`rem` stays the same).  
-5. If we reach `(m-1,n-1)` return the number of steps taken.  
-6. If the queue empties, return `-1`.
-
-The algorithm runs in **O(m × n × k)** time and the same order of space for the visited array – which is perfectly fine for the given limits (`m,n ≤ 40`).
+## Table of Contents  
+1. [Problem Overview](#problem-overview)  
+2. [Key Insights & Greedy “No‑Go”](#key-insights)  
+3. [Algorithm Design](#algorithm-design)  
+4. [Complexity Analysis](#complexity-analysis)  
+5. [Implementation in 3 Languages](#implementations)  
+   * Java – 3‑D visited + BFS  
+   * Python – `collections.deque` + 3‑D visited  
+   * C++ – `struct` + `queue` + 3‑D visited  
+6. [The Good, The Bad, and The Ugly](#good-bad-ugly)  
+7. [SEO‑Ready Summary & Takeaway for Interviewers](#seo-summary)  
+8. [Further Reading & Resources](#resources)  
 
 ---
 
-## 4. Corner Cases & Gotchas
+## <a name="problem-overview"></a>Problem Overview  
 
-| Scenario | Why it matters | Fix |
-|----------|----------------|-----|
-| `k` is very large (`k >= m+n-2`) | You could walk the Manhattan path ignoring all obstacles. | Early exit: `if (k >= m+n-2) return m+n-2;` |
-| The grid is 1×1 | Start == end | Return `0` immediately. |
-| Large `k` but we use `int[][][] vis = new int[m][n][k+1]` | Memory blow‑up (max 40×40×1600≈2.5M ints → ~10 MB). | Acceptable, but be mindful if you push to >200 k. |
-| Forget to check bounds | Index out of bounds during neighbour exploration. | `0 ≤ nx < m && 0 ≤ ny < n` |
-| Re‑visiting a cell with *more* remaining eliminations is always better | We should **not** prune a state if we reach the same cell with *fewer* eliminations left. | Use a 3‑D boolean `visited`; no comparison of remaining k is needed. |
+You’re given a 2‑D grid (`m × n`) consisting of 0s (free cells) and 1s (obstacles).  
+You can move **up, down, left, right** in one step.  
+You start at `(0,0)` and want to reach `(m‑1,n‑1)` as fast as possible.  
+
+You’re allowed to destroy **at most `k` obstacles** (turn a 1 into a 0).  
+If it’s impossible to reach the goal, return `-1`.
+
+> **Examples**  
+> 1. `grid = [[0,0,0],[1,1,0],[0,0,0],[0,1,1],[0,0,0]]`, `k = 1` → `6`  
+> 2. `grid = [[0,1,1],[1,1,1],[1,0,0]]`, `k = 1` → `-1`
+
+Constraints (`1 ≤ m,n ≤ 40`, `1 ≤ k ≤ m × n`).
 
 ---
 
-## 5. Reference Implementation – Java
+## <a name="key-insights"></a>Key Insights – “No‑Go” Strategy  
+
+| Insight | Why it matters |
+|---------|----------------|
+| **BFS guarantees shortest path** | Because each move has equal cost (1). |
+| **State must include remaining eliminations** | The same cell can be reached via a path that used fewer eliminations, giving more flexibility later. |
+| **Prune impossible states early** | Visiting a cell with *more* remaining eliminations is always better. |
+| **3‑D visited array** | Keeps track of `(x, y, remaining_k)` combos, preventing exponential blow‑up. |
+
+---
+
+## <a name="algorithm-design"></a>Algorithm Design  
+
+1. **Queue entry** – `State(x, y, remaining_k, steps)`.  
+2. **Visited** – `visited[x][y][remaining_k]` (boolean).  
+3. **Initialize** – push `(0,0,k,0)`; mark visited.  
+4. **While queue not empty**  
+   * Pop front.  
+   * If `(x,y)` is target → return `steps`.  
+   * For each of 4 directions:  
+     * If out of bounds → skip.  
+     * If next cell is obstacle (`grid[nx][ny]==1`) and `remaining_k>0` → decrement and enqueue.  
+     * If next cell is free (`grid[nx][ny]==0`) → enqueue with same `remaining_k`.  
+     * Enqueue only if that state hasn’t been visited yet.  
+5. **Return `-1`** if BFS exhausts all possibilities.
+
+> **Why 3‑D visited works**  
+> For a fixed cell `(x,y)`, only the *highest* remaining eliminations matter.  
+> If we reach the same cell with fewer remaining eliminations, it can’t lead to a better outcome.  
+> Thus we store the exact remaining count; the first visit for each `(x,y,remaining_k)` is optimal.
+
+---
+
+## <a name="complexity-analysis"></a>Complexity Analysis  
+
+|  | Time | Space |
+|--|------|-------|
+| **BFS (3‑D visited)** | `O(m × n × (k+1))` worst‑case (each state processed once) | `O(m × n × (k+1))` for visited + queue |
+
+With `m,n ≤ 40` and `k ≤ m × n`, this is comfortably within limits (≈ 40 × 40 × 1600 ≈ 2.5 M states).
+
+---
+
+## <a name="implementations"></a>Implementations in 3 Languages  
+
+### 1️⃣ Java
 
 ```java
 import java.util.*;
 
-/**
- * LeetCode 1293. Shortest Path in a Grid with Obstacles Elimination
- */
 public class Solution {
     private static final int[][] DIRS = {
-            {1, 0}, {-1, 0}, {0, 1}, {0, -1}
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1}
     };
 
     public int shortestPath(int[][] grid, int k) {
         int m = grid.length, n = grid[0].length;
-        // Early exit when k is enough to ignore all obstacles
-        if (k >= m + n - 2) return m + n - 2;
+        if (m == 1 && n == 1) return 0;
 
         boolean[][][] visited = new boolean[m][n][k + 1];
-        Queue<int[]> q = new ArrayDeque<>();
-        // state: {x, y, remaining_k}
-        q.offer(new int[]{0, 0, k});
+        Queue<State> q = new ArrayDeque<>();
+        q.offer(new State(0, 0, k, 0));
         visited[0][0][k] = true;
-        int steps = 0;
 
         while (!q.isEmpty()) {
-            int size = q.size();
-            for (int i = 0; i < size; ++i) {
-                int[] cur = q.poll();
-                int x = cur[0], y = cur[1], rem = cur[2];
-                if (x == m - 1 && y == n - 1) return steps;
+            State cur = q.poll();
+            int x = cur.x, y = cur.y, remaining = cur.rem, steps = cur.steps;
 
-                for (int[] d : DIRS) {
-                    int nx = x + d[0], ny = y + d[1];
-                    if (nx < 0 || nx >= m || ny < 0 || ny >= n) continue;
+            for (int[] d : DIRS) {
+                int nx = x + d[0], ny = y + d[1];
+                if (nx < 0 || nx >= m || ny < 0 || ny >= n) continue;
 
-                    int nrem = rem - grid[nx][ny];
-                    if (nrem < 0) continue;   // no eliminations left for this obstacle
+                int nextRem = remaining;
+                if (grid[nx][ny] == 1) {
+                    if (remaining == 0) continue;
+                    nextRem--;
+                }
 
-                    if (!visited[nx][ny][nrem]) {
-                        visited[nx][ny][nrem] = true;
-                        q.offer(new int[]{nx, ny, nrem});
-                    }
+                if (nx == m - 1 && ny == n - 1) return steps + 1;
+                if (!visited[nx][ny][nextRem]) {
+                    visited[nx][ny][nextRem] = true;
+                    q.offer(new State(nx, ny, nextRem, steps + 1));
                 }
             }
-            steps++;
         }
-        return -1;   // unreachable
+        return -1;
+    }
+
+    private static class State {
+        int x, y, rem, steps;
+        State(int x, int y, int rem, int steps) {
+            this.x = x; this.y = y; this.rem = rem; this.steps = steps;
+        }
     }
 }
 ```
 
+> **Why it’s clean** – `visited` is a 3‑D `boolean`, queue stores a lightweight `State`.  
+> The `DIRS` array keeps movement logic separate.
+
 ---
 
-## 6. Reference Implementation – Python
+### 2️⃣ Python
 
 ```python
 from collections import deque
 from typing import List
 
 class Solution:
+    DIRS = [(1,0), (-1,0), (0,1), (0,-1)]
+
     def shortestPath(self, grid: List[List[int]], k: int) -> int:
         m, n = len(grid), len(grid[0])
-        if k >= m + n - 2:
-            return m + n - 2
+        if m == 1 and n == 1:
+            return 0
 
-        visited = [[[False] * (k + 1) for _ in range(n)] for _ in range(m)]
-        q = deque([(0, 0, k)])          # (x, y, remaining_k)
+        visited = [[[False] * (k+1) for _ in range(n)] for _ in range(m)]
+        q = deque([(0, 0, k, 0)])          # (x, y, remaining_k, steps)
         visited[0][0][k] = True
-        steps = 0
-        dirs = [(1,0),(-1,0),(0,1),(0,-1)]
 
         while q:
-            for _ in range(len(q)):
-                x, y, rem = q.popleft()
-                if x == m - 1 and y == n - 1:
-                    return steps
-                for dx, dy in dirs:
-                    nx, ny = x + dx, y + dy
-                    if 0 <= nx < m and 0 <= ny < n:
-                        nrem = rem - grid[nx][ny]
-                        if nrem < 0:
+            x, y, rem, steps = q.popleft()
+            for dx, dy in self.DIRS:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < m and 0 <= ny < n:
+                    next_rem = rem
+                    if grid[nx][ny] == 1:
+                        if rem == 0:
                             continue
-                        if not visited[nx][ny][nrem]:
-                            visited[nx][ny][nrem] = True
-                            q.append((nx, ny, nrem))
-            steps += 1
+                        next_rem -= 1
+                    if nx == m-1 and ny == n-1:
+                        return steps + 1
+                    if not visited[nx][ny][next_rem]:
+                        visited[nx][ny][next_rem] = True
+                        q.append((nx, ny, next_rem, steps + 1))
         return -1
 ```
 
+> **Pythonic touches** – `deque` for O(1) pops/pushes, list comprehension for 3‑D visited.
+
 ---
 
-## 7. Reference Implementation – C++
+### 3️⃣ C++
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
+struct State {
+    int x, y, rem, steps;
+    State(int _x, int _y, int _rem, int _steps)
+        : x(_x), y(_y), rem(_rem), steps(_steps) {}
+};
+
 class Solution {
+    const int DIRS[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
 public:
     int shortestPath(vector<vector<int>>& grid, int k) {
         int m = grid.size(), n = grid[0].size();
-        if (k >= m + n - 2) return m + n - 2;
+        if (m == 1 && n == 1) return 0;
 
-        vector<vector<vector<bool>>> vis(m,
-            vector<vector<bool>>(n, vector<bool>(k + 1, false)));
-        queue<tuple<int,int,int>> q;                // x, y, remaining_k
-        q.emplace(0, 0, k);
-        vis[0][0][k] = true;
+        vector<vector<vector<bool>>> visited(
+            m, vector<vector<bool>>(n, vector<bool>(k+1, false))
+        );
+        queue<State> q;
+        q.emplace(0, 0, k, 0);
+        visited[0][0][k] = true;
 
-        int steps = 0;
-        const int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
         while (!q.empty()) {
-            for (int sz = q.size(); sz > 0; --sz) {
-                auto [x, y, rem] = q.front(); q.pop();
-                if (x == m-1 && y == n-1) return steps;
-                for (auto &d : dirs) {
-                    int nx = x + d[0], ny = y + d[1];
-                    if (nx < 0 || nx >= m || ny < 0 || ny >= n) continue;
-                    int nrem = rem - grid[nx][ny];
-                    if (nrem < 0) continue;
-                    if (!vis[nx][ny][nrem]) {
-                        vis[nx][ny][nrem] = true;
-                        q.emplace(nx, ny, nrem);
-                    }
+            State cur = q.front(); q.pop();
+            int x = cur.x, y = cur.y, rem = cur.rem, steps = cur.steps;
+
+            for (auto &d : DIRS) {
+                int nx = x + d[0], ny = y + d[1];
+                if (nx < 0 || nx >= m || ny < 0 || ny >= n) continue;
+
+                int next_rem = rem;
+                if (grid[nx][ny] == 1) {
+                    if (rem == 0) continue;
+                    next_rem--;
+                }
+
+                if (nx == m-1 && ny == n-1) return steps + 1;
+                if (!visited[nx][ny][next_rem]) {
+                    visited[nx][ny][next_rem] = true;
+                    q.emplace(nx, ny, next_rem, steps + 1);
                 }
             }
-            ++steps;
         }
-        return -1;   // unreachable
+        return -1;
     }
 };
 ```
 
----
-
-## 8. Optional Optimisation – Dijkstra‑like Greedy
-
-If you’re looking for a *micro‑performance tweak*, notice that we *only* need to know the **minimum remaining‑k** for each `(x,y)`.  
-A small 2‑D DP can store the *minimum obstacle count* seen so far on a path to `(x,y)`.  
-If that value ≤ `k` at the end, the Manhattan distance is the answer.  
-However, this approach still requires BFS because the shortest path might not minimise the obstacle count.  
-So keep the 3‑D BFS; it’s already optimal.
+> **C++‑style** – a `struct` that holds only primitive types, `vector` for 3‑D visited, `queue` for BFS.
 
 ---
 
-## 8. Summary
+## <a name="good-bad-ugly"></a>The Good, The Bad, and The Ugly  
 
-| Aspect | Java | Python | C++ |
-|--------|------|--------|-----|
-| **Time** | O(m × n × k) | O(m × n × k) | O(m × n × k) |
-| **Space** | O(m × n × k) (bool visited) | O(m × n × k) | O(m × n × k) |
-| **Key idea** | BFS + 3‑D visited | BFS + 3‑D visited | BFS + 3‑D visited |
-| **Typical pitfall** | Forget that the same cell can be visited with different remaining `k`. | Same | Same |
+| Stage | What’s Good | What to avoid (Bad) | Ugly patterns to watch out for |
+|-------|-------------|---------------------|--------------------------------|
+| **Data‑Structure Choice** | 3‑D visited → O(1) look‑ups | Using a *set of tuples* (`(x,y,rem)`) in Python adds a log‑factor and slows memory. | Declaring `int[][][]` in Java and forgetting to multiply by `(k+1)` leads to `ArrayIndexOutOfBoundsException`. |
+| **State Pruning** | Check `if !visited[nx][ny][next_rem]` before enqueueing | Neglecting this results in *duplicate work* (exponential time). | Destroying an obstacle but still enqueuing the *same* `(x,y,rem)` state → endless loops. |
+| **Early Exit** | Return immediately once you pop the target | Returning only after the loop finishes may miss the shortest solution. | Forgetting to handle the `1×1` grid edge case → wrong answer on small test. |
+| **Coding Style** | Keep directions in a separate constant, use `struct / dataclass` for the state | Mixing logic with I/O boilerplate makes debugging hard. | Using recursion + memoization (DFS) instead of BFS → hard to prove optimality. |
 
----
-
-## 8. How to Use This Solution for a Job Interview
-
-1. **Start with the early‑exit** (`k >= m+n-2`).  
-2. Explain that **state** is `tuple(x, y, remaining_k)` and that the queue is level‑by‑level.  
-3. Emphasise that the **visited** array is 3‑D *and* **boolean** – no extra comparison is required.  
-4. Mention the time/space trade‑offs and why the algorithm is still “Hard” even though the code is only ~30 lines.  
-5. Bonus: show a quick “why not DFS” reasoning.  
-
-> **Tip:** Interviewers love concise code. Keep the queue `int[]` (Java), `tuple` (C++), or `tuple`/`deque` (Python) to avoid heavy object overhead.
+> **Bottom line** – A *correct* BFS + 3‑D visited is both elegant and fast.  
+> The “ugly” approaches (DFS + memo, priority queue with `k` as priority) may pass small tests but fail on the worst‑case, and are harder to explain in an interview.
 
 ---
 
-## 9. Final Takeaway
+## <a name="seo-summary"></a>SEO‑Ready Summary for Interviewers  
 
-The “Shortest Path in a Grid with Obstacles Elimination” problem is the perfect blend of classic BFS and stateful DP.  
-Mastering it demonstrates:
+- **Keyword‑dense headline**: “Shortest Path in Grid with Obstacles Elimination – LeetCode 1293 – BFS / Java / Python / C++”
+- **Meta description**:  
+  > “Learn the hardest LeetCode 1293 solution in three languages. Understand why BFS + 3‑D visited is optimal, and discover common pitfalls that can make or break your coding interview.”
+- **Focus points for hiring managers**:  
+  * Correct use of BFS for shortest paths  
+  * Proper state‑tracking (cell + remaining eliminations)  
+  * Memory‑efficient 3‑D visited array  
+  * Edge‑case handling (1×1 grid, no obstacles, `k=0`)  
 
-* A clear grasp of graph traversal principles.  
-* Comfort with multi‑dimensional dynamic programming structures.  
-* Awareness of common pitfalls that lead to TLE or WA.  
-
-And **most importantly** – it’s a *show‑off* question for your next technical interview!  
-
----
-
-## 10. Resources
-
-| Link | Description |
-|------|--------------|
-| [LeetCode 1293](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/) | Official problem page (test cases, discussion) |
-| [GFG – Shortest Path in Grid With Obstacles Elimination](https://www.geeksforgeeks.org/shortest-path-grid-obstacles-elimination/) | Detailed editorial with pseudocode |
-| [GitHub – LeetCode 1293 Solutions](https://github.com/yangbaiy/LeetCode) | Community‑written solutions (Java, Python, C++) |
+> By presenting a *polished* multi‑language solution and discussing the “good, bad, ugly” aspects, you demonstrate not only algorithmic skill but also **software‑engineering mindset**—exactly what interviewers look for.
 
 ---
 
-## 🎯 1‑Minute Summary
+## <a name="resources"></a>Further Reading & Resources  
 
-> *Use a BFS where each queue entry is `(x, y, remaining‑k)`. A 3‑D `visited` array guarantees that you won’t prune a better state. The algorithm runs in `O(m × n × k)` time and the same space – easily within the limits for `m, n ≤ 40`.*
+| Resource | Topic |
+|----------|-------|
+| [LeetCode 1293 – Discussion](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/discuss/) | Community solutions, edge‑case tricks |
+| [Graph BFS Basics – Big O](https://www.geeksforgeeks.org/breadth-first-search-or-bfs-for-a-graph/) | BFS fundamentals |
+| [Three‑Dimensional Visited Array Pattern](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/discuss/520876/3-D-visited) | Why we need the third dimension |
+| [Coding Interviews – LeetCode Hard Problems](https://leetcode.com/tag/graph/) | More grid‑based hard questions |
 
-Good luck on your next interview, and feel free to drop a comment if you’d like a deeper dive into the math behind state‑ful BFS! 🚀
+---
+
+### TL;DR for Your Resume / Portfolio  
+
+> *“I solved LeetCode 1293 (Shortest Path in a Grid with Obstacles Elimination) using an optimal BFS that tracks remaining obstacle‑eliminations in a 3‑D visited array. The solution runs in `O(m·n·k)` time and memory, works in Java, Python, and C++, and is a proven interview‑favorite.”*
+
+Add this to your **GitHub Gist**, **LeetCode Profile**, or **coding‑interview blog** to show recruiters you’re ready for graph‑search challenges.  
+
+Good luck – and remember: *BFS + state* is the recipe for all shortest‑path grid problems! 🚀

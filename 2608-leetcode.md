@@ -7,445 +7,354 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🎯 Shortest Cycle in a Graph – 2608 (LeetCode)  
-> **TL;DR**  
-> *Shortest Cycle in an undirected graph can be found in *O(n · (m + n))* time by running a BFS from every vertex.  
-> For LeetCode‑style constraints (`n ≤ 1000`, `m ≤ 1000`) this is fast, clear, and interview‑friendly.*
+        ## 🚀 LeetCode 2608 – Shortest Cycle in a Graph  
+> “The Good, The Bad, and The Ugly” – A full‑stack guide (Java | Python | C++) + a job‑ready SEO‑optimized blog post
 
 ---
 
-## 📚 Problem Recap
+### 1. Problem Recap  
+> **Given** a *bi‑directional* undirected graph with `n` vertices (`0 … n-1`) and `edges` (`[ui, vi]`).  
+> **Return** the length of the *shortest* cycle.  
+> If the graph is acyclic, return `-1`.
 
-> **Input**  
-> * `n` – number of vertices (`0 … n‑1`)  
-> * `edges` – list of undirected edges `[u, v]` (no self‑loops, no multi‑edges)  
-> **Output**  
-> * Length of the shortest cycle in the graph or `-1` if no cycle exists.
-
-> **Examples**  
-> 1. `n = 7, edges = [[0,1],[1,2],[2,0],[3,4],[4,5],[5,6],[6,3]] → 3`  
-> 2. `n = 4, edges = [[0,1],[0,2]] → -1`
-
----
-
-## 🔍 Why BFS From Every Vertex?
-
-1. **Cycle detection** – In an undirected graph, a cycle is discovered the first time we encounter a previously visited vertex that isn’t the parent of the current vertex.
-2. **Shortest cycle** – If we start BFS from every possible vertex and keep the minimum cycle length we find, we’re guaranteed to see the globally shortest cycle.  
-   *When a cycle is found, the sum of the distances of the two meeting nodes plus one is the cycle length.*
-
-> **Complexity**  
-> *Time:* `O(n·(m + n))` – for each start vertex we run a linear‑time BFS.  
-> *Space:* `O(m + n)` – adjacency list + distance array.  
-> With the LeetCode limits this is easily fast enough (≈ 10⁶ operations).
+Constraints (LeetCode):  
+```
+2 ≤ n ≤ 1000
+1 ≤ edges.length ≤ 1000
+0 ≤ ui, vi < n
+ui ≠ vi
+no parallel edges
+```
 
 ---
 
-## 💻 Code Implementations
+## 2. Why this problem is a *gold‑mine* for interviews
 
-> All three solutions use the same logic: build an adjacency list, run BFS from each vertex, keep the smallest cycle length.
+| ✅  | Reason |
+|-----|--------|
+| 🔍  | It forces you to think about graph traversal, distance tracking, and cycle detection in one sweep. |
+| 💬  | Discussable – DFS vs. BFS, time/space trade‑offs, graph representations. |
+| 🎯  | Solvable in O(n·(n+m)) with simple BFS – perfect for a 5‑minute coding interview. |
+| 📚  | You can showcase your mastery of BFS, queues, and clean code patterns. |
 
-### 1️⃣ Java
+---
+
+## 3. The “Good” – A clean, BFS‑based solution
+
+### 3.1 Intuition
+
+1. **Root the BFS at every vertex**.  
+2. Keep two arrays:  
+   * `dist[v]` – distance from the root to `v`.  
+   * `parent[v]` – the node from which we first discovered `v`.  
+3. While exploring an edge `u – v`:  
+   * If `v` is unvisited → set its distance and parent.  
+   * If `v` is already visited **and** `parent[u] != v` → a cycle is detected.  
+     The cycle length is `dist[u] + dist[v] + 1`.  
+
+Because BFS explores vertices in increasing distance from the root, the first time we find a non‑parent neighbor we’re guaranteed to have the *shortest* cycle that passes through the root. Repeating for all roots gives the global minimum.
+
+### 3.2 Complexity
+
+| | Time | Space |
+|---|------|-------|
+| For a single BFS | `O(n + m)` | `O(n)` |
+| For all roots | `O(n · (n + m))` | `O(n)` (reused per BFS) |
+
+With `n, m ≤ 1000`, this is comfortably fast.
+
+---
+
+## 4. The “Bad” – Common pitfalls
+
+| ⚠️ | Pitfall | Fix |
+|----|----------|-----|
+| **Infinite loop** | Forget to mark visited nodes before enqueueing. | Use a `dist` array initialized to `-1` and check before enqueue. |
+| **Wrong cycle length** | Mixing up the parent check (`dist[u] <= dist[v]` vs `parent[u] != v`). | Explicitly compare parents; or, if using only `dist`, keep the invariant `dist[u] <= dist[v]` when a cycle is found. |
+| **TLE** | Using a naïve adjacency matrix for `n=1000`. | Use adjacency lists. |
+| **Incorrect handling of disconnected components** | Skipping nodes that are never reached from the chosen root. | Iterate over **all** nodes as roots. |
+
+---
+
+## 5. The “Ugly” – When you go overboard
+
+- Mixing DFS and BFS code in the same function – leads to hard‑to‑read logic.  
+- Using recursion for BFS (queue stored in a list) – can be confusing.  
+- Hard‑coding “infinite” as a magic number (`1e9`) instead of a clear constant.  
+- Writing separate helper classes for the three languages without a single shared design pattern.  
+
+*Lesson:* Keep the implementation *simple* and *documented*. A clean queue‑based BFS is the most maintainable solution.
+
+---
+
+## 6. Reference Implementations  
+
+Below you’ll find **three** fully‑commented solutions.  
+All three follow the same BFS strategy, just adapted to Java, Python, and C++ idioms.
+
+> **Tip:** For your portfolio or GitHub, copy the language you’re most comfortable with and add it to a “graph‑algorithms” folder.
+
+---
+
+### 6.1 Java 17
 
 ```java
 import java.util.*;
 
 public class Solution {
+    // Infinity sentinel – larger than any possible cycle length
+    private static final int INF = 1_000_000_000;
+
     public int findShortestCycle(int n, int[][] edges) {
         // Build adjacency list
-        List<List<Integer>> g = new ArrayList<>();
-        for (int i = 0; i < n; i++) g.add(new ArrayList<>());
+        List<List<Integer>> graph = new ArrayList<>(n);
+        for (int i = 0; i < n; ++i) graph.add(new ArrayList<>());
         for (int[] e : edges) {
-            g.get(e[0]).add(e[1]);
-            g.get(e[1]).add(e[0]);
+            graph.get(e[0]).add(e[1]);
+            graph.get(e[1]).add(e[0]);
         }
 
-        int INF = Integer.MAX_VALUE;
         int best = INF;
 
-        for (int start = 0; start < n; start++) {
-            int[] dist = new int[n];
-            Arrays.fill(dist, -1);
-            dist[start] = 0;
-
-            Queue<Integer> q = new ArrayDeque<>();
-            q.offer(start);
-
-            while (!q.isEmpty()) {
-                int u = q.poll();
-                for (int v : g.get(u)) {
-                    if (dist[v] == -1) {                 // unvisited
-                        dist[v] = dist[u] + 1;
-                        q.offer(v);
-                    } else if (dist[u] <= dist[v]) {      // meet in a cycle
-                        best = Math.min(best, dist[u] + dist[v] + 1);
-                    }
-                }
-            }
+        // Run BFS from every vertex as the root
+        for (int root = 0; root < n; ++root) {
+            best = Math.min(best, bfs(root, graph, n));
         }
 
         return best == INF ? -1 : best;
     }
+
+    /** BFS from root, returns shortest cycle that passes through root, or INF if none. */
+    private int bfs(int root, List<List<Integer>> graph, int n) {
+        int[] dist = new int[n];
+        Arrays.fill(dist, -1);          // -1 → unvisited
+        Queue<Integer> q = new ArrayDeque<>();
+        q.offer(root);
+        dist[root] = 0;
+
+        while (!q.isEmpty()) {
+            int u = q.poll();
+            for (int v : graph.get(u)) {
+                if (dist[v] == -1) {          // first time visiting v
+                    dist[v] = dist[u] + 1;
+                    q.offer(v);
+                } else if (dist[u] <= dist[v]) {   // visited and not parent
+                    // We found a cycle: u → … → v → u
+                    return dist[u] + dist[v] + 1;
+                }
+            }
+        }
+        return INF;  // no cycle involving root
+    }
 }
 ```
 
-> **Why `dist[u] <= dist[v]`?**  
-> We only count the cycle when the two vertices were discovered on the *same* BFS level or the current vertex is not deeper than its partner. This guarantees we don’t double‑count a cycle.
-
 ---
 
-### 2️⃣ Python
+### 6.2 Python 3
 
 ```python
 from collections import deque
 from typing import List
 
 class Solution:
+    INF = 10 ** 9
+
     def findShortestCycle(self, n: int, edges: List[List[int]]) -> int:
-        # Build adjacency list
+        # adjacency list
         g = [[] for _ in range(n)]
         for u, v in edges:
             g[u].append(v)
             g[v].append(u)
 
-        INF = float('inf')
-        best = INF
+        best = self.INF
 
-        for start in range(n):
-            dist = [-1] * n
-            dist[start] = 0
-            q = deque([start])
+        for root in range(n):
+            best = min(best, self._bfs(root, g, n))
 
-            while q:
-                u = q.popleft()
-                for v in g[u]:
-                    if dist[v] == -1:                 # unvisited
-                        dist[v] = dist[u] + 1
-                        q.append(v)
-                    elif dist[u] <= dist[v]:          # cycle found
-                        best = min(best, dist[u] + dist[v] + 1)
+        return -1 if best == self.INF else best
 
-        return -1 if best == INF else best
+    def _bfs(self, root: int, g: List[List[int]], n: int) -> int:
+        dist = [-1] * n
+        q = deque([root])
+        dist[root] = 0
+
+        while q:
+            u = q.popleft()
+            for v in g[u]:
+                if dist[v] == -1:                     # first visit
+                    dist[v] = dist[u] + 1
+                    q.append(v)
+                elif dist[u] <= dist[v]:              # visited & not parent
+                    return dist[u] + dist[v] + 1
+        return self.INF
 ```
 
 ---
 
-### 3️⃣ C++
+### 6.3 C++ (ISO C++20)
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
+#include <vector>
+#include <queue>
+#include <algorithm>
+#include <cstring>
 
 class Solution {
+    static constexpr int INF = 1'000'000'000;
+
 public:
-    int findShortestCycle(int n, vector<vector<int>>& edges) {
-        vector<vector<int>> g(n);
-        for (auto &e : edges) {
+    int findShortestCycle(int n, std::vector<std::vector<int>>& edges) {
+        // Build adjacency list
+        std::vector<std::vector<int>> g(n);
+        for (const auto &e : edges) {
             g[e[0]].push_back(e[1]);
             g[e[1]].push_back(e[0]);
         }
 
-        const int INF = 1e9;
         int best = INF;
 
-        for (int start = 0; start < n; ++start) {
-            vector<int> dist(n, -1);
-            dist[start] = 0;
-            queue<int> q;
-            q.push(start);
+        for (int root = 0; root < n; ++root)
+            best = std::min(best, bfs(root, g, n));
 
-            while (!q.empty()) {
-                int u = q.front(); q.pop();
-                for (int v : g[u]) {
-                    if (dist[v] == -1) {             // unvisited
-                        dist[v] = dist[u] + 1;
-                        q.push(v);
-                    } else if (dist[u] <= dist[v]) { // cycle detected
-                        best = min(best, dist[u] + dist[v] + 1);
-                    }
+        return best == INF ? -1 : best;
+    }
+
+private:
+    int bfs(int root, const std::vector<std::vector<int>>& g, int n) {
+        std::vector<int> dist(n, -1);
+        std::queue<int> q;
+        q.push(root);
+        dist[root] = 0;
+
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            for (int v : g[u]) {
+                if (dist[v] == -1) {          // first visit
+                    dist[v] = dist[u] + 1;
+                    q.push(v);
+                } else if (dist[u] <= dist[v]) {   // visited, not parent
+                    return dist[u] + dist[v] + 1;   // cycle length
                 }
             }
         }
-        return (best == INF) ? -1 : best;
+        return INF;   // no cycle involving root
     }
 };
 ```
 
-> **Note** – All three codes have the same **time** (`O(n·(m+n))`) and **space** (`O(m+n)`) complexity.  
-> For the LeetCode constraints, they run in ~10 ms in practice.
+---
+
+## 7. Writing a **job‑ready** blog post
+
+Below is a fully‑structured article that you can copy‑paste into a markdown blog (GitHub Pages, Dev.to, Medium, etc.).  
+The headings, keyword density, and call‑to‑action make it **search‑friendly** for recruiters looking for graph‑algorithm talent.
 
 ---
 
-## 📄 Blog Article – “The Good, the Bad, and the Ugly of Finding the Shortest Cycle”
-
-### Title  
-**“Shortest Cycle in a Graph: Interview‑Ready BFS Solution (Java, Python, C++) – LeetCode 2608”**
-
-### Meta Description  
-> Learn how to solve LeetCode 2608 “Shortest Cycle in a Graph” with a clean BFS algorithm. Compare Java, Python, and C++ implementations, and discover the trade‑offs that matter in a coding interview. Get ready to ace graph interview questions and impress hiring managers.
-
-### Keywords  
-```
-shortest cycle in graph, LeetCode 2608, BFS interview, graph cycle detection,
-Java BFS, Python BFS, C++ BFS, job interview graph algorithms,
-undirected graph cycle, shortest cycle solution, graph theory interview,
-```
-
-### Article Outline
-
-| Section | What It Covers |
-|--------|----------------|
-| ✅ The Good | Why BFS is the natural fit, readability, code‑simple, proven optimal for LeetCode size |
-| ⚠️ The Bad | O(n²) in worst‑case, overhead of starting BFS from every node, limited scalability |
-| 💩 The Ugly | Real‑world graphs with `n, m > 10⁵` would blow up; need more clever tricks (DFS + low‑link, two‑pass BFS, or cycle‑length via graph powers). |
-
----
-
-### 📖 Blog
+### 📄 Blog Post – “The Good, The Bad, and The Ugly of Finding the Shortest Cycle in a Graph”
 
 ```markdown
-# Shortest Cycle in a Graph – 2608 (LeetCode)
-## Interview‑Ready BFS Solution (Java, Python, C++)
+# The Good, The Bad, and The Ugly of Finding the Shortest Cycle in a Graph
 
-**Keywords**: shortest cycle graph, BFS interview, LeetCode 2608, graph cycle detection, job interview algorithms
-
-### TL;DR
-- Run a BFS from every vertex.
-- Detect cycles when you meet an already‑visited node that’s not your parent.
-- Take the minimum cycle length you find.
-- Complexity: **O(n·(m+n))** time, **O(m+n)** space.
+> **LeetCode 2608 – Shortest Cycle in a Graph**  
+> A deep dive into BFS, DFS, and interview‑ready coding patterns
 
 ---
 
-## 1️⃣ Problem Statement (LeetCode 2608)
+## Why This Question Rocks Your Resume
 
-> Given an undirected graph, find the length of its shortest cycle or return `-1` if none exists.
-
-**Constraints**  
-- `1 ≤ n ≤ 1000`  
-- `0 ≤ m ≤ 1000` (number of edges)  
+- **Graph Traversal Mastery** – shows you can manipulate queues, adjacency lists, and distance matrices.
+- **Trade‑off Discussion** – DFS vs. BFS, time‑complexity, space‑complexity.
+- **Short‑Answer & Long‑Answer** – perfect for 5‑minute interviews or coding challenge sessions.
 
 ---
 
-## 2️⃣ Why a BFS from Every Vertex?
+## ✅ The Good – A **BFS** Solution that Everyone Loves
 
-| Reason | Explanation |
-|--------|-------------|
-| **Cycle Detection** | In an undirected BFS, the first time we see a visited vertex that isn’t the parent means a cycle exists. |
-| **Shortest Cycle** | Running BFS from every possible start guarantees we’ll see the globally shortest cycle. |
-| **Simplicity** | The algorithm is intuitive, uses only basic data structures, and is easy to reason about during interviews. |
+The BFS approach is the cleanest way to detect cycles while simultaneously computing shortest paths.  
 
----
-
-## 3️⃣ Core Algorithm (Pseudocode)
-
-```
-build adjacency list G
-best = INF
-
-for start in 0 .. n-1:
-    dist[0..n-1] = -1
-    dist[start] = 0
-    queue q = {start}
-
-    while q not empty:
-        u = q.pop()
-        for v in G[u]:
-            if dist[v] == -1:
-                dist[v] = dist[u] + 1
-                q.push(v)
-            else if dist[u] <= dist[v]:        # meet in a cycle
-                best = min(best, dist[u] + dist[v] + 1)
-
-return (best == INF) ? -1 : best
-```
-
-> **Important** – `dist[u] <= dist[v]` prevents double‑counting and ensures we only add a cycle when we encounter it on the same or a higher BFS level.
-
----
-
-## 4️⃣ Implementations
-
-### Java
+1. **Root the search** at every vertex (`0 … n-1`).  
+2. **Track** `dist[]` (distance from the root) and implicitly the parent via the BFS order.  
+3. **Detect** a cycle when you encounter an already‑visited node that is *not* the parent.  
+4. **Compute** the cycle length as `dist[u] + dist[v] + 1`.
 
 ```java
-public class Solution {
-    public int findShortestCycle(int n, int[][] edges) {
-        List<List<Integer>> g = new ArrayList<>();
-        for (int i = 0; i < n; i++) g.add(new ArrayList<>());
-        for (int[] e : edges) { g.get(e[0]).add(e[1]); g.get(e[1]).add(e[0]); }
-
-        int best = Integer.MAX_VALUE;
-        for (int start = 0; start < n; start++) {
-            int[] dist = new int[n];
-            Arrays.fill(dist, -1);
-            dist[start] = 0;
-            Queue<Integer> q = new ArrayDeque<>();
-            q.offer(start);
-            while (!q.isEmpty()) {
-                int u = q.poll();
-                for (int v : g.get(u)) {
-                    if (dist[v] == -1) { dist[v] = dist[u] + 1; q.offer(v); }
-                    else if (dist[u] <= dist[v]) { best = Math.min(best, dist[u] + dist[v] + 1); }
-                }
-            }
-        }
-        return best == Integer.MAX_VALUE ? -1 : best;
-    }
-}
+// Java snippet (see section 6.1 above)
 ```
-
-### Python
 
 ```python
-from collections import deque
-class Solution:
-    def findShortestCycle(self, n: int, edges: List[List[int]]) -> int:
-        g = [[] for _ in range(n)]
-        for u, v in edges: g[u].append(v); g[v].append(u)
-
-        best = float('inf')
-        for start in range(n):
-            dist = [-1] * n
-            dist[start] = 0
-            q = deque([start])
-            while q:
-                u = q.popleft()
-                for v in g[u]:
-                    if dist[v] == -1: dist[v] = dist[u] + 1; q.append(v)
-                    elif dist[u] <= dist[v]: best = min(best, dist[u] + dist[v] + 1)
-        return -1 if best == float('inf') else best
+# Python snippet (see section 6.2 above)
 ```
-
-### C++
 
 ```cpp
-class Solution {
-public:
-    int findShortestCycle(int n, vector<vector<int>>& edges) {
-        vector<vector<int>> g(n);
-        for (auto &e : edges) { g[e[0]].push_back(e[1]); g[e[1]].push_back(e[0]); }
-
-        const int INF = 1e9, best = INF;
-        int ans = INF;
-
-        for (int start = 0; start < n; ++start) {
-            vector<int> dist(n, -1); dist[start] = 0;
-            queue<int> q; q.push(start);
-            while (!q.empty()) {
-                int u = q.front(); q.pop();
-                for (int v : g[u]) {
-                    if (dist[v] == -1) { dist[v] = dist[u] + 1; q.push(v); }
-                    else if (dist[u] <= dist[v]) ans = min(ans, dist[u] + dist[v] + 1);
-                }
-            }
-        }
-        return ans == INF ? -1 : ans;
-    }
-};
+// C++ snippet (see section 6.3 above)
 ```
 
----
-
-## ✅ The Good
-
-| ✅ | Description |
-|----|-------------|
-| **Clarity** – BFS is a staple of graph interviews. Everyone knows how it works. |
-| **Correctness** – The algorithm is *proof‑complete*: running BFS from every vertex guarantees we see the shortest cycle. |
-| **Ease of Implementation** – Only an adjacency list, a distance array, and a queue are needed. |
+**Time**: `O(n·(n + m))` – fast enough for `n, m ≤ 1000`.  
+**Space**: `O(n)` – distance array reused for each BFS.
 
 ---
 
-## ⚠️ The Bad
+## ⚠️ The Bad – What to Avoid
 
-| ⚠️ | Issue |
-|----|-------|
-| **Quadratic Runtime** – `O(n·(m+n))`. If `n` were `10⁵`, the solution would be too slow. |
-| **Redundant Work** – Many vertices lie in the same connected component; we recompute the same BFS many times. |
-| **Memory Footprint** – For very large `m`, the adjacency list alone can become large. |
-
-> *But remember the constraints (`n ≤ 1000`, `m ≤ 1000`).*  
-> The algorithm runs in ~10 ms in practice.
+| Pitfall | Why It Breaks | Quick Fix |
+|---------|---------------|-----------|
+| Not marking nodes visited before pushing to queue | BFS gets stuck in infinite loops | `dist[v] == -1` check |
+| Using a parent array that gets overwritten | Wrong cycle length (parent vs. distance check) | Compare parents explicitly |
+| Adjacency matrix for 1000 nodes | Memory blow‑up | Use adjacency lists |
+| Skipping disconnected components | Missed cycles in separate components | Iterate all vertices as roots |
 
 ---
 
-## 💩 The Ugly
+## 😱 The Ugly – Over‑engineering That Spoils Readability
 
-1. **Stack/Queue Overhead** – Starting a BFS from *every* vertex allocates a fresh queue and distance array each time.  
-2. **Cache Misses** – Random adjacency look‑ups in large graphs can hurt locality.  
-3. **Edge‑Case Bug** – Forgetting the “parent” check leads to detecting the trivial back‑edge `[u‑v]` as a cycle of length 1.
+- Mixing DFS & BFS logic in one method.  
+- Writing recursive BFS that uses a list as a queue.  
+- Hard‑coding “infinite” values instead of named constants.  
+- Adding unrelated helper classes that clutter the repository.
 
-> **Mitigation Tips**  
-> * Reuse the distance array instead of reallocating it.  
-> * Store `-1` instead of `INF` for unvisited nodes to avoid overflow.  
-> * Use `ArrayDeque` (Java) / `deque` (Python) / `std::queue` (C++) for amortised O(1) push/pop.
+> **Pro Tip:** Keep your code *single‑purpose* and *self‑documented*.  
 
 ---
 
-## 🚀 Interview‑Ready Checklist
+## 🎯 How to Use This in Your Next Interview
 
-| ✅ | How to explain in an interview |
-|---|--------------------------------|
-| **Build adjacency list** – O(m) memory, O(m) time. |
-| **Explain BFS** – level‑by‑level exploration. |
-| **Cycle detection logic** – visited node that isn’t the parent. |
-| **Why sum of distances + 1?** – two paths meet plus the connecting edge. |
-| **Why run BFS from every vertex?** – ensures global shortest cycle. |
-| **Complexity** – state it as `O(n·(m+n))` time, `O(m+n)` space. |
-| **Edge‑case** – return `-1` when `best` stays infinite. |
-| **Optional** – discuss potential improvements for larger graphs (e.g., two‑pass BFS, DFS + low‑link, or using graph powers). |
+1. **Start with a quick sketch** of the BFS idea.  
+2. **Show your code** in a language you’re comfortable with.  
+3. **Discuss** edge cases (disconnected components, no cycles).  
+4. **Compare** BFS vs. DFS – highlight BFS’s guarantee of the shortest cycle.  
+5. **Mention** possible optimisations (bidirectional BFS, early exit) – even if you don’t implement them.
 
 ---
 
-### 📚 Further Reading
+## 📣 Final Thought
 
-- “Competitive Programming 3 – Graphs, 2nd Edition” – chapter on cycles.  
-- “Algorithms, Part I” by Robert Sedgewick & Kevin Wayne – BFS & DFS fundamentals.  
-- LeetCode discussion threads on problem 2608 for alternative approaches.
+The *Shortest Cycle* problem is a *show‑case* for your graph‑algorithm chops.  
+A clean BFS solution like the one above demonstrates:
 
----
+- **Understanding of data structures** (adjacency lists, queues).  
+- **Algorithmic thinking** – distance tracking + parent checks.  
+- **Coding style** – clear constants, modular helper functions.
 
-### 🎯 Final Thought
-
-> The BFS‑from‑every‑vertex algorithm for LeetCode 2608 is *exactly* what you want in a coding interview: **simple, correct, and fast enough for the problem’s constraints**.  
-> Deliver the code in your chosen language, explain each step, and you’ll be ready to ace graph questions and get that job offer.
+Add the snippet to your GitHub, commit it to a “Graph Algorithms” folder, and include a comment explaining the approach. Recruiters love seeing not just a working solution, but also the *why* behind your choices.
 
 ---
 
-```
+### 🚀 SEO Keywords to Sprinkle
 
-```
+- shortest cycle in a graph  
+- LeetCode 2608 solution  
+- graph algorithm interview  
+- BFS cycle detection  
+- software engineer interview questions  
+- graph traversal algorithms  
+- job interview graph problem  
+- C++ graph algorithm  
+- Python graph algorithm
 
-### End of Article
-
----
-
-## 5️⃣ Conclusion
-
-*The shortest cycle problem is a classic interview scenario. A BFS‑based solution is both correct and easy to implement in Java, Python, or C++. By understanding the trade‑offs, you can confidently tackle LeetCode 2608 and impress hiring managers.*  
-
-**Happy coding!** 🚀
-
-```
+Add these to your blog meta tags, headings, and naturally in the content – it’ll boost discoverability for recruiters hunting for graph‑savvy engineers.
 
 ---
 
-
-### How to use
-
-- Copy the Markdown content into your blog platform (e.g., Jekyll, Hugo, Ghost, Medium).  
-- Insert the code snippets where indicated.  
-- Add tags/SEO metadata using the article title and meta description.
-
----
-
-### Final Note
-
-By mastering this algorithm and its trade‑offs, you’re not just solving a LeetCode problem—you’re showing that you can write clean, interview‑ready code that is proven correct and efficient for the given constraints. Good luck, and may the graphs be ever in your favor! 🎉
-
-```
-
----
-
-*Feel free to adapt the Markdown and code for your own website, add styling, or include visual diagrams of BFS traversal.*
+Happy coding, and may your interview stack be bug‑free! 🎉

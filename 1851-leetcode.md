@@ -7,140 +7,88 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  The Problem
+        ## 1851 – Minimum Interval to Include Each Query  
+### Full‑stack solutions (Java | Python | C++)
 
-**LeetCode 1838 – Minimum Interval to Include Each Query**
+Below you’ll find three complete, production‑ready implementations of the most efficient sweep‑line + priority‑queue solution.  
+All three share the same core idea:
 
-You are given a list of **intervals** `[[l₁,r₁],[l₂,r₂], … , [lₙ,rₙ]]` and a list of **queries** `q₁,q₂,…,qₘ`.  
-For each query point `qᵢ` you have to find the *shortest* interval that contains that point.  
-If no interval contains the point the answer is `-1`.
+1. **Sort** intervals by start time.  
+2. **Sort** queries by value (keeping their original indices).  
+3. For each query `q`  
+   * push every interval whose start ≤ `q` into a **min‑heap** ordered by interval length.  
+   * pop every interval whose end < `q` (it cannot cover the query).  
+   * the heap’s top is the smallest valid interval – its length is the answer for that query.  
+4. Restore the answers in the original query order.
 
-```
-Example
-intervals = [[1,4],[2,2],[3,5]]
-queries   = [2,3,4,5]
-
-Answer:  [1,1,1,-1]
-```
-
-The constraints are large (`n , m ≤ 2·10⁵`), so a brute‑force solution is far too slow.
-
-
-
---------------------------------------------------------------------
-
-## 2.  The Key Insight
-
-To answer a query `q` we only need intervals that satisfy
-
-```
-start ≤ q ≤ end
-```
-
-Among those intervals we want the **shortest** one.  
-If we sort the intervals by their `start` time and sweep through the queries in
-increasing order, we can maintain a *min‑heap* of all intervals that have started but not yet ended.  
-The top of the heap gives us the shortest interval that still covers the current query.
-
-This is a classic **sweep‑line + priority‑queue** pattern.
-
-
-
---------------------------------------------------------------------
-
-## 3.  Algorithm
-
-1. **Sort intervals** by `start` (ascending).  
-   If two intervals share the same start, the order of the second key is irrelevant because every interval will be inserted exactly once.
-
-2. **Sort the queries** by value, but remember each query’s original index so that we can write back the answer in the original order.
-
-3. **Sweep**  
-   For each query `q` (in sorted order):
-   * Insert every interval whose start ≤ `q` into a min‑heap.  
-     The heap key is the interval length `len = end - start + 1`.  
-     We also keep the interval’s `end` so that we can discard intervals that already ended.
-   * Remove from the heap all intervals whose `end` < `q`.  
-     Those cannot cover `q`.
-   * If the heap is non‑empty, the top element is the shortest interval that contains `q`.  
-     Store its length as the answer for this query; otherwise the answer is `-1`.
-
-4. **Re‑order answers** into the original query order and return.
-
---------------------------------------------------------------------
-
-## 4.  Complexity
-
-| Step            | Complexity |
-|-----------------|------------|
-| Sorting intervals   | `O(n log n)` |
-| Sorting queries     | `O(m log m)` |
-| Inserting intervals | each interval inserted once → `O(n log n)` |
-| Removing intervals  | each interval removed once → `O(n log n)` |
-| Processing queries  | `O(m log n)` (heap operations) |
-| Final re‑order     | `O(m)` |
-
-Overall: **`O((n + m) log (n + m))` time**  
-Space: **`O(n + m)`** (heap + temporary arrays).
-
---------------------------------------------------------------------
-
-## 5.  Reference Implementations
-
-Below are clean, production‑ready implementations in the three requested languages.
-
-> **Tip** – The priority queue stores pairs `[length, end]` (Python) or `{len, end}` (C++/Java).  
-> The comparison is only on the length; if two lengths are equal, the earlier inserted interval stays on top, which is fine because the answer is the same.
+The solution runs in  
+**O((n + m) log(n + m))** time and **O(n + m)** space – fast enough for the limits (≤ 10⁵ intervals & queries).
 
 ---
 
-### 5.1 Java
+### 1️⃣ Java
 
 ```java
 import java.util.*;
 
-public class MinimumIntervalForQueries {
+/**
+ * Leetcode 1851 – Minimum Interval to Include Each Query
+ *
+ * The algorithm uses a sweep line + min‑heap.
+ *   • Intervals are processed in order of start time.
+ *   • Queries are processed in ascending order.
+ *   • A priority queue keeps only intervals that could still contain the current query.
+ *   • The queue’s top always gives the smallest interval covering the query.
+ */
+public class Solution {
     public int[] minInterval(int[][] intervals, int[] queries) {
-        // 1. Sort intervals by start time
+        // Sort intervals by start time
         Arrays.sort(intervals, Comparator.comparingInt(a -> a[0]));
 
-        // 2. Remember original query indices and sort queries
-        int[][] sortedQ = new int[queries.length][2];
+        // Pair each query with its original index
+        int[][] qWithIdx = new int[queries.length][2];
         for (int i = 0; i < queries.length; i++) {
-            sortedQ[i][0] = i;          // original index
-            sortedQ[i][1] = queries[i]; // query value
+            qWithIdx[i][0] = queries[i]; // value
+            qWithIdx[i][1] = i;          // original position
         }
-        Arrays.sort(sortedQ, Comparator.comparingInt(a -> a[1]));
+        // Sort queries by value
+        Arrays.sort(qWithIdx, Comparator.comparingInt(a -> a[0]));
 
-        // 3. Min‑heap: key = interval length
-        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));
+        // Min‑heap ordered by interval length (end - start + 1)
+        PriorityQueue<int[]> heap =
+                new PriorityQueue<>(Comparator.comparingInt(a -> a[0] - a[1] + 1));
 
-        int[] answer = new int[queries.length];
-        int i = 0;  // pointer over intervals
+        int[] result = new int[queries.length];
+        int intervalIdx = 0; // pointer in intervals
 
-        for (int[] q : sortedQ) {
-            int qVal = q[1];
-            // insert all intervals that start ≤ qVal
-            while (i < intervals.length && intervals[i][0] <= qVal) {
-                int len = intervals[i][1] - intervals[i][0] + 1;
-                pq.offer(new int[]{len, intervals[i][1]}); // {length, end}
-                i++;
+        for (int[] q : qWithIdx) {
+            int value = q[0];
+            int originalIdx = q[1];
+
+            // Add all intervals that start <= current query
+            while (intervalIdx < intervals.length && intervals[intervalIdx][0] <= value) {
+                heap.offer(intervals[intervalIdx++]);   // store the whole interval
             }
-            // discard intervals that already ended
-            while (!pq.isEmpty() && pq.peek()[1] < qVal) {
-                pq.poll();
+
+            // Remove intervals that ended before the query
+            while (!heap.isEmpty() && heap.peek()[1] < value) {
+                heap.poll();
             }
-            // top of heap is the shortest covering interval
-            answer[q[0]] = pq.isEmpty() ? -1 : pq.peek()[0];
+
+            // The top of the heap is the shortest interval covering the query
+            result[originalIdx] = heap.isEmpty()
+                    ? -1
+                    : heap.peek()[1] - heap.peek()[0] + 1;
         }
-        return answer;
+
+        return result;
     }
 }
 ```
 
 ---
 
-### 5.2 Python
+### 2️⃣ Python
 
 ```python
 import heapq
@@ -148,133 +96,218 @@ from typing import List
 
 class Solution:
     def minInterval(self, intervals: List[List[int]], queries: List[int]) -> List[int]:
-        # 1. Sort intervals by start
+        """
+        Sweep line + priority queue.
+
+        Time  : O((n + m) log(n + m))
+        Space : O(n + m)
+        """
+        # 1. Sort intervals by start time
         intervals.sort(key=lambda x: x[0])
 
-        # 2. Keep original indices and sort queries
-        indexed = [(q, i) for i, q in enumerate(queries)]
-        indexed.sort(key=lambda x: x[0])
+        # 2. Attach original indices to queries
+        qs = sorted([(q, i) for i, q in enumerate(queries)])
 
-        # 3. Min‑heap: (length, end)
-        heap = []          # python's heapq is a min‑heap
+        # 3. Min‑heap holds (length, end)
+        heap = []
+
         ans = [0] * len(queries)
-        idx = 0            # pointer over intervals
+        i = 0  # pointer in intervals
 
-        for q, orig_idx in indexed:
-            # add intervals that start before or at q
-            while idx < len(intervals) and intervals[idx][0] <= q:
-                start, end = intervals[idx]
-                length = end - start + 1
-                heapq.heappush(heap, (length, end))
-                idx += 1
+        for q, idx in qs:
+            # add all intervals that start <= q
+            while i < len(intervals) and intervals[i][0] <= q:
+                start, end = intervals[i]
+                heapq.heappush(heap, (end - start + 1, end))
+                i += 1
 
             # remove intervals that ended before q
             while heap and heap[0][1] < q:
                 heapq.heappop(heap)
 
             # answer for this query
-            ans[orig_idx] = heap[0][0] if heap else -1
+            ans[idx] = heap[0][0] if heap else -1
 
         return ans
 ```
 
 ---
 
-### 5.3 C++
+### 3️⃣ C++
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
+/*
+ * Leetcode 1851 – Minimum Interval to Include Each Query
+ * Sweep line with priority_queue (min‑heap).
+ */
 class Solution {
 public:
-    vector<int> minInterval(vector<vector<int>>& intervals, vector<int>& queries) {
+    vector<int> minInterval(vector<vector<int>>& intervals,
+                            vector<int>& queries) {
         // 1. Sort intervals by start
         sort(intervals.begin(), intervals.end(),
-             [](const vector<int>& a, const vector<int>& b){ return a[0] < b[0]; });
+             [](const auto& a, const auto& b) { return a[0] < b[0]; });
 
-        // 2. Store original indices of queries and sort
-        vector<pair<int,int>> sortedQ;          // {query value, original index}
-        for (int i = 0; i < (int)queries.size(); ++i)
-            sortedQ.emplace_back(queries[i], i);
-        sort(sortedQ.begin(), sortedQ.end());
+        // 2. Keep original indices of queries
+        vector<pair<int,int>> q(queries.size());
+        for (size_t i = 0; i < queries.size(); ++i) {
+            q[i] = {queries[i], static_cast<int>(i)};
+        }
+        sort(q.begin(), q.end(),
+             [](const auto& a, const auto& b) { return a.first < b.first; });
 
-        // 3. Min‑heap: store pairs {length, end}
-        auto cmp = [](const pair<int,int>& a, const pair<int,int>& b){
-            return a.first > b.first;           // min‑heap on length
-        };
-        priority_queue<pair<int,int>, vector<pair<int,int>>, decltype(cmp)> pq(cmp);
+        // 3. Min‑heap ordered by interval length
+        using pii = pair<int,int>;               // {length, end}
+        priority_queue<pii, vector<pii>, greater<pii>> pq;
 
-        vector<int> answer(queries.size());
-        size_t idx = 0;   // pointer over intervals
+        vector<int> ans(queries.size());
+        size_t i = 0; // pointer in intervals
 
-        for (const auto& [qVal, origIdx] : sortedQ) {
-            // push intervals that have started
-            while (idx < intervals.size() && intervals[idx][0] <= qVal) {
-                int len = intervals[idx][1] - intervals[idx][0] + 1;
-                pq.emplace(len, intervals[idx][1]);  // {length, end}
-                ++idx;
+        for (auto [val, idx] : q) {
+            // push intervals that start <= current query
+            while (i < intervals.size() && intervals[i][0] <= val) {
+                int len = intervals[i][1] - intervals[i][0] + 1;
+                pq.emplace(len, intervals[i][1]);
+                ++i;
             }
-
-            // pop those that already ended
-            while (!pq.empty() && pq.top().second < qVal)
+            // pop intervals that end before the query
+            while (!pq.empty() && pq.top().second < val)
                 pq.pop();
 
-            answer[origIdx] = pq.empty() ? -1 : pq.top().first;
+            ans[idx] = pq.empty() ? -1 : pq.top().first;
         }
-        return answer;
+        return ans;
     }
 };
 ```
 
-All three snippets follow the same sweep‑line logic and run comfortably within the limits of the problem.
+All three implementations use the same sweep‑line + priority‑queue strategy and run comfortably under the problem constraints.
 
+---
 
+# 📚 SEO‑Optimized Blog Post  
+**Title:** *“Mastering Leetcode 1851 – Minimum Interval to Include Each Query: Sweep‑Line + Heap in Java, Python, C++”*  
 
---------------------------------------------------------------------
+**Meta Description:**  
+Solve Leetcode 1851 in milliseconds. Learn the sweep‑line + priority queue strategy, full Java, Python, C++ codes, and why it outperforms brute‑force. Perfect for coding interviews, algorithm practice, and interview preparation.
 
-## 6.  Common Pitfalls & How to Avoid Them
+---
 
-| Pitfall | Why it hurts | Fix |
-|---------|--------------|-----|
-| **Brute‑force** (checking every interval for every query) | O(n·m) → 4×10¹⁰ operations | Use the sweep‑line algorithm above |
-| **Incorrect heap key** | Storing only `end` in the heap can lead to a wrong answer – you would get the *first* interval, not necessarily the shortest | Use a composite key: `(length, end)` and compare only on `length` |
-| **Not remembering original indices** | You cannot place the answers back into the original query order | Keep an `index` array or tuple while sorting |
-| **Failing to discard ended intervals** | The heap will grow unbounded, leading to memory blow‑up | Pop while `end < current_query` |
+## 1️⃣ Why This Problem Matters  
+When you’re prepping for a coding interview, *interval queries* pop up all the time: “Find the smallest segment that contains this point.”  
+Leetcode 1851 (Minimum Interval to Include Each Query) is a canonical example that tests:
 
-If you’re just learning this pattern, start with a very small toy example, print the heap after each insertion/deletion, and watch how the algorithm behaves.
+- **Sorting skills** – you must order intervals and queries efficiently.  
+- **Greedy + Data‑structure synergy** – the shortest covering interval is not obvious without a heap.  
+- **Time‑space trade‑offs** – brute‑force TLE; optimal solution must be sub‑quadratic.
 
+If you nail this, you’ll ace similar problems on real interviews and boost your algorithmic confidence.
 
+---
 
---------------------------------------------------------------------
+## 2️⃣ Good – The Elegant Sweep‑Line + Heap Approach  
+**Why it’s good:**  
 
-## 7.  What Makes This Solution Great
+| Aspect | What It Gives You | Why It Matters |
+|--------|-------------------|----------------|
+| **O((n+m) log(n+m))** | Fast for 10⁵ intervals/queries | Interview‑ready performance |
+| **Only one pass** | No nested loops | Memory & CPU friendly |
+| **Clear logic** | “Add when start ≤ q, pop when end < q” | Easy to explain & debug |
+| **Reusable pattern** | Works for other interval‑query problems | Builds a coding toolkit |
 
-1. **Linear‑time processing** – each interval is pushed/popped once.  
-2. **No auxiliary data structures beyond a heap** – keeps memory usage minimal.  
-3. **Language‑agnostic** – the same pattern works in Java, Python, C++ and many other languages.  
-4. **Extensible** – if later you need the *actual interval* instead of just its length, simply store the whole interval in the heap.
+### Key Insight  
 
---------------------------------------------------------------------
+At a query point `q` you only need intervals that:
 
-## 8.  Quick Takeaway
+- start **≤ q** (otherwise they can’t cover it)  
+- end **≥ q** (otherwise they’ve expired)
 
-- *If you need to find the shortest interval covering a set of points, sort by start, sweep through the points, keep a min‑heap of intervals that haven’t ended yet, and you’re done.*
+The *smallest* such interval is what the min‑heap gives you instantly.
 
-The pattern is a powerful tool in algorithm design – use it whenever you see “process events in order” and “pick the best candidate among all already started events”.  
+---
 
-Happy coding! 🚀
+## 3️⃣ Bad – Brute‑Force, Hash Maps, or Two‑Pointer Missteps  
+**Common pitfalls** that lead to “bad” solutions:
 
+- **Hash map of starts → lengths** – O(n+m) to build but still requires scanning *all* intervals for each query → **O(n · m)**.  
+- **Two‑pointer with a vector** – without a heap you can’t guarantee the shortest interval.  
+- **Binary search on a sorted list of lengths** – you’d need to know whether each length can still cover `q`; that’s the same as the heap, but re‑implementing it manually is error‑prone.
 
+> **Bottom line:**  
+> Brute‑force (`for q in queries: for interval in intervals`) takes ~10⁹ operations → TLE.  
+> Any solution that does **more than linear** work is usually suspect for this problem.
 
---------------------------------------------------------------------
+---
 
-### 9.  SEO & Final Thought
+## 4️⃣ Ugly – Why Brute‑Force Fails  
+If you’re new to the problem you might try a nested loop or a simple map of interval lengths.  
+**What goes wrong?**
 
-> **Keywords**: LeetCode 1838, Minimum Interval, sweep line, priority queue, Python, Java, C++ solution, algorithm, time complexity, space complexity, coding interview, data structures.  
+1. **Quadratic time** – 10⁵ × 10⁵ = 10¹⁰ operations.  
+2. **Cache misses** – Random memory access in a large vector.  
+3. **Hard to trace** – Even a small bug (off‑by‑one in length) can make the whole solution wrong.
 
-> **Meta‑description**: Solve LeetCode 1838 – “Minimum Interval to Include Each Query” – with a sweep‑line + priority‑queue approach. Read the full guide, code in Java, Python, C++, complexity analysis, and common pitfalls.  
+Interviewers love you for explaining *why* a naive solution is unacceptable. Show them you know the pitfalls and why the heap wins.
 
-> **Target audience**: Software engineers preparing for interviews, competitive programmers, and anyone curious about efficient interval queries.  
+---
 
-Feel free to copy, adapt, and share these snippets – and drop a ⭐ on GitHub if you found the explanation helpful!
+## 5️⃣ The Implementation (Pseudo‑Code)
+
+```
+sort intervals by start
+pair queries with original indices
+sort queries by value
+
+heap = min‑heap ordered by interval length
+
+intervalPtr = 0
+for value, origIdx in sorted queries:
+    while intervalPtr < intervals.size and intervals[intervalPtr].start <= value:
+        push intervals[intervalPtr] into heap
+        intervalPtr++
+
+    while heap not empty and heap.top.end < value:
+        pop heap
+
+    answer[origIdx] = heap empty ? -1 : heap.top.length
+```
+
+> This pseudocode is language‑agnostic; the three code snippets above are just a drop‑in replacement for the language you’re comfortable with.
+
+---
+
+## 6️⃣ Complexity Breakdown  
+| Operation | Complexity | Explanation |
+|-----------|------------|-------------|
+| Sorting intervals | **O(n log n)** | Single pass sorting |
+| Sorting queries | **O(m log m)** | Needed to process in order |
+| Heap operations (push/pop) | **O((n+m) log n)** | Each interval and query causes at most one push or pop |
+
+Total: **O((n+m) log(n+m))** time, **O(n + m)** memory.
+
+---
+
+## 7️⃣ Common Interview Questions Around This Problem  
+
+1. **“Can you explain the greedy choice?”**  
+   *Answer:* “At any query `q` we consider only intervals that might still cover it. The min‑heap guarantees we pick the one with the smallest length immediately.”
+
+2. **“What if two intervals have the same length?”**  
+   *Answer:* “The heap is stable for equal lengths because we also store the end point – it doesn’t affect correctness, just the tie‑breaking order.”
+
+3. **“How would you adapt this if queries came in arbitrary order (not sorted)?”**  
+   *Answer:* “You still sort them internally, but remember to store the original index so you can re‑assemble the output at the end.”
+
+---
+
+## 8️⃣ Final Thoughts & Interview Tips  
+
+- **Show the pattern** – sweep‑line + heap is a powerful combo.  
+- **Edge cases** – test with queries outside all intervals and intervals of length 1.  
+- **Explain the heap** – many interviewers ask “Why a heap?” – say “Because we need the *minimum* length at all times.”  
+- **Practice** – solve similar problems: *Meeting Rooms II*, *Car Fleet*, *Interval Cover*, *Maximum Overlap*, etc.
+
+Mastering Leetcode 1851 gives you a reusable algorithmic building block that you can confidently bring into any data‑structure interview. Good luck! 🚀

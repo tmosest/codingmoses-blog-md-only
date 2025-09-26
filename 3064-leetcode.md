@@ -7,200 +7,256 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 3064 – Guess the Number Using Bitwise Questions  
-**Keywords**: Guess the Number Using Bitwise Questions, LeetCode 3064, bitwise AND, commonSetBits API, Java, Python, C++ solution, coding interview, software engineer
+        ---
+
+# Guess the Number Using Bitwise Questions – 3064  
+**Java | Python | C++ – Complete, SEO‑Optimized Guide**
+
+> Want to crack LeetCode 3064 – *Guess the Number Using Bitwise Questions*?  
+> This post walks you through the problem, shows the fastest **O(1)** solution, gives fully‑worked code in **Java, Python, and C++**, and dives into the *good, the bad, and the ugly* of the common set‑bits API.  
+> Perfect for interview prep, coding practice, or building your résumé.
 
 ---
 
-### 📌 Problem Overview
+## Table of Contents
 
-You are given a hidden integer **`n`** (1 ≤ n ≤ 2³⁰ – 1).  
-The only operation you can perform is calling the API:
+| Section | Link |
+|---------|------|
+| 📌 Problem Overview | #problem-overview |
+| 🧩 Intuitive Brute‑Force | #brute-force |
+| ⚡️ Fastest O(1) Approach | #fast-approach |
+| 📚 Java Implementation | #java-implementation |
+| 📚 Python Implementation | #python-implementation |
+| 📚 C++ Implementation | #cpp-implementation |
+| ⏱️ Complexity Analysis | #complexity |
+| 🚧 Common Pitfalls & Edge Cases | #pitfalls |
+| 🔧 Alternative Strategies | #alternatives |
+| 🎯 Conclusion & Career Advice | #conclusion |
+
+---
+
+## 📌 Problem Overview
+
+> **LeetCode 3064 – Guess the Number Using Bitwise Questions**  
+> **Difficulty:** Medium
+
+We’re given a hidden integer `n` (1 ≤ n < 2³⁰).  
+The only tool at our disposal is an API:
 
 ```text
-int commonSetBits(int num)
+int commonSetBits(int num);
 ```
 
-`commonSetBits(num)` returns the number of bits that are set to **1** in both `n` and `num` – i.e. `popcount(n & num)`.
+`commonSetBits(num)` returns the number of **bit positions** where both `n` and `num` have a `1`.  
+In other words:
 
-Your goal: **Return the value of `n`**.
+```text
+commonSetBits(num) == popcount(n & num)
+```
 
-The classic interview question: “How many API calls do you need? What if you can only ask about one bit at a time?”
+Your goal is to recover `n` by calling the API any number of times (the fewer the better) and return it.
 
----
-
-### 🤔 Intuition
-
-`num` can be any integer in the valid range.  
-If you ask for a **single‑bit** number – `1 << i` – then:
-
-- If `n` has that bit set, `n & (1 << i)` will be `1 << i`, whose popcount is **1**.
-- If `n` does **not** have that bit set, the popcount will be **0**.
-
-So by querying every bit position (0…29) we can reconstruct `n` bit by bit.  
-**Exactly 30 API calls** (constant time).
+> **Key Insight**  
+> If we test a number that has exactly one bit set (e.g., `1, 2, 4, 8, …`), the API will return `1` iff that bit is also set in `n`.  
+> So we can simply check each of the 30 possible bits once and assemble the answer.
 
 ---
 
-### 🧩 Solution Outline
+## 🧩 Intuitive Brute‑Force
 
-1. `result = 0`
-2. For every bit position `i` from **0** to **29**  
-   - `candidate = 1 << i`
-   - If `commonSetBits(candidate) == 1` → `result |= candidate`
-3. Return `result`
+A naïve approach is to query every possible integer in the allowed range (`1 … 2³⁰‑1`).  
+For each candidate `x` we check if `commonSetBits(x) == 1`.  
+This is **O(2³⁰)** calls – completely impractical and against the spirit of the problem.
 
-The algorithm is **O(1)** in time (30 constant‑time calls) and **O(1)** in space.
-
----
-
-## ✅ Code Implementations
-
-Below are clean, ready‑to‑run implementations in **Java**, **Python**, and **C++**.  
-Each follows the same logic and can be copy‑pasted into your local IDE or LeetCode sandbox.
+*Why this is bad?*  
+- 1,073,741,823 API calls → impossible within time limits.  
+- Excessive network/IO overhead.  
+- Gives little insight into the bit‑wise nature of the problem.
 
 ---
 
-### Java (extends `Problem`)
+## ⚡️ Fastest O(1) Approach – Bit by Bit
+
+### Idea
+
+1. **Iterate over each bit position** `i` (0 … 29).  
+2. Construct `mask = 1 << i`.  
+3. Call `commonSetBits(mask)`.  
+   * If the answer is `1`, set that bit in `n`.  
+   * If the answer is `0`, leave the bit cleared.  
+
+Since we perform **exactly 30 API calls**, the algorithm runs in constant time relative to input size.
+
+### Why 30 Calls?  
+- The maximum allowed number (`2³⁰‑1`) has 30 bits.  
+- Each call tells us the state of one bit, so 30 calls suffice.
+
+### Pseudocode
+
+```text
+result = 0
+for i from 0 to 29:
+    mask = 1 << i
+    if commonSetBits(mask) == 1:
+        result |= mask
+return result
+```
+
+---
+
+## 📚 Java Implementation
 
 ```java
+/**
+ * LeetCode 3064 – Guess the Number Using Bitwise Questions
+ * Author: Your Name
+ * Tags: Bit Manipulation, Brute Force, Interview
+ */
 public class Solution extends Problem {
-
-    // LeetCode will call this method
     public int findNumber() {
-        int answer = 0;          // final number to return
-        int maxBitMask = 1 << 29; // 2^29 (since 2^30-1 is the max n)
-
-        for (int mask = 1; mask <= maxBitMask; mask <<= 1) {
-            // If n has this bit set, commonSetBits(mask) will return 1
+        int n = 0;
+        // 30 bits (0‑based index)
+        for (int i = 0; i < 30; i++) {
+            int mask = 1 << i;
             if (commonSetBits(mask) == 1) {
-                answer |= mask; // set the bit in the answer
+                n |= mask;
             }
         }
-        return answer;
+        return n;
     }
 }
 ```
 
+**Why this is the “good” Java solution**
+
+- Uses *bit shifting* instead of `Math.pow` for speed.  
+- Runs in constant time: **O(1)**.  
+- Uses only O(1) extra space.
+
 ---
 
-### Python
+## 📚 Python Implementation
 
 ```python
+"""
+LeetCode 3064 – Guess the Number Using Bitwise Questions
+"""
+
 class Solution(Problem):
     def findNumber(self) -> int:
-        answer = 0
-        max_mask = 1 << 29  # 2^29
-
-        mask = 1
-        while mask <= max_mask:
+        n = 0
+        for i in range(30):          # bits 0..29
+            mask = 1 << i
             if self.commonSetBits(mask) == 1:
-                answer |= mask
-            mask <<= 1
-        return answer
+                n |= mask
+        return n
 ```
 
-*Note:* If you’re using LeetCode’s “Guess the Number Using Bitwise Questions I” template, the method signature may be `def findNumber(self) -> int:`.
+**Python notes**
+
+- `Problem` is the base class that provides `commonSetBits`.  
+- `self.commonSetBits` is used inside the method.  
+- Still **O(1)** time and space.
 
 ---
 
-### C++ (LeetCode style)
+## 📚 C++ Implementation
 
 ```cpp
+/**
+ * LeetCode 3064 – Guess the Number Using Bitwise Questions
+ * Author: Your Name
+ * Complexity: O(1) time, O(1) space
+ */
 class Solution : public Problem {
 public:
-    int findNumber() {
-        int answer = 0;
-        for (int mask = 1; mask <= (1 << 29); mask <<= 1) {
-            if (commonSetBits(mask) == 1) {
-                answer |= mask;
-            }
+    int findNumber() override {
+        int n = 0;
+        for (int i = 0; i < 30; ++i) {
+            int mask = 1 << i;
+            if (commonSetBits(mask) == 1)
+                n |= mask;
         }
-        return answer;
+        return n;
     }
 };
 ```
 
----
+*Why C++ works the same*
 
-## 📈 Complexity Analysis
-
-| Metric | Value |
-|--------|-------|
-| **Time** | `O(1)` – always 30 API calls regardless of `n` |
-| **Space** | `O(1)` – only a few integer variables |
+- Uses bit shift (`1 << i`) just like Java/Python.  
+- `commonSetBits` is a virtual method defined in the base class.
 
 ---
 
-## ⚠️ Edge Cases & Pitfalls
+## ⏱️ Complexity Analysis
 
-| Potential Issue | Why it matters | How to avoid |
-|-----------------|----------------|--------------|
-| **`num` outside 0 … 2³⁰-1** | The API becomes unreliable | Stick to `1 << i` for `i` in [0, 29] |
-| **API returns 0 for `n & 0`** | Some implementations may ignore `0` | Never query `num = 0` |
-| **Large `n` (e.g., 2³⁰-1)** | Must handle 30 bits | Use `int` (32‑bit signed) – fits comfortably |
+| Step | Time | Space |
+|------|------|-------|
+| Loop over 30 bits | **O(1)** (constant 30 iterations) | **O(1)** |
+| Each API call | negligible (provided by LeetCode) | — |
 
----
-
-## 🔄 Alternative Approaches
-
-1. **Binary Search on Bits**  
-   Query for all numbers with a particular prefix and deduce bits in O(log n).  
-   *Not necessary* because the 30‑bit exhaustive approach is already optimal.
-
-2. **Gray Code Traversal**  
-   Ask for all Gray‑coded numbers to recover the bits in one pass.  
-   *Complex and over‑engineering* for this problem.
-
-3. **Bit‑masking via XOR**  
-   Instead of `commonSetBits`, query `n XOR num`.  
-   *But the API is fixed*, so not applicable.
+**Total:**  
+- **Time:** O(1) – 30 API calls regardless of the hidden number.  
+- **Space:** O(1) – only a few integer variables.
 
 ---
 
-## 🎯 Why This Solution Rocks (The Good)
+## 🚧 Common Pitfalls & Edge Cases
 
-- **Simplicity** – one loop, no recursion, no auxiliary data structures.
-- **Optimal** – 30 queries, the theoretical minimum for 30 bits.
-- **Readability** – clear bit‑wise logic, comments explain intent.
-- **Portability** – same idea works in any language with bit ops.
-
----
-
-## ⚠️ What Could Go Wrong (The Bad)
-
-- **Misunderstanding the API** – thinking `commonSetBits` returns the *count* of common bits in `num` alone (it doesn't).
-- **Bit overflow** – using `1 << 30` would overflow a 32‑bit signed integer; always limit to 29.
-- **Neglecting the 0‑bit** – if you query `num = 0`, the API might not provide useful information.
+| Pitfall | Why it Happens | Fix |
+|---------|----------------|-----|
+| **Using `1 << 30`** | Overflows a signed 32‑bit integer. | Stick to `1 << 29` for the highest bit in a 30‑bit number, or use `1L << i` if 64‑bit. |
+| **Incorrect API usage** | Some solutions mistakenly call `commonSetBits(1 << i)` multiple times or mix up bit indices. | Keep the call inside the loop; ensure each mask has exactly one bit set. |
+| **Zero‑based vs One‑based indices** | Off‑by‑one errors can skip a bit or read past the limit. | Loop from `i = 0` to `i < 30`. |
+| **Assuming 32‑bit integer limit** | The hidden number can be up to `2³⁰‑1`, so only 30 bits are relevant. | Don’t test bits beyond 29. |
 
 ---
 
-## 🕸️ The Ugly – Real‑World Traps
+## 🔧 Alternative Strategies
 
-1. **API Side‑Effects** – In some interview setups, each API call might be costly (network round‑trip). Although the algorithm is optimal, the constant factor can still matter. Use caching if you need to ask the same bit multiple times (not needed here).
+| Strategy | When to Use | Complexity |
+|----------|-------------|------------|
+| **Binary Search on Bits** | If you can query numbers with multiple bits set and want fewer than 30 calls. | Roughly `log₂(30)` ≈ 5 calls if cleverly chosen masks. |
+| **Randomized Sampling** | When the API is noisy or expensive; useful for larger bit‑length problems. | Depends on sampling; not guaranteed O(1). |
+| **Bit‑wise Counting** | For educational purposes; shows popcount and mask building. | O(30) calls still, but with more complex logic. |
 
-2. **Hidden Constraints** – Some variations of the problem might set a limit on the total number of calls (e.g., 20). In such cases, you’d need a smarter strategy (e.g., parallel bit deduction). Our current solution assumes the standard LeetCode limit (30).
-
-3. **Non‑Integer `n`** – If `n` could be negative or larger than 2³⁰-1, the algorithm would break. Always read constraints carefully.
-
----
-
-## 🎓 Takeaway for Your Interview Portfolio
-
-- **Demonstrate** how to convert a *bitwise query* problem into a *simple loop*.
-- **Show** mastery of bit‑operations (`<<`, `|=`).
-- **Explain** complexity clearly – employers love concise analysis.
-- **Mention** the potential pitfalls – interviewers appreciate that you think about edge cases.
+> **Why the simple 30‑call method is usually best**  
+> The problem constraints guarantee that 30 calls are both sufficient and minimal. Adding complexity only makes the code harder to read and increases the risk of bugs.
 
 ---
 
-## 📣 Call to Action
+## 🎯 Conclusion & Career Advice
 
-Ready to ace your next coding interview?  
-Add this solution to your GitHub repository, annotate the README with the problem link, and share it on LinkedIn or Twitter with the hashtags **#LeetCode3064 #CodingInterview #SoftwareEngineer**.
+You’ve just mastered **LeetCode 3064 – Guess the Number Using Bitwise Questions**.  
 
-Want more interview‑ready algorithms? Follow me for weekly blog posts on problem‑solving, clean code, and interview strategies.
+- **What employers look for**:  
+  * Clear understanding of bitwise operations.  
+  * Ability to translate a problem into an optimal, constant‑time solution.  
+  * Clean, language‑agnostic code (Java, Python, C++).  
+
+- **Next steps**:  
+  * Practice other *bit manipulation* problems: “Single Number”, “Bitwise and & Or” series, “Kth Smallest in Binary Search Tree”, etc.  
+  * Build a GitHub repo with your solutions – showcases problem‑solving skills to recruiters.  
+  * Write a blog (like this one) to explain your thought process – great for résumé and portfolio.  
+
+**Remember**: In interviews, *explain your intuition*, *show the edge‑case handling*, and *talk about time/space trade‑offs*.  
+Good luck landing that tech role! 🚀
 
 ---
 
-*Happy coding!*
+## 📑 SEO Tags & Keywords
+
+- LeetCode 3064  
+- Guess the Number Using Bitwise Questions  
+- bitwise AND API solution  
+- Java Python C++ LeetCode solutions  
+- O(1) bit manipulation interview  
+- commonSetBits function  
+- interview prep bitwise tricks  
+- LeetCode 3064 discussion  
+- coding interview strategy bitwise  
+
+---
+
+Happy coding, and may your interviews go *bit* smoother!

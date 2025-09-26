@@ -7,38 +7,39 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## ✅ LeetCode 2537 – “Count the Number of Good Subarrays”
+        ## 2537 – Count the Number of Good Subarrays  
+*LeetCode* | *Java* | *Python* | *C++* | *Sliding‑Window* | *Job Interview*  
 
-> **Good Subarray** – a contiguous segment of the array that contains **at least `k` equal‑value pairs**  
-> **Pair** – a pair of indices `(i, j)` with `i < j` and `nums[i] == nums[j]`
-
----
-
-## 1️⃣ Overview of the Problem
-
-Given an integer array `nums` (size up to `10⁵`) and an integer `k` (up to `10⁹`), return how many subarrays contain **≥ k** pairs of equal numbers.
-
-The brute‑force solution checks every subarray and counts pairs – **O(n²)** time and **O(n)** space.  
-For the constraints (`n` = 10⁵) that is far too slow.
-
-The optimal solution uses a **sliding‑window** (two‑pointer) technique combined with a **frequency map**.  
-The key idea: while the window contains at least `k` pairs, every subarray that starts in the current `left` position and ends at the current `right` position is valid. Thus we can count `left` subarrays in O(1).
+Below you’ll find a production‑ready implementation for **Java, Python and C++** that solves the LeetCode problem **2537 – Count the Number of Good Subarrays** in *O(n)* time using the classic two‑pointer sliding‑window technique.  
 
 ---
 
-## 2️⃣ Sliding‑Window Algorithm (O(n) time, O(n) space)
+### 1.  Problem Recap  
 
-| Step | What we do | Why it works |
-|------|------------|--------------|
-| **1. Expand** `right` pointer | Add `nums[right]` to the window. The number of new pairs created by this element equals its current frequency in the window (`freq[x]`). | Every time we add an element, it pairs with each previous identical element. |
-| **2. Shrink** while the window is *good* (`pairs >= k`) | Move the `left` pointer rightwards, decrementing the frequency of `nums[left]` and updating `pairs` accordingly. | Once the window is good we can count all subarrays that start anywhere in `[0, left]` and end at `right`. Removing the leftmost element may reduce the pair count, so we adjust `pairs` by the new frequency of the removed element. |
-| **3. Count** | When the window is good, add `left` to the answer. | All subarrays `[0 … left‑1] → right`, `[1 … left‑1] → right`, …, `[left‑1 … left‑1] → right` are good, exactly `left` of them. |
+> **Definition** – A subarray is *good* if it contains **at least `k` pairs of equal elements**.  
+>  
+> Input: `int[] nums` (|nums| ≤ 10⁵, 0 ≤ nums[i] ≤ 10⁹) and `int k` (0 ≤ k ≤ 10⁹).  
+> Output: the number of *good* subarrays (return type `long`/`long long`).  
+
+The brute‑force solution would examine every subarray (O(n²)), which is far too slow for the constraints. The sliding‑window trick turns it into a linear‑time algorithm.
 
 ---
 
-## 3️⃣ Implementation in 3 Languages
+## 2.  Sliding‑Window Insight  
 
-### 3.1 Java
+| What you *track* | Why it works |
+|------------------|--------------|
+| Frequency map (`freq`) | Lets us know how many times a value appears in the current window. |
+| `pairs` – number of equal pairs in the current window | Adding an element of value `x` creates `freq[x]` new pairs (since each of the existing `freq[x]` occurrences can pair with the new one). |
+| `left` – left pointer of the window | When the window is good (`pairs` ≥ `k`), every subarray that starts at an index ≤ `left` and ends at the current right index is good. The number of such subarrays equals `left`. |
+
+**Key loop invariant** – After we shrink the window while it remains good, the window `[left … right]` is the *smallest* window ending at `right` that still satisfies the requirement. Thus all subarrays ending at `right` that start **before** `left` are guaranteed to be good, and we add `left` to the answer.
+
+---
+
+## 3.  Reference Implementations  
+
+### Java
 
 ```java
 import java.util.HashMap;
@@ -46,35 +47,30 @@ import java.util.Map;
 
 public class Solution {
     /**
-     * Counts the number of good subarrays in nums.
-     *
-     * @param nums input array
-     * @param k    minimum number of equal‑value pairs required
-     * @return long because the answer can be up to n*(n+1)/2
+     * Returns the number of good subarrays in O(n) time.
+     * @param nums the array of integers
+     * @param k    the required number of pairs
+     * @return     the count of good subarrays (long to avoid overflow)
      */
     public long countGood(int[] nums, int k) {
-        long answer = 0;
-        int left = 0;
-        int pairs = 0;                 // current number of pairs in the window
         Map<Integer, Integer> freq = new HashMap<>();
+        int left = 0;        // left boundary of the current window
+        long ans = 0;
+        int pairs = 0;       // number of equal pairs inside the window
 
         for (int right = 0; right < nums.length; right++) {
-            int val = nums[right];
-            int curFreq = freq.getOrDefault(val, 0);
+            int cur = nums[right];
+            // Adding cur adds freq[cur] new pairs
+            pairs += freq.getOrDefault(cur, 0);
+            freq.put(cur, freq.getOrDefault(cur, 0) + 1);
 
-            // Adding this element creates `curFreq` new pairs
-            pairs += curFreq;
-            freq.put(val, curFreq + 1);
-
-            // Shrink while window is good
+            // Shrink the window while we have enough pairs
             while (pairs >= k) {
-                // All subarrays ending at 'right' and starting in [0, left] are good
-                answer += left;
-
-                // Remove element at 'left' from window
+                ans += nums.length - right;   // all subarrays that start at 'left' are good
                 int leftVal = nums[left];
                 int leftFreq = freq.get(leftVal);
-                // Removing one occurrence reduces pairs by (leftFreq - 1)
+
+                // Removing leftVal reduces the number of pairs by (leftFreq - 1)
                 pairs -= (leftFreq - 1);
                 if (leftFreq == 1) {
                     freq.remove(leftVal);
@@ -84,384 +80,204 @@ public class Solution {
                 left++;
             }
         }
-
-        return answer;
-    }
-
-    // Optional main method for quick local testing
-    public static void main(String[] args) {
-        Solution s = new Solution();
-        int[] nums = {1, 2, 2, 1, 2};
-        int k = 2;
-        System.out.println(s.countGood(nums, k));   // → 4
+        return ans;
     }
 }
 ```
 
 ---
 
-### 3.2 Python
+### Python
 
 ```python
 from collections import defaultdict
 from typing import List
 
-class Solution:
-    def countGood(self, nums: List[int], k: int) -> int:
-        """
-        Counts good subarrays using a sliding window.
-        Returns a Python int (unbounded).
-        """
-        answer = 0
-        left = 0
-        pairs = 0                 # current number of equal pairs in window
-        freq = defaultdict(int)
+def countGood(nums: List[int], k: int) -> int:
+    """
+    Count good subarrays in O(n) time.
+    :param nums: List[int] – input array
+    :param k:    int       – required number of equal pairs
+    :return:     int       – number of good subarrays
+    """
+    freq = defaultdict(int)   # element → frequency in current window
+    left = 0                  # left boundary of window
+    pairs = 0                 # number of equal pairs in the window
+    ans = 0
 
-        for right, val in enumerate(nums):
-            cur_freq = freq[val]
-            pairs += cur_freq          # new pairs formed by adding val
-            freq[val] = cur_freq + 1
+    for right, val in enumerate(nums):
+        # Adding new element creates `freq[val]` new pairs
+        pairs += freq[val]
+        freq[val] += 1
 
-            while pairs >= k:
-                answer += left
-                left_val = nums[left]
-                left_freq = freq[left_val]
-                # Removing one occurrence reduces pairs by left_freq-1
-                pairs -= (left_freq - 1)
-                freq[left_val] -= 1
-                if freq[left_val] == 0:
-                    del freq[left_val]
-                left += 1
+        # While window is still good, shrink it from the left
+        while pairs >= k:
+            # All subarrays starting from current 'left' to 'right' are good
+            ans += right - left + 1
+            left_val = nums[left]
+            left_freq = freq[left_val]
 
-        return answer
+            # Removing left_val reduces pairs by (left_freq - 1)
+            pairs -= (left_freq - 1)
+            freq[left_val] = left_freq - 1
+            left += 1
 
-# Quick local test
-if __name__ == "__main__":
-    sol = Solution()
-    print(sol.countGood([1, 2, 2, 1, 2], 2))  # → 4
+    return ans
 ```
+
+> **Why `ans += right - left + 1`?**  
+> Once we find the minimal left that still keeps the window good, every subarray that starts at `left` **or later** and ends at `right` will also contain at least `k` pairs. The count of such subarrays is exactly `right - left + 1`.
 
 ---
 
-### 3.3 C++
+### C++
 
 ```cpp
-#include <bits/stdc++.h>
+#include <vector>
+#include <unordered_map>
 using namespace std;
 
 class Solution {
 public:
     /**
-     * @param nums: vector of integers
-     * @param k:   minimum pairs required
-     * @return long long because the answer can be large
+     * @param nums the array of integers
+     * @param k    the required number of pairs
+     * @return     the number of good subarrays (long long to avoid overflow)
      */
     long long countGood(vector<int>& nums, int k) {
-        long long answer = 0;
-        int left = 0;
-        int pairs = 0;                     // current pair count
-        unordered_map<int, int> freq;      // frequency of each value in window
+        unordered_map<int, int> freq;
+        long long ans = 0;
+        int left = 0;              // left boundary of the window
+        long long pairs = 0;       // number of equal pairs inside the window
 
         for (int right = 0; right < (int)nums.size(); ++right) {
-            int val = nums[right];
-            int curFreq = freq[val];       // 0 if not present yet
+            int cur = nums[right];
+            // Adding cur creates freq[cur] new pairs
+            pairs += freq[cur];
+            ++freq[cur];
 
-            pairs += curFreq;              // new pairs created
-            freq[val] = curFreq + 1;
-
-            // While the window is good, count all subarrays ending at right
+            // Shrink the window while we have enough pairs
             while (pairs >= k) {
-                answer += left;            // all subarrays [0..left-1] → right
-
+                ans += nums.size() - right;   // all subarrays starting at 'left' are good
                 int leftVal = nums[left];
                 int leftFreq = freq[leftVal];
-                // Removing one occurrence reduces pairs by (leftFreq - 1)
+
+                // Removing leftVal reduces pairs by (leftFreq - 1)
                 pairs -= (leftFreq - 1);
-                if (--freq[leftVal] == 0)   // delete key when frequency hits 0
-                    freq.erase(leftVal);
+                if (leftFreq == 1) freq.erase(leftVal);
+                else freq[leftVal] = leftFreq - 1;
                 ++left;
             }
         }
-        return answer;
+        return ans;
     }
 };
 ```
 
-> **Why the C++ code uses `pairs >= k` instead of `pairs <= 0`**  
-> In the editorial solution `pairs` is represented as **remaining quota** (`k` gets decremented), whereas in our code we keep the absolute number of pairs. Both approaches are equivalent; choose the one that feels more natural to you.
+> **Tip:** In many accepted solutions you’ll see the variable `k` being decremented/incremented to track the remaining pair quota. The logic is equivalent to what we described above – just a slightly different bookkeeping style.
 
 ---
 
-## 4️⃣ Complexity Analysis
+## 4.  The “Good, Bad & Ugly” of This Solution  
 
-| Metric | Complexity |
-|--------|------------|
-| **Time** | `O(n)` – each element is added and removed at most once |
-| **Space** | `O(n)` – frequency map (worst case every element is unique) |
-| **Answer size** | Up to `n * (n+1) / 2`, so use `long`/`long long` |
-
----
-
-## 5️⃣ “Good – Brute‑Force – Ugly” Breakdown
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Brute‑Force** (`O(n²)` + `O(n)` freq map per subarray) | Simple, easy to implement, works for tiny inputs | *Bad* for `n = 10⁵`. Time limit exceeded on LeetCode. |
-| **Sliding Window (our solution)** | Linear time, linear space, minimal bookkeeping | Requires a clear understanding of pair dynamics; a beginner may over‑think the pair update step. |
-| **“Ugly” over‑optimization** – e.g., using two nested loops with prefix sums or bit‑mask DP | May reduce constants but adds complexity, harder to read, error‑prone | Not necessary; sliding window already optimal. |
+| Aspect | What Makes It Good | What’s Tricky | What Could Go Wrong |
+|--------|-------------------|---------------|--------------------|
+| **Good** | Linear time, easy to understand once the pair‑count trick is grasped. |  |  |
+| **Bad** | You must keep `k` *mutable* or maintain a separate `pairs` counter; mixing the two can lead to bugs. |  | Off‑by‑one errors when adding/removing from the window. |
+| **Ugly** | The logic that “adding an element increases pairs by its current frequency” is not obvious at first glance. |  | Forgetting to update the map after decrementing frequencies can produce `-1` counts. |
 
 ---
 
-## 6️⃣ Why This Matters for *Job Interviews*
+## 5.  SEO‑Optimized Blog Post
 
-- **LeetCode 2537** is a *real* interview problem that appears in many coding interview portals (Amazon, Google, Facebook).  
-- Demonstrates **algorithmic thinking** (pair counting, two‑pointer) – *core interview skill*.  
-- Shows ability to produce **correct, efficient, and well‑documented code** in multiple languages – *key for full‑stack & backend roles*.  
+### 🎯 Master LeetCode 2537: Count the Number of Good Subarrays
 
-When you add this solution to your portfolio or GitHub, tag it as:
-```text
-#leetcode #2537 #good-subarray #pair-counting #sliding-window #algorithmic-thinking
-```
+If you’re preparing for a **software engineering interview** or a **coding bootcamp** and want to ace **LeetCode 2537 – Count the Number of Good Subarrays**, you’re in the right place.  
+In this article we’ll:
 
-These tags boost visibility for recruiters searching for proven interview solutions.
+1. Break down the **sliding‑window** algorithm that brings the time complexity from **O(n²)** to **O(n)**.  
+2. Provide clean, production‑ready code in **Java**, **Python**, and **C++**.  
+3. Explain the tricky bits, the pitfalls, and how to talk about this solution in an interview.
+
+#### Keywords:  
+- LeetCode 2537  
+- Count the Number of Good Subarrays  
+- Sliding Window  
+- Java algorithm interview  
+- Python coding challenge  
+- C++ algorithm explanation  
+- Job interview algorithm  
 
 ---
 
-## 7️⃣ Bonus: Test Harness
+### 📌 What Is a “Good” Subarray?
 
-Below is a small harness you can paste into your IDE to run quick sanity checks.
+> A subarray is **good** if it contains at least `k` pairs of equal elements.  
+> A pair is a pair of indices `(i, j)` with `i < j` and `nums[i] == nums[j]`.  
 
-### Java
+The naive solution would check every subarray and count its pairs, giving **O(n²)** time. That’s not feasible for `n ≤ 100,000`.  
+
+---
+
+### 🧠 Sliding‑Window to the Rescue
+
+The heart of the solution is a **two‑pointer** approach:
+
+- **Right pointer** expands the window one element at a time.  
+- **Left pointer** shrinks the window while the window still satisfies the pair requirement.  
+
+Key trick:  
+*When you add a new element of value `x`, the number of new pairs equals the current frequency of `x` in the window.*  
+Thus we keep a **frequency map** and a running `pairs` counter.
+
+The invariant after shrinking the window is:  
+*`[left … right]` is the smallest window that still contains at least `k` pairs.*  
+All subarrays that end at `right` and start **before** `left` are automatically good.  
+
+---
+
+### 🛠️ Reference Code – Java, Python, C++
+
+We’ve already provided the full implementations above. In interviews, you can pick the language you’re most comfortable with, but the logic is identical:
 
 ```java
-public static void main(String[] args) {
-    Solution sol = new Solution();
-    int[] nums = {1, 2, 2, 1, 2};
-    int k = 2;
-    System.out.println("Answer: " + sol.countGood(nums, k));   // Expected 4
-}
+// Java
+public long countGood(int[] nums, int k) { … }
 ```
-
-### Python
 
 ```python
-if __name__ == "__main__":
-    sol = Solution()
-    print(sol.countGood([1, 2, 2, 1, 2], 2))  # 4
+# Python
+def countGood(nums: List[int], k: int) -> int: … 
 ```
-
-### C++
 
 ```cpp
-int main() {
-    Solution sol;
-    vector<int> nums = {1, 2, 2, 1, 2};
-    cout << sol.countGood(nums, 2) << endl;   // 4
-}
+// C++
+long long countGood(vector<int>& nums, int k) { … }
 ```
 
----
-
-## 8️⃣ Quick Reference (Table)
-
-| Language | Function Signature | Return Type | Time | Space |
-|----------|-------------------|-------------|------|-------|
-| **Java** | `long countGood(int[] nums, int k)` | `long` | `O(n)` | `O(n)` |
-| **Python** | `def countGood(nums: List[int], k: int) -> int` | `int` (Python ints are arbitrary) | `O(n)` | `O(n)` |
-| **C++** | `long long countGood(vector<int>& nums, int k)` | `long long` | `O(n)` | `O(n)` |
+> **Why do we use `long long` (or `long` in Java)?**  
+> The answer can be as large as `n * (n+1) / 2`, which exceeds the 32‑bit integer range for large inputs.
 
 ---
 
-## 9️⃣ Take‑away
+### 📌 Talking About the Solution in an Interview
 
-- **Brute force** → `O(n²)` – unacceptable for `n = 10⁵`.  
-- **Sliding‑window** → `O(n)` – optimal, easy to reason about, and proven to pass all tests in seconds.  
-- **Key insight**: counting *pairs* dynamically while expanding/contracting the window, then adding `left` to the answer when the window is good.  
+> **Question:** “Explain how you would approach LeetCode 2537.”  
+> **Answer (TL;DR):**  
+> “I’d use a sliding‑window. I maintain a frequency map and a `pairs` counter. As I slide the right pointer I add the new element’s current frequency to `pairs`. Then I keep moving the left pointer until `pairs` falls below `k`. Every time the window is good I add the number of subarrays that start before the left pointer to my answer.”  
 
-Use this solution as a **code‑ready example** in your next coding interview or in a portfolio repo to showcase algorithmic prowess. Happy coding! 🚀
-
----
-
-# 🎉 Blog Post (SEO‑Optimized)
-
-> **Title:**  
-> **LeetCode 2537 – “Count the Number of Good Subarrays”**  
-> **A Sliding‑Window Solution That Wins Interviews**  
-
-> **Meta Description:**  
-> Learn how to solve LeetCode 2537 in linear time using a sliding‑window and frequency map. Understand why brute force fails and how this algorithm can impress recruiters. Includes Java, Python, and C++ implementations.
-
-> **Target Keywords (used > 3 × each):**  
-> *leetcode 2537*  
-> *count the number of good subarrays*  
-> *sliding window*  
-> *pair counting*  
-> *coding interview*  
-> *algorithm interview*  
-> *job interview*  
+If the interviewer asks for **why this is linear**:  
+- The right pointer moves **n** times.  
+- Each left pointer movement also moves at most **n** times.  
+- All operations on the hash map are *amortised* O(1).  
+- Total time is **O(n)**, memory **O(min(n, distinct values))**.
 
 ---
 
-## 1. Introduction
+### 🏁 Take‑away
 
-When recruiters scour your GitHub or LinkedIn for *“LeetCode 2537”* or *“count the number of good subarrays”* tags, they’re looking for evidence that you understand algorithmic optimisation.  
-In this post we’ll break down **LeetCode 2537** from first principles, show why a naive solution fails, present a clean sliding‑window approach, and give you fully‑commented code in Java, Python, and C++.
+- Sliding‑window + frequency map = the gold‑standard solution for LeetCode 2537.  
+- The pair‑count trick is the “Eureka” moment: *add `freq[x]` when you insert `x`*.  
+- Having clean code in **Java, Python, C++** shows you understand language‑specific idioms while keeping the core idea unchanged.
 
-> **TL;DR:**  
-> Use a two‑pointer window, maintain a frequency map, update pair count on insert/delete, and add `left` subarrays when the window is good. Complexity: **O(n)** time, **O(n)** space.
-
----
-
-## 2. The Problem – What Does “Good Subarray” Mean?
-
-A *subarray* is any contiguous block of `nums`.  
-We say a subarray is *good* if it contains at least `k` pairs of equal elements.  
-
-A *pair* is simply a choice of two indices `(i, j)` in the subarray such that `i < j` and `nums[i] == nums[j]`.  
-For example:
-
-```text
-nums = [1, 2, 2, 1, 2]
-k = 2
-```
-
-- Subarray `[1,2,2]` has pairs: `(2,3)` → good.  
-- Subarray `[2,2,1,2]` has pairs: `(1,2)`, `(2,4)`, `(1,4)` → more than 2 → good.  
-
-Our goal: **count how many subarrays of `nums` are good.**
-
----
-
-## 3. Why Brute Force is the *Bad* Solution
-
-A simple approach loops over every start and end index, builds a temporary frequency map, counts pairs, and increments the counter.  
-Pseudo‑code:
-
-```pseudo
-for i from 0 to n-1
-    for j from i to n-1
-        map = new freq map for nums[i..j]
-        pairs = sum over all values of C(freq, 2)
-        if pairs >= k: ans++
-```
-
-This is **O(n²)** in time and creates a new hash map for each subarray.  
-For the maximum constraints (`n = 10⁵`), it runs in hours—*way over the 1‑second time limit on LeetCode*.
-
-> **Recruiter’s Perspective:**  
-> The brute‑force solution shows you can code, but *not* that you can optimise. Recruiters see “Time Limit Exceeded” errors and assume you can’t handle larger datasets.
-
----
-
-## 3. The “Ugly” Over‑Optimization
-
-Some candidates try to squeeze constants out by using prefix sums or DP tables, or even a bit‑mask trick that counts equal elements via combinatorial formulas.  
-While these might reduce constant factors, they:
-
-- Increase code complexity  
-- Reduce readability  
-- Require deep mathematical insight
-
-In practice, the simple **sliding window** already provides the optimal time complexity, so *ugly* over‑optimisation is unnecessary.
-
----
-
-## 4. The “Good” Solution – Sliding Window + Frequency Map
-
-### 4.1 Intuition
-
-When we extend the right boundary of a subarray, we can update the number of *pairs* instantly:
-
-- Suppose we add element `x`.  
-- It appears `c` times already in the window.  
-- Adding `x` creates exactly `c` new pairs (one with each existing `x`).  
-
-When we shrink the left boundary:
-
-- Removing element `x` that occurs `c` times reduces the pair count by `(c - 1)` (we lose all pairs involving that removed `x` except the ones that will be formed by the remaining `c-1` copies).
-
-Thus we can keep a running pair count as we slide.
-
-### 4.2 Algorithm Steps
-
-1. **Initialize** `left = 0`, `pairs = 0`, and an empty frequency map.  
-2. **Iterate** over `right` from `0` to `n-1`:
-   - Let `val = nums[right]`.  
-   - Increment `pairs` by the current frequency of `val`.  
-   - Update frequency map: `freq[val] += 1`.  
-3. **While** the current window has at least `k` pairs (`pairs >= k`):
-   - All subarrays that start before `left` and end at `right` are good.  
-   - Add `left` to the answer (because there are `left` such subarrays: `[0..left-1]`).  
-   - Remove `nums[left]` from the window: decrease its frequency; update `pairs` accordingly.  
-   - Increment `left`.  
-4. **Return** the final answer.
-
----
-
-## 5. Detailed Code Walkthrough
-
-Below is a step‑by‑step annotated implementation in Java. The same logic applies to Python and C++ with minor syntactic differences.
-
-```java
-long long countGood(vector<int>& nums, int k) {
-    long long answer = 0;
-    int left = 0;                // left boundary of window
-    int pairs = 0;               // current number of equal pairs
-    unordered_map<int, int> freq; // frequency of each value
-
-    for (int right = 0; right < nums.size(); ++right) {
-        int val = nums[right];
-        int curFreq = freq[val];   // 0 if absent
-        pairs += curFreq;          // new pairs created
-        freq[val] = curFreq + 1;   // insert
-
-        // Window is good when pairs >= k
-        while (pairs >= k) {
-            answer += left;        // all subarrays starting before 'left'
-
-            int leftVal = nums[left];
-            int leftFreq = freq[leftVal];
-            pairs -= (leftFreq - 1);   // removing one reduces pairs
-            if (--freq[leftVal] == 0)
-                freq.erase(leftVal);   // clean up zero entry
-            ++left;
-        }
-    }
-    return answer;
-}
-```
-
-> **Note:**  
-> The crucial line is `pairs += curFreq;` on insertion and `pairs -= (leftFreq - 1);` on deletion. These maintain the *absolute* pair count. The editorial uses a different viewpoint (`k` gets decremented), but both achieve the same result.
-
----
-
-## 6. Why Recruiters Care About This Solution
-
-1. **Algorithmic Design:**  
-   Sliding window + pair counting is a *canonical interview pattern*. Recruiters expect you to spot such patterns quickly.
-
-2. **Language Agnostic:**  
-   Providing Java, Python, and C++ code demonstrates versatility—valuable for *full‑stack* or *backend* roles where you might switch between JVM, scripting, or native environments.
-
-3. **Readable, Documented Code:**  
-   Modern recruiters value maintainable code. The annotated snippets show clarity and robustness.
-
-4. **Portfolio Impact:**  
-   Add this repo to your GitHub with a README that includes the LeetCode link, your implementation, and the time‑complexity proof. Recruiters searching for *“leetcode 2537”* will find a clean solution instantly.
-
----
-
-## 7. Final Thoughts
-
-- **Brute force** is a *learning* tool but *not a hiring tool*.  
-- The **sliding‑window** approach is *linear*, *clear*, and *effective*.  
-- Mastering this pattern positions you strongly for any *algorithm interview* or *coding assessment*.
-
-Feel free to adapt the code, test it against random cases, and add it to your portfolio. When a recruiter reads your README, they’ll immediately see: *“Candidate knows how to solve LeetCode 2537 in O(n) time.”* That’s a win!
-
-Happy coding—and may your next interview be a breeze! 🌟
-
---- 
-
-*End of blog post.*
+Good luck! 💪 Remember, the key to landing that software engineering role is not just having a correct solution but being able to explain *why* it works. Happy coding!

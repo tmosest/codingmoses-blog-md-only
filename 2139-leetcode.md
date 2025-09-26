@@ -7,180 +7,220 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Solution Overview
+        # Minimum Moves to Reach Target Score – A Complete Guide (Java + Python + C++)
 
-> **Problem 2139 – Minimum Moves to Reach Target Score**  
-> You start with the integer `1`.  
-> In one move you can:  
-> * **Increment** (`x = x + 1`) – unlimited times.  
-> * **Double** (`x = 2 * x`) – at most `maxDoubles` times.  
->  
-> Given `target` and `maxDoubles`, find the minimum number of moves to reach `target`.
-
-The most efficient strategy is to **reverse the process**: start from `target` and work backwards to `1`.  
-Why? Because when you go backwards you have a clear choice – either “halve” (the inverse of double) or “decrement” (the inverse of increment).  
-
-### Greedy Reverse Algorithm
-
-```
-moves = 0
-while target > 1 and maxDoubles > 0:
-    if target is odd:
-        target -= 1          // one decrement
-        moves += 1
-    target //= 2              // one halve (double in forward)
-    moves += 1
-    maxDoubles -= 1
-
-// no doubles left – just decrement to 1
-moves += target - 1
-```
-
-* Each iteration uses one double (in forward) or one halve (backward).  
-* If the current `target` is odd we must first decrement (cost = 1) before halving.  
-* The loop runs at most `maxDoubles` times, which is ≤ 100, and the remaining steps are linear in the (small) difference `target‑1`.  
-* Time complexity: **O(log target)** because each halve reduces the value at least by half.  
-* Space complexity: **O(1)**.
+> **SEO‑Optimized Title**: *LeetCode 2139 – Minimum Moves to Reach Target Score – Java, Python, C++ Solutions, Greedy Algorithm, Time Complexity, Interview Prep*
 
 ---
 
-## 2.  Code
+## 1️⃣ Problem Overview
 
-Below are clean, idiomatic implementations in **Java, Python, and C++** that follow the algorithm described above.
+LeetCode #2139 – **Minimum Moves to Reach Target Score** (Medium)
 
-> **Tip:** All three codes compile with the standard 17/3.8/20 compiler and use only basic language features.
+> You start at the integer `1`.  
+> In one move you can:
+> 1. `x = x + 1` (increment) – unlimited uses  
+> 2. `x = 2 * x` (double) – at most `maxDoubles` times  
+>  
+> **Goal:** reach `target` with the minimum number of moves.
 
-### Java (Java 17)
+> **Constraints**  
+> `1 ≤ target ≤ 10⁹`  
+> `0 ≤ maxDoubles ≤ 100`
+
+---
+
+## 2️⃣ Intuition: Work Backwards
+
+The most efficient strategy is to think *from the target back to 1*.
+
+* Why?  
+  * Doubling is *powerful* only when the current number is *small*.  
+  * In reverse, “doubling” becomes “halving” (the most cost‑effective operation).  
+  * You want to use a double as *late* as possible and as many times as you can.
+
+**Greedy rule (reverse simulation)**  
+
+| Condition | Action | Moves added |
+|-----------|--------|-------------|
+| `target` is **odd** | Decrement (`target–=1`) then halve (`target/=2`) | 2 |
+| `target` is **even** | Halve (`target/=2`) | 1 |
+| No `maxDoubles` left | Subtract `target‑1` (only increments remain) | `target‑1` |
+
+The loop stops when `target` becomes `1` or we run out of double opportunities.
+
+---
+
+## 3️⃣ Algorithm
+
+```text
+moves = 0
+while target > 1 and maxDoubles > 0:
+    if target is odd:
+        moves += 2      # decrement + halve
+        target -= 1
+    else:
+        moves += 1      # only halve
+    target //= 2
+    maxDoubles -= 1
+
+# remaining increments if target > 1
+moves += target - 1
+return moves
+```
+
+* **Time Complexity**: `O(log target)` – each loop halves `target`.  
+* **Space Complexity**: `O(1)` – constant auxiliary space.
+
+---
+
+## 4️⃣ Why It Works (The “Good”)
+
+* **Optimality** – In the reverse direction the halving operation is always the best you can do with a double.  
+* **Simplicity** – The loop is short, no recursion, no DP table.  
+* **Scalability** – Works for the largest `target` (`10⁹`) because it only iterates `≈30` times.
+
+---
+
+## 5️⃣ Potential Pitfalls (The “Bad”)
+
+| Issue | Fix |
+|-------|-----|
+| Forgetting to decrement `maxDoubles` after a halve | `maxDoubles -= 1` in every loop iteration |
+| Mixing up “increment” vs “decrement” in reverse simulation | Remember: a forward increment becomes a backward decrement |
+| Edge case `maxDoubles == 0` | The loop will never run, you’ll jump straight to `target‑1` |
+
+---
+
+## 6️⃣ “Ugly” Code Anti‑Patterns
+
+1. **Recursive DFS with memoization** – overkill, high memory.  
+2. **Brute‑force BFS** – exponential state space (`10⁹` nodes).  
+3. **Unnecessary big‑integer handling** – Python’s int is fine, but avoid 64‑bit overflow in C++ if you use `int` and shift negative values.
+
+---
+
+## 7️⃣ Reference Implementations
+
+### 7.1 Java
 
 ```java
-/**
- * 2139. Minimum Moves to Reach Target Score
- *
- * Time:  O(log target)
- * Space: O(1)
- */
 public class Solution {
     public int minMoves(int target, int maxDoubles) {
         int moves = 0;
         while (target > 1 && maxDoubles > 0) {
-            if ((target & 1) == 1) {          // odd
-                target--;                     // decrement
-                moves++;                      // one move
+            if ((target & 1) == 1) {      // odd
+                moves += 2;               // decrement + halve
+                target -= 1;
+            } else {                      // even
+                moves += 1;               // only halve
             }
-            target >>= 1;                     // halve
-            moves++;                          // double in forward
-            maxDoubles--;                     // used one double
+            target >>= 1;                 // divide by 2
+            maxDoubles--;
         }
-        // no doubles left – just decrement to 1
-        moves += target - 1;
-        return moves;
+        return moves + (target - 1);      // remaining increments
     }
 }
 ```
 
-### Python 3 (≥ 3.8)
+### 7.2 Python
 
 ```python
-"""
-2139. Minimum Moves to Reach Target Score
-"""
-
 class Solution:
     def minMoves(self, target: int, maxDoubles: int) -> int:
         moves = 0
-        while target > 1 and maxDoubles:
-            if target & 1:          # odd
+        while target > 1 and maxDoubles > 0:
+            if target % 2:               # odd
+                moves += 2               # decrement + halve
                 target -= 1
+            else:                        # even
                 moves += 1
-            target >>= 1
-            moves += 1
+            target //= 2
             maxDoubles -= 1
-        return moves + target - 1
+        return moves + (target - 1)
 ```
 
-### C++ (C++20)
+### 7.3 C++
 
 ```cpp
-/**
- * 2139. Minimum Moves to Reach Target Score
- * Time: O(log target)
- * Space: O(1)
- */
 class Solution {
 public:
     int minMoves(int target, int maxDoubles) {
         int moves = 0;
         while (target > 1 && maxDoubles > 0) {
-            if (target & 1) {          // odd
-                --target;             // decrement
-                ++moves;
+            if (target & 1) {            // odd
+                moves += 2;              // decrement + halve
+                target -= 1;
+            } else {                     // even
+                moves += 1;
             }
-            target >>= 1;              // halve
-            ++moves;                   // double in forward
+            target >>= 1;                // divide by 2
             --maxDoubles;
         }
-        return moves + target - 1;
+        return moves + (target - 1);
     }
 };
 ```
 
-All three snippets are ready to paste into LeetCode’s editor or any C++/Java/Python project.
+---
+
+## 8️⃣ Complexity Table
+
+| Language | Time | Space |
+|----------|------|-------|
+| Java | `O(log target)` | `O(1)` |
+| Python | `O(log target)` | `O(1)` |
+| C++ | `O(log target)` | `O(1)` |
 
 ---
 
-## 3.  Blog Article
+## 9️⃣ FAQ
 
-> **Title (SEO‑Optimized):**  
-> *“How to Crack LeetCode 2139 – Minimum Moves to Reach Target Score (Java, Python, C++)”*  
-
-### 3.1  The Good
-
-| ✅ | Why It’s Great |
-|---|----------------|
-| **Intuitive Reverse Thinking** | Working backwards turns a seemingly complex “double‑then‑increment” sequence into a simple “halve or decrement” loop. |
-| **Linear‑Time Greedy** | The algorithm runs in `O(log target)` time and uses only constant extra space – perfect for interview stress‑tests. |
-| **Clear Code** | The Java, Python, and C++ implementations are each 10‑15 lines and avoid obscure tricks. |
-| **Works for All Edge Cases** | Handles `maxDoubles = 0`, `target = 1`, large targets (`≤ 10^9`), and the maximal `maxDoubles = 100`. |
-
-### 3.2  The Bad
-
-| ⚠️ | Issue |
-|---|-------|
-| **Harder to Spot the Greedy** | Beginners might try a BFS or DP approach and miss the simple reverse greedy. |
-| **Misunderstanding of “Odd” Case** | Forgetting that an odd `target` must be decremented first leads to off‑by‑one errors. |
-| **Edge‑Case Bug** | Not adding the remaining `target-1` after the loop results in an undercount when doubles run out early. |
-
-### 3.3  The Ugly
-
-| 🕷️ | Pain Point |
-|---|-------------|
-| **Infinite Loop Risk** | A subtle bug (`target >>= 1` instead of `target /= 2`) might cause a loop that never ends if the decrement step is omitted. |
-| **Non‑intuitive Sign Conventions** | Some languages (e.g., C++) require careful handling of signed integers to avoid overflow when shifting negative numbers – but here `target` is always positive. |
-| **Misleading Complexity Claims** | A naive DP solution could claim `O(target)` time, which is huge for `target = 10^9`; always emphasize the `O(log target)` nature of the greedy. |
+| Question | Answer |
+|----------|--------|
+| **Can I use the greedy approach when `maxDoubles` is large?** | Yes, because each loop iteration consumes one double, guaranteeing optimal use. |
+| **What if `target` is already 1?** | The function returns `0` – no moves needed. |
+| **Is `int` safe for C++?** | Yes, because `target ≤ 10⁹` and we never overflow the 32‑bit range during halving. |
+| **What if `maxDoubles` is 0?** | We skip the loop and return `target‑1` (all increments). |
 
 ---
 
-## 4.  Why This Blog Will Get You Hired
+## 🔗 Bonus: Running the Code Locally
 
-1. **SEO‑Friendly Keywords** – The title and headers contain “LeetCode 2139”, “Minimum Moves”, “Java”, “Python”, “C++”, and “interview”, which are search terms recruiters and recruiters use when looking for talent.
-2. **Clear Problem Breakdown** – Readers can instantly see the problem statement, constraints, and sample cases.
-3. **Step‑by‑Step Solution** – The reverse‑thinking narrative is educational and demonstrates your ability to convert complex problems into clean, efficient algorithms.
-4. **Cross‑Language Mastery** – Providing three implementations shows breadth of skill, a key factor for full‑stack or system‑design interviews.
-5. **Edge‑Case Awareness** – Discussing pitfalls signals that you’re detail‑oriented, a quality that hiring managers value.
+```bash
+# Python
+python3 - <<'PY'
+from solution import Solution
+print(Solution().minMoves(19, 2))   # 7
+print(Solution().minMoves(5, 0))    # 4
+PY
+```
 
-> **Pro Tip:**  
-> At the end of the article, add a small “Try It Yourself” section with a simple online compiler link and a call‑to‑action: *“Got a better trick? Drop a comment below – I’m always eager to learn!”*  
-> This boosts engagement and improves search rankings.
+```bash
+# Java
+javac Solution.java
+java Solution
+```
+
+```bash
+# C++
+g++ -std=c++17 solution.cpp -o sol
+./sol
+```
 
 ---
 
-## 5.  Final Checklist
+## 🏁 Conclusion
 
-- ✅ Problem statement with constraints  
-- ✅ Greedy reverse algorithm explanation  
-- ✅ Java, Python, C++ implementations  
-- ✅ SEO‑optimized blog outline  
-- ✅ Good/Bad/Ugly analysis  
-- ✅ Hiring‑relevant takeaways
+The **reverse greedy** approach gives an optimal, clean, and fast solution for LeetCode 2139.  
+Its key take‑away for your job interviews:
 
-Happy coding and best of luck landing that dream job!
+1. **Think backwards** – often reduces the problem size drastically.  
+2. **Greedy with a proof of optimality** – halving is always the best double‑use strategy.  
+3. **Keep the code lean** – no unnecessary data structures, O(1) space.  
+
+Share this post with your peers, and feel free to tweak the code to fit your coding style. Good luck crushing the interview!
+
+--- 
+
+> **SEO Tags:** LeetCode 2139, Minimum Moves to Reach Target Score, Java solution, Python solution, C++ solution, greedy algorithm, interview question, coding interview prep, algorithm analysis, job interview coding.

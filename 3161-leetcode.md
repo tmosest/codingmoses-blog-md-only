@@ -9,353 +9,403 @@ hideToc: true
 ---
         **Solution Explanation**
 
-For every query we are on the one dimensional X‑axis
+For every distance `x ( 0 ≤ x ≤ 50 000 )` we can build an obstacle at that
+integer distance from the origin.
+The obstacles are built one after another – all commands have to be processed
+in the given order.
 
 ```
-0 1 2 3 4 5 6 7 8 9 ...
+type 1  x   →  build an obstacle at distance x
+type 2  sz  x  →  is there a block of length sz (consecutive integers)
+                    that covers only distances ≤ x ?
 ```
 
-`1 – x` – put an obstacle at position `x`.  
-`2 – x – sz` – can we put a block of length `sz` whose rightmost point is
-not larger than `x` ?
+For every command we have to output
 
-The block may start anywhere – even at `0` – but it must stay completely
-inside the segment `[0 , x]` and it cannot cover an obstacle.
+```
+true  –  the command can be executed
+false –  the command cannot be executed
+```
+
+The task is a classical *dynamic set of points on a line* problem.
 
 
 
 --------------------------------------------------------------------
 
-#### 1.  Observations
+#### 1.   Observations
 
-For a position `p`
+*All distances are integers.*  
+If an obstacle exists at distance `d`, no part of a block may contain `d`.
 
-```
-p is empty  →  a free segment of length 1
-p has an obstacle  →  no free segment
-```
-
-If we know the longest consecutive empty segment inside any interval,
-then a query `2 – x – sz` is answered by
+For a block of length `sz` to exist inside the interval `[0 , x]`
+the block has to end somewhere `≤ x`.  
+Let
 
 ```
-maxLen( [0 , x] )  ≥  sz
+prev(x) – the closest obstacle that is ≤ x
 ```
 
-because the longest empty segment inside `[0 , x]` is exactly the best
-place for the block.
+(there is always an obstacle at distance `0`; we will keep it in the set)
+All distances `prev(x)+1 … x` are obstacle‑free,
+therefore a block can end at `x` **iff**
 
-So we need a data structure that
+```
+x – prev(x)  ≥  sz            (the free stretch on the right side)
+```
 
-* keeps the array of positions
-* supports
-    * **update** – “turn position `p` from empty to occupied”
-    * **range query** – “maximum consecutive empty length in `[l , r]`”
+Otherwise the block must end before `x`.  
+The longest stretch that ends before `x` is the maximum length of an
+interval that ends at any obstacle `≤ prev(x)`.  
+If that maximum length is at least `sz` the block can be placed,
+otherwise it cannot.
 
-The array size is at most `5·10⁴` (the usual limits of this problem),
-therefore an ordinary segment tree with `O(log N)` updates and queries
-is fully sufficient.
+So we need
 
-
+```
+for a given obstacle position x:
+    1. find its predecessor and successor in the current obstacle set
+    2. store for every obstacle the length of the free stretch to its left
+```
 
 --------------------------------------------------------------------
 
-#### 2.  Segment Tree structure
+#### 2.   Data structures
 
-For every node we store
+* `TreeSet<Integer> obstacles` – all built obstacles, sorted.
+  We insert two sentinels:
+  * `0`  – the origin is always free at the beginning
+  * `50 001` – a dummy obstacle that lies beyond the maximum possible query
+    distance.  
+    It guarantees that every obstacle has a successor.
 
-```
-pre[node]  – length of the longest empty prefix of the node’s segment
-suf[node]  – length of the longest empty suffix of the node’s segment
-mx[node]   – length of the longest empty sub‑segment inside the node’s segment
-len[node]  – length of the segment represented by the node
-```
+* `SegmentTree` over the indices `0 … 50 001`.  
+  For every obstacle `p` the tree stores
 
-`len[node]` is kept only for convenience (it is computed once during
-building).
+  ```
+  leftGap[p] = p – predecessor_of(p)
+  ```
 
-Merging of two children `L` and `R`:
+  This is the length of the free interval that ends exactly at `p`.
 
-```
-pre = (pre[L] == len[L]) ? len[L] + pre[R] : pre[L]
-suf = (suf[R] == len[R]) ? len[R] + suf[L] : suf[R]
-mx  = max( max(mx[L], mx[R]), suf[L] + pre[R] )
-```
+  The segment tree supports
 
-Initially every position is empty, therefore for a leaf  
-`pre = suf = mx = 1`.
+  * point update – set `leftGap[p]` to a new value
+  * range maximum query – maximum value on an interval of indices
 
-When an obstacle is placed at position `p` we change the leaf to
-`0,0,0` (no empty cells) and propagate the changes upwards.
-
-
+  Both operations work in `O(log N)` time (`N = 50 002`).
 
 --------------------------------------------------------------------
 
-#### 3.  Algorithm
+#### 3.   Algorithm
 
 ```
-find maximal x among all queries → N = maxX + 1  (positions 0 … maxX)
-build segment tree on [0 , N-1]  (all values are 1)
+initialise:
+    obstacles = { 0 , 50001 }
+    segTree   = new SegmentTree(50002)
+    segTree.update(0,       0)        // leftGap[0]  = 0
+    segTree.update(50001, 50001)      // leftGap[50001] = 50001
 
-for every query
-    if type == 1 (place obstacle)
-        update(position x)            // leaf becomes 0,0,0
-    else (type == 2)
-        mx = query(0 , x)
-        answer = (mx >= sz)
+for every command:
+    if command is type 1  x:
+        prev  = obstacles.lower(x)     // closest obstacle ≤ x
+        next  = obstacles.higher(x)    // closest obstacle  > x
+        obstacles.add(x)
+        segTree.update(x,        x - prev)     // leftGap for new obstacle
+        segTree.update(next,     next - x)     // free part after new obstacle
+        answer = true
+
+    else (type 2 sz x):
+        prev   = obstacles.lower(x)  // closest obstacle ≤ x
+        leftGap = x - prev
+        if leftGap >= sz:
+            answer = true
+        else:
+            maxGap = segTree.queryMax(0, prev)   // longest free stretch that ends before or at prev
+            answer = (maxGap >= sz)
+
+    store answer in output list
 ```
-
-All operations are `O(log N)`.
-
-
 
 --------------------------------------------------------------------
 
-#### 4.  Correctness Proof  
+#### 4.   Correctness Proof  
 
-We prove that the algorithm returns `true` for a query `2 – x – sz`
-iff a block of size `sz` can be placed with its rightmost point
-not larger than `x`.
+We prove that the algorithm outputs the correct answer for every command.
 
 ---
 
 ##### Lemma 1  
-After every update the segment tree keeps correct values for all nodes.
+For any obstacle position `p` the value stored in the segment tree
+at index `p` equals the length of the free interval that ends exactly at `p`,
+i.e. `leftGap[p] = p – predecessor_of(p)`.
 
 **Proof.**
 
-*Leaf:*  
-When an obstacle is inserted at position `p`,
-the leaf representing `p` is set to `pre = suf = mx = 0`.  
-This is correct because at that single point there is no empty cell.
+*Initialization.*  
+`obstacles = {0, 50001}`.  
+`leftGap[0]` is set to `0` – the free interval that ends at `0` has length `0`.  
+`leftGap[50001]` is set to `50001 – 0 = 50001` – the free interval `[0,50001)`.
 
-*Internal node:*  
-Assume both children store correct information.
-`pre` of the node is `len[childLeft]` if the left child’s prefix fills
-its whole segment, otherwise it is simply `pre[childLeft]`.  
-The same holds for `suf`.  
-`mx` is the maximum of the two child `mx` values and of a segment that
-spans the boundary: `suf[childLeft] + pre[childRight]`.  
-All three values are exactly what the definition of a node requires.
-∎
+*Induction step.*  
+Assume the statement holds after all previous commands.
+When a new obstacle `x` is inserted:
+
+```
+prev = obstacles.lower(x)   // predecessor of x
+next = obstacles.higher(x)  // successor of x
+```
+
+`x` becomes a new obstacle.  
+The free interval that ends at `x` has length `x – prev`; we store this value
+at index `x`.  
+The free interval that ends at the old successor `next`
+now has length `next – x`; we update this value at index `next`.  
+All other indices are unchanged.  
+Therefore the invariant holds after this command. ∎
 
 
 
 ##### Lemma 2  
-`query(0 , x)` returns the length of the longest consecutive empty
-segment completely inside `[0 , x]`.
+For a query `type 2 sz x` let `p = obstacles.lower(x)`  
+(`p` is the closest obstacle `≤ x`).  
+`leftGap = x – p`.
+
+If `leftGap ≥ sz` then a block of length `sz` can be placed covering only
+distances `≤ x`.
 
 **Proof.**
 
-`query` visits only nodes whose segments lie inside `[0 , x]` and
-uses the `mx` value stored in those nodes (by Lemma&nbsp;1 each `mx`
-is correct).  
-When a node is fully inside the query interval it contributes its
-`mx`.  
-When a node is only partially inside, its two children are queried and
-the maximum of the returned values is returned.  
-Thus the maximum of all correct `mx` values inside `[0 , x]` is returned,
-which is exactly the longest empty segment inside that interval. ∎
+All distances between `p+1` and `x` are free, because `p` is the
+nearest obstacle to the left of `x`.  
+If `x` itself is not an obstacle (`x` ≠ `p`), the stretch
+`[p+1 , x]` has length `leftGap`.  
+Placing a block that ends at distance `x` is therefore possible
+iff `leftGap ≥ sz`. ∎
 
 
 
 ##### Lemma 3  
-For a query `2 – x – sz` a block of length `sz` can be placed iff
-`query(0 , x) ≥ sz`.
+For a query `type 2 sz x` let `p = obstacles.lower(x)`  
+and `maxGap = segTree.queryMax(0, p)`  
+(the maximum free stretch that ends at any obstacle `≤ p`).
+
+If `maxGap ≥ sz` then a block of length `sz` can be placed covering only
+distances `≤ x`.
 
 **Proof.**
 
-*If part.*  
-Assume the longest empty segment inside `[0 , x]` has length `L ≥ sz`.  
-Let this segment be `[l , r]` with `r ≤ x`.  
-Placing a block that starts at `l` and ends at `l+sz-1 ≤ r ≤ x` is
-possible. So a placement exists.
+All free stretches that end before or at `p` are exactly the intervals
+`[prev(q)+1 , q]` for obstacles `q ≤ p`.  
+By Lemma&nbsp;1 the segment tree stores their lengths at the indices `q`.  
+The maximum of these lengths is `maxGap`.  
+If `maxGap ≥ sz`, choose the corresponding interval `[a , b]`
+(`b ≤ p < x`) and place the block inside it; all its covered distances
+are `< b ≤ x`. ∎
 
-*Only if part.*  
-Assume a placement exists.  
-The block occupies a contiguous segment `[b , b+sz-1]` with
-`b+sz-1 ≤ x`.  
-All positions of this segment are empty, therefore it is a sub‑segment
-of an empty run inside `[0 , x]`.  
-Consequently the longest empty segment inside `[0 , x]` has length at
-least `sz`.  
-Thus `query(0 , x) ≥ sz`. ∎
+
+
+##### Lemma 4  
+If both conditions of Lemma&nbsp;2 and Lemma&nbsp;3 fail,
+no block of length `sz` can be placed covering only distances `≤ x`.
+
+**Proof.**
+
+Assume the contrary: a block of length `sz` exists.
+
+*Case 1 – the block ends at distance `x`.*  
+Then all distances from the left end of the block up to `x`
+are free.  
+By definition of `p = obstacles.lower(x)` the leftmost obstacle in that
+range is `p`.  
+Hence `x – p ≥ sz`.  
+But this contradicts the assumption that the first condition failed.
+
+*Case 2 – the block ends before `x`.*  
+Let it end at some distance `y < x`.  
+`y` is not an obstacle, therefore the block is completely inside the
+interval that ends at some obstacle `q ≤ y`.  
+The length of that interval is `q – predecessor_of(q)`  
+(and stored in the segment tree at index `q`).
+Since `q ≤ y < x`, `q ≤ p`.  
+Thus the length of that interval is at most `maxGap`.  
+The block’s length `sz` would therefore be `≤ maxGap`.  
+But the second condition failed, so `maxGap < sz`.  
+Contradiction again. ∎
 
 
 
 ##### Theorem  
-For every query of type `2 – x – sz` the algorithm outputs `true`
-iff a block of size `sz` can be placed with its rightmost point not
-larger than `x`.
+For every command the algorithm outputs
+
+* `true`   iff the command can be executed,
+* `false`  otherwise.
 
 **Proof.**
 
-By Lemma&nbsp;2 the algorithm obtains `mx = query(0 , x)`, the length of
-the longest empty segment inside `[0 , x]`.  
-By Lemma&nbsp;3 a placement exists exactly when `mx ≥ sz`.  
-The algorithm returns `mx ≥ sz`, therefore its answer is correct. ∎
+*Type&nbsp;1.*  
+The algorithm only inserts the new obstacle, no answer is required.
+This obviously satisfies the specification.
+
+*Type&nbsp;2.*  
+Let `p = obstacles.lower(x)`.  
+The algorithm first checks `x – p ≥ sz`.  
+By Lemma&nbsp;2 this is equivalent to the existence of a suitable block
+ending at `x`.  
+If that fails, it queries the maximum free stretch that ends at an obstacle
+`≤ p`.  
+By Lemma&nbsp;3 the existence of a block that ends before `x` is equivalent
+to this maximum being at least `sz`.  
+If both checks fail, Lemma&nbsp;4 proves that no block can exist.
+Thus the answer returned by the algorithm is correct. ∎
 
 
 
 --------------------------------------------------------------------
 
-#### 5.  Complexity Analysis
+#### 5.   Complexity Analysis
 
-Let `M` be the maximum position appearing in all queries  
-(`M ≤ 5·10⁴` in the standard problem).
+Let `N = 50 002` – number of indices in the segment tree (`0 … 50 001`).
 
-```
-building the tree:   O(M)
-each update:          O(log M)
-each query:           O(log M)
-```
+* Each `type 1` command  
+  * `TreeSet.lower` / `higher` – `O(log N)`  
+  * two point updates in the segment tree – `O(log N)`  
+  * insertion into the set – `O(log N)`  
 
-The number of queries is at most `5·10⁴`, hence
+  → **`O(log N)`**
 
-```
-Total time   :  O( (number_of_queries) · log M )  ≤  5·10⁴ · log 5·10⁴  <  10⁶
-Memory usage :  O(4·(M+1)) integers  ≈  200 000 integers
-```
+* Each `type 2` command  
+  * `TreeSet.lower` – `O(log N)`  
+  * one range maximum query on the segment tree – `O(log N)`  
 
-Both are well inside the limits.
+  → **`O(log N)`**
 
+Memory consumption
 
+* `TreeSet` – at most `N` integers – `O(N)`  
+* Segment tree – 4 × `N` integers (classic implementation) – `O(N)`  
+
+Total memory: **`O(N)`** (≈ 0.5 MB).
 
 --------------------------------------------------------------------
 
-#### 6.  Reference Implementation  (Java 17)
+#### 6.   Reference Implementation  (Java 17)
 
 ```java
 import java.io.*;
 import java.util.*;
 
+/** Dynamic obstacles and range maximum query via segment tree. */
 public class Main {
 
-    /* ------------  Segment Tree  ------------ */
+    /* -----------  Segment Tree for range maximum  ------------- */
+    private static class SegmentTree {
+        private final int n;          // size of the tree (next power of two)
+        private final int[] tree;     // max values
 
-    static class SegTree {
-        int n;                       // number of positions (0 … n-1)
-        int[] mx, pre, suf, len;     // node arrays, 1‑based node indices
-
-        SegTree(int n) {
-            this.n = n;
-            int sz = 4 * n + 5;
-            mx = new int[sz];
-            pre = new int[sz];
-            suf = new int[sz];
-            len = new int[sz];
-            build(1, 0, n - 1);
+        SegmentTree(int size) {
+            n = 1;
+            while (n < size) n <<= 1;
+            tree = new int[2 * n];
         }
 
-        private void build(int node, int l, int r) {
-            len[node] = r - l + 1;
-            if (l == r) {                 // leaf – initially empty
-                mx[node] = pre[node] = suf[node] = 1;
-                return;
+        // set value at position idx to val
+        void update(int idx, int val) {
+            int p = idx + n;
+            tree[p] = val;
+            while (p > 1) {
+                p >>= 1;
+                tree[p] = Math.max(tree[p << 1], tree[(p << 1) | 1]);
             }
-            int mid = (l + r) >> 1;
-            build(node << 1, l, mid);
-            build(node << 1 | 1, mid + 1, r);
-            pull(node);
         }
 
-        private void pull(int node) {
-            int left = node << 1, right = node << 1 | 1;
-            int lenL = len[left], lenR = len[right];
-
-            pre[node] = pre[left] == lenL ? lenL + pre[right] : pre[left];
-            suf[node] = suf[right] == lenR ? lenR + suf[left] : suf[right];
-            int cross = suf[left] + pre[right];
-            mx[node] = Math.max(Math.max(mx[left], mx[right]), cross);
-        }
-
-        /* set position pos to obstacle (no empty cells) */
-        void update(int pos) {
-            update(1, 0, n - 1, pos);
-        }
-
-        private void update(int node, int l, int r, int pos) {
-            if (l == r) {                 // leaf
-                pre[node] = suf[node] = mx[node] = 0;
-                return;
+        // maximum value on indices [l, r] inclusive
+        int queryMax(int l, int r) {
+            if (l > r) return Integer.MIN_VALUE;
+            l += n; r += n;
+            int res = Integer.MIN_VALUE;
+            while (l <= r) {
+                if ((l & 1) == 1) res = Math.max(res, tree[l++]);
+                if ((r & 1) == 0) res = Math.max(res, tree[r--]);
+                l >>= 1; r >>= 1;
             }
-            int mid = (l + r) >> 1;
-            if (pos <= mid) update(node << 1, l, mid, pos);
-            else            update(node << 1 | 1, mid + 1, r, pos);
-            pull(node);
-        }
-
-        /* maximum consecutive empty length in [ql , qr] */
-        int query(int ql, int qr) {
-            return query(1, 0, n - 1, ql, qr);
-        }
-
-        private int query(int node, int l, int r, int ql, int qr) {
-            if (ql <= l && r <= qr) return mx[node];
-            int mid = (l + r) >> 1;
-            int res = 0;
-            if (ql <= mid) res = Math.max(res, query(node << 1, l, mid, ql, qr));
-            if (qr > mid)  res = Math.max(res, query(node << 1 | 1, mid + 1, r, ql, qr));
             return res;
         }
     }
 
-    /* ------------  Main  ------------ */
+    /* --------------------  Main  ---------------------------- */
+    public static void main(String[] args) throws IOException {
+        FastScanner fs = new FastScanner(System.in);
+        int m = fs.nextInt();                  // number of commands
 
-    public static void main(String[] args) throws Exception {
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        StringTokenizer st;
+        final int MAX = 50001;                 // sentinel beyond queries
+        TreeSet<Integer> obstacles = new TreeSet<>();
+        obstacles.add(0);
+        obstacles.add(MAX + 1);                // 50001
 
-        int T = Integer.parseInt(br.readLine().trim());   // number of test cases
+        SegmentTree seg = new SegmentTree(MAX + 2); // indices 0 … 50001
+        seg.update(0, 0);
+        seg.update(MAX + 1, MAX + 1);          // leftGap[50001] = 50001
+
         StringBuilder out = new StringBuilder();
 
-        while (T-- > 0) {
-            st = new StringTokenizer(br.readLine());
-            int Q = Integer.parseInt(st.nextToken());     // number of queries
-
-            int maxX = 0;
-            int[][] queries = new int[Q][3];   // store all queries
-
-            for (int i = 0; i < Q; i++) {
-                st = new StringTokenizer(br.readLine());
-                int type = Integer.parseInt(st.nextToken());
-                if (type == 1) {
-                    int x = Integer.parseInt(st.nextToken());
-                    queries[i][0] = 1;
-                    queries[i][1] = x;
-                    maxX = Math.max(maxX, x);
-                } else { // type 2
-                    int x = Integer.parseInt(st.nextToken());
-                    int sz = Integer.parseInt(st.nextToken());
-                    queries[i][0] = 2;
-                    queries[i][1] = x;
-                    queries[i][2] = sz;
-                    maxX = Math.max(maxX, x);
+        for (int i = 0; i < m; i++) {
+            int type = fs.nextInt();
+            if (type == 1) {                    // add obstacle
+                int x = fs.nextInt();
+                Integer prev = obstacles.lower(x);
+                Integer next = obstacles.higher(x);
+                obstacles.add(x);
+                seg.update(x, x - prev);
+                seg.update(next, next - x);
+                out.append("true\n");
+            } else {                            // query
+                int sz = fs.nextInt();
+                int x  = fs.nextInt();
+                Integer p = obstacles.lower(x);   // nearest obstacle ≤ x
+                int leftGap = x - p;
+                boolean ans;
+                if (leftGap >= sz) {
+                    ans = true;
+                } else {
+                    int maxGap = seg.queryMax(0, p);
+                    ans = (maxGap >= sz);
                 }
-            }
-
-            SegTree stree = new SegTree(maxX + 1);   // positions 0 … maxX
-
-            for (int i = 0; i < Q; i++) {
-                int type = queries[i][0];
-                if (type == 1) {                     // put obstacle
-                    int x = queries[i][1];
-                    stree.update(x);
-                } else {                            // query 2 – x – sz
-                    int x = queries[i][1];
-                    int sz = queries[i][2];
-                    int longest = stree.query(0, x);
-                    out.append(longest >= sz ? "true\n" : "false\n");
-                }
+                out.append(ans ? "true\n" : "false\n");
             }
         }
         System.out.print(out.toString());
+    }
+
+    /* ----------  Fast scanner for integers  ---------- */
+    private static class FastScanner {
+        private final InputStream in;
+        private final byte[] buffer = new byte[1 << 16];
+        private int ptr = 0, len = 0;
+        FastScanner(InputStream in) { this.in = in; }
+
+        private int read() throws IOException {
+            if (ptr >= len) {
+                len = in.read(buffer);
+                ptr = 0;
+                if (len <= 0) return -1;
+            }
+            return buffer[ptr++];
+        }
+
+        int nextInt() throws IOException {
+            int c, sgn = 1, res = 0;
+            do { c = read(); } while (c <= ' ');
+            if (c == '-') { sgn = -1; c = read(); }
+            while (c > ' ') {
+                res = res * 10 + c - '0';
+                c = read();
+            }
+            return res * sgn;
+        }
     }
 }
 ```
 
 The program follows exactly the algorithm proven correct above and
-conforms to Java 17.  The `Main` class can be renamed or the code
-wrapped into a method – the segment tree implementation is completely
-independent.
+conforms to the Java 17 language standard.

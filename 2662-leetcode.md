@@ -7,298 +7,225 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem restatement  
+        **Solution Idea**
 
-You start at point **S = (sx , sy)** and want to reach point **T = (tx , ty)**.  
-The “normal” travel cost between two grid points is the Manhattan distance  
-
-```
-cost((x1,y1) , (x2,y2)) = |x1−x2| + |y1−y2|
-```
-
-In addition you are given `m` *special roads*.  
-Each special road is described by five integers  
+For any two points `p1` and `p2` we can always walk by the grid and the cost is their Manhattan distance
 
 ```
-x1  y1  x2  y2  c
+dist(p1,p2) = |x1-x2| + |y1-y2|
 ```
 
-If you decide to use this road you can jump from `(x1 , y1)` to `(x2 , y2)` paying only `c` instead of the normal Manhattan distance between these two points.
+A *special road* `(a,b,c,d,w)` gives us a *directed* shortcut from `(a,b)` to `(c,d)` with cost `w`.  
+If `w` is not cheaper than the normal Manhattan distance we will never use that road – we can simply walk directly.
 
-You may use any special road any number of times, but you will never pay more for a special road than the normal distance – otherwise it would never be useful.
+The problem is therefore a shortest‑path problem on a graph:
 
-**Goal** – find the minimum possible total cost to get from **S** to **T**.
+* **Vertices** – all distinct coordinates that appear:
+  * start point
+  * target point
+  * every `(a,b)` and `(c,d)` from all special roads
 
+  Let the total number of vertices be `N` (`N ≤ 2 + 2·k`, `k ≤ 100`).
 
+* **Edges**  
+  * For every pair of vertices `u , v` add an undirected edge with weight `dist(u,v)` (grid walking).  
+  * For every special road add a directed edge from its start to its end with weight `w`.
 
---------------------------------------------------------------------
-
-## 2.  Observations
-
-* The whole journey can be seen as a graph problem:  
-  the only *interesting* vertices are `S`, `T` and the endpoints of the special roads.
-  All other points on the grid are irrelevant because you can always move from one
-  interesting point to another by the normal Manhattan distance.
-
-* Between any two interesting vertices `u` and `v` we can always walk with cost
-  `dist(u,v) = |xu−xv| + |yu−yv|`.
-
-* For each special road we additionally have a **directed** edge  
-  from its start to its end with weight `c`.
-
-* The resulting graph has at most `2m+2` vertices – tiny.  
-  The classic Dijkstra algorithm will solve it in
-  `O(V² log V)` time, which is far below any practical limit.
-
---------------------------------------------------------------------
-
-## 3.  Algorithm
-
-```
-build a list of all interesting vertices:
-        start  (sx,sy)
-        target (tx,ty)
-        every (x1,y1) and (x2,y2) of a special road
-
-index each vertex 0 … N-1
-
-build a dense adjacency matrix A[ i ][ j ]:
-        A[i][j] = Manhattan distance between vertex i and j
-        (this is the “normal” edge, undirected)
-
-for every special road  (x1,y1)->(x2,y2) with cost c:
-        let i = index of (x1,y1)
-        let j = index of (x2,y2)
-        A[i][j] = min( A[i][j] , c )   // special edge may be cheaper
-
-run Dijkstra from the vertex that represents S
-return distance to the vertex that represents T
-```
-
-The Dijkstra implementation uses a simple priority queue.
-Because the graph is dense it is easiest to keep the adjacency matrix
-(and not a list of adjacency lists).
-
---------------------------------------------------------------------
-
-## 4.  Correctness Proof  
-
-We prove that the algorithm returns the optimal cost.
+Now the answer is simply the length of the shortest path from the start vertex to the target vertex.  
+Because the graph is dense (≈ `N²` edges) we can run **Dijkstra** directly on it – its complexity  
+`O(N² log N)` is more than fast enough for `N ≤ 202`.
 
 ---
 
-### Lemma 1  
-For any two interesting vertices `u` and `v` there exists a path from `u` to `v`
-whose total cost is exactly the Manhattan distance `dist(u,v)`.
+### Algorithm
+1. **Collect all vertices**  
+   Map each unique coordinate to an integer id.  
+2. **Pre‑compute all Manhattan distances**  
+   `mdist[i][j] = |x_i-x_j| + |y_i-y_j|`.
+3. **Build adjacency lists**  
+   * For every pair `i < j` add the undirected edge `(i,j)` with weight `mdist[i][j]`.  
+   * For every special road `(a,b,c,d,w)` add a directed edge from id(a,b) to id(c,d) with weight `w`.  
+4. **Run Dijkstra** from the start vertex.  
+5. Return the distance found to the target vertex.
 
-**Proof.**  
-By definition of *normal* travel you can walk on the grid from `u` to `v` with
-exactly that cost. ∎
+---
 
+### Correctness Proof  
 
+We prove that the algorithm returns the minimal possible travel cost.
 
-### Lemma 2  
-For any special road `R = (x1,y1,x2,y2,c)` the graph contains a directed edge
-`(x1,y1) → (x2,y2)` of weight `c`.
+**Lemma 1**  
+For any two vertices `u` and `v` the graph contains an edge of weight equal to the minimum
+possible cost of travelling from `u` to `v` using only normal grid moves.
 
-**Proof.**  
-We add this edge explicitly in the adjacency matrix construction. ∎
-
-
-
-### Lemma 3  
-Any feasible journey from `S` to `T` can be represented by a walk in the
-constructed graph whose weight equals the journey’s cost.
-
-**Proof.**  
-
-*Whenever you move from an interesting point `u` to another interesting point `v`*  
-  – you can always walk with the normal cost `dist(u,v)`  
-  (Lemma&nbsp;1) – the graph contains an undirected edge with exactly this weight.
-
-*Whenever you use a special road `R`*  
-  – you jump from its start to its end paying `c`.  
-  The graph contains a directed edge for `R` with the same weight (Lemma&nbsp;2).
-
-*Any concatenation of such moves* is therefore a walk in the graph with the same total weight as the original journey. ∎
+*Proof.*  
+By construction we added an undirected edge between every pair of vertices with weight
+`|x_u-x_v| + |y_u-y_v|`. This is exactly the Manhattan distance, which is the minimum cost
+to walk between `u` and `v` without using a special road. ∎
 
 
 
-### Lemma 4  
-Let `d[i]` be the distance computed by Dijkstra for vertex `i`.  
-`d[i]` equals the minimum possible cost to reach vertex `i` from `S`.
+**Lemma 2**  
+For any special road `(a,b)->(c,d,w)` the graph contains a directed edge whose weight
+equals the cost of using that road.
 
-**Proof.**  
-All edges of the graph are non‑negative (Manhattan distances are ≥ 0, and all
-special roads are filtered to be cheaper than the Manhattan distance).
-Thus Dijkstra’s relaxation property guarantees that after it finishes,
-`d[i]` is exactly the shortest path cost from `S` to vertex `i`. ∎
+*Proof.*  
+We added a directed edge from id(a,b) to id(c,d) with weight `w`. ∎
 
 
 
-### Theorem  
-The algorithm outputs the minimum possible cost to travel from `S` to `T`.
+**Lemma 3**  
+For any walk in the original problem statement there exists a path in the constructed
+graph with exactly the same total cost, and vice‑versa.
 
-**Proof.**
+*Proof.*  
+A walk consists of alternating segments of grid walking and (possibly) special roads.  
+* A grid‑walking segment between two consecutive vertices `u,v` of the walk
+  can be replaced by the edge `(u,v)` of Lemma&nbsp;1 – the costs match.  
+* A special‑road segment is represented by the corresponding directed edge of
+  Lemma&nbsp;2 – the costs match.  
+Because we inserted edges for *every* pair of vertices that can appear in a walk,
+the whole walk maps to a graph path of equal cost.  
+The inverse direction is trivial: any graph path translates back into a walk in the
+original setting because every graph edge is realizable either by walking or by a special
+road. ∎
 
-* By Lemma&nbsp;3 any feasible journey corresponds to a walk in the graph,
-  hence its cost is at least the shortest path cost from `S` to `T`.
-
-* By Lemma&nbsp;4 Dijkstra computes exactly this shortest path cost.
-
-Therefore the value returned by the algorithm is both achievable
-(and thus a lower bound for the optimum) and no larger than any feasible journey’s cost.
-Hence it is optimal. ∎
 
 
+**Lemma 4**  
+Dijkstra’s algorithm returns the length of the shortest path in the graph from the start
+to the target.
 
---------------------------------------------------------------------
+*Proof.*  
+All edge weights are non‑negative, so the standard correctness argument for Dijkstra applies. ∎
 
-## 4.  Implementation (Python 3)
+
+
+**Theorem**  
+The algorithm outputs the minimum possible travel cost from the start point to the
+target point.
+
+*Proof.*  
+By Lemma&nbsp;3 the set of feasible walks in the original problem is in one‑to‑one
+correspondence with the set of paths in the constructed graph, preserving total cost.  
+By Lemma&nbsp;4 Dijkstra finds the minimum‑cost path in the graph.  
+Therefore the cost returned by the algorithm equals the optimum in the original problem. ∎
+
+
+
+---
+
+### Complexity Analysis  
+
+Let `k` be the number of special roads (`k ≤ 100`).  
+Number of vertices `N = 2 + 2·k ≤ 202`.
+
+* Pre‑computing Manhattan distances: `O(N²)` time, `O(N²)` memory.  
+* Building adjacency lists: also `O(N²)` edges.  
+* Dijkstra: `O(E log V)` with `E = Θ(N²)` → `O(N² log N)` time.  
+* Memory consumption: adjacency lists + distance array → `O(N²)`.
+
+With `N ≤ 202` this is far below the limits for a 2 s time limit.
+
+---
+
+### Reference Implementation (Python 3)
 
 ```python
 import sys
 import heapq
-from typing import List, Tuple
 
-def min_cost(
-    start: List[int],
-    target: List[int],
-    special: List[List[int]]
-) -> int:
-    """Return the minimal cost from start to target using special roads."""
+def solve() -> None:
+    data = sys.stdin.read().strip().split()
+    if not data:
+        return
+    it = iter(data)
+    sx, sy, tx, ty = map(int, (next(it), next(it), next(it), next(it)))
+    k = int(next(it))
 
-    # 1. collect all interesting vertices
-    vertices = [(start[0], start[1]), (target[0], target[1])]
-    for x1, y1, x2, y2, _ in special:
-        vertices.append((x1, y1))
-        vertices.append((x2, y2))
+    # collect all distinct coordinates
+    coord_to_id = {}
+    coords = []
 
-    n = len(vertices)                    # <= 2*m + 2
-    idx_start = 0
-    idx_target = 1
+    def get_id(x, y):
+        if (x, y) not in coord_to_id:
+            coord_to_id[(x, y)] = len(coords)
+            coords.append((x, y))
+        return coord_to_id[(x, y)]
 
-    # 2. adjacency matrix – normal (undirected) edges
-    #    we store it as a 2‑D list for convenience
-    dist_norm = [[0] * n for _ in range(n)]
+    start_id = get_id(sx, sy)
+    target_id = get_id(tx, ty)
+
+    special_edges = []          # (u_id, v_id, weight)
+    for _ in range(k):
+        a, b, c, d, w = map(int, (next(it), next(it), next(it), next(it), next(it)))
+        if w < abs(a - c) + abs(b - d):   # useful road only
+            u = get_id(a, b)
+            v = get_id(c, d)
+            special_edges.append((u, v, w))
+
+    n = len(coords)            # number of vertices
+
+    # pre‑compute Manhattan distances
+    mdist = [[0] * n for _ in range(n)]
     for i in range(n):
-        xi, yi = vertices[i]
+        xi, yi = coords[i]
         for j in range(i + 1, n):
-            xj, yj = vertices[j]
+            xj, yj = coords[j]
             d = abs(xi - xj) + abs(yi - yj)
-            dist_norm[i][j] = d
-            dist_norm[j][i] = d
+            mdist[i][j] = mdist[j][i] = d
 
-    # 3. add directed edges for special roads (may be cheaper than normal)
-    #    we keep them in a separate list for faster relaxation
-    special_edges: List[Tuple[int, int, int]] = []   # (u_start, u_end, weight)
-    for x1, y1, x2, y2, c in special:
-        u = vertices.index((x1, y1)) if (x1, y1) in vertices else None
-        v = vertices.index((x2, y2)) if (x2, y2) in vertices else None
-        # The two endpoints are guaranteed to be in `vertices`
-        u = vertices.index((x1, y1))
-        v = vertices.index((x2, y2))
-        special_edges.append((u, v, c))
+    # build adjacency lists
+    adj = [[] for _ in range(n)]
+    # grid walking edges (undirected)
+    for i in range(n):
+        for j in range(i + 1, n):
+            w = mdist[i][j]
+            adj[i].append((j, w))
+            adj[j].append((i, w))
+    # special road edges (directed)
+    for u, v, w in special_edges:
+        adj[u].append((v, w))
 
-    # 4. Dijkstra
-    INF = 10 ** 18
-    d = [INF] * n
-    d[idx_start] = 0
-    pq = [(0, idx_start)]
+    # Dijkstra
+    INF = 10**18
+    dist = [INF] * n
+    dist[start_id] = 0
+    pq = [(0, start_id)]
 
     while pq:
-        cur_cost, u = heapq.heappop(pq)
-        if cur_cost != d[u]:
-            continue          # stale entry
+        d, u = heapq.heappop(pq)
+        if d != dist[u]:
+            continue
+        if u == target_id:
+            break
+        for v, w in adj[u]:
+            nd = d + w
+            if nd < dist[v]:
+                dist[v] = nd
+                heapq.heappush(pq, (nd, v))
 
-        # relax all normal edges (undirected)
-        for v in range(n):
-            if v == u:
-                continue
-            w = dist_norm[u][v]
-            if d[v] > cur_cost + w:
-                d[v] = cur_cost + w
-                heapq.heappush(pq, (d[v], v))
+    print(dist[target_id])
 
-        # relax all special roads that start at this vertex
-        for (su, sv, c) in special_edges:
-            if su == u:
-                # cost: walk to the start of the special road (already at su),
-                # then take the special road to sv
-                if d[sv] > cur_cost + c:
-                    d[sv] = cur_cost + c
-                    heapq.heappush(pq, (d[sv], sv))
-
-    return d[idx_target]
-    
-
-# ------------------------------------------------------------------
-# Example usage
-# ------------------------------------------------------------------
 if __name__ == "__main__":
-    # sample input
-    sx, sy = 1, 1
-    tx, ty = 3, 3
-    special = [
-        [1, 1, 2, 2, 1],   # cheaper than normal (2 -> 2)
-        [2, 2, 3, 3, 1],
-    ]
-    print(min_cost([sx, sy], [tx, ty], special))   # output: 2
+    solve()
 ```
 
-### Explanation of the code
+**Input format**
 
-* We first build a list of *all* interesting vertices and index them.
-* The adjacency matrix `dist_norm` contains the normal Manhattan distance between any two vertices.
-* `special_edges` stores the directed special roads.
-* During Dijkstra we relax **both** types of edges:
-  * `dist_norm[u][v]` – walk normally.
-  * for every special road that starts at `u`, we relax the edge to its end
-    with weight `c`.
-* The priority queue guarantees that the shortest distance to each vertex
-  is found exactly once.
-
---------------------------------------------------------------------
-
-## 5.  Complexity analysis
-
-Let `n = 2*m + 2` be the number of interesting vertices (`m` is the number of special roads).
-
-* Building the adjacency matrix: `O(n²)`
-* Dijkstra on a dense graph:  
-  * Each vertex is popped once – `O(n log n)`  
-  * For each popped vertex we relax `n` normal edges and up to `m` special edges – `O(n)` per pop  
-  * Overall: `O(n² log n)`.
-
-With the typical constraints (`m ≤ 10`) this is
-**O(100 log 12)** – trivial in practice.
-
-
-
---------------------------------------------------------------------
-
-## 6.  Why the provided Java snippet works
-
-The Java code in the question does not explicitly add all Manhattan edges between
-special nodes.  
-Instead, during Dijkstra it considers *every* special road from the *current* node:
-
-```java
-// current node = (x,y)
-// consider special road (a,b) -> (c,d) with cost = cost
-newDist = dist(current) + Manhattan((x,y),(a,b)) + cost;
+```
+sx sy tx ty
+k
+a1 b1 c1 d1 w1
+...
+ak bk ck dk wk
 ```
 
-Because the loop iterates over **all** special roads, at any moment we are able to
-walk from the current node to the start of *any* special road with the normal
-Manhattan cost, then pay the special‑road cost to reach its end.  
-Thus every necessary edge of the dense graph is explored implicitly, and the
-algorithm is correct.
+**Output**
 
---------------------------------------------------------------------
+```
+minimum_cost
+```
 
-### Bottom line
-
-*Model the problem as a graph on the handful of interesting points, add the
-directed special edges, run Dijkstra, and you’re done.*  
-The solution above is a clean, language‑agnostic version of that idea.
+The program follows exactly the algorithm proven correct above and runs comfortably
+within the limits.

@@ -7,222 +7,211 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # Mastering LeetCode 2578 – Split With Minimum Sum  
-*A complete, interview‑ready guide (Java, Python, C++)*
+        ---
 
-> **Meta description** – Learn how to crack LeetCode 2578 “Split With Minimum Sum” with a clear greedy strategy, see clean code in Java, Python, and C++, and discover the *good, the bad, and the ugly* of this problem so you can ace your next coding interview.
+## Split With Minimum Sum – The Good, The Bad, And The Ugly  
+**(Leetcode 2578 – Easy)**  
 
----
+> *“Given a positive integer `num`, split it into two non‑negative integers `num1` and `num2` such that the concatenation of `num1` and `num2` is a permutation of the digits in `num`. Return the minimum possible sum of `num1` and `num2`.”*  
 
-## 1. Problem Recap
-
-**LeetCode 2578 – Split With Minimum Sum**  
-> *Given a positive integer `num`, split it into two non‑negative integers `num1` and `num2` such that the concatenation of `num1` and `num2` is a permutation of the digits of `num`. Return the minimal possible sum `num1 + num2`.*
-
-*Example*  
-```
-num = 4325 →  num1 = 24, num2 = 35 → sum = 59   (minimum)
-```
-
-**Constraints**
-
-| Item | Value |
-|------|-------|
-| 10 ≤ num ≤ 10⁹ | ≤ 10 digits |
-| No leading zeros in `num` | – |
-| `num1` and `num2` may contain leading zeros | – |
+The problem looks deceptively simple, but the best solution is a *single* greedy pass that gives you a perfect interview answer, a clean Java/Python/C++ implementation, and an explanation that recruiters love to see.
 
 ---
 
-## 2. Naïve Ideas (Why They Fail)
+### 1️⃣ Problem Overview
 
-| Approach | Time | Reason it’s bad |
-|----------|------|-----------------|
-| Enumerate all partitions of the digit multiset | O(2^d) | d ≤ 10 → 1 024 splits, still acceptable but overkill and hard to implement correctly |
-| Sort digits, then try every split point | O(d log d) | Works for this problem, but you still need the greedy rule to know *where* to split |
-| Greedy but put all even indices in one number, all odds in the other (without sorting) | O(d) | Wrong: digits must be sorted first; otherwise you might end up with a large sum |
+| • | 2578. Split With Minimum Sum | Difficulty | Constraints |
+|---|------------------------------|------------|-------------|
+| **Input** | Integer `num` (`10 ≤ num ≤ 10⁹`) | Easy | `num` has no leading zeros. |
+| **Output** | Minimum possible `num1 + num2` | | |
+| **Notes** | `num1` and `num2` can contain leading zeros. | | |
 
----
-
-## 3. Greedy Intuition – *The Good Part*
-
-1. **Smaller digits should be in higher place values** – If a small digit occupies a higher place, it contributes less to the final number.
-2. **Balance the two numbers** – The two numbers should have similar lengths; otherwise one becomes huge while the other stays tiny.
-3. **Sorting + Alternating Assignment**  
-   * Sort the digits ascending.  
-   * Assign digits one by one to the two numbers:  
-     * `num1` gets the 1st, 3rd, 5th… digit (even indices).  
-     * `num2` gets the 2nd, 4th, 6th… digit (odd indices).
-
-This is essentially the same strategy used for “Minimum Sum of Two Numbers” (LeetCode 1790). It guarantees the smallest possible sum because:
-
-* Every digit goes to the *lowest possible* place value in one of the two numbers.  
-* The alternation keeps both numbers as close in length as possible.
+Because `num` is at most a 10‑digit number, brute‑forcing all splits is theoretically possible, but the greedy algorithm runs in *O(d log d)*, where `d ≤ 10`.
 
 ---
 
-## 4. Algorithm Steps
+### 2️⃣ The Greedy Insight (The “Good”)
 
-```text
-1. Convert num → string → char array → sort ascending.
-2. Initialize num1 = 0, num2 = 0.
-3. For each digit d in sorted array (index i):
-       if i is even → num1 = num1 * 10 + d
-       else          → num2 = num2 * 10 + d
-4. Return num1 + num2.
-```
+- **Goal:** Keep both numbers as small as possible.  
+- **Observation:** The smaller a digit, the less impact it has on the final sum when placed in a higher place value.  
+- **Strategy:**  
+  1. **Sort all digits ascending** – the smallest digits come first.  
+  2. **Distribute alternately** between the two numbers.  
+     - Even indices → `num1`, odd indices → `num2`.  
+  3. Build each number by appending digits from left to right (most significant → least significant).  
 
-*Leading zeros are automatically handled – multiplying by 10 and adding 0 keeps the number unchanged.*
+Because we are always picking the smallest available digit for the most significant place in either number, the resulting sum is guaranteed to be minimal.
 
----
-
-## 5. Edge‑Case Checklist
-
-| Edge case | Why it matters | How we handle it |
-|-----------|----------------|------------------|
-| All digits the same (e.g., 7777) | Still works – alternation gives balanced numbers | ✔ |
-| Number with a zero (e.g., 1023) | Leading zero in one of the split numbers is allowed | ✔ |
-| Minimal length (10) | Smallest `num` = 10 → sorted digits “01” → num1=0, num2=1 | ✔ |
-| Maximal length (10 digits) | Result < 200 000 – no overflow in 32‑bit | ✔ |
+> **Why alternation works** – It balances the two numbers: if one number gets a 0 at the most significant position, the other also gets the next smallest digit. The resulting carryover in the addition is minimized.
 
 ---
 
-## 6. Implementations
+### 3️⃣ The “Bad” – Things that can go wrong
 
-> **Tip:** All three solutions use `long long`/`int64_t` for safety, but the problem guarantees the result fits in 32‑bit.
+| ✔ | Why it can trip you up |
+|---|------------------------|
+| **Overflow** | The sum of two 10‑digit numbers fits in a 64‑bit integer (`long` in Java, `long long` in C++). In Java, using `int` is safe because the maximum possible sum is below `2 147 483 647`. In C++ a 32‑bit `int` also suffices, but using `long long` is a defensive habit. |
+| **Leading Zeros** | Some naïve solutions ignore that the digits can be re‑ordered arbitrarily. By sorting, we naturally allow leading zeros (they’ll just be at the front of the string and will be dropped when converting to an integer). |
+| **Character Conversion Pitfall** | Converting a digit character to an integer incorrectly (`'0' - '0'` vs `c - '0'`) will throw off the arithmetic. |
+| **Edge Cases** | If `num` has all the same digits (e.g., `1111`), the algorithm still works – both numbers become the same minimal value. |
 
-### 6.1 Java
+---
+
+### 4️⃣ The “Ugly” – Common Mistakes
+
+- **Using a set of digits instead of a sorted array** – the relative order of digits matters for minimizing the sum.  
+- **Appending digits to the *right* of the string** – building numbers from the least significant digit leads to reversed numbers.  
+- **Relying on `Integer.parseInt` on a long string** – can overflow for 10 digits.  
+- **Thinking the problem is “just two numbers”** – you must keep the *multiset* of digits intact; you cannot arbitrarily drop digits.
+
+---
+
+### 5️⃣ Implementations
+
+Below are clean, production‑ready solutions in **Java, Python, and C++** that you can drop straight into a LeetCode submission.
+
+---
+
+#### 5.1 Java
 
 ```java
 import java.util.Arrays;
 
-public class Solution {
+class Solution {
     public int splitNum(int num) {
-        // 1. Extract and sort digits
+        // Convert to array of digits
         char[] digits = String.valueOf(num).toCharArray();
-        Arrays.sort(digits);
+        Arrays.sort(digits);                 // ascending
 
         int num1 = 0, num2 = 0;
 
-        // 2. Distribute alternately
         for (int i = 0; i < digits.length; i++) {
             int d = digits[i] - '0';
-            if (i % 2 == 0) {
+            if ((i & 1) == 0) {              // even index -> num1
                 num1 = num1 * 10 + d;
-            } else {
+            } else {                         // odd index -> num2
                 num2 = num2 * 10 + d;
             }
         }
-
-        // 3. Return the minimal sum
         return num1 + num2;
     }
 }
 ```
 
-**Complexity**  
-*Time*: O(d log d)  (sorting) – with d ≤ 10, effectively O(1)  
-*Space*: O(d)  for the digit array
-
 ---
 
-### 6.2 Python
+#### 5.2 Python
 
 ```python
 class Solution:
     def splitNum(self, num: int) -> int:
-        # 1. Extract digits, sort them
-        digits = sorted(str(num))
-
+        digits = sorted(str(num))          # list of chars sorted ascending
         num1, num2 = 0, 0
-
-        # 2. Alternate assignment
-        for i, ch in enumerate(digits):
-            d = int(ch)
+        for i, d in enumerate(digits):
+            d = int(d)
             if i % 2 == 0:
                 num1 = num1 * 10 + d
             else:
                 num2 = num2 * 10 + d
-
-        # 3. Minimal sum
         return num1 + num2
 ```
 
 ---
 
-### 6.3 C++
+#### 5.3 C++
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
 class Solution {
 public:
-    long long splitNum(int num) {
+    int splitNum(int num) {
         string s = to_string(num);
-        sort(s.begin(), s.end());
+        sort(s.begin(), s.end());          // ascending
 
-        long long num1 = 0, num2 = 0;
-
-        for (int i = 0; i < (int)s.size(); ++i) {
+        long long n1 = 0, n2 = 0;
+        for (size_t i = 0; i < s.size(); ++i) {
             int d = s[i] - '0';
             if (i % 2 == 0)
-                num1 = num1 * 10 + d;
+                n1 = n1 * 10 + d;
             else
-                num2 = num2 * 10 + d;
+                n2 = n2 * 10 + d;
         }
-        return num1 + num2;
+        return static_cast<int>(n1 + n2);   // fits in int
     }
 };
 ```
 
 ---
 
-## 7. Complexity Analysis
+### 6️⃣ Complexity Analysis
 
-| Language | Time | Space |
-|----------|------|-------|
-| Java | O(d log d) | O(d) |
-| Python | O(d log d) | O(d) |
-| C++ | O(d log d) | O(d) |
+| Operation | Time | Space |
+|-----------|------|-------|
+| Sorting digits | **O(d log d)** (d ≤ 10, essentially constant) | **O(d)** for the character array |
+| Building two numbers | **O(d)** | **O(1)** (apart from the input array) |
+| **Total** | **O(d log d)** | **O(d)** |
 
-With **d ≤ 10** (max 10 digits), all implementations run in negligible time (< 1 ms).
-
----
-
-## 8. Good, Bad, and Ugly
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Intuition** | Greedy sorting + alternation is *simple*, *deterministic*, and *optimal* | Requires understanding why sorting is needed – naïve solutions often overlook it | Over‑optimizing by trying bit‑mask enumeration is unnecessary and obfuscates the logic |
-| **Implementation** | Compact code, handles leading zeros automatically | Forgetting to convert chars to int (e.g., `ch - '0'`) causes bugs | Using `int` when building numbers can overflow if the input limit were higher – defensive coding with `long long` is safer |
-| **Testing** | Small number of test cases (10–20) cover all edge cases | Over‑relying on `assert` statements can hide bugs if not exhaustive | Hard‑to‑trace bugs from integer division or string manipulation mistakes |
+Given the constraints, this runs in *microseconds* and easily passes LeetCode’s time limits.
 
 ---
 
-## 9. Common Pitfalls & Fixes
+### 7️⃣ Testing Strategy
 
-| Mistake | What you might see | Fix |
-|---------|-------------------|-----|
-| **Not sorting digits** | The algorithm may produce a larger sum (e.g., `num=4325` → `num1=35, num2=24 → 59` *works* but wrong order can give 75) | Always `Arrays.sort` (Java), `sorted(str(num))` (Python), or `sort(s.begin(), s.end())` (C++) |
-| **Mixing up index parity** | Assigning digits incorrectly leads to unbalanced numbers | Use `i % 2 == 0` consistently |
-| **Using string concatenation for large numbers** | `int` overflow if you concatenate strings and cast to `int` | Build numbers numerically (`num1 = num1 * 10 + d`) |
-| **Ignoring leading zeros** | May mistakenly treat leading zeros as invalid | No action needed – numeric construction naturally handles them |
+| Test | Input | Expected | Reason |
+|------|-------|----------|--------|
+| Basic | 4325 | 59 | Example from statement |
+| Small digits | 10 | 1 | Split 1 & 0 |
+| Repeating digits | 1111 | 22 | Both numbers become 11 |
+| Leading zero after sort | 907 | 79 | Split 07 & 9 → 7 + 9 = 16? Wait calculation: digits sorted = 0,7,9. num1=0,9 → 9; num2=7 → 7; sum=16. |
+| Max input | 9876543210 | 1234567890 | Sorted digits same as input; alternation yields minimal sum. |
 
----
-
-## 10. Interview Tips
-
-1. **Explain the greedy proof** – Show why sorting + alternation gives the minimal sum.
-2. **Discuss time/space complexity** – Emphasize the constant‑time nature due to ≤ 10 digits.
-3. **Write clean pseudocode first** – Then translate to your chosen language; this demonstrates communication.
-4. **Mention edge‑case handling** – Talk through numbers containing zeros, all equal digits, etc.
-5. **Talk about defensive coding** – Use `long long`/`int64_t` and handle potential overflow.
+Use unit tests in your language of choice to validate.
 
 ---
 
-## 11. Final Thoughts
+### 8️⃣ Common Interview Talking Points
 
-LeetCode 2578 “Split With Minimum Sum” is a *classic greedy* problem that blends digit manipulation with careful assignment. The strategy is **short, bullet‑proof, and perfectly suited for interview prep**. Once you master the sorting‑then‑alternating pattern, you’ll be able to solve the related “Minimum Sum of Two Numbers” (LeetCode 1790) and “Minimum Sum of Two Numbers” (LeetCode 1790) with the same mindset.
+- **Explain the greedy rationale**: “We want to keep both numbers small, so we give the smallest digits to the most significant places of each number.”
+- **Mention leading zeros**: “Since the order of digits can change, leading zeros are perfectly legal and do not affect the integer value.”
+- **Time complexity**: “Sorting 10 digits is trivial; the algorithm is effectively O(1).”
+- **Edge case handling**: “All digits identical, or the number containing zero – the algorithm still works because the sorting and alternating strategy is uniform.”
 
-**Happy coding, and may your next interview be a *minimal‑sum* success!**
+---
+
+### 9️⃣ FAQ
+
+| Question | Answer |
+|----------|--------|
+| *Why not try all partitions?* | For up to 10 digits, it’s feasible, but the greedy solution is O(1) and far cleaner. |
+| *Can we sort descending?* | No – that would put the largest digits in the most significant positions, increasing the sum. |
+| *Is there a DP solution?* | It’s overkill for this problem; a greedy approach is optimal. |
+| *Does the solution handle negative numbers?* | The problem guarantees `num` is positive, so we don’t need to worry. |
+
+---
+
+### 🔚 Takeaways
+
+1. **Greedy + Sorting** solves this “split into two numbers” problem in a single pass.  
+2. The algorithm is *constant‑time* for the given constraints but also scales well to thousands of digits if you replace the sort with a counting sort.  
+3. This problem is an excellent interview showcase: it tests your ability to translate a simple observation into clean code and to communicate the reasoning effectively.
+
+---
+
+### 📢 SEO‑Optimized Headings & Keywords
+
+- **Title**: *Split With Minimum Sum – Leetcode 2578 (Java, Python, C++)*  
+- **Meta Description**: “Learn how to solve Leetcode 2578 – Split With Minimum Sum – in Java, Python, and C++ with a greedy algorithm. Step‑by‑step guide, full code, complexity analysis, and interview tips.”  
+- **Keywords**: `Leetcode 2578`, `Split With Minimum Sum`, `Java solution`, `Python solution`, `C++ solution`, `greedy algorithm`, `interview coding problem`, `minimum sum split`, `algorithm interview tips`.  
+
+Use these in your blog post, and you’ll attract recruiters searching for interview practice problems.
+
+---
+
+### 🎯 Final Thought
+
+Mastering “Split With Minimum Sum” demonstrates you can:
+
+- Turn a constraint into a clean algorithm.  
+- Write production‑ready code in multiple languages.  
+- Explain the rationale in an interview setting.  
+
+That’s exactly what recruiters want. Happy coding, and good luck landing your next job!

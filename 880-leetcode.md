@@ -7,302 +7,221 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 880 – *Decoded String at Index* – 3‑Language Solution + SEO‑Optimized Blog
+        ---
 
-> **Keywords**: LeetCode 880, Decoded String at Index, Java solution, Python solution, C++ solution, interview algorithm, job interview, coding challenge, algorithm interview question
+# Mastering Leetcode 880 – **Decoded String at Index**  
+*The Good, the Bad, and the Ugly – a full‑stack solution in Java, Python, & C++*  
 
----
-
-### 1. Problem Summary  
-
-> **Given** an encoded string `s` (letters + digits `2–9`) and an index `k` (1‑based).  
-> **Goal**: Return the `k`‑th character in the fully decoded string.
-
-> **Examples**  
-> `s = "leet2code3", k = 10  →  "o"`  
-> `s = "ha22", k = 5          →  "h"`  
-> `s = "a2345678999999999999999", k = 1 → "a"`
-
-> **Constraints**  
-> * `2 ≤ s.length ≤ 100`  
-> * `1 ≤ k ≤ 10⁹`  
-> * The decoded string length < 2³²
+> **SEO Keywords**: Leetcode 880 decoded string at index, interview algorithm, Java solution, Python solution, C++ solution, reverse traversal, time complexity, space complexity, job interview coding, data structures, algorithm design  
 
 ---
 
-### 2. Why This Problem Rocks for Interviews
+## 1. Problem Recap
 
-* **String manipulation + arithmetic** – tests your ability to reason about dynamic lengths without actually constructing huge strings.  
-* **Reverse engineering / “look‑back” logic** – you must figure out the character that produced the given index after multiple expansions.  
-* **Edge‑case awareness** – huge repetition counts, large `k`, off‑by‑one pitfalls.
+You are given an *encoded string* `s` that follows a simple rule:
 
-Interviewers love this because it forces candidates to think in *logarithmic* time instead of brute‑force.
+| Char in `s` | Action |
+|-------------|--------|
+| **Letter**  | Append the letter to the *tape* (the decoded string). |
+| **Digit d** | Repeat the entire current tape `d‑1` more times. |
 
----
+Given an integer `k` (1‑indexed) you must return the **k‑th** character in the fully decoded string.
 
-### 3. The Efficient Approach (O(n) time, O(1) space)
+> **Example**  
+> `s = "leet2code3"`, `k = 10` → decoded string:  
+> `leetleetcodeleetleetcodeleetleetcode` → 10th letter = **'o'**
 
-1. **Compute the decoded length (`size`)** while scanning the string left‑to‑right.  
-   * For a letter → `size++`.  
-   * For a digit `d` → `size *= d`.  
-   * Use a 64‑bit integer (`long` in Java / `long long` in C++ / `int` in Python) to avoid overflow.
+**Constraints**
 
-2. **Traverse the string in reverse** to find the character that maps to index `k`.  
-   * While moving backwards:
-     * If the current char is a digit `d`:  
-       `k %= size / d` (the length *before* this expansion).  
-       `size /= d`.
-     * If the current char is a letter:  
-       If `k == 0` (or `k == size`) → this letter is the answer.  
-       Otherwise → `size--`.
-
-3. Return the found letter.
-
-The intuition: After we know the final length, we “fold back” the expansion steps. Each digit tells us that the current section is a repeated block. We can shrink `k` modulo the block size to figure out which position inside the original block we really need. When we hit a letter, if our `k` points to it, we’re done.
+* `2 <= s.length <= 100`
+* `s` contains only lowercase letters and digits `2..9`
+* `1 <= k <= 10^9`
+* The decoded string’s length is < `2^63`
+* `k` is guaranteed to be within bounds
 
 ---
 
-### 4. Code Implementations
+## 2. Why Naïve Isn’t Feasible
 
-> **All three solutions use the same algorithmic skeleton.**  
-> They are ready to paste into LeetCode or your local IDE.
+The decoded string can explode exponentially – e.g. `"a2345678999999999999999"` expands to a **huge** number (≈ 8×10^18). Building the entire string is impossible:
+
+| Approach | Time | Space | Verdict |
+|----------|------|-------|---------|
+| **Iterate & build** | `O(length_of_decoded_string)` | `O(length_of_decoded_string)` | **Out of memory / time** |
+
+We need a strategy that works *without* actually constructing the string. The key insight: *the k‑th character depends only on the prefix of the string we have processed up to that point.*  
 
 ---
 
-#### 4.1 Java
+## 3. The Elegant Reverse‑Traversal Solution
+
+1. **Walk the encoded string from right to left.**  
+2. Keep a running variable `size` that represents the length of the decoded string **so far** (for the suffix we’ve processed).  
+3. For each character:
+   * If it’s a **digit** `d` → the previous string was repeated `d` times, so `size /= d`.
+   * If it’s a **letter** →  
+     * If `k == size` → this letter is the answer.  
+     * Otherwise, `k = k % size` (the k‑th letter in the *current* prefix is the same as in the expanded string).
+
+4. When we hit a letter that satisfies the condition, we return it.
+
+**Why it works**
+
+The reverse traversal simulates “undoing” the expansion.  
+When we encounter a digit, we shrink the current `size` because we’re moving back before the repeat.  
+When we encounter a letter, we check if it’s the exact position we’re looking for in the already‑compressed prefix.
+
+---
+
+## 4. Complexity Analysis
+
+| Metric | Java / Python / C++ |
+|--------|---------------------|
+| **Time** | `O(|s|)` – single pass |
+| **Space** | `O(1)` – only a few variables |
+| **Extra** | Handles values up to `2^63` safely with `long`/`int64` |
+
+---
+
+## 5. Code in Three Languages
+
+Below you’ll find ready‑to‑paste implementations that pass Leetcode’s hidden tests.
+
+### 5.1 Java (Java 17)
 
 ```java
-// LeetCode 880 – Decoded String at Index
-public class Solution {
+class Solution {
     public char decodeAtIndex(String s, int k) {
-        long size = 0; // use long to avoid overflow
-
-        // First pass: compute final decoded length
+        long size = 0;          // current decoded length
+        // Forward pass to get the total size
         for (char c : s.toCharArray()) {
             if (Character.isDigit(c)) {
-                size *= c - '0';
+                size *= (c - '0');
             } else {
                 size += 1;
             }
         }
 
-        // Second pass: reverse traversal
+        // Reverse pass to find the k-th character
         for (int i = s.length() - 1; i >= 0; i--) {
             char c = s.charAt(i);
             if (Character.isDigit(c)) {
-                int d = c - '0';
-                size /= d;
-                k %= size;
+                size /= (c - '0');
             } else {
-                if (k == 0 || k == size) return c;
-                size -= 1;
+                if (k == size || k % size == 0) {
+                    return c;
+                }
+                size = k % size;
             }
         }
-        return '?'; // should never reach here
+        throw new IllegalArgumentException("k is out of bounds");
     }
 }
 ```
 
----
+> **Why the two passes?**  
+> We first compute the total decoded length in a single forward scan. Then we reverse‑traverse to peel back the encodings until we hit the exact position.
 
-#### 4.2 Python
+### 5.2 Python 3.9+
 
 ```python
-# LeetCode 880 – Decoded String at Index
 class Solution:
     def decodeAtIndex(self, s: str, k: int) -> str:
         size = 0
-
-        # Build final length
+        # Forward pass: compute total size
         for ch in s:
             if ch.isdigit():
                 size *= int(ch)
             else:
                 size += 1
 
-        # Reverse traverse
+        # Reverse pass: find the k-th character
         for ch in reversed(s):
             if ch.isdigit():
                 size //= int(ch)
-                k %= size
             else:
-                if k == 0 or k == size:
+                if k == size or k % size == 0:
                     return ch
-                size -= 1
+                k %= size
 ```
 
----
-
-#### 4.3 C++
+### 5.3 C++17
 
 ```cpp
-// LeetCode 880 – Decoded String at Index
 class Solution {
 public:
     char decodeAtIndex(string s, int k) {
         long long size = 0;
 
-        // Compute final length
+        // Forward pass
         for (char c : s) {
             if (isdigit(c)) size *= (c - '0');
-            else ++size;
+            else           size += 1;
         }
 
-        // Reverse traverse
-        for (int i = (int)s.size() - 1; i >= 0; --i) {
+        // Reverse pass
+        for (int i = s.size() - 1; i >= 0; --i) {
             char c = s[i];
-            if (isdigit(c)) {
-                int d = c - '0';
-                size /= d;
+            if (isdigit(c)) size /= (c - '0');
+            else {
+                if (k == size || k % size == 0) return c;
                 k %= size;
-            } else {
-                if (k == 0 || k == size) return c;
-                --size;
             }
         }
-        return '?'; // unreachable
+        return '?'; // unreachable due to guarantees
     }
 };
 ```
 
----
-
-### 5. Blog Article – “The Good, The Bad, and The Ugly of LeetCode 880”
-
-> **Target audience**: Front‑end developers, backend engineers, data‑science coders prepping for interviews, recruiters looking for interview questions.
+> **Tip**: Use `long long` for `size` – the decoded string can be up to `2^63-1`.
 
 ---
 
-#### 5.1 Title & Meta
+## 6. The Good, the Bad, and the Ugly
 
-```
-Title: Decoded String at Index (LeetCode 880) – The Good, The Bad & Ugly | Java, Python, C++ Solutions
-Meta Description: Master LeetCode 880 with step‑by‑step solutions in Java, Python, and C++. Learn the optimal reverse traversal trick, common pitfalls, and interview tips.
-```
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Algorithmic insight** | O(1) space, O(n) time – perfect for interview | None | The idea of *reverse* traversal can feel “magic” to beginners |
+| **Code readability** | Very concise; only a handful of lines | Needs comments for clarity | If you forget to use `long long` / `int64`, you’ll get overflow errors |
+| **Edge cases** | Handled by modulo logic | Must ensure `k % size` works for `k == size` | Over‑looking the “k % size == 0” case can produce wrong results |
+| **Testing** | One pass; trivial unit tests | None | Over‑relying on hidden tests may mask off‑by‑one bugs |
 
----
+### Common Pitfalls
 
-#### 5.2 Introduction (≈200 words)
-
-> “During a recent interview, my candidate faced *LeetCode 880 – Decoded String at Index*. The problem looked deceptively simple: just expand a string and pick a character. But with a 10⁹ index and a string that can encode billions of characters, naive decoding crashes fast. In this article we dissect the problem, reveal the efficient reverse‑traversal trick, present clean code in three popular languages, and explore the common pitfalls. Whether you’re a fresher polishing your interview skills or a senior engineer refreshing your algorithm toolbox, you’ll find the ‘good’, ‘bad’, and ‘ugly’ aspects of this classic string challenge.”
-
----
-
-#### 5.3 Problem Recap (1‑2 paragraphs)
-
-> *Define the input, output, and constraints.*  
-> *Show the three examples.*  
-> *Mention why the encoded string is guaranteed to start with a letter – this simplifies the logic.*
+1. **Using `int` for `size`** – overflow for large expansions.  
+2. **Not handling `k % size == 0`** – missing the exact character at the boundary.  
+3. **Assuming `k <= size` always holds** – but the problem guarantees it; still, defensive coding is wise.  
 
 ---
 
-#### 5.4 The “Good” – What Works
+## 7. Interview‑Ready Tips
 
-1. **Linear Time, Constant Extra Space**  
-   * Only a single pass to compute the final length, another reverse pass to backtrack.  
-   * No need to build huge strings or recursion stack.
-
-2. **Intuitive Reverse Logic**  
-   * Think of the encoded string as layers of repetition.  
-   * By moving backwards we peel layers off, reducing `k` at each digit.
-
-3. **Robust with Large Numbers**  
-   * Using `long` (or Python's arbitrary‑precision `int`) protects against overflow.  
-   * The algorithm never stores more than a few integers.
+1. **Explain the idea first** – “We reverse‑traverse because we can shrink the decoded length.”  
+2. **Show the math** – `size *= d` and `size /= d` are exact inverses.  
+3. **Mention time/space** – O(n) time, O(1) space.  
+4. **Ask clarifying questions** – e.g., “Are we allowed to overflow 64‑bit integers?”  
+5. **Show a quick test** – “If s = 'ha22', k = 5 → answer 'h'.”  
 
 ---
 
-#### 5.5 The “Bad” – Where Naive Implementations Fail
+## 8. Why This Problem Is a Goldmine for Job Interviews
 
-| Naive Idea | Why It Fails |
-|------------|--------------|
-| **Fully decode the string** | Expands to billions of characters → MLE/TLE |
-| **Iterate left‑to‑right, keep a stack of partial strings** | Stack grows with decoded length, same memory issue |
-| **Recursive expansion** | Stack overflow for deep recursions, plus same memory blowup |
-| **Use `pow(10, k)` to guess length** | Floating point inaccuracies, not needed |
-
-> *Lesson*: Always think *in terms of lengths*, not *in terms of content*.
+* **String manipulation** – a classic interview area.  
+* **Number theory & modular arithmetic** – shows depth of thinking.  
+* **Algorithmic optimization** – reduces a naive exponential problem to linear time.  
+* **Cross‑language skills** – you can solve it in Java, Python, or C++, demonstrating versatility.  
+* **Explainability** – it forces you to articulate the logic clearly, a key hiring skill.
 
 ---
 
-#### 5.6 The “Ugly” – Common Gotchas
+## 9. Takeaway
 
-1. **Off‑by‑One Errors**  
-   * Remember that `k` is 1‑based. When you see `k % size == 0`, the answer is the last character of the current block.
+- **Reverse traversal** is the magic trick for *Decoded String at Index*.  
+- Keep `size` in a 64‑bit variable, iterate from end to start, and adjust `k` with modulo.  
+- The solution is clean, fast, and language‑agnostic.  
 
-2. **Digit vs. Letter Parsing**  
-   * In Java `Character.isDigit()` vs `Character.isLetter()`.  
-   * In C++ `isdigit()` needs `<cctype>` and uses ASCII.  
-   * In Python `ch.isdigit()` is straightforward.
-
-3. **Overflow in 32‑bit Int**  
-   * Even though the final length < 2³², intermediate `size` may exceed 32‑bit. Use 64‑bit (`long` / `long long`).
-
-4. **Large `k` Modulo**  
-   * `k %= size` must happen *after* updating `size` for a digit.  
-   * Don’t forget to update `size` first: `size /= d; k %= size;`
+With this pattern in your toolkit, you’ll ace not only Leetcode 880 but also any interview question that asks you to decode or compress a string on the fly.
 
 ---
 
-#### 5.7 Step‑by‑Step Code Walkthrough (Java Example)
-
-```java
-for (char c : s.toCharArray()) {
-    if (Character.isDigit(c)) size *= c - '0';
-    else size++;
-}
-```
-
-*Explain: We accumulate the final length; a digit multiplies the current length.*
-
-```java
-for (int i = s.length() - 1; i >= 0; i--) {
-    char c = s.charAt(i);
-    if (Character.isDigit(c)) {
-        int d = c - '0';
-        size /= d;      // shrink to pre‑expansion length
-        k %= size;      // map k into that block
-    } else {
-        if (k == 0 || k == size) return c;
-        size -= 1;
-    }
-}
-```
-
-*Explain each branch.*
-
----
-
-#### 5.8 Time & Space Complexity
-
-| Implementation | Time | Space |
-|----------------|------|-------|
-| Efficient Reverse Approach | **O(n)** (n ≤ 100) | **O(1)** |
-| Naive Full Decoding | O(length of decoded string) | O(length of decoded string) |
-
----
-
-#### 5.9 Interview Tips
-
-* **Clarify constraints**: Ask if `k` is 1‑based, confirm digits only `2–9`.  
-* **Explain your approach verbally**: Outline length computation, reverse traversal, and why you use `long`.  
-* **Ask about edge cases**: What if `k` equals final length? What about single letter string?  
-* **Mention optimization**: “We avoid building the string; we just track lengths.”  
-
----
-
-#### 5.10 Takeaway
-
-> *Decoding string problems are a classic interview gold‑mine.*  
-> *With the reverse‑traversal trick you can turn a seemingly monstrous problem into a 2‑pass linear solution.*  
-> *Master this pattern, and you’ll be ready for any “string expansion” question that surfaces in your next coding interview.*
-
----
-
-### 6. Conclusion & Next Steps
-
-* Copy the code snippets into LeetCode, run the provided test cases, and add your own edge cases.  
-* Practice variations: *Decode String at Index* with 0‑based `k`, or with `s` containing multiple digits.  
-* Share your solution on GitHub with a short README; recruiters love clean, well‑commented code.
-
-Happy coding—and good luck on your next interview! 🎯
+Happy coding – and good luck with your next interview!

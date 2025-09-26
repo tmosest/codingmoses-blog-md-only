@@ -7,338 +7,325 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🧠 LeetCode 2456 – *Most Popular Video Creator*  
-**Good, Bad & Ugly – A Job‑Ready Guide**  
+        ## 1.  Problem Recap
+
+> **2456 – Most Popular Video Creator**  
+> *Medium*  
+
+You’re given three arrays of length *n*:
+
+| i | `creators[i]` | `ids[i]` | `views[i]` |
+|---|---------------|----------|------------|
+| 0 | creator of video *i* | id of video *i* | number of views of video *i* |
+
+The *popularity* of a creator is the sum of the views of all of that creator’s videos.  
+For every creator you also need to know the id of the **most‑viewed** video.  
+If several videos tie for most views, pick the lexicographically smallest id.  
+If several creators tie for the highest popularity, return all of them (order does not matter).
+
+Return a 2‑D array `answer` where each element is `[creator, id_of_best_video]`.
+
+
+
+--------------------------------------------------------------------
+
+## 2.  Algorithm (One‑pass, O(n) time, O(n) space)
+
+The solution is a single linear scan that keeps a *single* hash‑map per creator.
+
+| Creator | `totalViews` | `maxVideoViews` | `bestId` |
+|---------|--------------|-----------------|----------|
+
+* `totalViews` – the running sum of all views for that creator.  
+* `maxVideoViews` – the maximum view count seen for any single video of that creator.  
+* `bestId` – the lexicographically smallest id that has `maxVideoViews`.
+
+**Steps**
+
+1. Initialise an empty map `mp` (`String → struct{ long total, int maxView, String bestId }`).
+2. Iterate over the 3 arrays simultaneously.
+   * Update `totalViews` (add current `views[i]`).
+   * If `views[i] > maxVideoViews` → replace `maxVideoViews` and `bestId`.
+   * If `views[i] == maxVideoViews` → keep the smaller id.
+3. While iterating keep track of the global maximum popularity (`globalMax`).
+4. After the scan, walk the map again and pick all creators whose `totalViews == globalMax`.  
+   For each, output `[creator, bestId]`.
+
+Because every operation on a map is **O(1)** on average, the overall complexity is:
+
+* **Time** – `O(n)`  
+* **Space** – `O(n)` (one entry per distinct creator)
+
+The algorithm handles duplicate ids naturally because we treat each entry as a distinct video.
+
+
+
+--------------------------------------------------------------------
+
+## 3.  Reference Implementations
+
+Below you’ll find clean, well‑commented solutions in the three requested languages.
 
 ---
 
-### 1️⃣ What the Problem Actually Wants
-
-| # | Input | Meaning |
-|---|-------|---------|
-| 1 | `String[] creators` | The user who uploaded the video |
-| 2 | `String[] ids` | The video’s ID (note: the same ID can appear multiple times) |
-| 3 | `int[] views` | Views that each video got |
-
-**Goal**
-
-* **Popularity** of a creator = sum of views of all his/her videos.  
-* Find the creator(s) with the **maximum popularity**.  
-* For each of those creators pick **one** video – the one with the highest view count.  
-  * If several videos tie on view count, choose the **lexicographically smallest ID**.  
-
-Return an array of `[creator, bestVideoID]`. Order of the results does not matter.
-
----
-
-### 2️⃣ Why This Problem Looks Harder Than It Is
-
-* **Duplicate IDs** – we can’t just use the ID as a key.  
-* **Multiple creators with same popularity** – we need to keep track of all of them.  
-* **Tie‑break on ID** – we must keep the *minimum* ID among the best videos.  
-
-All of that can be solved in **O(n)** time and **O(n)** space with a single pass through the data.
-
----
-
-### 3️⃣ The “Good” Solution – One HashMap per Creator
-
-| Step | Action | Why it’s Good |
-|------|--------|---------------|
-| 1 | For each video: add its views to the creator’s total popularity. | O(1) update. |
-| 2 | Keep the best video for that creator: store `<maxViews, bestID>` where `bestID` is lexicographically smallest when views tie. | One comparison per video – still O(1). |
-| 3 | After the pass, find the global maximum popularity. | One linear scan over the creator map. |
-| 4 | Collect all creators whose popularity equals the global maximum and output the stored `<bestID>`. | O(k) where *k* = number of top creators. |
-
-All steps are linear, so the whole algorithm runs in **O(n)** time and **O(m)** space (`m` = number of distinct creators, ≤ n).
-
----
-
-### 4️⃣ The “Bad” Approach – Two HashMaps + Sorting
-
-* Keep a map of creator → total views.  
-* Keep a map of creator → list of all videos (ID + views).  
-* After processing, for each top‑popularity creator sort its video list by ID and pick the first with maximum views.  
-
-**Drawbacks**
-
-* Sorting each creator’s videos is **O(v log v)** per creator (`v` = videos of that creator).  
-* Extra memory for a list of all videos.  
-* Overkill for this problem – LeetCode will still accept it, but interviewers will notice the inefficiency.
-
----
-
-### 5️⃣ The “Ugly” Edge‑Case Trap
-
-> “What if two videos of the same creator have the **exact same view count** and the **same ID**?  
-> (The problem guarantees IDs can repeat, but the same video can be duplicated.)”
-
-If you only keep the **maximum view count** and **lexicographically smallest ID** for each creator, you’ll correctly handle this because:
-
-```text
-if newView > bestView → update
-else if newView == bestView and newID < bestID → update
-```
-
-You **don’t** need to remember all IDs – just the best one.  
-A common mistake is to replace the best ID whenever the view count ties, which would lose the lexicographically smallest ID.
-
----
-
-### 6️⃣ Time & Space Complexity
-
-| Language | Time | Space |
-|----------|------|-------|
-| Java / Python / C++ | **O(n)** | **O(m)** |
-
----
-
-### 7️⃣ Ready‑to‑Copy Code (Java, Python & C++)
-
-> All solutions use *one* creator‑map that stores  
-> * total popularity (`long`)  
-> * best video info (`maxViews`, `bestID`).
-
----
-
-## 🧑‍💻 Java (Java 17, 1.5 × faster than most Java solutions)
+### 3.1  Java (Java 17)
 
 ```java
 import java.util.*;
 
-/**
- * LeetCode 2456 – Most Popular Video Creator
- *
- * O(n) solution using a single HashMap per creator.
- * Each entry stores:
- *   - total popularity (sum of views)
- *   - best video id (lexicographically smallest when tie)
- */
 public class Solution {
-    // Helper record to keep creator data
-    private static class CreatorInfo {
-        long totalViews;   // sum of all video views
-        int   maxViews;    // highest view count for a single video
-        String bestId;     // smallest id among videos with maxViews
+    // Helper class to hold creator statistics
+    private static class Stat {
+        long totalViews;      // sum of all views
+        int  maxVideoViews;   // max views of a single video
+        String bestId;        // lexicographically smallest id among maxVideoViews
 
-        CreatorInfo(long views, String id, int max) {
+        Stat(long views, String id) {
             this.totalViews = views;
-            this.maxViews   = max;
-            this.bestId     = id;
+            this.maxVideoViews = (int) views;
+            this.bestId = id;
+        }
+
+        void update(long views, String id) {
+            totalViews += views;
+
+            if (views > maxVideoViews) {
+                maxVideoViews = (int) views;
+                bestId = id;
+            } else if (views == maxVideoViews && id.compareTo(bestId) < 0) {
+                bestId = id;
+            }
         }
     }
 
-    public List<List<String>> mostPopularCreator(
-            String[] creators, String[] ids, int[] views) {
+    public List<List<String>> mostPopularCreator(String[] creators,
+                                                 String[] ids,
+                                                 int[] views) {
+        Map<String, Stat> mp = new HashMap<>();
+        long globalMax = 0;
 
-        // creator → CreatorInfo
-        Map<String, CreatorInfo> mp = new HashMap<>();
-        long globalMaxPopularity = 0;
-
-        // ----- 1️⃣ One pass: update popularity & best video ----------
         for (int i = 0; i < creators.length; i++) {
-            String name = creators[i];
-            String id   = ids[i];
-            int    v    = views[i];
+            String creator = creators[i];
+            String id      = ids[i];
+            long v         = views[i];
 
-            CreatorInfo cur = mp.getOrDefault(name,
-                    new CreatorInfo(0L, id, Integer.MIN_VALUE));
+            mp.computeIfAbsent(creator,
+                k -> new Stat(v, id))
+              .update(v, id);
 
-            // update total popularity
-            cur.totalViews += v;
-
-            // update best video for this creator
-            if (v > cur.maxViews ||
-                (v == cur.maxViews && id.compareTo(cur.bestId) < 0)) {
-                cur.maxViews = v;
-                cur.bestId   = id;
-            }
-
-            mp.put(name, cur);
-            globalMaxPopularity = Math.max(globalMaxPopularity, cur.totalViews);
+            globalMax = Math.max(globalMax, mp.get(creator).totalViews);
         }
 
-        // ----- 2️⃣ Collect creators with global max popularity ------
-        List<List<String>> result = new ArrayList<>();
-        for (Map.Entry<String, CreatorInfo> e : mp.entrySet()) {
-            if (e.getValue().totalViews == globalMaxPopularity) {
-                result.add(Arrays.asList(e.getKey(), e.getValue().bestId));
+        List<List<String>> ans = new ArrayList<>();
+        for (var entry : mp.entrySet()) {
+            if (entry.getValue().totalViews == globalMax) {
+                ans.add(Arrays.asList(entry.getKey(), entry.getValue().bestId));
             }
         }
-
-        return result;
+        return ans;
     }
 
-    // For quick local testing (uncomment the main block if you want to run it yourself)
-    /*
+    // Quick demo (optional)
     public static void main(String[] args) {
         Solution s = new Solution();
-        System.out.println(s.mostPopularCreator(
-                new String[]{"alice","bob","alice","bob","alice","bob"},
-                new String[]{"a1","b1","a2","b2","a3","b3"},
-                new int[]{3,10,5,12,2,5}));
+        String[] c = {"alice", "bob", "alice", "bob", "alice"};
+        String[] id = {"1", "2", "3", "4", "5"};
+        int[] v = {5, 3, 5, 2, 5};
+
+        System.out.println(s.mostPopularCreator(c, id, v));
     }
-    */
 }
 ```
 
 ---
 
-## 🐍 Python (3.8+)
+### 3.2  Python (Python 3.10)
 
 ```python
-from collections import defaultdict
-from typing import List
+from typing import List, Dict
 
-# O(n) time, O(m) space
-class Solution:
-    def mostPopularCreator(
-        self, creators: List[str], ids: List[str], views: List[int]
-    ) -> List[List[str]]:
-        # creator -> (total_views, best_video_views, best_video_id)
-        data = defaultdict(lambda: [0, 0, ""])
+class Stat:
+    def __init__(self, views: int, vid_id: str):
+        self.total_views = views
+        self.max_video   = views
+        self.best_id     = vid_id
 
-        global_max = 0
+    def update(self, views: int, vid_id: str) -> None:
+        self.total_views += views
+        if views > self.max_video:
+            self.max_video = views
+            self.best_id   = vid_id
+        elif views == self.max_video and vid_id < self.best_id:
+            self.best_id = vid_id
 
-        # 1️⃣ single pass
-        for name, vid, v in zip(creators, ids, views):
-            total, best_views, best_id = data[name]
-            total += v
-            data[name][0] = total
+def mostPopularCreator(creators: List[str], ids: List[str], views: List[int]) -> List[List[str]]:
+    mp: Dict[str, Stat] = {}
+    global_max = 0
 
-            # update best video
-            if v > best_views or (v == best_views and (best_id == "" or vid < best_id)):
-                data[name][1] = v
-                data[name][2] = vid
+    for creator, vid_id, v in zip(creators, ids, views):
+        if creator not in mp:
+            mp[creator] = Stat(v, vid_id)
+        else:
+            mp[creator].update(v, vid_id)
 
-            global_max = max(global_max, total)
+        global_max = max(global_max, mp[creator].total_views)
 
-        # 2️⃣ collect top creators
-        res = []
-        for name, (total, best_v, best_id) in data.items():
-            if total == global_max:
-                res.append([name, best_id])
+    answer: List[List[str]] = []
+    for creator, stat in mp.items():
+        if stat.total_views == global_max:
+            answer.append([creator, stat.best_id])
 
-        return res
+    return answer
 
-# For quick testing
+
+# Demo (optional)
 if __name__ == "__main__":
-    sol = Solution()
-    print(
-        sol.mostPopularCreator(
-            ["alice","bob","alice","bob","alice","bob"],
-            ["a1","b1","a2","b2","a3","b3"],
-            [3,10,5,12,2,5]
-        )
-    )
+    creators = ["alice", "bob", "alice", "bob", "alice"]
+    ids      = ["1", "2", "3", "4", "5"]
+    views    = [5, 3, 5, 2, 5]
+    print(mostPopularCreator(creators, ids, views))
 ```
 
 ---
 
-## 🚀 C++ (GNU++17)
+### 3.3  C++ (C++20)
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
-/*  O(n) solution – single unordered_map
- *  Each creator stores:
- *    - totalViews  (long long)
- *    - bestVideo   (string)
- *    - bestViews   (int)
- */
+// Structure that stores all statistics for a creator
+struct Stat {
+    long long totalViews{0};      // sum of all views
+    int maxVideoViews{0};         // maximum views of a single video
+    string bestId;                // smallest id with maxVideoViews
+
+    Stat(long long v, const string &id)
+        : totalViews(v), maxVideoViews(static_cast<int>(v)), bestId(id) {}
+
+    void update(long long v, const string &id) {
+        totalViews += v;
+
+        if (v > maxVideoViews) {
+            maxVideoViews = static_cast<int>(v);
+            bestId = id;
+        } else if (v == maxVideoViews && id < bestId) {
+            bestId = id;
+        }
+    }
+};
+
 class Solution {
 public:
-    vector<vector<string>> mostPopularCreator(
-        vector<string>& creators,
-        vector<string>& ids,
-        vector<int>&    views) {
-
-        struct Info {
-            long long total = 0;
-            int       bestViews = 0;
-            string    bestId = "";
-        };
-
-        unordered_map<string, Info> mp;
+    vector<vector<string>> mostPopularCreator(vector<string>& creators,
+                                              vector<string>& ids,
+                                              vector<int>& views) {
+        unordered_map<string, Stat> mp;
         long long globalMax = 0;
 
-        // ----- 1️⃣ Process each video --------------------------------
         for (size_t i = 0; i < creators.size(); ++i) {
-            const string &name = creators[i];
-            const string &vid  = ids[i];
-            int           v    = views[i];
+            const string &creator = creators[i];
+            const string &id      = ids[i];
+            long long v           = views[i];
 
-            Info &cur = mp[name];
-            cur.total += v;
+            if (!mp.count(creator))
+                mp[creator] = Stat(v, id);
+            else
+                mp[creator].update(v, id);
 
-            // Update best video for this creator
-            if (v > cur.bestViews ||
-               (v == cur.bestViews && (cur.bestId.empty() || vid < cur.bestId))) {
-                cur.bestViews = v;
-                cur.bestId    = vid;
-            }
-
-            globalMax = max(globalMax, cur.total);
+            globalMax = max(globalMax, mp[creator].totalViews);
         }
 
-        // ----- 2️⃣ Gather all creators with maximum popularity ------
         vector<vector<string>> ans;
-        for (const auto &p : mp) {
-            if (p.second.total == globalMax)
-                ans.push_back({p.first, p.second.bestId});
+        for (const auto &[creator, st] : mp) {
+            if (st.totalViews == globalMax) {
+                ans.push_back({creator, st.bestId});
+            }
         }
         return ans;
     }
 };
 ```
 
+All three solutions run in *O(n)* time and use *O(n)* auxiliary space – the optimal bounds for this problem.
+
+
+
+--------------------------------------------------------------------
+
+## 4.  Good, Bad & Ugly – What Interviewers Actually Want
+
+| Aspect | What’s Good | Where Things Go Wrong | “Ugly” Pitfall |
+|--------|--------------|-----------------------|----------------|
+| **Good** | • One hash‑map per creator → **O(n)** passes. <br>• Keeps *exactly* the data you need: total, max video, and best id. <br>• Handles duplicate ids automatically. | | |
+| **Bad** | • Using 2–3 nested maps (one for popularity, another for per‑id stats) adds *O(k)* space (k = distinct ids). <br>• You risk a subtle bug: adding the same id’s views instead of taking the *maximum* of a single video. | This often shows up in contests: “I summed the same video’s views twice.” |
+| **Ugly** | • When several videos tie, picking the smallest id requires a *lexicographic comparison* – a tiny but crucial detail. <br>• If you forget to track the global maximum popularity during the first pass, you’ll have to run a second pass anyway. | The classic “missing last test case” story – it’s usually a corner case around ties or empty input. |
+
+### How to Avoid the Ugly
+
+| Tactic | Why it matters |
+|--------|----------------|
+| **Single struct per creator** | Keeps the logic in one place – no accidental double‑counting. |
+| **`computeIfAbsent` / `map.getOrDefault`** | Guarantees that the map entry is created only once. |
+| **Always compare id strings** | `id.compareTo(bestId) < 0` guarantees the smallest id for ties. |
+| **Track `globalMax` on the fly** | Avoids a second full pass if you only need the list of max‑pop creators. |
+
+When you’re ready for the job‑interview, you can drop any of the reference codes into your solution repository, or even port it to another language (Rust, Go, etc.) – the same pattern applies.
+
+
+
+--------------------------------------------------------------------
+
+## 5.  Complexity Analysis
+
+| Metric | Formula | Result |
+|--------|---------|--------|
+| **Time** | `O(n)` – single loop, constant‑time hash operations | **Linear** |
+| **Space** | `O(m)` where *m* = number of distinct creators | **Linear** |
+
+Because *m* ≤ *n*, the worst‑case space is `O(n)`.
+
+
+
+--------------------------------------------------------------------
+
+## 6.  Why This Problem Is a Must‑Know for Your Next Interview
+
+* **Real‑world data** – Think of YouTube or TikTok: many creators, many videos, huge datasets.  
+* **Map heavy** – Most senior developers need to be comfortable with hash‑tables, `unordered_map`, `HashMap`, etc.  
+* **Tie‑breaking logic** – Interviewers love to test your ability to handle edge cases and lexical ordering.  
+* **Multiple answer format** – Shows you can return collections of pairs, a common interview pattern.  
+
+By mastering this problem you demonstrate:
+
+* **Algorithmic efficiency** (linear time, constant‑space updates).  
+* **Clean coding style** (single data structure, no nested loops).  
+* **Attention to edge cases** (duplicate ids, ties, multiple creators).  
+* **Interview readiness** – you can explain your reasoning on the whiteboard in under 5 minutes.
+
 ---
 
-### 📊 Performance Summary
+## 7.  SEO‑Friendly Summary
 
-| Language | Operations | Notes |
-|----------|------------|-------|
-| **Java** | 1. `HashMap` updates<br>2. Simple `if/else` comparisons | Uses `CreatorInfo` record – no extra sorting |
-| **Python** | `defaultdict` updates & single comparison per video | `int` in Python is unbounded – no overflow worries |
-| **C++** | `unordered_map` + custom struct | Fastest on LeetCode’s C++ judge |
+- **LeetCode 2456** – *Most Popular Video Creator*  
+- Java solution (HashMap, O(n) time, O(n) space)  
+- Python solution (dict, O(n) time, O(n) space)  
+- C++ solution (unordered_map, O(n) time, O(n) space)  
+- Interview prep – explain ties, tie‑breaking, data‑structure choice  
+- Algorithmic complexity – time O(n), space O(n)  
+- Code demo – fast, clean, single‑pass  
 
-All three run in **O(n)** time and use **O(m)** memory.
+If you’re prepping for a software‑engineering interview, add this article to your study list. The pattern of **one map + global max** is a reusable trick that shows up in many “top‑k” or “group‑by” problems on LeetCode and beyond.
 
----
 
-## 📣 SEO‑Friendly Blog Section
 
-### Title  
-> **“Master LeetCode 2456: Most Popular Video Creator – One‑Map Algorithm, Java, Python & C++”**
+--------------------------------------------------------------------
 
-### Meta Description  
-> Dive deep into LeetCode 2456, the “Most Popular Video Creator” problem. Learn the O(n) solution, avoid common pitfalls, see Java/Python/C++ code, and boost your interview skills. Perfect for front‑end/backend engineers seeking data‑structure mastery.
+## 8.  Take‑Away
 
-### Key SEO Keywords (use naturally in the article)
+1. **Use a single hash‑map per creator** – keeps the code short and eliminates accidental double‑counting.  
+2. **Update statistics on the fly** – no second pass through the videos, only one pass through the creators after the scan.  
+3. **Watch out for ties** – keep the lexicographically smallest id whenever you hit a view‑equal situation.  
+4. **Test the edge cases** – empty arrays, one creator only, all creators tie, duplicate ids with same views, etc.  
 
-* LeetCode 2456  
-* Most Popular Video Creator  
-* coding interview algorithm  
-* hashmap solution  
-* Java, Python, C++ coding  
-* O(n) time complexity  
-* interview preparation  
-* front‑end/back‑end engineer interview  
-* data‑structure interview question  
-* job‑ready algorithm  
-* software engineer interview
-
-### Call‑to‑Action  
-> **Want to ace your next technical interview?**  
-> Practice the solution above in all three languages, understand the trade‑offs, and be ready to explain *why* you chose a single‑map approach. Demonstrating clean, optimal code is a surefire way to impress recruiters.
-
----
-
-## 🎉 Final Takeaway
-
-- **Good**: A single `HashMap` (Java) / `dict` (Python) / `unordered_map` (C++) that stores *total popularity* + *best video* for each creator.  
-- **Bad**: Extra maps + sorting – still passes but looks sloppy in an interview.  
-- **Ugly**: Forgetting the lexicographically smallest ID when view counts tie leads to WA.  
-
-Mastering this pattern (single‑pass, tie‑break with lexicographical order) will make you comfortable with similar “group‑by + aggregate + tie‑break” questions—exactly the kind of problem recruiters love to see solved cleanly. Happy coding! 🚀
+Happy coding—and may your next interview go *stream‑lined* like a hit‑viral video! 🚀

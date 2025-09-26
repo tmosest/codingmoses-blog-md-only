@@ -7,223 +7,241 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 3345 – “Smallest Divisible Digit Product I”  
-### A Deep‑Dive: The Good, the Bad, and the Ugly  
-> **Keywords:** LeetCode 3345, coding interview, algorithm design, Java solution, Python solution, C++ solution, job interview, interview prep, algorithmic thinking, code snippets, time‑space complexity
+        # 🎯 LeetCode 3345 – *Smallest Divisible Digit Product I*  
+## Java, Python & C++ Solutions + A Deep‑Dive Blog Post
+
+> **Want to land your next software‑engineering interview?**  
+> This article covers a real LeetCode problem, walks through the *good*, the *bad*, and the *ugly* of typical solutions, and gives you ready‑to‑copy code in three popular languages.  
+> We’ll also give you a ready‑made blog post that’s fully SEO‑optimized for keywords like *LeetCode 3345*, *coding interview*, *Java solution*, *Python solution*, *C++ solution*, and *job interview coding*.
 
 ---
 
-### 1️⃣ Problem Overview
+## Problem Statement
 
-> **Given:** two integers `n` and `t`.  
-> **Return:** the smallest integer `x ≥ n` whose *product of digits* is divisible by `t`.
+**LeetCode 3345 – Smallest Divisible Digit Product I**
 
-| Example | Input | Output | Explanation |
-|---------|-------|--------|-------------|
-| 1 | `n = 10`, `t = 2` | `10` | `1×0 = 0`, divisible by 2. |
-| 2 | `n = 15`, `t = 3` | `16` | `1×6 = 6`, divisible by 3. |
+You are given two integers `n` and `t`.  
+Return the smallest integer `x` (≥ `n`) such that the product of its decimal digits is divisible by `t`.
 
-**Constraints**  
+**Constraints**
 
-```
-1 ≤ n ≤ 100
-1 ≤ t ≤ 10
-```
+| Variable | Range | Notes |
+|----------|-------|-------|
+| `n` | 1 … 100 | tiny! |
+| `t` | 1 … 10  | tiny! |
 
-> The small limits allow a brute‑force scan, but we’ll explore a clever observation that guarantees a solution within `[n, n+10]`.  
+**Examples**
 
----
-
-### 2️⃣ The Insight: Why `[n, n+10]` is Enough
-
-* For any `t ≤ 10`, the worst‑case scenario is when `t` is a prime (e.g., 7).  
-* Among any 11 consecutive integers there will be at least one that contains a zero **or** a digit that is a multiple of `t`.  
-* A digit product that includes a zero is automatically `0`, which is divisible by every `t`.  
-* If a digit product is `≥ t`, we can test divisibility directly.
-
-This guarantees that a solution is guaranteed within 11 numbers. So the algorithm can simply brute‑force that tiny window – a perfect 2‑line solution in Python, and a 10‑line Java/C++ version.
+| Input | Output | Reason |
+|-------|--------|--------|
+| `n = 10`, `t = 2` | `10` | 1 × 0 = 0, and 0 % 2 = 0 |
+| `n = 15`, `t = 3` | `16` | 1 × 6 = 6, and 6 % 3 = 0 |
 
 ---
 
-### 3️⃣ The “Good”: Clean & Elegant Code
+## Intuition
 
-| Language | Implementation |
-|----------|----------------|
-| **Python** | `2` lines |
-| **Java** | `≈10` lines |
-| **C++** | `≈10` lines |
-
-We’ll walk through each in detail.
+Because `n ≤ 100` and `t ≤ 10`, the search space is tiny.  
+A neat observation: **you will always find a valid number in the interval `[n, n+10]`.**  
+Therefore a brute‑force loop over at most 11 candidates is fast enough and far easier than trying to build the number digit by digit.
 
 ---
 
-#### 3.1 Python (2‑line Brute Force)
+## The Good
 
-```python
-class Solution:
-    def smallestNumber(self, n: int, t: int) -> int:
-        return next(i for i in range(n, n + 11) if (prod := (lambda s: eval('*'.join(s)))(''.join(map(str, i))) ) % t == 0)
-```
-
-*Explanation:*  
-- `range(n, n+11)` covers `[n, n+10]`.  
-- `prod` computes the digit product.  
-- The generator stops at the first valid number.
+| Aspect | Why It’s Good |
+|--------|--------------|
+| **Simplicity** | One for‑loop, one digit‑product calculation. |
+| **Deterministic runtime** | Always checks ≤ 11 numbers → O(1) time, O(1) space. |
+| **No special libraries** | Works on any Java, Python, or C++ compiler. |
 
 ---
 
-#### 3.2 Java (Clear & Readable)
+## The Bad
+
+| Aspect | Why It’s Bad |
+|--------|--------------|
+| **Not generalisable** | The `+10` trick only works because of the constraints. |
+| **Redundant product calculation** | Recomputes the product for each candidate from scratch. |
+
+---
+
+## The Ugly
+
+| Aspect | Why It’s Ugly |
+|--------|--------------|
+| **Zero handling** | A product of digits can be zero (any digit zero → product zero). |
+| **Hard‑coded bound** | If constraints change, you’ll break the solution. |
+
+---
+
+## Full Code (Ready to copy)
+
+### Java (LeetCode‑style)
 
 ```java
-import java.util.function.IntUnaryOperator;
-
-class Solution {
-    private static int digitProduct(int x) {
-        int prod = 1;
-        while (x > 0) {
-            prod *= x % 10;
-            x /= 10;
-        }
-        return prod;
-    }
-
+public class Solution {
     public int smallestNumber(int n, int t) {
         for (int i = n; i <= n + 10; i++) {
-            if (digitProduct(i) % t == 0) return i;
+            int product = 1;
+            int x = i;
+            while (x > 0) {
+                product *= x % 10;
+                x /= 10;
+            }
+            if (product % t == 0) {
+                return i;
+            }
         }
-        return -1; // never reached
+        // The problem guarantees a solution, but we keep a fallback.
+        return -1;
     }
 }
 ```
 
----
-
-#### 3.3 C++ (Fast & Idiomatic)
-
-```cpp
-class Solution {
-    int digitProduct(int x) {
-        int prod = 1;
-        while (x) {
-            prod *= x % 10;
-            x /= 10;
-        }
-        return prod;
-    }
-public:
-    int smallestNumber(int n, int t) {
-        for (int i = n; i <= n + 10; ++i)
-            if (digitProduct(i) % t == 0) return i;
-        return -1;   // unreachable with given constraints
-    }
-};
-```
-
----
-
-### 4️⃣ The “Bad”: Things That Can Go Wrong
-
-| Pitfall | Why it Happens | Fix |
-|---------|----------------|-----|
-| **Missing the zero‑product shortcut** | If you forget that a zero digit yields product 0, you may miss a valid answer early. | Handle the zero case in `digitProduct`: `if (x % 10 == 0) return 0;`. |
-| **Using floating point or string `eval`** | In Python, `eval('*'.join(...))` is risky and slower. | Use `reduce` or a simple loop to multiply digits. |
-| **Wrong loop bounds** | Off‑by‑one errors (`n+9` instead of `n+10`) can miss the solution. | Use `<= n + 10` or `range(n, n + 11)` in Python. |
-| **Large `n` mis‑handled** | If the constraints change, brute‑force 11 numbers may fail. | Keep the algorithm generic by iterating until a solution is found, but be aware of the O(1) bound only holds for the given limits. |
-
----
-
-### 5️⃣ The “Ugly”: Inefficient or Obscure Workarounds
-
-1. **Iterating over all numbers up to 10⁶** – unnecessary for the stated constraints and leads to O(n) time.  
-2. **Using recursion or DP** where the problem is trivially linear.  
-3. **Hard‑coding answers** – not a reusable solution and a red flag in interviews.  
-
----
-
-### 6️⃣ Complexity Analysis
-
-| Algorithm | Time | Space |
-|-----------|------|-------|
-| Python 2‑line | **O(1)** (at most 11 iterations, each O(d) where d = number of digits) | **O(1)** |
-| Java / C++ | **O(1)** | **O(1)** |
-
-> **d** is tiny (≤ 3 for `n ≤ 100`), so the solution is effectively constant‑time.
-
----
-
-### 7️⃣ Edge‑Case Checklist
-
-| Case | Reason | Expected Behavior |
-|------|--------|-------------------|
-| `t = 1` | Any product is divisible by 1 | Return `n` immediately |
-| `n` contains a `0` | Product is 0 | Return `n` |
-| `t` is a prime (e.g., 7) | Need to find a digit multiple of 7 or zero | The 11‑number window guarantees success |
-| `n = 100` | Upper bound of constraints | Should return `100` because `1×0×0 = 0` |
-
----
-
-### 8️⃣ Testing Strategy
+### Python 3
 
 ```python
-assert Solution().smallestNumber(10, 2) == 10
-assert Solution().smallestNumber(15, 3) == 16
-assert Solution().smallestNumber(98, 7) == 98  # 9×8=72 divisible by 7? No -> next
-assert Solution().smallestNumber(98, 7) == 105  # 1×0×5 = 0 divisible
-```
-
-*Always test the boundary `n = 100` and `t = 10`.*
-
----
-
-### 9️⃣ Takeaways for Your Interview
-
-1. **Leverage Problem Constraints** – small limits let you brute‑force elegantly.  
-2. **Identify a Theorem/Observation** – the `[n, n+10]` guarantee turns an O(n) into O(1).  
-3. **Write Readable Code** – clear loops, helper functions, and comments impress interviewers.  
-4. **Handle Edge Cases Explicitly** – zero products, divisibility by 1, etc.  
-5. **Explain Complexity Upfront** – talk about why the solution is efficient.  
-
----
-
-### 🔑 SEO‑Ready Blog Conclusion
-
-> If you’re preparing for coding interviews, mastering problems like **LeetCode 3345 – Smallest Divisible Digit Product I** shows you can turn constraints into an optimization. The trick of searching only `[n, n+10]` turns an otherwise trivial brute‑force into a near‑constant‑time solution.  
->  
-> Practice this pattern with other “small” problems on LeetCode. It builds a habit of spotting hidden guarantees and writing clean, efficient code—exactly the qualities recruiters look for in a junior to mid‑level software engineer.  
->  
-> **Next Steps:**  
-> - Dive into more “Easy” LeetCode problems and identify similar bounds.  
-> - Add these solutions to your GitHub portfolio; link them in your résumé.  
-> - Use the code snippets as interview talking points to demonstrate algorithmic thinking.  
-
-> **Ready to land your next role?** Share this post, comment below with your own solutions, or reach out for a deeper discussion on interview strategies!  
-
----  
-
-### 📌 Quick Reference Code Snippets
-
-```python
-# Python
 class Solution:
     def smallestNumber(self, n: int, t: int) -> int:
-        return next(i for i in range(n, n+11) if (lambda x: (lambda p=1: eval('*'.join(str(x%10) for _ in range(len(str(x))))))(i)) % t == 0)
+        for i in range(n, n + 11):
+            product = 1
+            for d in str(i):
+                product *= int(d)
+            if product % t == 0:
+                return i
 ```
 
-```java
-// Java
-class Solution {
-    private int digitProduct(int x) { ... }
-    public int smallestNumber(int n, int t) { ... }
-}
+*Python‑one‑liner (the LeetCode editorial trick)*
+
+```python
+class Solution:
+    def smallestNumber(self, n: int, t: int) -> int:
+        return next(i for i in range(n, n+11) if eval('*'.join(str(i))) % t == 0)
 ```
+
+### C++ (LeetCode‑style)
 
 ```cpp
-// C++
 class Solution {
-    int digitProduct(int x) { ... }
 public:
-    int smallestNumber(int n, int t) { ... }
+    int smallestNumber(int n, int t) {
+        for (int i = n; i <= n + 10; ++i) {
+            int prod = 1;
+            int x = i;
+            while (x) {
+                prod *= x % 10;
+                x /= 10;
+            }
+            if (prod % t == 0) return i;
+        }
+        return -1; // unreachable under constraints
+    }
 };
 ```
 
-Happy coding and best of luck with your job search!
+---
+
+## Unit Test (Python)
+
+```python
+def test():
+    s = Solution()
+    assert s.smallestNumber(10, 2) == 10
+    assert s.smallestNumber(15, 3) == 16
+    assert s.smallestNumber(1, 1)  == 1
+    assert s.smallestNumber(99, 10) == 100  # product 0
+    print("All tests passed.")
+
+test()
+```
+
+---
+
+## Performance Analysis
+
+| Language | Time Complexity | Space Complexity |
+|----------|-----------------|------------------|
+| Java | `O(1)` (≤ 11 iterations) | `O(1)` |
+| Python | `O(1)` | `O(1)` |
+| C++ | `O(1)` | `O(1)` |
+
+Because `n ≤ 100`, the loop will never exceed 11 iterations.  
+Each iteration multiplies at most 3 digits → constant work.
+
+---
+
+## Edge‑Case Checklist
+
+1. **Zero digit** – product becomes 0 → always divisible by any `t`.  
+2. **n itself is valid** – the loop will return immediately.  
+3. **t = 1** – any product works; return `n`.  
+4. **Large t (10)** – still safe because product may be 0 or 10‑divisible.  
+
+---
+
+## Lessons Learned
+
+- **Leverage constraints**: Knowing `n` and `t` are tiny turns a seemingly “hard” problem into trivial brute force.  
+- **Avoid premature optimisation**: The +10 trick is a perfectly fine optimisation for this problem.  
+- **Always include a fallback** (`return -1`) to satisfy static analysis even though the problem guarantees a solution.  
+- **Write readable code** – interviewers value clarity over cleverness when constraints allow it.  
+
+---
+
+## SEO‑Optimized Blog Post
+
+> **Title**: LeetCode 3345 – Smallest Divisible Digit Product I: Java, Python & C++ Solutions + Interview Tips  
+> **Meta Description**: Master LeetCode 3345 with clean Java, Python, and C++ code. Learn the algorithm, edge cases, and interview tricks for landing your next software‑engineering job.  
+> **Keywords**: LeetCode 3345, Smallest Divisible Digit Product I, Java solution, Python solution, C++ solution, coding interview, algorithm interview, job interview coding, competitive programming, interview tips.  
+
+### 1. Introduction
+
+*What’s LeetCode 3345?*  
+It’s a classic “small numbers, simple math” problem that tests your ability to translate constraints into efficient code. If you’re prepping for a technical interview, solving it in a clean, language‑agnostic way demonstrates a solid grasp of problem‑solving fundamentals.
+
+### 2. Problem Breakdown
+
+Explain the problem, constraints, and why a naïve approach works here. Mention the hidden “+10” trick that guarantees a solution.
+
+### 3. Why Brute‑Force Works
+
+Highlight the small domain (`n ≤ 100`, `t ≤ 10`) and show how a loop over `[n, n+10]` is both correct and optimal.
+
+### 4. The Implementation in 3 Languages
+
+Show the Java, Python, and C++ snippets side‑by‑side. Emphasise readability and highlight key lines (product calculation, loop bounds).
+
+### 5. Edge Cases & Pitfalls
+
+Zero digits, `t = 1`, overflow (not an issue here), and the importance of a fallback return.
+
+### 6. Time & Space Complexity
+
+Quick table – all `O(1)` – ideal for interviewers.
+
+### 7. Interview Tips
+
+- **Ask clarifying questions**: “Is there a guarantee of a solution?”  
+- **Explain your logic**: “Because `n ≤ 100`, we only need to check up to `n+10`.”  
+- **Talk about edge cases**: “If a digit is 0, the product is 0, which is divisible by any `t`.”  
+
+### 8. Bonus: A One‑Line Python Trick
+
+Show the `eval('*'.join(str(i)))` trick that’s elegant but potentially risky for production code.
+
+### 9. Final Takeaway
+
+You’ve built a reusable, interview‑ready solution that demonstrates your ability to read constraints, pick the simplest algorithm, and implement it cleanly in Java, Python, and C++.
+
+---
+
+## Call to Action
+
+Want to impress hiring managers?  
+- Clone this repo.  
+- Run the test suite.  
+- Add your own edge‑case tests.  
+- Share the solution on LinkedIn with the hashtag `#LeetCode3345`.
+
+Happy coding and good luck on your next interview! 🚀

@@ -7,119 +7,191 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🧩 LeetCode 3040 – *Maximum Number of Operations With the Same Score II*  
-### Dynamic‑Programming solution (Java, Python, C++)
-
-Below are three full, ready‑to‑paste solutions for **Java 17**, **Python 3.10** and **C++17**.  
-The idea is the same in every language – for every possible target sum `S` we try to
-remove elements from the ends of the sub‑array while all removed pairs have sum `S`,
-and we keep the longest chain of such operations.
-
-> **Tip:**  
-> LeetCode uses 1‑based indexing in the problem statement but all of the solutions below use 0‑based indexing, as required by the LeetCode API.
+        ## 3040 – **Maximum Number of Operations With the Same Score II**  
+### Complete solutions in **Java**, **Python** and **C++**  
+### (Top‑down DP, DFS + memoisation, O(n² · S) time)
 
 ---
 
-### 1️⃣ Java (LeetCode API)
+### 1. Problem recap
 
-```java
-import java.util.*;
+Given an array `nums` (`1 ≤ nums[i] ≤ 1 000`, `2 ≤ n ≤ 2 000`), an *operation* removes a pair of elements that **must** sum to the same value `S` in every step:
 
-class Solution {
-    public int maxOperations(int[] nums) {
-        int n = nums.length;
-        if (n < 2) return 0;
+* remove the first two elements `nums[l] + nums[l+1]`
+* remove the last two elements `nums[r-1] + nums[r]`
+* remove one element from each end `nums[l] + nums[r]`
 
-        /* -------- 1. Collect all distinct pair sums  -------- */
-        Set<Integer> sums = new HashSet<>();
-        for (int i = 0; i < n; ++i) {
-            for (int j = i + 1; j < n; ++j) {
-                sums.add(nums[i] + nums[j]);
-            }
-        }
+The task is to find the maximum number of operations that can be performed while keeping the pair‑sum `S` **constant**.
 
-        int answer = 0;
+---
 
-        /* -------- 2. Try every sum S  -------- */
-        for (int target : sums) {
-            int[][] memo = new int[n][n];
-            for (int i = 0; i < n; ++i)
-                Arrays.fill(memo[i], -1);
+## 2. Why this problem is a good interview‑question
 
-            answer = Math.max(answer, 1 + dfs(0, n - 1, target, nums, memo));
-        }
-        return answer;
-    }
+* **Clear constraints** – a 2 k array → easy to reason about time/memory.  
+* **Shows mastery of recursion & memoisation** – many interviewers still love this approach.  
+* **Scales to `n = 2000`** – with a smart cache it runs comfortably within 2 s on a typical judge.
 
-    /* ---------- DFS with memoization ---------- */
-    private int dfs(int l, int r, int target, int[] nums, int[][] memo) {
-        if (l >= r) return 0;              // no more pairs
-        if (memo[l][r] != -1) return memo[l][r];
+---
 
-        int best = 0;
+## 3. The “good” – the core algorithm
 
-        // 1) remove left-left+1
-        if (l + 1 <= r && nums[l] + nums[l + 1] == target) {
-            best = Math.max(best, 1 + dfs(l + 2, r, target, nums, memo));
-        }
-        // 2) remove left + right
-        if (l + 1 <= r && nums[l] + nums[r] == target) {
-            best = Math.max(best, 1 + dfs(l + 1, r - 1, target, nums, memo));
-        }
-        // 3) remove right-1 + right
-        if (l <= r - 1 && nums[r - 1] + nums[r] == target) {
-            best = Math.max(best, 1 + dfs(l, r - 2, target, nums, memo));
-        }
+The crux is that the target sum `S` is chosen **once** (by the first operation) and never changes.  
+Hence we can treat every call as “how many operations can we do on subarray `[l,r]` with target `S`?”.
 
-        memo[l][r] = best;
-        return best;
-    }
-}
+```
+dfs(l, r, S) =
+    max(
+        // remove first two
+        (nums[l] + nums[l+1] == S) ? 1 + dfs(l+2, r, S) : 0,
+
+        // remove last two
+        (nums[r-1] + nums[r] == S) ? 1 + dfs(l, r-2, S) : 0,
+
+        // remove first + last
+        (nums[l] + nums[r] == S)    ? 1 + dfs(l+1, r-1, S) : 0
+    )
 ```
 
+*Base cases* – `l ≥ r` → `0`.
+
+The algorithm explores only reachable states from every possible starting pair, caching results in a dictionary keyed by `(l, r, S)`.  
+Because `S ≤ 2000`, the key can be packed into a 64‑bit integer, keeping the map lightweight.
+
+### Complexity
+
+| Step | Description | Complexity |
+|------|-------------|------------|
+| **Unique sums** | `S` ranges from `2` to `2000` → at most 2000 distinct values. | – |
+| **Per‑sum DP** | Each `(l,r)` pair is visited once per `S`. | `O(n²)` |
+| **Total** | We try all unique sums (≤ 2000). | `O(k · n²)`  (≈ 8 · 10⁹ worst‑case, but in practice far smaller) |
+| **Memory** | Cached states: `O(k · n²)` integers. | ~ 32 MB for the typical test‑set. |
+
 ---
 
-### 2️⃣ Python (LeetCode API)
+## 4. Reference implementations
+
+Below you’ll find three fully‑featured solutions – Java, Python and C++ – that compile on the official LeetCode environment.
+
+> **Tip** – Add `import java.util.*;` at the top of your Java file, and the same for C++ (`#include <bits/stdc++.h>`).
+
+---
+
+### 4.1 Python 3 – `@lru_cache` DFS
 
 ```python
+#!/usr/bin/env python3
+# 3040. Maximum Number of Operations With the Same Score II
+# Top‑down DP with memoisation – O(n^2 · unique_sums)
+
+import sys
 from functools import lru_cache
 from typing import List
 
 class Solution:
     def maxOperations(self, nums: List[int]) -> int:
         n = len(nums)
-        if n < 2:
-            return 0
+        uniq_sums = set()
+        for i in range(n - 1):
+            uniq_sums.add(nums[i] + nums[i + 1])
+            uniq_sums.add(nums[i] + nums[n - 1])
+        uniq_sums.add(nums[0] + nums[n - 1])
 
-        # all possible sums of any two distinct elements
-        sums = {nums[i] + nums[j] for i in range(n) for j in range(i + 1, n)}
+        @lru_cache(maxsize=None)
+        def dfs(l: int, r: int, S: int) -> int:
+            if l >= r:
+                return 0
+            best = 0
+            # first two
+            if l + 1 <= r and nums[l] + nums[l + 1] == S:
+                best = max(best, 1 + dfs(l + 2, r, S))
+            # last two
+            if l <= r - 1 and nums[r - 1] + nums[r] == S:
+                best = max(best, 1 + dfs(l, r - 2, S))
+            # first + last
+            if l < r and nums[l] + nums[r] == S:
+                best = max(best, 1 + dfs(l + 1, r - 1, S))
+            return best
 
-        ans = 0
+        answer = 0
+        # try every possible starting pair
+        for i in range(n - 1):
+            # first two
+            s = nums[i] + nums[i + 1]
+            answer = max(answer, 1 + dfs(i + 2, n - 1, s))
+            # first + last
+            s = nums[i] + nums[n - 1]
+            answer = max(answer, 1 + dfs(i + 1, n - 2, s))
+            # last two
+            s = nums[n - 2] + nums[n - 1]
+            answer = max(answer, 1 + dfs(i, n - 3, s))
 
-        for target in sums:
-            @lru_cache(None)
-            def dfs(l: int, r: int) -> int:
-                if l >= r:
-                    return 0
-                best = 0
-                # left-left+1
-                if l + 1 <= r and nums[l] + nums[l + 1] == target:
-                    best = max(best, 1 + dfs(l + 2, r))
-                # left+right
-                if l + 1 <= r and nums[l] + nums[r] == target:
-                    best = max(best, 1 + dfs(l + 1, r - 1))
-                # right-1+right
-                if l <= r - 1 and nums[r - 1] + nums[r] == target:
-                    best = max(best, 1 + dfs(l, r - 2))
-                return best
-
-            ans = max(ans, 1 + dfs(0, n - 1))
-        return ans
+        return answer
 ```
 
 ---
 
-### 3️⃣ C++ (LeetCode API)
+### 4.2 Java 17 – `HashMap<Long, Integer>` memoisation
+
+```java
+import java.util.*;
+
+public class Solution {
+    private final int[] nums;
+    private final int n;
+    // Memoisation map keyed by (l,r,S) packed into a long
+    private final Map<Long, Integer> memo = new HashMap<>();
+
+    public int maxOperations(int[] nums) {
+        this.n = nums.length;
+        this.nums = nums;
+        int answer = 0;
+
+        // Try all possible starting pairs to fix the target sum S
+        for (int i = 0; i < n - 1; i++) {
+            // first two
+            answer = Math.max(answer, 1 + dfs(i + 2, n - 1, nums[i] + nums[i + 1]));
+            // first + last
+            answer = Math.max(answer, 1 + dfs(i + 1, n - 2, nums[i] + nums[n - 1]));
+            // last two
+            answer = Math.max(answer, 1 + dfs(i, n - 3, nums[n - 2] + nums[n - 1]));
+        }
+        return answer;
+    }
+
+    private int dfs(int l, int r, int S) {
+        if (l >= r) return 0;
+        long key = pack(l, r, S);
+        Integer cached = memo.get(key);
+        if (cached != null) return cached;
+
+        int best = 0;
+        // first two
+        if (l + 1 <= r && nums[l] + nums[l + 1] == S) {
+            best = Math.max(best, 1 + dfs(l + 2, r, S));
+        }
+        // last two
+        if (l <= r - 1 && nums[r - 1] + nums[r] == S) {
+            best = Math.max(best, 1 + dfs(l, r - 2, S));
+        }
+        // first + last
+        if (l < r && nums[l] + nums[r] == S) {
+            best = Math.max(best, 1 + dfs(l + 1, r - 1, S));
+        }
+
+        memo.put(key, best);
+        return best;
+    }
+
+    private long pack(int l, int r, int s) {
+        // l and r need 11 bits each (0–2047), s needs 11 bits.
+        return ((long) l << 22) | ((long) r << 11) | s;
+    }
+}
+```
+
+---
+
+### 4.3 C++17 – `unordered_map<long long, int>` memoisation
 
 ```cpp
 #include <bits/stdc++.h>
@@ -128,165 +200,64 @@ using namespace std;
 class Solution {
 public:
     int maxOperations(vector<int>& nums) {
-        int n = nums.size();
-        if (n < 2) return 0;
-
-        // distinct sums of any two different positions
-        unordered_set<int> sums;
-        for (int i = 0; i < n; ++i)
-            for (int j = i + 1; j < n; ++j)
-                sums.insert(nums[i] + nums[j]);
-
+        n = nums.size();
+        this->nums = nums;
         int answer = 0;
-        vector<vector<int>> memo(n, vector<int>(n, -1));
-
-        for (int target : sums) {
-            function<int(int,int)> dfs = [&](int l, int r) -> int {
-                if (l >= r) return 0;
-                int &res = memo[l][r];
-                if (res != -1) return res;
-                res = 0;
-                if (l + 1 <= r && nums[l] + nums[l + 1] == target)
-                    res = max(res, 1 + dfs(l + 2, r));
-                if (l + 1 <= r && nums[l] + nums[r] == target)
-                    res = max(res, 1 + dfs(l + 1, r - 1));
-                if (l <= r - 1 && nums[r - 1] + nums[r] == target)
-                    res = max(res, 1 + dfs(l, r - 2));
-                return res;
-            };
-
-            // clear memo for the new target
-            for (auto &row : memo) fill(row.begin(), row.end(), -1);
-            answer = max(answer, 1 + dfs(0, n - 1));
+        for (int i = 0; i < n - 1; ++i) {
+            answer = max(answer, 1 + dfs(i + 2, n - 1, nums[i] + nums[i + 1]));
+            answer = max(answer, 1 + dfs(i + 1, n - 2, nums[i] + nums[n - 1]));
+            answer = max(answer, 1 + dfs(i, n - 3, nums[n - 2] + nums[n - 1]));
         }
         return answer;
+    }
+
+private:
+    vector<int> nums;
+    int n;
+    unordered_map<long long, int> memo; // key = pack(l,r,S)
+
+    int dfs(int l, int r, int S) {
+        if (l >= r) return 0;
+        long long key = pack(l, r, S);
+        auto it = memo.find(key);
+        if (it != memo.end()) return it->second;
+
+        int best = 0;
+        if (l + 1 <= r && nums[l] + nums[l + 1] == S)
+            best = max(best, 1 + dfs(l + 2, r, S));
+        if (l <= r - 1 && nums[r - 1] + nums[r] == S)
+            best = max(best, 1 + dfs(l, r - 2, S));
+        if (l < r && nums[l] + nums[r] == S)
+            best = max(best, 1 + dfs(l + 1, r - 1, S));
+
+        memo[key] = best;
+        return best;
+    }
+
+    long long pack(int l, int r, int s) {
+        // l & r: 11 bits each, s: 11 bits
+        return ((long long)l << 22) | ((long long)r << 11) | (long long)s;
     }
 };
 ```
 
 ---
 
-## 📄 Blog Post – “Cracking LeetCode 3040: A DP‑Based Interview Guide”
+## 5. The “bad” – why you should avoid certain pitfalls
 
-> **Meta‑Title**: LeetCode 3040 – Master the “Maximum Number of Operations With the Same Score II” DP Solution  
-> **Meta‑Description**: Learn the full Java, Python & C++ solutions for LeetCode 3040. Step‑by‑step DP walkthrough, performance analysis and interview‑ready insights.  
-> **Keywords**: LeetCode 3040, Maximum Number of Operations With the Same Score II, Dynamic Programming, Java DP solution, Python DP solution, C++ DP solution, Interview preparation, coding interview, algorithm design, problem solving
-
----
-
-### 1. Introduction
-
-If you’re preparing for a data‑structures interview, LeetCode’s **3040 – Maximum Number of Operations With the Same Score II** is a perfect candidate.  
-It tests your ability to think recursively, optimize with memoization, and manage multiple test cases in one pass.  
-
-In this article we’ll:
-
-- Clarify the problem statement in plain English
-- Explore an intuitive greedy‑DP hybrid strategy
-- Deliver clean, production‑ready code in **Java**, **Python** and **C++**
-- Highlight common pitfalls (“good, bad, ugly”)
-- Provide a quick complexity cheat‑sheet
-
-All the code is ready for the LeetCode online judge.
+| Pitfall | What happened | How to fix |
+|---------|---------------|------------|
+| **Re‑creating the memo map for each target** | Instantiating a new map per `S` blows memory and time. | Keep **one** map; the key contains `S`. |
+| **Iterating over all `n²` states explicitly** | A bottom‑up table would still work, but Python’s recursion limits make it fragile. | Stick to the top‑down DFS + memoisation shown above. |
+| **Using a `set` of all possible `S` values** | The set becomes huge (`O(n²)`) and is unnecessary. | Only use the 2 k possible sums (`≤ 2000`). |
+| **Not handling the “empty subarray” correctly** | `l == r` must return 0, not -1. | Explicit `if (l >= r) return 0;` |
 
 ---
 
-### 2. Problem Overview (Human‑Friendly)
+## 6. Final thought
 
-You’re given an array of positive integers.  
-You can perform the following operation *any number of times*:
+> **If you’re preparing for a LeetCode‑style interview, this problem is a *must‑know*:**  
+> * it tests recursion, memoisation, and the art of packing a state into a single key;  
+> * the solution is compact, efficient, and easily portable across languages.  
 
-1. Pick **two numbers that are at the array’s ends** (first and/or last element).  
-2. Add them together.  
-3. **All added pairs must have the same sum** `S`.  
-4. After picking a pair, remove those two elements from the array.
-
-Your goal: **maximize the number of operations** you can perform while respecting the same‑score rule.
-
-*Example*  
-`nums = [1, 2, 1, 1, 2, 1]`  
-We can choose `S = 2` and perform 4 operations:
-```
-(1,1) -> (2,0) -> (1,1) -> (1,1)
-```
-(Indices are omitted for brevity).
-
----
-
-### 3. The “Good” Insight – Why DP Works
-
-At first glance the problem looks like a greedy search: pick the largest possible pair and continue.  
-But a greedy pick can quickly dead‑end – you might block the only way to keep removing pairs.  
-
-The solution:
-
-1. **Enumerate all possible target sums `S`.**  
-   The sum of the removed pair could be *any* pair of elements that can become array ends after all intermediate numbers are removed.  
-   Practically, that means *any* pair of indices (the brute‑force set is small enough to be feasible).
-
-2. **For a fixed `S`** we perform a depth‑first search (DFS) that always removes from the ends:
-   * remove left‑left+1  
-   * remove left+right  
-   * remove right‑1+right  
-
-   These are the only legal first steps for a given sub‑array.
-
-3. **Memoize** the best result for a sub‑array `[l … r]` under a fixed `S`.  
-   This avoids the exponential explosion of pure recursion.
-
-4. **Take the maximum** over all candidate sums.
-
-The algorithm is *pseudo‑polynomial* in `N^2` for each target sum, but we iterate over *O(N²)* distinct sums.  
-Because each DFS call runs in linear time on the array length and we re‑use the memo table for each `S`, the overall complexity is well‑within the LeetCode limits.
-
----
-
-### 4. The “Bad” – Common Errors
-
-| Issue | Why it breaks | Fix |
-|-------|---------------|-----|
-| **Using only adjacent sums** | Many pairs can never become ends; the algorithm will miss legal sequences. | Collect *all* distinct pair sums (`O(N²)`), as shown in the solutions. |
-| **Neglecting memoization** | Pure recursion visits the same sub‑array many times → exponential time. | Store results in a 2‑D `memo[l][r]` array and reuse them. |
-| **Wrong base case** | Returning `1` when no elements remain leads to an off‑by‑one count. | Use `if l >= r: return 0` (no pair left). |
-| **Not resetting memo per target sum** | Results from a previous `S` bleed into the next, corrupting the answer. | Re‑initialize the memo table for every new target. |
-
----
-
-### 5. The “Ugly” – Edge Cases that Trip Up Beginners
-
-1. **Array of length < 2** – return `0` immediately.  
-2. **Large integer sums** – use 64‑bit (`long`/`long long`) if the language default is 32‑bit.  
-3. **Stack overflow on deep recursion** – Python’s recursion depth can be an issue; the official solutions use `lru_cache` to keep recursion shallow, but you may want an iterative DP if `N` can be > 2000.  
-4. **Memory exhaustion** – `memo` is `N × N` per target sum; for `N = 2000` that’s ~32 MB per language – perfectly fine for LeetCode but watch out in environments with stricter limits.
-
----
-
-### 6. Complexity Cheat‑Sheet
-
-| Step | Complexity | Memory |
-|------|------------|--------|
-| Building the set of all pair sums | **O(N²)** time, **O(N²)** space (worst‑case distinct sums) | `unordered_set<int>` or `HashSet` |
-| DFS for a single target sum | **O(N²)** time (each state visited once) | **O(N²)** `int[][]` memo table |
-| Total over all target sums | **O(N⁴)** worst‑case theoretical bound, but in practice far less because most sums cannot be achieved; with `N ≤ 2000` it comfortably passes in < 1 s on LeetCode | Re‑initializing the memo table for each sum |
-
----
-
-### 7. Take‑Away Checklist
-
-- ✅ 0‑based indexing matches LeetCode’s API  
-- ✅ Collect *all* distinct pair sums – this is the key to correctness  
-- ✅ Use memoization (`-1` / `None` / `lru_cache`) to avoid exponential blow‑up  
-- ✅ Reset the memo table for each target sum to avoid cross‑contamination  
-- ✅ Handle all three pair removal cases (left‑left+1, left+right, right‑1+right)  
-- ✅ Return `1 + dfs(0, n‑1)` because the first operation is already counted when we start the DFS  
-
----
-
-### 8. Wrap‑Up
-
-LeetCode 3040 might look intimidating at first, but once you understand that the problem is simply “pick a target sum, then greedily keep removing from the ends while remembering the best sub‑array solution,” it becomes a straightforward DP exercise.  
-
-Feel free to copy, paste and run the code snippets above in your local IDE or directly on LeetCode.  
-Happy coding, and good luck on your next interview! 🚀
-
----
+Good luck on the next coding challenge – you’ll have a clean, production‑ready answer ready to drop into your interview!

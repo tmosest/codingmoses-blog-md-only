@@ -7,86 +7,110 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1️⃣ Problem Recap  
-**LeetCode 2085 – Count Common Words With One Occurrence**  
+        # Count Common Words With One Occurrence – LeetCode 2085  
+**Easy** | **Time O(n + m)** | **Space O(n + m)**  
 
-> **Task**  
-> You are given two arrays of lowercase words: `words1` and `words2`.  
-> Count how many distinct words appear **exactly once** in *both* arrays.  
-
-> **Constraints**  
-> * `1 ≤ words1.length, words2.length ≤ 1000`  
-> * `1 ≤ words1[i].length, words2[j].length ≤ 30`  
-> * All words contain only lowercase English letters.  
-
-The challenge is a classic “frequency‑counting” problem that is a staple in many coding interviews. Below you’ll find a clean, efficient solution in **Java, Python, and C++**, followed by a short blog‑style write‑up that highlights the *good, the bad, and the ugly* of this problem – plus a quick SEO‑boost to help you land that interview call.
+> **Keywords:** LeetCode 2085, Count Common Words With One Occurrence, hash map, Java solution, Python solution, C++ solution, interview preparation, coding interview, algorithmic thinking
 
 ---
 
-## 2️⃣ Solutions
+## TL;DR  
+We need to count the number of distinct strings that appear **exactly once** in *both* input arrays.  
+The cleanest solution is a single `HashMap` (or `unordered_map` / `dict`) that stores frequencies from the first array and then updates counts while scanning the second array.  
+Complexity is linear in the total size of the two arrays and the memory usage is proportional to the number of unique words.
 
-> **Key Idea** – Build a frequency map for each array, then intersect the two maps while checking that every common word has frequency 1 in *both*.
+---
 
-### 2.1 Java
+## Problem Recap
+
+```text
+Input:  words1 = ["leetcode","is","amazing","as","is"]
+        words2 = ["amazing","leetcode","is"]
+Output: 2
+```
+
+Only `"leetcode"` and `"amazing"` satisfy the condition.  
+
+---
+
+## Why a HashMap Is the Right Tool
+
+1. **Frequency counting** – We need to know how many times each word occurs in each array.  
+2. **O(1) lookup and update** – `HashMap` lets us add and adjust counts in constant time.  
+3. **Compact solution** – No need for two separate maps; we can fold the logic into a single pass after the first frequency pass.
+
+---
+
+## The “Good” Solution – One HashMap
+
+1. **First pass** – Count frequencies of every word in `words1`.  
+2. **Second pass** – For each word in `words2`:  
+   * If it existed in the first map and its count was `1`, set it to `0` (valid candidate).  
+   * If it existed but its count was > 1, set it to `-1` (invalid).  
+3. **Final tally** – Count how many entries have value `0`.  
+
+Why does setting to `-1` help? It guarantees that any word that appears multiple times in *either* array is *never* counted.
+
+### Java
 
 ```java
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Solution {
     public int countWords(String[] words1, String[] words2) {
-        Map<String, Integer> freq1 = new HashMap<>();
-        Map<String, Integer> freq2 = new HashMap<>();
+        Map<String, Integer> freq = new HashMap<>();
 
-        // Count frequencies in words1
+        // Count words in words1
         for (String w : words1) {
-            freq1.put(w, freq1.getOrDefault(w, 0) + 1);
+            freq.put(w, freq.getOrDefault(w, 0) + 1);
         }
 
-        // Count frequencies in words2
+        // Update counts based on words2
         for (String w : words2) {
-            freq2.put(w, freq2.getOrDefault(w, 0) + 1);
-        }
-
-        int common = 0;
-        for (String w : freq1.keySet()) {
-            if (freq1.get(w) == 1 && freq2.getOrDefault(w, 0) == 1) {
-                common++;
+            if (freq.containsKey(w)) {
+                int cur = freq.get(w);
+                if (cur == 1) {          // appears once in words1
+                    freq.put(w, 0);      // candidate
+                } else if (cur > 0) {    // appears more than once in words1
+                    freq.put(w, -1);     // invalidate
+                }
+                // cur < 0 means already invalid, do nothing
             }
         }
-        return common;
+
+        // Count valid entries (value == 0)
+        int ans = 0;
+        for (int val : freq.values()) {
+            if (val == 0) ans++;
+        }
+        return ans;
     }
 }
 ```
 
-> **Complexity**  
-> *Time*: `O(n + m)` (linear in the total number of words)  
-> *Space*: `O(n + m)` for the two hash maps
-
----
-
-### 2.2 Python
+### Python
 
 ```python
 from collections import Counter
-from typing import List
 
 class Solution:
-    def countWords(self, words1: List[str], words2: List[str]) -> int:
-        freq1 = Counter(words1)
-        freq2 = Counter(words2)
+    def countWords(self, words1: list[str], words2: list[str]) -> int:
+        freq = Counter()
+        for w in words1:
+            freq[w] += 1
 
-        # Intersection of keys with frequency 1 in both counters
-        return sum(1 for w in freq1
-                   if freq1[w] == 1 and freq2.get(w, 0) == 1)
+        for w in words2:
+            if w in freq:
+                if freq[w] == 1:
+                    freq[w] = 0          # candidate
+                elif freq[w] > 0:
+                    freq[w] = -1         # invalidate
+
+        return sum(1 for v in freq.values() if v == 0)
 ```
 
-> **Complexity**  
-> *Time*: `O(n + m)`  
-> *Space*: `O(n + m)` – two `Counter` objects
-
----
-
-### 2.3 C++
+### C++
 
 ```cpp
 #include <unordered_map>
@@ -97,116 +121,95 @@ class Solution {
 public:
     int countWords(std::vector<std::string>& words1,
                    std::vector<std::string>& words2) {
-        std::unordered_map<std::string, int> freq1;
-        std::unordered_map<std::string, int> freq2;
+        std::unordered_map<std::string, int> freq;
+        for (const auto& w : words1) freq[w]++;   // count words1
 
-        for (const auto& w : words1)
-            ++freq1[w];
-
-        for (const auto& w : words2)
-            ++freq2[w];
-
-        int common = 0;
-        for (const auto& [word, cnt] : freq1) {
-            if (cnt == 1 && freq2[word] == 1)
-                ++common;
+        for (const auto& w : words2) {
+            auto it = freq.find(w);
+            if (it != freq.end()) {
+                if (it->second == 1)
+                    it->second = 0;      // candidate
+                else if (it->second > 0)
+                    it->second = -1;     // invalidate
+            }
         }
-        return common;
+
+        int ans = 0;
+        for (const auto& p : freq)
+            if (p.second == 0) ++ans;
+        return ans;
     }
 };
 ```
 
-> **Complexity**  
-> *Time*: `O(n + m)`  
-> *Space*: `O(n + m)`
-
 ---
 
-## 3️⃣ Blog‑Style Explanation
+## The “Bad” Approach – Two Separate Maps
 
-> **Title**  
-> **LeetCode 2085 – “Count Common Words With One Occurrence”**: The Good, the Bad, and the Ugly (plus a job‑ready interview strategy)
-
-### 3.1 What’s Going On?
-
-The problem asks for words that appear **exactly once** in both input arrays. It feels trivial, but interviewers love this because it tests:
-
-1. **Hash‑table intuition** – you need a frequency counter.
-2. **Edge‑case awareness** – duplicate words, words that appear only in one array, empty intersections.
-3. **Efficiency** – a two‑pass O(n + m) solution beats a nested‑loop O(n·m) attempt.
-
-### 3.2 The Good
-
-- **Straightforward**: Count → Intersect → Filter.
-- **Scalable**: Handles up to 1 000 words in each array comfortably.
-- **Language‑agnostic**: Works in Java, Python, C++, and almost any language with a dictionary / map.
-
-### 3.3 The Bad
-
-- **No built‑in “exactly once” filter**: You still need to check the counts manually.
-- **Two maps are optional**: Some clever solutions compress this into a single map, but it can reduce readability for beginners.
-- **Misunderstanding the requirement**: Some candidates count words that appear once in *any* array rather than *both*, leading to WA.
-
-### 3.4 The Ugly
-
-- **Nested‑loop brute force**: `O(n·m)` is far too slow for larger constraints.  
-  ```python
-  # This will time‑out
-  for a in words1:
-      for b in words2:
-          if a == b:
-              ...
-  ```
-- **Off‑by‑one frequency mishandling**: Using a “+1” and “–1” trick without clear semantics can be confusing.  
-  > “If you see a word once in words1, set its count to 1. If you see it again, set to -1. Then only values equal to 1 after processing words2 mean valid words.” – this is clever but opaque for many interviewers.
-
-### 3.5 A Clean, Interview‑Friendly Approach
-
-```python
-# Python 3
-from collections import Counter
-
-def count_words(words1, words2):
-    freq1, freq2 = Counter(words1), Counter(words2)
-    return sum(1 for w in freq1 if freq1[w] == 1 and freq2.get(w, 0) == 1)
+```java
+Map<String,Integer> m1 = new HashMap<>();
+Map<String,Integer> m2 = new HashMap<>();
+// fill both maps, then iterate over one and check counts in the other
 ```
 
-- **Readability**: `Counter` is a one‑liner for frequency maps.
-- **Explicit checks**: `freq1[w] == 1` & `freq2[w] == 1` leave no doubt.
-- **Performance**: Linear time, constant‑space overhead per word.
+**Drawbacks**
 
-### 3.6 Interview‑Ready Tips
-
-| Tip | Why It Helps |
-|-----|--------------|
-| **State the problem in your own words** | Shows you understood the requirement (“exactly once in BOTH arrays”). |
-| **Explain your approach before coding** | Allows the interviewer to catch mistakes early. |
-| **Talk about time/space complexity** | Demonstrates analytical thinking. |
-| **Consider edge cases** (`words1 = ["a"]`, `words2 = ["a","a"]`) | Shows thoroughness. |
-| **Mention alternate solutions** (single map trick) | Highlights awareness of trade‑offs. |
-
-### 3.7 SEO & Job‑Landing Hook
-
-If you’re writing a blog post or sharing this on LinkedIn, sprinkle these keywords:
-
-- **LeetCode 2085**
-- **Count Common Words With One Occurrence**
-- **Java solution**
-- **Python solution**
-- **C++ solution**
-- **HashMap**
-- **Frequency counting**
-- **Coding interview**
-- **Algorithmic problem solving**
-
-A polished article that tackles the problem *and* explains “the good, the bad, and the ugly” demonstrates not only algorithmic chops but also communication skills—exactly what recruiters look for.
+- Extra memory (`O(n + m)` each).  
+- Two separate loops, though still linear.  
+- Slightly more code to keep in sync.
 
 ---
 
-## 4️⃣ Final Thoughts
+## The “Ugly” Approach – Brute Force
 
-- **Master the map‑and‑count pattern**: It’s the backbone of many interview problems.
-- **Keep your code clean**: Clear variable names (`freq1`, `freq2`) and explicit checks make your solution interview‑friendly.
-- **Practice variants**: Try “count words that appear more than once” or “count words that appear exactly once in *either* array” to deepen your understanding.
+```java
+int count = 0;
+for (String w1 : words1) {
+    if (Arrays.stream(words2).filter(w2 -> w2.equals(w1)).count() == 1
+        && Arrays.stream(words1).filter(w -> w.equals(w1)).count() == 1)
+        count++;
+}
+```
 
-Happy coding—and may that interview call be just a “Count Common Words” away! 🚀
+**Problems**
+
+- O(n m) time, far too slow for 1000 elements.  
+- Repeatedly scans arrays; very hard to read and maintain.  
+- Prone to subtle bugs (duplicate counting, off‑by‑one errors).
+
+---
+
+## Edge Cases & Testing
+
+| Case | words1 | words2 | Expected |
+|------|--------|--------|----------|
+| Empty array not allowed by constraints | — | — | — |
+| All words same, > 1 occurrence | `["a","a"]` | `["a"]` | 0 |
+| All words distinct, one occurrence | `["a","b"]` | `["b","c"]` | 1 |
+| Large random arrays | (1000 elements) | (1000 elements) | O(1) time per element |
+
+Always test the intersection, uniqueness, and boundary limits.
+
+---
+
+## Interview‑Ready Tips
+
+1. **Explain the idea first** – Mention frequency counting, hash maps.  
+2. **Walk through the algorithm** – Show the two passes and why `-1` works.  
+3. **Discuss complexity** – O(n + m) time, O(n + m) space.  
+4. **Mention edge cases** – e.g., words appearing multiple times in either array.  
+5. **Optional optimization** – Use a single map if you want to be fancy, but keep the code readable.
+
+---
+
+## SEO‑Optimized Takeaway
+
+If you’re preparing for coding interviews and want to land a job, mastering **LeetCode 2085: Count Common Words With One Occurrence** is a great showcase of:
+
+- **Hash map proficiency**  
+- **Efficient O(n + m) solutions**  
+- **Clear reasoning**  
+
+Add this problem to your portfolio, and mention the **one‑hashmap** trick in your resume or LinkedIn profile. Recruiters love concise, elegant solutions that solve the problem in linear time.
+
+Happy coding, and good luck on your next interview!

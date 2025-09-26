@@ -7,79 +7,86 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 3587 – Minimum Adjacent Swaps to Alternate Parity  
-### Java | Python | C++ – Full Working Solutions + SEO‑Optimized Blog
+        # Minimum Adjacent Swaps to Alternate Parity  
+**The Good, The Bad, and The Ugly – A Complete Guide for Your Next Coding Interview**
 
-> **Keywords**: LeetCode 3587, Minimum Adjacent Swaps, Alternate Parity, Java, Python, C++, Interview Problem, Algorithm, Time Complexity, Space Complexity, Coding Interview, Job Search
-
----
-
-### 1. Problem Recap
-
-Given an array `nums` of **distinct** integers (size up to `10⁵`), we may only swap two *adjacent* elements per operation.  
-An array is **valid** if its elements alternate in parity: every neighboring pair contains one even and one odd number.
-
-**Goal:** Return the minimum number of adjacent swaps required to make `nums` valid, or `-1` if impossible.
-
-> Example  
-> `nums = [2,4,6,5,7] → 3` swaps
+> **Keywords**: Leetcode, interview, algorithm, parity, adjacent swaps, coding interview, Java, Python, C++, job interview, software engineering
 
 ---
 
-### 2. Intuition
+## 1. Why This Problem Rocks Your Resume
 
-Only the *parity* matters – not the actual values.  
-Think of the array as a string of `E` (even) and `O` (odd).  
-We want to rearrange it so that the pattern is `E O E O …` **or** `O E O E …`.
-
-Because we can only swap adjacent elements, the number of swaps needed to bring an element from index `i` to index `j` equals `|i-j|`.  
-Thus, the problem reduces to:
-
-1. **Count evens & odds**  
-   * If the counts differ by more than `1`, alternation is impossible → return `-1`.
-
-2. **Choose a starting parity**  
-   * If evens ≥ odds → we can start with an even (`E O E …`).  
-   * If odds ≥ evens → we can start with an odd (`O E O …`).  
-   * When counts are equal, both starts are possible – take the minimum.
-
-3. **Compute cost**  
-   * Gather indices of the chosen parity.  
-   * The target indices are `0, 2, 4, …` (or `1, 3, 5, …` depending on the start).  
-   * Sum `|original_index - target_index|` over all chosen parity elements → total swaps.
-
-The algorithm runs in `O(n)` time and `O(n)` auxiliary space (to store indices).
+- **Classic interview topic**: It tests your ability to reason about *parity*, *indices*, and *optimal movement*.
+- **Time‑complexity mindset**: The optimal solution is *O(n)*, but many candidates start with an *O(n²)* brute force.
+- **Edge‑case handling**: The problem forces you to think about *impossibility* (`-1`), *unequal counts*, and *multiple valid targets*.
+- **Multilingual**: You can present solutions in Java, Python, or C++ – perfect for a polyglot portfolio.
 
 ---
 
-### 3. Edge Cases
+## 2. Problem Statement (LeetCode 3587)
 
-| Case | Reason | Result |
-|------|--------|--------|
-| Only evens or only odds | Can't alternate | `-1` |
-| Counts differ by `>1` | Impossible pattern | `-1` |
-| Array already alternating | 0 swaps | `0` |
-| Even length, equal counts | Both starts valid | Minimum of two calculations |
-| Odd length | One parity must start first | Only the valid start is considered |
+You are given an array `nums` of distinct integers. In one operation you may swap **any two adjacent elements**.
+
+An arrangement is **valid** if every pair of neighboring elements has different parity (one is even, the other odd).
+
+**Return** the minimum number of adjacent swaps required to transform `nums` into *any* valid arrangement.  
+If it’s impossible, return `-1`.
+
+> **Examples**
+> - `[2,4,6,5,7]` → `3`
+> - `[2,4,5,7]` → `1`
+> - `[1,2,3]` → `0`
+> - `[4,5,6,8]` → `-1`
 
 ---
 
-### 4. Code Implementations
+## 3. Intuition – The “Even & Odd Index” Trick
 
-> **Note:** All implementations share the same logic – just syntax differences.
+1. **Collect the indices** of all even numbers and all odd numbers.
+2. A *valid* array must alternate parity, so the counts of evens and odds can differ by at most one.  
+   *If `|evens - odds| > 1` → impossible → return `-1`*.
+3. There are **at most two** valid patterns:
+   * Start with even → evens occupy indices `0,2,4,…`  
+   * Start with odd  → odds occupy indices `0,2,4,…`
+4. For a given pattern, the number of swaps equals the sum of *distances* each element must move to reach its target index.  
+   Why? Because every adjacent swap moves an element by exactly one position.
 
-#### 4.1 Java
+> **Key Formula**  
+> If you have a list `pos` of original indices and you want them at target indices `0,2,4,…` (`k` elements),  
+> the cost is `Σ |pos[i] - 2*i|`.
+
+---
+
+## 4. Algorithm (O(n) time, O(1) extra space)
+
+```text
+1. Build two lists: evenIdx, oddIdx.
+2. If |evenIdx| - |oddIdx| > 1 → return -1.
+3. Initialise ans = INF.
+4. If evenIdx can occupy even positions → ans = min(ans, cost(evenIdx)).
+5. If oddIdx can occupy even positions → ans = min(ans, cost(oddIdx)).
+6. Return ans.
+```
+
+*`cost(list)`* implements the distance formula.
+
+---
+
+## 5. Reference Code
+
+### 5.1 Java (LeetCode‑style)
 
 ```java
 import java.util.*;
 
 class Solution {
-    private long cost(List<Integer> indices) {
-        long total = 0;
-        for (int i = 0; i < indices.size(); i++) {
-            total += Math.abs(indices.get(i) - 2 * i);
+    // Helper: sum of distances to target indices 0,2,4,...
+    private long cost(List<Integer> pos) {
+        long swaps = 0;
+        for (int i = 0; i < pos.size(); i++) {
+            swaps += Math.abs(pos.get(i) - 2L * i);
         }
-        return total;
+        return swaps;
     }
 
     public int minSwaps(int[] nums) {
@@ -87,242 +94,187 @@ class Solution {
         List<Integer> odd  = new ArrayList<>();
 
         for (int i = 0; i < nums.length; i++) {
-            if ((nums[i] & 1) == 0) even.add(i);
+            if (nums[i] % 2 == 0) even.add(i);
             else odd.add(i);
         }
 
-        int e = even.size(), o = odd.size();
-        if (Math.abs(e - o) > 1) return -1;
+        if (Math.abs(even.size() - odd.size()) > 1) return -1;
 
         long ans = Long.MAX_VALUE;
-        if (e >= o) ans = Math.min(ans, cost(even));
-        if (o >= e) ans = Math.min(ans, cost(odd));
+
+        if (even.size() >= odd.size()) ans = Math.min(ans, cost(even));
+        if (odd.size()  >= even.size()) ans = Math.min(ans, cost(odd));
 
         return (int) ans;
     }
 }
 ```
 
-#### 4.2 Python
+> **Why long?**  
+> Each swap cost can be up to `n`, and summing up to `n` swaps gives `O(n²)` in worst case. `long` protects against overflow for `n = 10⁵`.
+
+---
+
+### 5.2 Python 3
 
 ```python
 from typing import List
 
 class Solution:
     def minSwaps(self, nums: List[int]) -> int:
-        evens, odds = [], []
-        for i, v in enumerate(nums):
-            (evens if v % 2 == 0 else odds).append(i)
+        # Positions of ones (odds) and zeros (evens)
+        odd_pos = [i for i, v in enumerate(nums) if v & 1]
+        n = len(nums)
 
-        e, o = len(evens), len(odds)
-        if abs(e - o) > 1:
+        # Helper: cost when starting pattern is 'start' (0 or 1)
+        def count_swaps(start: int) -> int:
+            return sum(abs(p - (start + 2 * i)) for i, p in enumerate(odd_pos))
+
+        # Quick impossibility test
+        m = 2 * len(odd_pos)
+        if m < n or m > n:
             return -1
 
-        def cost(idx: List[int]) -> int:
-            return sum(abs(idx[i] - 2 * i) for i in range(len(idx)))
+        if m == n:                # equal counts – try both starts
+            return min(count_swaps(0), count_swaps(1))
+        if m == n + 1:            # odds > evens – must start with odd
+            return count_swaps(0)
+        if m == n - 1:            # evens > odds – must start with even
+            return count_swaps(1)
 
-        ans = float('inf')
-        if e >= o:
-            ans = min(ans, cost(evens))
-        if o >= e:
-            ans = min(ans, cost(odds))
-        return ans
+        return -1
 ```
 
-#### 4.3 C++
+> **Note**: Python’s integers are unbounded, so we don't worry about overflow.
+
+---
+
+### 5.3 C++ (Fast & Clean)
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
-public:
-    long long cost(const vector<int>& idx) {
-        long long sum = 0;
-        for (size_t i = 0; i < idx.size(); ++i)
-            sum += llabs(idx[i] - 2LL * i);
-        return sum;
+    long long cost(const vector<int> &pos) {
+        long long swaps = 0;
+        for (size_t i = 0; i < pos.size(); ++i) {
+            swaps += llabs(pos[i] - 2LL * i);
+        }
+        return swaps;
     }
-
+public:
     int minSwaps(vector<int>& nums) {
         vector<int> even, odd;
-        for (int i = 0; i < (int)nums.size(); ++i)
+        for (int i = 0; i < nums.size(); ++i) {
             (nums[i] % 2 == 0 ? even : odd).push_back(i);
+        }
 
-        int e = even.size(), o = odd.size();
-        if (abs(e - o) > 1) return -1;
+        if (abs((int)even.size() - (int)odd.size()) > 1) return -1;
 
         long long ans = LLONG_MAX;
-        if (e >= o) ans = min(ans, cost(even));
-        if (o >= e) ans = min(ans, cost(odd));
+
+        if (even.size() >= odd.size()) ans = min(ans, cost(even));
+        if (odd.size()  >= even.size()) ans = min(ans, cost(odd));
 
         return static_cast<int>(ans);
     }
 };
 ```
 
-All three solutions compile under the latest language standards (`javac 17`, `python3 3.10`, `g++ 17`).
+---
+
+## 6. Complexity Analysis
+
+| Metric          | Java | Python | C++ |
+|-----------------|------|--------|-----|
+| **Time**        | O(n) | O(n)   | O(n)|
+| **Auxiliary**   | O(1) (except for input lists) | O(1) | O(1) |
+| **Space**       | O(1) | O(1)   | O(1) |
+
+> **Why is it O(1)?**  
+> We only keep the original indices in two *lists* – the same as the input size. Once we calculate the cost we discard the lists, so the *extra* space is constant.
 
 ---
 
-### 5. Testing the Solution
+## 7. The “Bad” Parts – Common Pitfalls
 
-```python
-# Quick sanity checks
-tests = [
-    ([2, 4, 6, 5, 7], 3),
-    ([2, 4], -1),
-    ([1, 2, 3, 4, 5], 1),
-    ([5, 3, 1, 2], 2),
-    ([2, 1], 0),
-    ([2], -1),
-    ([1], -1),
-    ([1, 2, 4, 5, 7], 3),
-    ([1, 3, 5, 2], 1)
-]
-
-sol = Solution()
-for a, expected in tests:
-    assert sol.minSwaps(a) == expected, f"failed on {a}"
-print("All tests passed!")
-```
+| Pitfall | Why It Happens | Fix |
+|---------|----------------|-----|
+| **Thinking of `-1` as a special index** | Some candidates treat `-1` as a sentinel and accidentally use it in distance calculations. | Perform the impossible check **before** computing costs. |
+| **Using 1‑based indices** | The cost formula is based on 0‑based indices (`0,2,4,…`). Off‑by‑one errors break everything. | Test both patterns explicitly (`start = 0` or `start = 1`). |
+| **Assuming both patterns are always valid** | If the counts differ by one, only one pattern is legal. | Use `>=` checks when deciding which cost to compute. |
+| **Missing overflow** | Summing `n` distances can reach 10⁵ × 10⁵ = 10¹⁰, which exceeds 32‑bit int. | Use 64‑bit integers (`long` in Java, `long long` in C++, default `int` in Python). |
 
 ---
 
-### 5. Good / Bad / Ugly – Interview Perspective
+## 8. Edge‑Case Checklist
 
-| **Good** | **Bad** | **Ugly** |
-|----------|---------|----------|
-| ✔️ One‑pass, `O(n)` algorithm. | ❌ Brute‑force (swap all pairs) → `O(n³)` time. | ❌ Using recursion without memo → stack overflow for `10⁵` input. |
-| ✔️ Simple data structures (lists). | ❌ Using large 2‑D arrays → O(n²) memory. | ❌ Hard‑to‑read code (no helper function, magic numbers). |
-| ✔️ Handles both even & odd start cases automatically. | ❌ Forgetting the `abs(e - o) > 1` guard → wrong answer for impossible cases. | ❌ Over‑engineering (multiple `if/else` branches that do the same thing). |
-
----
-
-### 6. Tips for Nail‑Down Interviews
-
-1. **Explain the parity abstraction early** – interviewers love to see you reduce the problem to its core.
-2. **Show the `abs(i-j)` swap cost** – it explains why we sum differences.
-3. **Mention impossibility condition upfront** – saves time & shows you’re thinking about constraints.
-4. **Time & Space Complexity** – always state them (`O(n)` / `O(n)`).
-5. **Edge‑Case Test Plan** – ask the interviewer if they want you to cover all edge cases; you can present the table above.
-6. **Optimized Code** – keep helper functions concise; use `long`/`long long` to avoid overflow (`|i-j|` can be up to `10⁵` and we sum many of them).
-7. **Ask for clarification** – e.g., “Do you want the smallest index cost or the pattern count?” – ensures alignment.
+| Scenario | What to test |
+|----------|--------------|
+| **All evens** | `[2,4,6]` → `-1` |
+| **All odds**  | `[1,3,5]`  → `-1` |
+| **Equal counts** | `[2,1,4,3]` – should return `0` (already valid). |
+| **One extra odd** | `[1,2,4]` – must start with odd → cost `0`. |
+| **One extra even** | `[2,1,3]` – must start with even → cost `0`. |
+| **Large alternating** | `[2,4,6,8,9,11,13,15]` – test performance for 10⁵ elements. |
 
 ---
 
-### 7. SEO‑Optimized Blog Post
+## 9. Interview Tips – How to Nail This Question
+
+1. **Explain the impossibility early**.  
+   “If the difference in counts is greater than one, no valid arrangement exists.”  
+   This shows you read the problem statement thoroughly.
+
+2. **Draw a diagram** of indices.  
+   Even indices → `0,2,4,…` and Odd indices → `1,3,5,…`.  
+   Visual aids convince interviewers that you can reason on paper.
+
+3. **Talk about cost as distance**.  
+   “Every adjacent swap moves an element one step. Thus the minimal number of swaps equals the total distance the elements have to travel.”
+
+4. **Edge‑case walk‑through**.  
+   Show that the algorithm works for both patterns and why we need the `min` over them.
+
+5. **Time & space**.  
+   “O(n) time because we only traverse the array a constant number of times, and O(1) space because we only keep a few counters.”
+
+6. **Bonus** – Talk about *stable vs. unstable* swaps.  
+   Since all elements are distinct, the relative order of elements of the same parity doesn’t matter.
 
 ---
 
-# LeetCode 3587 – Mastering Minimum Adjacent Swaps to Alternate Parity
+## 10. Summary – What You Should Remember
 
-### 🔍 Quick Summary
+- **Collect indices** → `evens` & `odds`.
+- **Check feasibility** → `|evens - odds| <= 1`.
+- **Compute two possible costs** → `Σ |pos[i] - 2*i|`.
+- **Take the minimum** → that’s the answer.
+- **Return `-1`** if impossible.
 
-- **Problem:** Minimum adjacent swaps to make an array alternate in parity.  
-- **Languages:** Java, Python, C++ solutions.  
-- **Why It Matters:** Common interview question on **coding interviews** and **LeetCode** practice.  
-- **Result:** `O(n)` time, `O(n)` space, handles up to `10⁵` elements.
-
----
-
-## 📖 Problem Statement
-
-You’re given an array of *distinct* integers.  
-You can only swap **adjacent** elements.  
-An array is **valid** if its elements alternate in parity (even–odd–even–odd… or odd–even–odd–even…).
-
-Return the **minimum** number of adjacent swaps required to reach a valid state, or `-1` if impossible.
+> **Practice**: Try modifying the problem:  
+> *What if you could swap any two elements (not just adjacent)?*  
+> *What if the array had duplicates?*  
+> This will deepen your understanding of the parity–index concept.
 
 ---
 
-## ✅ Intuition & Core Insight
+## 11. Final Thought – Turn This into a Job‑Securing Skill
 
-1. **Parity only matters.** Replace numbers with `E` or `O`.  
-2. **Adjacent swap cost = distance.** Moving an element from index `i` to `j` costs `|i-j|`.  
-3. **Feasibility check:** If |#evens – #odds| > 1 → impossible.  
-4. **Choose start parity** based on counts.  
-5. **Cost calculation:**  
-   - Collect indices of the chosen parity.  
-   - Target indices: `0, 2, 4, …` (or `1, 3, 5, …`).  
-   - Sum absolute differences → total swaps.
+LeetCode problems like 3587 are *micro‑projects* that showcase a candidate’s:
 
----
+- Algorithmic sharpness
+- Coding fluency in multiple languages
+- Attention to edge cases
+- Ability to communicate ideas clearly
 
-## 📊 Complexity Analysis
+Add the code snippets (Java, Python, C++) to your portfolio, blog about the “good, bad, ugly” aspects, and practice explaining the problem aloud. Interviewers love candidates who *not only solve the problem but also articulate their thought process.*
 
-| Metric | Java | Python | C++ |
-|--------|------|--------|-----|
-| Time   | `O(n)` | `O(n)` | `O(n)` |
-| Space  | `O(n)` (index lists) | `O(n)` | `O(n)` |
+> **Next steps**  
+> 1. Clone this repo and add unit tests for all edge cases.  
+> 2. Post the solution on GitHub with a clear README.  
+> 3. Share the blog on LinkedIn/Medium with the tag #CodingInterview.  
+> 4. Keep refining: ask peers to review your code and critique the explanations.
 
-Both time and space are optimal given the need to inspect each element at least once.
-
----
-
-## 🧩 Implementation Highlights
-
-- **Helper function** (`cost`) that sums `|index - target|`.  
-- **Two index lists**: `even` and `odd`.  
-- **Single guard**: `abs(evenCount - oddCount) > 1` → `-1`.  
-- **If equal counts** → evaluate both starts and pick the minimum.  
-
----
-
-## 🧪 Sample Test Cases
-
-```python
-# Python example tests
-sol = Solution()
-assert sol.minSwaps([2,4,6,5,7]) == 3
-assert sol.minSwaps([2,4]) == -1
-assert sol.minSwaps([1,2,3,4]) == 1
-assert sol.minSwaps([5]) == -1
-```
-
-The same test suite works for Java and C++ after compiling the classes.
-
----
-
-## 🔍 Good / Bad / Ugly in Interviews
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Conceptual clarity** | Reducing to parity string is clean | Forgetting to abstract parity | Using complex data structures (graphs, segment trees) for no reason |
-| **Edge‑case awareness** | Guard clause on count difference | Assuming even length only | Not handling equal counts or odd‑length arrays |
-| **Code elegance** | Helper function, concise loops | Repeating code blocks | Hard‑to‑read code, magic numbers |
-| **Complexity** | `O(n)` time, `O(n)` space | Exponential brute force | Recursion depth > `n` causing stack overflow |
-
----
-
-## 🎯 Interview Take‑aways
-
-- **Explain your reasoning** before coding.  
-- **Mention complexity** early – interviewers love to see you think about performance.  
-- **Ask clarifying questions** (e.g., “Is the array guaranteed to contain at least one odd and one even?”).  
-- **Keep code modular**; helper functions make reasoning visible.  
-- **Test on edge cases** mentally – e.g., all evens, equal counts, odd length.
-
----
-
-## 📈 Why This Problem Is Interview Gold
-
-- **LeetCode**: Frequently listed under “Array Manipulation” and “String/Pattern Matching” categories.  
-- **Concepts Tested**:  
-  - Greedy / optimal assignment.  
-  - Array indexing & distance calculations.  
-  - Handling constraints & impossibility checks.  
-- **Languages**: Demonstrates proficiency in Java, Python, and C++—languages most recruiters look for in software engineering roles.  
-- **Real‑World Analogy**: Shuffling a deck with limited moves – a practical illustration of constrained optimization.
-
----
-
-## 🔚 Wrap‑Up
-
-You now have:
-
-- A **single‑pass greedy algorithm** that works for any input size within LeetCode constraints.  
-- **Three polished solutions** (Java, Python, C++) ready to paste into your next interview.  
-- An **SEO‑rich blog post** that explains the problem, the solution, and interview‑ready insights.
-
-Good luck on your coding interviews! 🎯 Remember, mastering problems like **Minimum Adjacent Swaps to Alternate Parity** shows recruiters you can abstract, optimize, and implement cleanly—exactly the traits they’re looking for.
+Good luck on your next interview – you’ve got this!

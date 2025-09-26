@@ -7,219 +7,183 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 464 – **Can I Win?**  
-*From LeetCode’s “100 game” to a full‑blown strategy puzzle*
+        ## 🎯 LeetCode 464 – “Can I Win?”  
+> **Medium** – 1 ≤ maxChoosableInteger ≤ 20, 0 ≤ desiredTotal ≤ 300  
 
-> **Short version:**  
-> Given a maximum choosable integer `n` (1 … 20) and a `desiredTotal` (0 … 300), can the first player force a win if each number may be used **once**?  
-> The game ends when the running total reaches or exceeds the desired total. Both players play optimally.
+> **Goal** – Decide if the first player can force a win in the “100‑Game” variant where each number can only be chosen once.
 
 ---
 
-## Why this problem matters for your job hunt
+## 🚀 TL;DR
 
-* **Dynamic programming + bitmasking** – a classic interview combo that tests recursion, memoisation and space optimisation.  
-* **Problem‑solving mindset** – you must recognise trivial win/loss cases, prune impossible branches, and craft a clean recursive structure.  
-* **Time & space trade‑offs** – understanding that 2¹⁰ is 1 024 and 2²⁰ is about one million is a quick mental check that a bitmask solution will run in time.  
-
-If you can explain this solution in an interview, you’ll demonstrate mastery of recursion, optimisation, and code clarity – all of which recruiters love.
-
----
-
-## The challenge
-
-You have two integers:
-
-| Variable | Meaning |
-| -------- | ------- |
-| `maxChoosableInteger` | The largest number you can pick (the set is {1,…,n}). |
-| `desiredTotal` | The total you must reach or exceed to win. |
-
-**Rules**
-
-1. Players alternate turns.  
-2. On a turn you pick a *unused* number from the pool and add it to the running total.  
-3. The first player whose pick brings the total to `≥ desiredTotal` wins.  
-4. If all numbers are used and the total never reaches the goal, the game is a draw (but this never happens under the constraints).
-
-**Goal** – return `true` if the first player can guarantee a win.
+- **Answer** – Use a *bitmask + memoization* DP.  
+- **Time** – `O(2^n · n)` (worst‑case 20 bits → ~20 M operations).  
+- **Space** – `O(2^n)` for the memo table.  
+- **Languages** – Java, Python, C++ (full, ready‑to‑paste).
 
 ---
 
-## 1.  The “good” – A clean, optimal solution
+## 🧩 Problem Recap
 
-We’ll use **recursive back‑tracking** with **memoisation**.  
-Because `maxChoosableInteger ≤ 20`, we can represent the set of used numbers with a 20‑bit integer (`mask`). Each bit `i` (`0‑based`) indicates whether number `i+1` has been chosen.
+Two players pick a number from `1 … maxChoosableInteger` **without replacement** and add it to a running total.  
+The player that first makes the total **≥ desiredTotal** wins.
 
-### Why memoisation matters
+You must decide whether the *first* player can win assuming both play optimally.
 
-Without caching, the same state (`mask`, `currentTotal`) is recomputed many times – the recursion tree explodes exponentially.  
-Caching reduces the problem to at most `2ⁿ` states.
 
-### Early‑exit pruning
 
-| Situation | Result | Why it’s safe |
-|-----------|--------|---------------|
-| `desiredTotal <= 0` | `true` | The first player wins immediately (no move needed). |
-| `sum(1..n) < desiredTotal` | `false` | Even if all numbers are used, the total is insufficient. |
-| The current player picks a number `k` that makes the total ≥ `desiredTotal` | `true` | He wins instantly. |
+---
 
-These simple checks cut the search space dramatically.
+## 🔍 The Naïve Brute‑Force Idea
 
-### Recursive idea
-
-```text
-CanPlayerWin(mask, total):
-    if mask is cached: return cached result
-
-    for each unused number k:
-        if total + k >= desiredTotal:
-            cache true, return true          // win this turn
-        if CanPlayerWin(mask | (1<<k), total + k) == false:
-            // opponent loses from this state → current player wins
-            cache true, return true
-
-    cache false, return false                // all moves lead to opponent win
+```
+DFS(used, currentTotal):
+    if currentTotal >= desiredTotal: return true      // current player won
+    for each unused i:
+        if DFS(used∪{i}, currentTotal+i) == false:
+            return true          // current player can force win
+    return false
 ```
 
-The function returns *true* if the current player can force a win.
+With `maxChoosableInteger = 20` this explores up to `20!` states → impossible.
+
+
 
 ---
 
-## 2.  The “bad” – A common pitfall
+## 🧠 Key Insight: Bitmask + Memoization
 
-**Using an array of booleans for memoisation without an “unknown” state**  
-If you initialise the DP array with `false`, you’ll treat “not yet computed” as a real “losing state”, causing the algorithm to return incorrect answers.  
+- **State** – which numbers are already taken (`usedMask`).  
+- **Property** – from a given mask the remaining total needed is **fixed**:  
+  `remaining = desiredTotal – sum(chosenNumbers)`.  
+  Thus the result for a mask is independent of the play‑order that led to it.
+- **Memoize** the result for each mask → each state examined once.
 
-Solution: use a tri‑state (unknown, win, lose) or an `Integer` array where `null` represents “unknown”.
+So we can write a DFS that remembers if the *current* player can force a win from the current mask.
 
----
 
-## 3.  The “ugly” – Over‑engineering
-
-- **Dynamic programming with a huge 2D table** (mask × total).  
-  With `desiredTotal` up to 300, this becomes a 1 024 × 301 ≈ 300 k cells array – still okay, but unnecessary because the recursion only needs the current total to be compared against the goal; the exact value is irrelevant beyond that comparison.  
-
-- **Bitwise hacking for performance** (e.g., manually counting set bits, pre‑computing all masks).  
-  It makes the code unreadable and offers negligible runtime benefit for `n ≤ 20`.
-
-Stick to the simple recursive memoised solution – it’s fast, clear, and passes all tests.
 
 ---
 
-## 4.  Code – one implementation per language
+## 📊 Complexity Analysis
 
-Below you’ll find the same algorithm in **Java**, **Python**, and **C++**.  
-All use a single integer `mask` and an array / dict / vector for memoisation.
+| | Explanation | Result |
+|---|---|---|
+| Number of states | Every subset of `{1,…,n}` → `2^n` | ≤ 2^20 = 1,048,576 |
+| Work per state | Iterate over unused numbers → ≤ n | ≤ 20 |
+| **Total time** | `O(2^n · n)` | ~20 M primitive ops (fast enough) |
+| **Space** | Memo table + recursion stack | `O(2^n)` + `O(n)` |
 
 ---
 
-### Java 17
+## 📚 “The Good, The Bad, and The Ugly”
+
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Idea** | Bitmask DP is elegant & powerful. | Complexity can still blow if `maxChoosableInteger` were > 20. | For 20 the recursion depth can hit 20 – fine, but must guard against stack overflow. |
+| **Implementation** | Simple bit‑operations; no external libraries. | Need to compute `sum(chosenNumbers)` efficiently. | Avoid recomputing sums by maintaining a running total. |
+| **Readability** | Clean recursion + memo table. | The base‑case logic may seem odd to newcomers. | The bit‑mask tricks can be cryptic for beginners. |
+
+---
+
+## 💻 Code – Java 17
 
 ```java
-import java.util.Arrays;
+import java.util.*;
 
-public class CanIWin {
-    private int maxChoosable;
-    private int desiredTotal;
-    private int[] memo;          // -1 = unknown, 0 = lose, 1 = win
-
+public class Solution {
     public boolean canIWin(int maxChoosableInteger, int desiredTotal) {
-        this.maxChoosable = maxChoosableInteger;
-        this.desiredTotal = desiredTotal;
-
-        // Trivial cases
+        // Quick win / loss pre‑checks
         if (desiredTotal <= 0) return true;
-        int maxSum = maxChoosable * (maxChoosable + 1) / 2;
+        int maxSum = maxChoosableInteger * (maxChoosableInteger + 1) / 2;
         if (maxSum < desiredTotal) return false;
+        // Special case: single move guarantees win
+        if (maxChoosableInteger >= desiredTotal) return true;
 
-        memo = new int[1 << maxChoosable];
+        int n = maxChoosableInteger;
+        int[] memo = new int[1 << n];          // -1 = unknown, 0 = lose, 1 = win
         Arrays.fill(memo, -1);
 
-        return canWin(0, 0);
+        return dfs(0, desiredTotal, n, memo);
     }
 
-    private boolean canWin(int mask, int total) {
-        if (memo[mask] != -1) return memo[mask] == 1;
+    private boolean dfs(int usedMask, int remaining, int n, int[] memo) {
+        if (remaining <= 0) return true;          // current player already won
+        if (memo[usedMask] != -1) return memo[usedMask] == 1;
 
-        for (int i = 0; i < maxChoosable; i++) {
+        for (int i = 0; i < n; i++) {
             int bit = 1 << i;
-            if ((mask & bit) != 0) continue;          // already used
+            if ((usedMask & bit) != 0) continue;   // already used
 
-            int val = i + 1;                           // numbers are 1‑based
-            if (total + val >= desiredTotal) {
-                memo[mask] = 1;                       // win immediately
+            // If we pick this number and reach the goal, we win
+            if (i + 1 >= remaining) {
+                memo[usedMask] = 1;
                 return true;
             }
 
-            // If opponent cannot win after this move → we win
-            if (!canWin(mask | bit, total + val)) {
-                memo[mask] = 1;
+            // Recurse: after picking i+1, opponent plays next
+            if (!dfs(usedMask | bit, remaining - (i + 1), n, memo)) {
+                memo[usedMask] = 1; // we can force opponent into a losing state
                 return true;
             }
         }
-
-        memo[mask] = 0; // lose
+        memo[usedMask] = 0; // all moves lead to opponent win
         return false;
-    }
-
-    public static void main(String[] args) {
-        CanIWin solver = new CanIWin();
-        System.out.println(solver.canIWin(10, 11)); // false
-        System.out.println(solver.canIWin(10, 0));  // true
-        System.out.println(solver.canIWin(10, 1));  // true
     }
 }
 ```
 
+> **Why it works**  
+> - `usedMask` tracks which numbers have already been taken.  
+> - The remaining sum needed to win is `remaining`.  
+> - If any unused number reaches or exceeds `remaining`, the current player wins immediately.  
+> - Otherwise, we recursively ask: *Can the opponent win from the new state?*  
+> - If the opponent cannot win, we win.  
+> - Memoization guarantees each mask is evaluated only once.
+
+
+
 ---
 
-### Python 3.10+
+## 🐍 Code – Python 3 (Fast)
 
 ```python
-from functools import lru_cache
-from typing import Tuple
+def canIWin(maxChoosableInteger: int, desiredTotal: int) -> bool:
+    # Quick checks
+    if desiredTotal <= 0: return True
+    total = maxChoosableInteger * (maxChoosableInteger + 1) // 2
+    if total < desiredTotal: return False
+    if maxChoosableInteger >= desiredTotal: return True
 
-class Solution:
-    def canIWin(self, maxChoosableInteger: int, desiredTotal: int) -> bool:
-        if desiredTotal <= 0:
+    n = maxChoosableInteger
+    from functools import lru_cache
+
+    @lru_cache(maxsize=None)
+    def dfs(mask: int, remaining: int) -> bool:
+        if remaining <= 0:                 # current player already won
             return True
+        for i in range(n):
+            bit = 1 << i
+            if mask & bit:                 # already used
+                continue
+            if i + 1 >= remaining:         # instant win
+                return True
+            # Opponent plays next: we win if opponent loses
+            if not dfs(mask | bit, remaining - (i + 1)):
+                return True
+        return False
 
-        max_sum = maxChoosableInteger * (maxChoosableInteger + 1) // 2
-        if max_sum < desiredTotal:
-            return False
-
-        @lru_cache(maxsize=None)
-        def dfs(mask: int, total: int) -> bool:
-            # iterate over all unused numbers
-            for i in range(maxChoosableInteger):
-                bit = 1 << i
-                if mask & bit:
-                    continue
-
-                val = i + 1
-                if total + val >= desiredTotal:
-                    return True
-
-                # if opponent cannot win after our move → we win
-                if not dfs(mask | bit, total + val):
-                    return True
-            return False
-
-        return dfs(0, 0)
-
-
-# quick tests
-if __name__ == "__main__":
-    sol = Solution()
-    print(sol.canIWin(10, 11))  # False
-    print(sol.canIWin(10, 0))   # True
-    print(sol.canIWin(10, 1))   # True
+    return dfs(0, desiredTotal)
 ```
+
+> The `@lru_cache` replaces the explicit memo array.  
+> Each key is a pair `(mask, remaining)` – but because `remaining` is determined by `mask`, Python still caches the state effectively.
+
+
 
 ---
 
-### C++17
+## 📦 Code – C++17
 
 ```cpp
 #include <bits/stdc++.h>
@@ -229,24 +193,26 @@ class Solution {
 public:
     bool canIWin(int maxChoosableInteger, int desiredTotal) {
         if (desiredTotal <= 0) return true;
+        int total = maxChoosableInteger * (maxChoosableInteger + 1) / 2;
+        if (total < desiredTotal) return false;
+        if (maxChoosableInteger >= desiredTotal) return true;
 
-        int maxSum = maxChoosableInteger * (maxChoosableInteger + 1) / 2;
-        if (maxSum < desiredTotal) return false;
+        int n = maxChoosableInteger;
+        vector<int> memo(1 << n, -1);        // -1 unknown, 0 lose, 1 win
 
-        vector<int> memo(1 << maxChoosableInteger, -1); // -1 unknown, 0 lose, 1 win
-        function<bool(int, int)> dfs = [&](int mask, int total) -> bool {
-            if (memo[mask] != -1) return memo[mask] == 1;
+        function<bool(int,int)> dfs = [&](int mask, int remaining) -> bool {
+            if (remaining <= 0) return true;
+            if (memo[mask] != -1) return memo[mask];
 
-            for (int i = 0; i < maxChoosableInteger; ++i) {
+            for (int i = 0; i < n; ++i) {
                 int bit = 1 << i;
-                if (mask & bit) continue; // already used
+                if (mask & bit) continue;          // already used
 
-                int val = i + 1;
-                if (total + val >= desiredTotal) {
+                if (i + 1 >= remaining) {
                     memo[mask] = 1;
                     return true;
                 }
-                if (!dfs(mask | bit, total + val)) {
+                if (!dfs(mask | bit, remaining - (i + 1))) {
                     memo[mask] = 1;
                     return true;
                 }
@@ -255,58 +221,137 @@ public:
             return false;
         };
 
-        return dfs(0, 0);
+        return dfs(0, desiredTotal);
     }
 };
-
-int main() {
-    Solution s;
-    cout << boolalpha;
-    cout << s.canIWin(10, 11) << endl; // false
-    cout << s.canIWin(10, 0)  << endl; // true
-    cout << s.canIWin(10, 1)  << endl; // true
-}
 ```
 
----
+> The `std::function` keeps the recursion simple and captures `memo` by reference.
 
-## 5.  Complexity analysis
 
-| Operation | Time | Space |
-|-----------|------|-------|
-| Recursive DP | **O(2ⁿ × n)** in the worst case (each state explores up to `n` moves). With `n ≤ 20` this is ≈ 20 million operations – easily fast enough. |
-| Memoisation array | **O(2ⁿ)** for storage of the `mask` states. For `n = 20` it’s just 1 048 576 integers (~4 MB). |
-| Additional pruning checks | **O(1)**. |
 
 ---
 
-## 6.  How to present this solution in an interview
+## 📄 Blog Article – “Can I Win?”: The Good, The Bad, and The Ugly
 
-1. **Explain the game rules and constraints.**  
-   Mention the pool is *without replacement* and `n ≤ 20` allows a bitmask.
-2. **Show the trivial cases first** (desiredTotal ≤ 0, total sum < desiredTotal).  
-   This demonstrates you’re looking for corner cases.
-3. **Describe the recursion** – choose a number, update total, flip turn.  
-   Emphasise that if *any* move forces the opponent into a losing state, the current player wins.
-4. **Introduce memoisation** – map each `mask` to the result.  
-   Clarify that we don’t need to store the running total because we only compare it to `desiredTotal` on the fly.
-5. **Give the complexity** and why it’s acceptable for the limits.
-6. **Write clean code** (or sketch it) – readability beats micro‑optimisation.
+> **Keywords** – *LeetCode 464, Can I Win, bitmask DP, game theory, Java solution, Python solution, C++ solution, interview coding, optimal play, algorithmic puzzle.*
 
 ---
 
-## 7.  Final take‑aways
+### 1. Intro: Why This Problem Rocks
+
+The classic “100 Game” is a staple in coding interviews because it blends *game theory* with *combinatorics*.  
+LeetCode’s version adds a twist: **no repeats**.  
+This small change turns an apparently simple Nim‑style game into a state‑space exploration nightmare if you ignore the structure of the numbers.
+
+---
+
+### 2. Problem Recap (What the interviewer expects)
+
+> **Input**  
+> - `maxChoosableInteger`: highest number available (1–20)  
+> - `desiredTotal`: the target total to win (0–300)  
+> **Output**  
+> `true` if the first player can force a win; `false` otherwise.
+
+All moves are deterministic and both players play optimally.
+
+---
+
+### 3. Why Brute‑Force Fails
+
+- The branching factor is `maxChoosableInteger`.  
+- Depth is up to 20.  
+- Without pruning you could visit up to `20!` leaf nodes.  
+- Even with simple memoization on the *set of used numbers*, you still need to evaluate each subset *once*. That’s `2^20` ≈ 1 million states – fine – but you *must* use the right key!
+
+---
+
+### 4. The Elegant Solution: Bitmask + DP
+
+#### 4.1 State Representation
+- **Bitmask**: a 20‑bit integer where bit `i` (0‑based) denotes whether number `i+1` has been taken.  
+- **Memo table**: `int dp[1<<n]` (`-1 = unknown, 0 = lose, 1 = win`).
+
+#### 4.2 Transition
+For a given mask:
+1. **Calculate remaining total**: `remaining = desiredTotal - sumChosen`.
+   - Because `mask` uniquely identifies `sumChosen`, we can compute `remaining` once per call.
+2. **Try every unused number `x`** (`x = i+1`):
+   - If `x >= remaining` → instant win → mark mask as *win*.
+   - Else recursively ask: *Can opponent win from mask | (1<<i) with remaining‑x*?
+   - If opponent loses → current player wins.
+
+#### 4.3 Base Cases
+- `remaining <= 0` → current player already won.  
+- If a single number is ≥ `remaining` → guaranteed win.
+
+#### 4.4 Result
+- The recursion depth is at most 20; stack space is safe in most interview environments.  
+- Each mask is processed once → O(2^n) states.
+
+---
+
+### 5. Implementation Tips (Beyond the code)
+
+- **Pre‑check**:  
+  - If `desiredTotal <= 0` → immediate win.  
+  - If the sum of all numbers < `desiredTotal` → impossible.  
+  - If a single number can reach the target → immediate win.
+- **Running total vs recomputing sums**:  
+  Store the running `remaining` instead of recomputing `sumChosen` at every recursion.
+- **Iterative vs recursive**:  
+  Recursive DFS keeps code concise; iterative loops can be added if you fear stack limits.
+
+---
+
+### 6. “Good, Bad, Ugly” Breakdown
 
 | Good | Bad | Ugly |
 |------|-----|------|
-| **Good** – Clear recursion + memoisation, early‑exit pruning, uses a 20‑bit mask. | **Bad** – Failing to differentiate *unknown* from *losing* state in the DP array. | **Ugly** – Over‑engineering with huge tables or unnecessary bitwise tricks. |
+| *Good*: bitmask is fast, memory efficient, and generalizable to many subset problems. | *Bad*: computing sums can be confusing; need to avoid repeated work. | *Ugly*: the bit‑mask hack looks like magic to novices; explain carefully. |
+| *Good*: The recursion logic maps directly to “can we force a win?” – intuitive for experienced programmers. | *Bad*: the base case `remaining <= 0` might feel unintuitive; it’s the *inverse* of the classic Nim condition. | *Ugly*: debugging memoization errors can be tricky if you misuse the index (`mask` vs `mask|bit`). |
 
-By mastering this problem you’ll showcase:
+---
 
-* **Algorithmic thinking** – mapping a game to a state space.  
-* **Data structure choice** – using bitmasks to encode subsets.  
-* **Optimisation** – pruning impossible branches.  
+### 7. Code Snippets (Languages)
 
-All of which are interview staples for roles that involve problem solving, coding, and systems design.
+Show the three language versions (Java, Python, C++) as short blocks, letting readers pick their favorite.
 
-Happy coding, and good luck landing that job! 🚀
+---
+
+### 8. Conclusion: Take‑aways for Your Interview
+
+1. **State compression** – Bitmask is a go‑to tool for subset DP.  
+2. **Memoization key** – Always choose a *unique* identifier of the game state.  
+3. **Prune early** – The instant‑win check (`x >= remaining`) cuts a huge branch.  
+4. **Test edge cases** – 0 target, large numbers, total exceeding the max sum – all quick paths.
+
+If you can explain this approach cleanly, you’ll impress both the interviewer and the recruiter on your *algorithmic mindset*.
+
+---
+
+### 9. Call to Action
+
+> “Got the problem under your belt? Try tweaking the parameters – what happens if `maxChoosableInteger` grows to 25? Could you parallelize the DP? Feel free to leave comments or PRs with your own language solutions.”
+
+---
+
+
+
+---
+
+## 🎯 Final Thought
+
+A solid, production‑ready solution to LeetCode 464 demonstrates mastery of:
+
+- State‑space compression (bitmask)  
+- Dynamic programming & memoization  
+- Clean recursion with clear base cases
+
+These are exactly the patterns interviewers look for in top‑tier tech companies.  
+Now go ace that interview – and enjoy the satisfaction of solving a puzzle that once seemed intractable! 🚀
+
+
+
+---

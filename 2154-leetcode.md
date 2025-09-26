@@ -7,295 +7,163 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🎯 Problem Overview – LeetCode 2154: “Keep Multiplying Found Values by Two”
+        ## 🚀 LeetCode 2154 – “Keep Multiplying Found Values by Two”
 
-**Goal**  
-Given an integer array `nums` and a starting integer `original`, repeatedly double `original` as long as the doubled value is present in `nums`. Return the final value of `original` when it no longer appears in the array.
+*“The good, the bad, and the ugly of a simple yet interview‑friendly problem.”*
 
-**Examples**
+---
 
-| `nums`           | `original` | Output |
-|------------------|------------|--------|
-| `[5, 3, 6, 1, 12]` | `3`        | `24`   |
-| `[2, 7, 9]`          | `4`        | `4`    |
+### 1. Problem Summary (Easy)
+
+You’re given an integer array `nums` and an integer `original`.  
+While `original` is present in `nums`, you double it (`original *= 2`).  
+Return the first value that is **not** found in `nums`.
+
+> **Input** – `nums = [5,3,6,1,12]`, `original = 3`  
+> **Output** – `24`  
+> **Explanation**  
+> 3 → 6 → 12 → 24 (24 isn’t in the array, so we stop)
 
 **Constraints**
 
 - `1 ≤ nums.length ≤ 1000`
 - `1 ≤ nums[i], original ≤ 1000`
 
-The task is straightforward but appears on many interview decks, so a clean, optimal solution can impress interviewers and help you land a role.
+---
+
+### 2. Why This Problem Is a Good Interview Question
+
+| Good | Bad | Ugly |
+|------|-----|------|
+| **Simplicity** – It tests basic algorithmic thinking without drowning you in boilerplate. | **Hidden pitfalls** – A naïve linear scan for each double can be costly for larger inputs. | **Edge‑case traps** – Forgetting to stop when the value is absent, or mis‑handling integer overflow if the constraints were larger. |
+| **Multiple language support** – You can demonstrate the same logic in Java, Python, C++ – great for a portfolio. | **Misreading the “while” loop** – Some candidates treat it as “do‑while” and double before the check. | **Set vs. list** – Using a `List` instead of a `HashSet` leads to O(n²) time, making the solution slower than the editorial. |
+| **Time‑space trade‑off** – You learn why a hash‑based structure is the natural fit. | | |
 
 ---
 
-## 🧩 Algorithmic Solution – Hash‑Based Lookup
+### 3. Algorithm – Fast Lookup with a HashSet
 
-### 1. Why a Hash Set?
+1. **Convert `nums` into a `HashSet`** – gives average O(1) membership checks.  
+2. **Loop** while `original` is contained in the set:  
+   `original *= 2`  
+3. Return `original` when the loop exits.
 
-- **O(1) average‑time lookup** – we can check the existence of a number instantly.
-- **Simple & readable** – no need for sorting or binary search.
-- **Memory trade‑off** – only 1,000 integers max, so space is negligible.
+**Why it works**
 
-### 2. Steps
-
-1. **Convert** `nums` into a `Set` (Java `HashSet`, Python `set`, C++ `unordered_set`).
-2. **Loop**: While the current `original` value exists in the set, double it (`original *= 2`).
-3. **Return** the final value once the loop stops.
-
-### 3. Complexity
-
-- **Time**: `O(n)` to build the set + `O(k)` for the while loop, where `k` is the number of doublings (≤ 10 for the given limits).  
-  In practice, `O(n)` dominates, so overall **O(n)**.
-- **Space**: `O(n)` for the set.
+- Every iteration guarantees the current value is present, so we’re allowed to double it.  
+- As soon as the value is missing, no further doubling is possible – we return the first “missing” number.  
+- Because we only scan the set once per iteration and each iteration increases `original` exponentially, the loop terminates quickly (at most ~10 steps for the given constraints).
 
 ---
 
-## 📜 Code Implementations
+### 4. Complexity Analysis
 
-Below are clean, commented implementations in **Java, Python, and C++**. All three follow the same logic and achieve the same time/space guarantees.
+| Operation | Time | Space |
+|-----------|------|-------|
+| Building HashSet (`O(n)`) | `O(n)` | `O(n)` |
+| Each loop iteration (`O(1)` lookup + `O(1)` multiply) | `O(log answer)` (≈ number of doublings) | `O(1)` |
+| **Total** | **O(n + log answer)** | **O(n)** |
 
-### Java
+With `nums.length ≤ 1000`, this is far below any practical time limit.
+
+---
+
+### 5. Code – 3 Languages
+
+Below are clean, idiomatic solutions for **Java, Python, and C++**. Feel free to copy, paste, and run them in your favourite editor.
+
+#### 5.1 Java (LeetCode‑style)
 
 ```java
 import java.util.HashSet;
 import java.util.Set;
 
-public class Solution {
-    /**
-     * Repeatedly doubles `original` as long as it appears in `nums`.
-     * @param nums    Array of integers.
-     * @param original Starting value to double.
-     * @return Final value after no longer found in the array.
-     */
+class Solution {
     public int findFinalValue(int[] nums, int original) {
         Set<Integer> set = new HashSet<>();
-        for (int num : nums) {
-            set.add(num);
-        }
+        for (int num : nums) set.add(num);
 
         while (set.contains(original)) {
-            original *= 2;
+            original <<= 1;          // original *= 2
         }
         return original;
-    }
-
-    // Optional: Main method for quick manual testing
-    public static void main(String[] args) {
-        Solution sol = new Solution();
-        int[] nums = {5, 3, 6, 1, 12};
-        System.out.println(sol.findFinalValue(nums, 3)); // 24
     }
 }
 ```
 
-### Python
+#### 5.2 Python
 
 ```python
-from typing import List
+def find_final_value(nums: list[int], original: int) -> int:
+    nums_set = set(nums)            # O(n) time, O(n) space
 
-class Solution:
-    def findFinalValue(self, nums: List[int], original: int) -> int:
-        """
-        Repeatedly double `original` while it exists in `nums`.
-        """
-        num_set = set(nums)          # O(n) build time
-        while original in num_set:   # O(1) average lookup
-            original <<= 1           # double
-        return original
+    while original in nums_set:     # O(1) average lookup
+        original <<= 1              # multiply by 2
 
-# Quick test
-if __name__ == "__main__":
-    sol = Solution()
-    print(sol.findFinalValue([5, 3, 6, 1, 12], 3))  # 24
+    return original
 ```
 
-### C++
+#### 5.3 C++
 
 ```cpp
-#include <vector>
 #include <unordered_set>
-using namespace std;
+#include <vector>
 
 class Solution {
 public:
-    int findFinalValue(vector<int>& nums, int original) {
-        unordered_set<int> s(nums.begin(), nums.end()); // O(n)
-        while (s.find(original) != s.end()) {
-            original <<= 1; // double
+    int findFinalValue(std::vector<int>& nums, int original) {
+        std::unordered_set<int> st(nums.begin(), nums.end());
+        while (st.count(original)) {
+            original <<= 1; // multiply by 2
         }
         return original;
     }
 };
-
-// Optional: quick manual test
-/*
-int main() {
-    Solution sol;
-    vector<int> nums = {5, 3, 6, 1, 12};
-    cout << sol.findFinalValue(nums, 3) << endl; // 24
-}
-*/
 ```
 
 ---
 
-## 🏆 The Good, The Bad, The Ugly
+### 6. Common Mistakes & How to Avoid Them
 
-| Aspect | The Good | The Bad | The Ugly |
-|--------|----------|---------|----------|
-| **Algorithm** | Linear time & constant lookup. No over‑engineering. | None – the solution is already optimal for given constraints. | If you naïvely loop through `nums` each time, you’ll hit `O(nk)` which is still fine for 1 000 elements but looks less efficient to interviewers. |
-| **Readability** | Simple `while` loop, clear variable names. | None. | Using bit‑shifts (`<<= 1`) can confuse beginners; prefer `* 2` for clarity. |
-| **Edge‑Case Handling** | Works for `original` not in array, or when array contains all doubling steps. | None. | If `original` grows beyond `int` range (not in constraints) you’d need a `long`. |
-| **Space** | O(n) but negligible (≤ 1000 ints). | None. | Storing the entire array in a set might feel wasteful if you only need a few lookups; but with such small input it's fine. |
-| **Interview Takeaway** | Show you understand hash‑based lookups and loop invariants. | None. | Avoid premature optimization (like building a sorted array for binary search); the simplest solution is usually best. |
-
----
-
-## 📈 SEO‑Optimized Blog Article
-
-> **Title:** LeetCode 2154 – “Keep Multiplying Found Values by Two” – Java, Python & C++ Solutions (The Good, The Bad & The Ugly)
-
-> **Meta Description:** Master LeetCode 2154 with clean solutions in Java, Python, and C++. Understand the hash‑set trick, complexity, and why this simple algorithm impresses recruiters.
+| Mistake | Consequence | Fix |
+|---------|-------------|-----|
+| Using a `List` and `list.contains()` inside the loop | O(n²) time, may TLE on larger constraints | Switch to `HashSet`/`unordered_set` |
+| Forgetting the **loop condition** (`while (set.contains(original))`) | Infinite loop or wrong output | Always guard the loop with the existence check |
+| Using `original * 2` instead of `original <<= 1` in Java/C++ | Less readable, but functionally fine. | `<<= 1` is a bit‑shifting trick that’s a bit faster in tight loops |
+| Not handling overflow | In this problem constraints prevent it, but for larger inputs it’s a risk | Use `long long` in C++/Python’s unlimited int, or check before multiplying |
 
 ---
 
-### 1️⃣ Introduction
-
-If you’re prepping for a software‑engineering interview, the “Keep Multiplying Found Values by Two” challenge is a staple on LeetCode. The problem looks simple, but it’s a great test of your ability to:
-
-- Translate a textual description into a clear algorithm.
-- Choose the right data structure for fast lookups.
-- Deliver clean, production‑ready code in multiple languages.
-
-In this article, we’ll dissect the problem, walk through an **O(n)** solution, and discuss why it’s the best approach.
-
----
-
-### 2️⃣ Problem Recap
-
-You’re given:
-
-- An integer array `nums` (length ≤ 1000).
-- An integer `original`.
-
-Repeat:  
-- If `original` is in `nums`, double it (`original = 2 * original`).  
-- Stop when it’s no longer found.  
-
-Return the final `original`.
-
----
-
-### 3️⃣ The “Good” – HashSet + While Loop
-
-**Why a HashSet?**  
-Because we need **constant‑time membership checks**. Building the set takes `O(n)` time, and each check is `O(1)` on average.
-
-**Algorithm Outline**
+### 7. Testing Strategy
 
 ```text
-1. Convert nums → set
-2. While original ∈ set:
-       original ← original * 2
-3. Return original
-```
-
-**Complexity**  
-- Time: `O(n)` (set construction) + `O(k)` for doublings (k ≤ 10).  
-- Space: `O(n)` for the set.
-
-**Why It Works**  
-Each iteration ensures that if a number is present, we immediately double it. Because the array is fixed, no new numbers can appear; we just keep “walking” through possible powers of two.
-
----
-
-### 4️⃣ The “Bad” – Naïve Linear Search
-
-A less optimal alternative is to scan `nums` on every iteration:
-
-```python
-while original in nums:
-    original *= 2
-```
-
-- Time: `O(nk)` → still fine for n=1000 but looks slower to interviewers.  
-- Space: `O(1)`.  
-
-This is an okay solution for very small inputs, but it hides the real efficiency of a hash‑based approach.
-
----
-
-### 5️⃣ The “Ugly” – Over‑Engineering
-
-Some candidates add unnecessary complexity:
-
-- **Sorting + Binary Search**  
-  ```cpp
-  sort(nums.begin(), nums.end());
-  while(binary_search(nums.begin(), nums.end(), original))
-      original *= 2;
-  ```
-  Sorting is `O(n log n)` and the binary search `O(log n)` per check, so you’re wasting extra work.
-
-- **Recursive Doubling**  
-  Recursive code might look elegant but brings stack overhead and can be harder to debug.
-
-Remember: **Clarity beats cleverness** in most interview settings.
-
----
-
-### 6️⃣ Language‑Specific Tips
-
-| Language | Note |
-|----------|------|
-| **Java** | Use `HashSet<Integer>`; avoid autoboxing in tight loops if possible. |
-| **Python** | `set` is built‑in; use `original <<= 1` for speed but `* 2` is clearer. |
-| **C++** | `unordered_set<int>` gives average O(1) lookup; be careful with `<<=` semantics. |
-
----
-
-### 7️⃣ Edge Cases & Testing
-
-| Edge Case | What to Check |
-|-----------|---------------|
-| `original` not in `nums` | Should return `original` immediately. |
-| `nums` contains a chain 3,6,12,24 | Should double until 48 not found. |
-| Large `original` (1000) | Doubling stays within `int` range (max ~ 1024 000 000). |
-| Duplicate values in `nums` | HashSet ignores duplicates – still works. |
-
-**Sample Test Suite**
-
-```python
-def test():
-    sol = Solution()
-    assert sol.findFinalValue([5,3,6,1,12], 3) == 24
-    assert sol.findFinalValue([2,7,9], 4) == 4
-    assert sol.findFinalValue([1,2,4,8,16], 1) == 32
-    print("All tests passed.")
+1. Basic cases:
+   - nums = [1,2,4,8], original = 1 -> 16
+   - nums = [2,7,9], original = 4 -> 4
+2. Edge cases:
+   - single element array, original matches / doesn't match
+   - maximum constraints (1000 elements, all 1000)
+3. Randomized testing:
+   - Generate random arrays and originals, compare brute‑force vs hash‑set implementation
 ```
 
 ---
 
-### 8️⃣ Why This Matters for Your Job Hunt
+### 8. Why This Blog Helps Your Job Hunt
 
-- **Showcase Problem‑Solving**: Demonstrates translating a natural‑language requirement into algorithmic steps.
-- **Data Structure Knowledge**: Highlights your understanding of when to use hash sets vs arrays.
-- **Clean Code**: The code is concise, self‑documenting, and easily portable between languages.
-- **Interview Impact**: A concise `O(n)` solution is often rated higher than a longer, less efficient one.
-
----
-
-### 9️⃣ Final Thoughts
-
-LeetCode 2154 is deceptively simple, but it’s a perfect teaching tool for hash‑based lookups and algorithmic efficiency. By mastering this pattern, you’ll be ready for a range of interview questions that involve searching, membership testing, and iterative transformations.
-
-Happy coding, and good luck on your next interview! 🚀
+- **SEO‑friendly keywords**: “LeetCode 2154”, “Keep Multiplying Found Values by Two”, “Java solution”, “Python solution”, “C++ solution”, “hash set”, “algorithm interview”.
+- **Showcases**: Multi‑language proficiency, clear understanding of data structures, time/space analysis, handling edge cases – all vital for a software engineering interview.
+- **Portfolio**: Add the code snippets to your GitHub README or personal blog; recruiters love seeing clean, commented solutions.
 
 ---
 
-**Resources**
+### 9. Takeaway
 
-- [LeetCode 2154 – Keep Multiplying Found Values by Two](https://leetcode.com/problems/keep-multiplying-found-values-by-two/)
-- Official Java, Python, and C++ solutions posted above.
+This problem is a classic “look‑and‑double” puzzle that tests whether you can pick the right data structure and write concise, correct code. By mastering it, you demonstrate:
 
-> **Tip:** Practice explaining your solution aloud; this trains you to articulate logic clearly—exactly what interviewers want.
+- Quick problem analysis  
+- Efficient data‑structure selection  
+- Clean, idiomatic implementation in your preferred language  
+- Awareness of common pitfalls
+
+Good luck crushing your next coding interview! 🚀

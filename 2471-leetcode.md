@@ -7,155 +7,128 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  LeetCode 2471 – **Minimum Number of Operations to Sort a Binary Tree by Level**  
-> **Time Limit**: 2 s (Java, Python, C++)  
-> **Memory Limit**: 256 MB  
+        ## 📌 Problem Recap – LeetCode 2471  
+**Minimum Number of Operations to Sort a Binary Tree by Level**
+
+> You are given a binary tree with **unique** values.  
+> In one operation you may pick **any two nodes that live on the same level** and swap their values.  
+> The goal is to make every level of the tree strictly increasing from left to right using the *fewest* swaps possible.  
+
+The task is to return that minimum number of swaps.
 
 ---
 
-### 1.1 Problem Recap  
+## 🚀 High‑Level Insight
 
-You’re given a binary tree whose node values are **unique**.  
-In **one operation** you can choose *any two nodes on the same depth level* and swap their values.  
-The task:  
-
-*Return the minimal number of swaps needed so that the values on every depth level are strictly increasing.*
-
-> Example  
-> ```
-> Input:  root = [1,4,3,7,6,8,5,null,null,null,null,9,null,10]
-> Output: 3
-> Explanation: … (see problem statement)
-> ```
-
----
-
-### 1.2 High‑level idea  
-
-1. **Breadth‑first search (BFS)** – visit the tree level‑by‑level.  
-2. For each level we have an array `A` of the node values.  
-3. In a single level the optimal strategy is *sorting* the array.  
-   The question becomes: *How many swaps are needed to turn `A` into its sorted version?*  
-4. This is a classic “minimum swaps to sort an array” problem, solved in linear time by detecting cycles in the permutation that maps the current order to the sorted order.  
-5. Sum the swaps for every level → answer.
-
-The algorithm runs in **O(N log N)** time (the `log N` comes from sorting each level) and uses **O(N)** additional space (for the BFS queue and temporary arrays).
-
----
-
-### 1.3 Detailed algorithm  
+For each depth‑level independently, we just have to sort an array of numbers by swapping elements.  
+The minimal number of swaps required to sort an array where *any* pair may be swapped equals
 
 ```
-answer = 0
-queue ← [root]
-
-while queue not empty:
-    levelSize ← queue.size
-    values ← empty list
-    for i in 1 … levelSize:
-        node ← queue.pop()
-        values.add(node.val)
-        if node.left  exists: queue.add(node.left)
-        if node.right exists: queue.add(node.right)
-
-    # ----- minimum swaps for this level -----
-    sortedVals ← values sorted increasingly
-    posMap ← { value → index in sortedVals }      # HashMap / unordered_map
-    permutation ← [posMap[value] for value in values]
-    visited ← [false] * levelSize
-    swapsForLevel ← 0
-
-    for i in 0 … levelSize-1:
-        if visited[i] or permutation[i] == i: continue
-        cycleSize ← 0
-        j ← i
-        while not visited[j]:
-            visited[j] ← true
-            j ← permutation[j]
-            cycleSize += 1
-        swapsForLevel += cycleSize - 1
-
-    answer += swapsForLevel
-
-return answer
+length_of_array – number_of_cycles_in_the_permutation
 ```
 
----
+because each cycle of length `k` can be fixed in `k‑1` swaps.  
 
-### 1.4 Complexity analysis  
-
-| Step | Time | Space |
-|------|------|-------|
-| BFS traversal | **O(N)** | **O(N)** (queue) |
-| Sorting each level | ∑ `k_i log k_i`  (kᵢ = nodes on level i)  ≤ **O(N log N)** | **O(kᵢ)** temporary |
-| Cycle detection | **O(N)** | **O(N)** temporary |
-| **Total** | **O(N log N)** | **O(N)** |
-
-For a balanced tree the height is `O(log N)` and each level has at most `2^h` nodes, so the practical running time is close to linear.
+Thus the whole problem is a *level‑by‑level* application of this simple permutation trick.
 
 ---
 
-## 2. Code Implementations  
+## 📊 Algorithm
 
-### 2.1 Java  
+| Step | What we do | Why it works |
+|------|------------|--------------|
+| 1 | Perform a **BFS** of the tree, gathering nodes level by level. | We need the nodes on each depth in order to sort them. |
+| 2 | For a given level `L` of size `m`: <br>• Create a vector of pairs `(value, original_index)`. <br>• Sort this vector by `value`. | The sorted order tells us *where* every original element has to go. |
+| 3 | Build a permutation array `pos` such that `pos[original_index] = sorted_index`. <br>Traverse `pos` to count cycles. | A cycle of length `k` needs `k-1` swaps, which is minimal. |
+| 4 | Add `cycle_length-1` to the global answer for every cycle. | Summing over all levels gives the final answer. |
+
+---
+
+## 🧮 Complexity Analysis
+
+| Metric | Per Level | Whole Tree |
+|--------|-----------|------------|
+| **Time** | `O(m log m)` (sorting) + `O(m)` (cycle count) | `O(N log N)` (sum of all `m` is `N`) |
+| **Space** | `O(m)` temporary arrays | `O(N)` for BFS queue + temp arrays |
+
+With `N ≤ 10⁵`, this easily fits into time/memory limits.
+
+---
+
+## 🎯 The Code
+
+Below you will find **complete, ready‑to‑paste** solutions in **Java**, **Python 3**, and **C++17**.  
+All three use the same BFS + cycle‑counting idea described above.
+
+> **Tip** – The TreeNode definitions are provided only for completeness; on LeetCode the framework already supplies them.
+
+---
+
+### Java
 
 ```java
-import java.util.*;
-
 /**
  * Definition for a binary tree node.
  * public class TreeNode {
  *     int val;
- *     TreeNode left, right;
- *     TreeNode(int x) { val = x; }
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode() {}
+ *     TreeNode(int val) { this.val = val; }
+ *     TreeNode(int val, TreeNode left, TreeNode right) {
+ *         this.val = val;
+ *         this.left = left;
+ *         this.right = right;
+ *     }
  * }
  */
 class Solution {
     public int minimumOperations(TreeNode root) {
         if (root == null) return 0;
-        int answer = 0;
-        Queue<TreeNode> q = new LinkedList<>();
+
+        Queue<TreeNode> q = new ArrayDeque<>();
         q.offer(root);
+        int answer = 0;
 
         while (!q.isEmpty()) {
-            int levelSize = q.size();
-            int[] values = new int[levelSize];
-            int idx = 0;
+            int size = q.size();
+            int[] vals = new int[size];
+            int[] idx  = new int[size];
 
-            // collect the values of this level
-            for (int i = 0; i < levelSize; i++) {
+            // Collect nodes of current level
+            for (int i = 0; i < size; i++) {
                 TreeNode node = q.poll();
-                values[idx++] = node.val;
-                if (node.left != null)  q.offer(node.left);
+                vals[i] = node.val;
+                idx[i]  = i;                 // original position
+
+                if (node.left  != null) q.offer(node.left);
                 if (node.right != null) q.offer(node.right);
             }
 
-            // build sorted array and mapping value -> sorted index
-            int[] sorted = values.clone();
-            Arrays.sort(sorted);
-            Map<Integer, Integer> pos = new HashMap<>();
-            for (int i = 0; i < sorted.length; i++) pos.put(sorted[i], i);
+            // Pair value with its original index and sort by value
+            Integer[] order = new Integer[size];
+            for (int i = 0; i < size; i++) order[i] = i;
+            Arrays.sort(order, Comparator.comparingInt(i -> vals[i]));
 
-            // permutation that maps current positions to sorted positions
-            int[] perm = new int[values.length];
-            for (int i = 0; i < values.length; i++)
-                perm[i] = pos.get(values[i]);
+            // Build permutation: where each original index lands after sorting
+            int[] pos = new int[size];
+            for (int sortedPos = 0; sortedPos < size; sortedPos++) {
+                pos[order[sortedPos]] = sortedPos;
+            }
 
-            // cycle detection
-            boolean[] visited = new boolean[perm.length];
-            int swaps = 0;
-            for (int i = 0; i < perm.length; i++) {
-                if (visited[i] || perm[i] == i) continue;
-                int cycle = 0;
+            // Count cycles in permutation
+            boolean[] visited = new boolean[size];
+            for (int i = 0; i < size; i++) {
+                if (visited[i] || pos[i] == i) continue; // already in place
+                int cycleSize = 0;
                 int j = i;
                 while (!visited[j]) {
                     visited[j] = true;
-                    j = perm[j];
-                    cycle++;
+                    j = pos[j];
+                    cycleSize++;
                 }
-                swaps += cycle - 1;
+                answer += cycleSize - 1;   // minimal swaps for this cycle
             }
-            answer += swaps;
         }
         return answer;
     }
@@ -164,275 +137,171 @@ class Solution {
 
 ---
 
-### 2.2 Python 3  
+### Python 3
 
 ```python
-from collections import deque
-from typing import Optional
-
 # Definition for a binary tree node.
-class TreeNode:
-    def __init__(self, val: int = 0, left: Optional['TreeNode'] = None,
-                 right: Optional['TreeNode'] = None):
-        self.val = val
-        self.left = left
-        self.right = right
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
 
 class Solution:
-    def minimumOperations(self, root: Optional[TreeNode]) -> int:
+    def minimumOperations(self, root: TreeNode) -> int:
         if not root:
             return 0
 
-        answer = 0
+        from collections import deque
         q = deque([root])
+        ans = 0
 
         while q:
-            level_size = len(q)
-            values = []
+            size = len(q)
+            vals = [0] * size
+            idx  = list(range(size))
 
-            for _ in range(level_size):
+            # Grab nodes of current depth
+            for i in range(size):
                 node = q.popleft()
-                values.append(node.val)
+                vals[i] = node.val
                 if node.left:
                     q.append(node.left)
                 if node.right:
                     q.append(node.right)
 
-            sorted_vals = sorted(values)
-            pos = {v: i for i, v in enumerate(sorted_vals)}
-            perm = [pos[v] for v in values]
+            # Sort by value while keeping original indices
+            order = sorted(range(size), key=lambda i: vals[i])
+            pos = [0] * size
+            for sorted_pos, orig in enumerate(order):
+                pos[orig] = sorted_pos
 
-            visited = [False] * len(perm)
-            swaps = 0
-            for i in range(len(perm)):
-                if visited[i] or perm[i] == i:
+            # Count cycles
+            visited = [False] * size
+            for i in range(size):
+                if visited[i] or pos[i] == i:
                     continue
-                cycle = 0
+                cycle_len = 0
                 j = i
                 while not visited[j]:
                     visited[j] = True
-                    j = perm[j]
-                    cycle += 1
-                swaps += cycle - 1
+                    j = pos[j]
+                    cycle_len += 1
+                ans += cycle_len - 1
 
-            answer += swaps
-
-        return answer
+        return ans
 ```
 
 ---
 
-### 2.3 C++ (g++‑17)  
+### C++17
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-// Definition for a binary tree node.
-struct TreeNode {
-    int val;
-    TreeNode *left, *right;
-    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
-};
-
+/**
+ * Definition for a binary tree node.
+ * struct TreeNode {
+ *     int val;
+ *     TreeNode *left;
+ *     TreeNode *right;
+ *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+ * };
+ */
 class Solution {
 public:
     int minimumOperations(TreeNode* root) {
         if (!root) return 0;
-
-        int answer = 0;
         queue<TreeNode*> q;
         q.push(root);
+        int ans = 0;
 
         while (!q.empty()) {
-            int levelSize = q.size();
-            vector<int> values(levelSize);
-            int i = 0;
-
-            // 1️⃣ gather values of the current level
-            for (int j = 0; j < levelSize; ++j) {
+            int sz = q.size();
+            vector<int> vals(sz);
+            // Gather current level
+            for (int i = 0; i < sz; ++i) {
                 TreeNode* node = q.front(); q.pop();
-                values[i++] = node->val;
+                vals[i] = node->val;
                 if (node->left)  q.push(node->left);
                 if (node->right) q.push(node->right);
             }
 
-            // 2️⃣ sorted copy + value → index map
-            vector<int> sorted = values;
-            sort(sorted.begin(), sorted.end());
-            unordered_map<int,int> pos;
-            for (int k = 0; k < (int)sorted.size(); ++k) pos[sorted[k]] = k;
+            // Indices of nodes before sorting
+            vector<int> order(sz);
+            iota(order.begin(), order.end(), 0);
 
-            // 3️⃣ build the permutation
-            vector<int> perm(values.size());
-            for (int k = 0; k < (int)values.size(); ++k)
-                perm[k] = pos[values[k]];
+            // Sort indices by the value they point to
+            sort(order.begin(), order.end(),
+                 [&](int a, int b){ return vals[a] < vals[b]; });
 
-            // 4️⃣ count cycles
-            vector<bool> vis(perm.size(), false);
-            int swaps = 0;
-            for (int k = 0; k < (int)perm.size(); ++k) {
-                if (vis[k] || perm[k] == k) continue;
-                int cycle = 0, j = k;
+            // Build permutation: original index -> sorted index
+            vector<int> pos(sz);
+            for (int sortedIdx = 0; sortedIdx < sz; ++sortedIdx) {
+                pos[order[sortedIdx]] = sortedIdx;
+            }
+
+            // Cycle detection
+            vector<bool> vis(sz, false);
+            for (int i = 0; i < sz; ++i) {
+                if (vis[i] || pos[i] == i) continue;
+                int cycle = 0;
+                int j = i;
                 while (!vis[j]) {
                     vis[j] = true;
-                    j = perm[j];
+                    j = pos[j];
                     ++cycle;
                 }
-                swaps += cycle - 1;
+                ans += cycle - 1;
             }
-            answer += swaps;
         }
-        return answer;
+        return ans;
     }
 };
 ```
 
-> All three implementations share the same logic:
-> *BFS → collect level values → sort → cycle‑based swap count → accumulate.*
+---
+
+## 🎭 “Good – Bad – Ugly” in this LeetCode Interview
+
+| Aspect | What’s *Good* | What’s *Bad* | What’s *Ugly* |
+|--------|--------------|--------------|--------------|
+| **Problem Structure** | *Unique values* guarantee a bijection between current order and sorted order. | None. | None. |
+| **Data Collection** | BFS guarantees you always know the left‑to‑right order of a level. | Requires a queue that can hold up to `N` nodes → memory pressure on gigantic trees. | The same queue in C++/Java/Python; the memory cost is unavoidable. |
+| **Sorting** | Sorting per level gives a clean, deterministic result. | Sorting every level can add up to `N log N` work – still fast enough but not linear. | In the very early solutions people used bit‑packing tricks (`value<<20 | index`) to sort the whole tree at once. It works but hurts readability. |
+| **Cycle Counting** | Simple math: `cycle_size-1` swaps per cycle. | Requires a separate `visited` array per level → small overhead. | Some naive people count “misplaced elements” instead of cycles, giving a non‑minimal answer. |
 
 ---
 
-## 3. The “Good – Bad – Ugly” of This Problem  
+## 📚 Take‑Away for Interviews
 
-| Aspect | What’s good | What’s problematic | Ugly / “gotchas” |
-|--------|-------------|--------------------|------------------|
-| **Good** | • BFS keeps the solution clean and intuitive.<br>• Cycle detection is `O(k)` per level – no quadratic brute force.<br>• The same logic works for any language (Java, Python, C++). | – | – |
-| **Bad** | • Sorting every level costs `O(N log N)` – for a highly unbalanced tree the deepest level may contain almost `N` nodes, still okay but not constant‑time.<br>• Extra hash‑maps per level add overhead, but they’re tiny compared to `N`. | – |
-| **Ugly** | The first naïve solution you might write uses a *bit‑hack* that packs value and original index into a single `long`. While it works, it’s error‑prone and unreadable for interviewees. | ✔️ Avoid the bit‑hack; use the permutation‑plus‑cycle method for clarity. | – |
-
----
-
-## 4. Interview‑Ready Tips  
-
-1. **Show the intuition first** – explain that each depth level is an independent “array” that needs to be sorted.  
-2. **Demonstrate the cycle algorithm** – most interviewers will recognize the pattern.  
-3. **Discuss complexity** – emphasise that you sort *only* the nodes at that depth, not the whole tree.  
-4. **Mention edge cases** – single‑node tree → 0 swaps, deep unbalanced trees → still linear in practice.  
-5. **Talk about memory** – BFS queue holds at most one level, so memory is O(2^h) ≤ O(N).
+1. **Understand the “any two swap” model** – it reduces sorting to a permutation problem.  
+2. **Break it into independent sub‑problems** – a tree level behaves like a simple array.  
+3. **Count cycles, not inversions** – cycles give you the exact minimal swaps.  
+4. **Always code a clean BFS** – it keeps the logic easy to reason about.
 
 ---
 
-## 5. SEO‑Optimized Blog Article  
+## 🏁 TL;DR
 
-> **Title (≈ 55 chars)**  
-> “LeetCode 2471 Explained – Java/Python/C++ Binary‑Tree Level‑Sort Interview Guide”
+- **Collect each level** with BFS.  
+- **Sort** the values while keeping original positions.  
+- **Build a permutation** that tells where each original value should go.  
+- **Count cycles**; the number of swaps needed for a cycle of length `k` is `k‑1`.  
+- **Sum** over all levels → final answer.
 
-> **Meta‑Description (≈ 160 chars)**  
-> “Master LeetCode 2471: Minimum Number of Operations to Sort a Binary Tree by Level. Learn the BFS + cycle‑counting solution in Java, Python and C++. Perfect for your next coding interview.”
-
-> **Keywords**  
-> `LeetCode 2471`, `minimum swaps to sort array`, `binary tree level sort`, `BFS interview question`, `job interview algorithms`, `Java Python C++ solutions`, `cycle detection algorithm`, `binary tree depth sorting`.
-
----
-
-### Blog Body  
-
-#### 5.1 Why LeetCode 2471 is a “Gold‑mine” for Interviewees  
-
-* **Binary tree knowledge** – most candidates already know BFS/DFS.  
-* **Array manipulation twist** – tests the ability to map a tree problem to a classic array problem.  
-* **Multiple language support** – a great chance to show that you can translate the logic into Java, Python, or C++ on the fly.  
+The three language snippets above are essentially the same algorithm; pick the one that matches your interview prep stack.
 
 ---
 
-#### 5.2 The Good – What Works Like a Charm  
+## 🔍 SEO Keywords & Headings
 
-| Feature | Why it’s Good |
-|---------|---------------|
-| **Level‑by‑level BFS** | Keeps the algorithm intuitive; you only look at one depth at a time. |
-| **Sorting + permutation** | Turns a tree swap problem into an array problem – reusable knowledge. |
-| **Cycle counting** | Linear‑time, O(1) extra per node – no need to bubble‑sort or use `O(k²)` swapping loops. |
-| **Clear separation of concerns** | Easy to unit‑test each part (collect values, compute swaps). |
+- **LeetCode 2471**  
+- **Minimum Number of Operations to Sort a Binary Tree by Level**  
+- **Binary tree level sorting**  
+- **Tree sorting by swapping**  
+- **LeetCode solution**  
+- **software engineering interview**  
+- **binary tree interview problem**  
+- **tree level sorting algorithm**  
+- **O(N log N) LeetCode solution**  
 
----
-
-#### 5.3 The Bad – Potential Pitfalls  
-
-| Pitfall | Mitigation |
-|---------|------------|
-| **Sorting each level individually** | For a pathological chain tree the deepest level can contain almost `N` nodes. The `log N` factor is unavoidable, but remember it in your analysis. |
-| **HashMap overhead** | The mapping from value to sorted index is necessary for clarity. If you’re extremely tight on memory, you can avoid the map by using an `unordered_map` or even a `vector` of pairs. |
-| **Large input size** | The BFS queue may grow to `O(N)` in an unbalanced tree. Python’s `deque` handles this fine; Java’s `LinkedList` and C++’s `queue` do too. |
-
----
-
-#### 5.4 The Ugly – Tricky or Obscure Parts  
-
-* **Bit‑packing hack** – Some accepted solutions pack the value and its original index into a single `long` and sort those. This is clever but hard to read and maintain.  
-* **Permutation vs. index mapping** – Forgetting that you need *indices* (not values) in the permutation leads to an off‑by‑one error.  
-* **Cycle detection edge cases** – A cycle of length 1 (already in place) adds **zero** swaps. Be sure to skip those.  
-
----
-
-#### 5.5 Final Thought – Why You Should Nail This Question  
-
-* **Shows you can translate a tree problem into a linear‑time array trick.**  
-* **Demonstrates familiarity with BFS, sorting, hash‑maps, and graph cycles – all staples of coding interviews.**  
-* **Exhibits language‑agnostic thinking** – we’ve provided clear, idiomatic solutions in Java, Python, and C++.
-
-Mastering LeetCode 2471 is a *significant confidence booster* before your next job interview. Happy coding!  
-
----
-
-## 6. Quick‑Start: Running the Code  
-
-| Language | How to compile/run |
-|----------|--------------------|
-| **Java** | `javac Solution.java` then run with your own test harness. |
-| **Python** | `python3 - <<EOF\n…\nEOF` (paste the code and call `Solution().minimumOperations(root)`). |
-| **C++** | `g++ -std=c++17 solution.cpp -O2 && ./a.out` (wrap in a `main()` that builds a test tree). |
-
----
-
-### 6.1  Sample `main()` for each language (optional)  
-
-```java
-// Java
-public static void main(String[] args) {
-    TreeNode root = new TreeNode(1);
-    root.left  = new TreeNode(4);
-    root.right = new TreeNode(3);
-    // … build the rest of the tree
-    Solution sol = new Solution();
-    System.out.println(sol.minimumOperations(root));
-}
-```
-
-```python
-# Python
-def main():
-    root = TreeNode(1)
-    root.left = TreeNode(4)
-    root.right = TreeNode(3)
-    # … build the rest of the tree
-    print(Solution().minimumOperations(root))
-
-if __name__ == "__main__":
-    main()
-```
-
-```cpp
-// C++
-int main() {
-    TreeNode* root = new TreeNode(1);
-    root->left = new TreeNode(4);
-    root->right = new TreeNode(3);
-    // … build the rest of the tree
-    Solution sol;
-    cout << sol.minimumOperations(root) << endl;
-}
-```
-
----
-
-## 7. Final Checklist for Interview Day  
-
-- [ ] Understand the problem statement in 30 seconds.  
-- [ ] Write the BFS collector first.  
-- [ ] Code the swap‑counting routine separately.  
-- [ ] Run through a couple of edge cases mentally.  
-- [ ] Explain your time and space complexity clearly.  
-- [ ] Optionally, ask the interviewer if they’d like a quick demo in a language of their choice.  
-
-Good luck, and may your binary‑tree nodes always fall into place!
+Including these terms in your README or blog post will help recruiters and fellow candidates find the content when searching for interview prep resources. Happy coding! 🚀

@@ -7,333 +7,330 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap (LeetCode 1166 – Design File System)
+        ## 1.  Problem Overview – 1166. Design File System
 
-| ✅ | 💡 | ❌ |
-|----|----|----|
-| ✔️ “createPath(path, value)” – create a new path if the parent exists and the path does **not** already exist. | ✔️ “get(path)” – return the value stored at a path or `-1` if the path doesn’t exist. | ❌ Path `/` or an empty string is never valid. |
+> **LeetCode ID**: 1166  
+> **Difficulty**: Medium  
+> **Tag**: Design, Hash Table, Trie
 
-The job‑interview style question asks you to design a *virtual* file system that can be queried in *O(length of path)* time and that can support up to **10⁴** calls.  The classic way to solve it is to build a **Trie** (prefix tree) where each node represents a directory name and stores an optional value.
+You are asked to implement a miniature file‑system that supports two operations:
 
-Below you’ll find a clean, production‑ready implementation in **Java, Python, and C++**.
+| Method | Signature | Behaviour |
+|--------|-----------|-----------|
+| `createPath(path, value)` | `boolean` | Adds a new path and attaches an integer value to it. Returns **false** if the path already exists or if its parent path does not exist. |
+| `get(path)` | `int` | Returns the value associated with *path*, or **-1** if the path does not exist. |
+
+*Path format* – a non‑empty string that starts with `/` and contains only lowercase English letters. Examples: `/a`, `/leetcode/problems`. The root `/` itself is **not** a valid path.
+
+**Constraints**
+
+- `2 <= path.length <= 100`
+- `1 <= value <= 10⁹`
+- ≤ 10⁴ calls to `createPath`/`get` in total
+
+The goal is to build an efficient, interview‑ready implementation that can be presented in Java, Python, or C++.
 
 ---
 
-## 2.  Java Implementation (Java 8+)
+## 2.  High‑Level Design Choices
+
+| Approach | Strength | Weakness | Use‑case |
+|----------|----------|----------|----------|
+| **Hash‑Map based tree** | Simple, fast O(length) per operation | Uses more memory than a flat hash‑table | Common interview choice |
+| **Flat Hash‑Table** (path → value) | O(1) average lookup | Needs extra logic to check parent existence | Useful for very large numbers of independent paths |
+| **Trie** | Memory‑efficient for common prefixes | Slightly more complex code | Good when many paths share prefixes (e.g., `/a/b/c`, `/a/b/d`) |
+
+The most interview‑friendly solution is a *hash‑map based tree* (sometimes called a **Trie‑like** structure). It keeps a root node and a mapping of child names → child nodes. Each operation only walks down the path components, giving `O(L)` time where `L` is the number of components (≤ 100). Memory usage is `O(N)` where `N` is the total number of nodes created.
+
+---
+
+## 3.  Reference Implementations
+
+Below are fully‑working, ready‑to‑paste solutions in **Java**, **Python**, and **C++**. Each follows the same tree‑based design.
+
+### 3.1 Java – Interview‑Ready
 
 ```java
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Design a simple file system with createPath and get operations.
- * Uses a Trie where each node keeps a map of children.
- */
 public class FileSystem {
 
-    /* ----- Inner node ----- */
-    private static final class Node {
-        final String name;
-        int value = -1;              // -1 indicates “no value stored”
-        final Map<String, Node> children = new HashMap<>();
+    /* ----------  Node definition ---------- */
+    private static class Node {
+        String name;                     // component name
+        int value;                       // value stored at this node
+        Map<String, Node> children;      // children by component name
 
-        Node(String name) { this.name = name; }
+        Node(String name) {
+            this.name = name;
+            this.value = 0;              // 0 denotes no value yet
+            this.children = new HashMap<>();
+        }
     }
 
-    private final Node root = new Node("");
+    /* ----------  FileSystem API ---------- */
+    private final Node root;
 
-    /* ----- Public API ----- */
-    public FileSystem() { /* root already created */ }
+    public FileSystem() {
+        root = new Node("");            // root represents "/"
+    }
 
-    /**
-     * Creates a new path if the parent exists and the path is not already present.
-     *
-     * @param path   e.g. "/a/b/c"
-     * @param value  value to store
-     * @return true if created successfully, false otherwise
-     */
     public boolean createPath(String path, int value) {
-        if (path == null || path.length() <= 1) return false; // root or empty
+        if (path == null || path.isEmpty() || path.equals("/")) return false;
 
-        String[] parts = path.split("/");
-        Node curr = root;
-        for (int i = 1; i < parts.length; i++) {          // skip empty token before first '/'
+        String[] parts = path.split("/");   // split on '/', first part empty
+        Node cur = root;
+
+        /* walk to the parent of the new path */
+        for (int i = 1; i < parts.length - 1; i++) {
             String part = parts[i];
-            if (i == parts.length - 1) { // last component – we want to add it
-                if (curr.children.containsKey(part)) return false; // already exists
-                Node newNode = new Node(part);
-                newNode.value = value;
-                curr.children.put(part, newNode);
-                return true;
-            }
-            // otherwise we just need to walk down the path
-            curr = curr.children.get(part);
-            if (curr == null) return false; // parent does not exist
+            cur = cur.children.get(part);
+            if (cur == null) return false;  // parent does not exist
         }
-        return false;
+
+        String last = parts[parts.length - 1];
+        if (cur.children.containsKey(last)) return false; // already exists
+
+        Node newNode = new Node(last);
+        newNode.value = value;
+        cur.children.put(last, newNode);
+        return true;
     }
 
-    /**
-     * Returns the value stored at `path` or -1 if the path does not exist.
-     *
-     * @param path  e.g. "/a/b/c"
-     * @return value or -1
-     */
     public int get(String path) {
-        if (path == null || path.length() <= 1) return -1;
+        if (path == null || path.isEmpty() || path.equals("/")) return -1;
 
         String[] parts = path.split("/");
-        Node curr = root;
+        Node cur = root;
+
         for (int i = 1; i < parts.length; i++) {
-            curr = curr.children.get(parts[i]);
-            if (curr == null) return -1;
+            String part = parts[i];
+            cur = cur.children.get(part);
+            if (cur == null) return -1;
         }
-        return curr.value;
+        return cur.value;
     }
 }
 ```
 
-**Complexity**
-
-| Operation | Time | Space |
-|-----------|------|-------|
-| `createPath` | **O(L)** (`L` = number of segments in path) | **O(1)** auxiliary |
-| `get` | **O(L)** | **O(1)** auxiliary |
-
-*The trie grows only when new nodes are created; each node stores just its children map and an optional value.*
+> **Why this is interview‑friendly?**  
+> *Clear separation of concerns*: a lightweight `Node` class, straightforward `createPath` and `get`. The logic is easy to trace in a live coding interview.
 
 ---
 
-## 3.  Python Implementation (Python 3)
+### 3.2 Python – Concise & Readable
 
 ```python
 class FileSystem:
-    """Design a file system using a trie (dictionary-based)."""
-
     class _Node:
-        __slots__ = ('name', 'value', 'children')
+        __slots__ = ("name", "value", "children")
+
         def __init__(self, name: str):
             self.name = name
-            self.value = None          # None means "no value stored"
+            self.value = 0          # 0 means "no value yet"
             self.children = {}
 
     def __init__(self):
-        self.root = self._Node("")
+        self.root = self._Node("")  # root represents "/"
 
     def createPath(self, path: str, value: int) -> bool:
-        if not path or len(path) <= 1:
+        if not path or path == "/":
             return False
 
-        parts = path.split('/')[1:]          # skip empty token before first '/'
-        node = self.root
+        parts = path.split("/")[1:]        # ignore leading empty part
+        cur = self.root
 
-        for i, part in enumerate(parts):
-            if i == len(parts) - 1:          # last part – the node to create
-                if part in node.children:
-                    return False            # already exists
-                node.children[part] = self._Node(part)
-                node.children[part].value = value
-                return True
-            # walk down
-            node = node.children.get(part)
-            if node is None:
-                return False                # parent missing
-        return False
+        for part in parts[:-1]:            # walk to parent
+            if part not in cur.children:
+                return False
+            cur = cur.children[part]
+
+        last = parts[-1]
+        if last in cur.children:           # already exists
+            return False
+
+        cur.children[last] = self._Node(last)
+        cur.children[last].value = value
+        return True
 
     def get(self, path: str) -> int:
-        if not path or len(path) <= 1:
+        if not path or path == "/":
             return -1
 
-        parts = path.split('/')[1:]
-        node = self.root
+        parts = path.split("/")[1:]
+        cur = self.root
 
         for part in parts:
-            node = node.children.get(part)
-            if node is None:
+            cur = cur.children.get(part)
+            if cur is None:
                 return -1
-        return -1 if node.value is None else node.value
+        return cur.value
 ```
 
-**Complexity** – same as the Java version: **O(L)** time, **O(1)** auxiliary space.
+> **Pythonic Touches**  
+> *`__slots__`* keeps node objects lean.  
+> *Splitting on `/`* gives an easy way to iterate components.
 
 ---
 
-## 4.  C++ Implementation (C++17)
+### 3.3 C++ – Fast & Modern
 
 ```cpp
 #include <unordered_map>
 #include <string>
+#include <vector>
 
 class FileSystem {
 private:
     struct Node {
-        std::string name;
-        int value = -1;                     // -1 => no value stored
+        int value{0};                       // 0 => no value yet
         std::unordered_map<std::string, Node*> children;
-        Node(const std::string &n) : name(n) {}
     };
 
-    Node* root = new Node("");              // dummy root
+    Node* root = new Node();                // root represents "/"
 
-    /* helper to split a path into parts */
-    std::vector<std::string> split(const std::string &path) const {
+    // Utility: split a path into components, skipping empty ones
+    static std::vector<std::string> split(const std::string& path) {
         std::vector<std::string> parts;
         size_t start = 1; // skip leading '/'
-        size_t end;
-        while ((end = path.find('/', start)) != std::string::npos) {
-            parts.push_back(path.substr(start, end - start));
-            start = end + 1;
+        for (size_t i = 1; i <= path.size(); ++i) {
+            if (i == path.size() || path[i] == '/') {
+                if (i > start) parts.emplace_back(path.substr(start, i - start));
+                start = i + 1;
+            }
         }
-        if (start < path.size())
-            parts.push_back(path.substr(start));
         return parts;
     }
 
 public:
     FileSystem() = default;
-    ~FileSystem() {
-        // clean up nodes (omitted for brevity – use a recursive delete or smart pointers)
-    }
+    ~FileSystem() { clear(root); }
 
-    bool createPath(const std::string &path, int value) {
-        if (path.empty() || path[0] != '/' || path.size() <= 1) return false;
+    bool createPath(const std::string& path, int value) {
+        if (path.empty() || path == "/") return false;
+
         auto parts = split(path);
         Node* cur = root;
 
-        for (size_t i = 0; i < parts.size(); ++i) {
-            const std::string &part = parts[i];
-            if (i == parts.size() - 1) {            // final component to add
-                if (cur->children.count(part)) return false; // already exists
-                cur->children[part] = new Node(part);
-                cur->children[part]->value = value;
-                return true;
-            }
-            // walk to next node
-            cur = cur->children[part];
-            if (!cur) return false;                 // parent missing
+        for (size_t i = 0; i + 1 < parts.size(); ++i) { // go to parent
+            const auto& comp = parts[i];
+            auto it = cur->children.find(comp);
+            if (it == cur->children.end()) return false;
+            cur = it->second;
         }
-        return false;
+
+        const std::string& last = parts.back();
+        if (cur->children.count(last)) return false;
+
+        Node* child = new Node();
+        child->value = value;
+        cur->children[last] = child;
+        return true;
     }
 
-    int get(const std::string &path) const {
-        if (path.empty() || path[0] != '/' || path.size() <= 1) return -1;
+    int get(const std::string& path) const {
+        if (path.empty() || path == "/") return -1;
+
         auto parts = split(path);
         Node* cur = root;
-        for (const std::string &part : parts) {
-            cur = cur->children.at(part); // throws if not found
-            if (!cur) return -1;
+
+        for (const auto& comp : parts) {
+            auto it = cur->children.find(comp);
+            if (it == cur->children.end()) return -1;
+            cur = it->second;
         }
         return cur->value;
+    }
+
+private:
+    void clear(Node* node) {
+        for (auto& [_, child] : node->children)
+            clear(child);
+        delete node;
     }
 };
 ```
 
-**Complexity** – identical: **O(L)** time per operation, **O(1)** auxiliary space.
+> **Why C++?**  
+> *Explicit memory management* (with `clear`) shows awareness of ownership.  
+> *`unordered_map`* gives expected `O(1)` look‑ups.
 
 ---
 
-## 5.  Blog Article – “The Good, The Bad, and the Ugly of Designing a File System (LeetCode 1166)”
+## 4.  Complexity Analysis
 
-> *Target Audience:* Software‑engineering interviewees, hiring managers, and seasoned developers who want to master the “Design a File System” problem.
+| Operation | Time | Space |
+|-----------|------|-------|
+| `createPath` | `O(L)` – where `L` is the number of components in the path | Adds one node → `O(1)` additional |
+| `get` | `O(L)` | None (only reads existing nodes) |
 
-### 5.1  Why This Problem Appears in Interviews
+- `L` ≤ 100 (given constraints).  
+- Total memory `O(N)` where `N` = total nodes ever created (≤ number of successful `createPath` calls).
 
-- **Real‑world relevance** – Almost every application uses file‑like structures (databases, cloud storage, logs).
-- **Design thinking** – You must think of data structures that scale with path depth, not just flat maps.
-- **Edge‑case handling** – Empty strings, duplicate paths, and nonexistent parents test your attention to detail.
-
-### 5.2  The “Good” – What the Problem Teaches You
-
-| Skill | Explanation | Implementation Tip |
-|-------|-------------|--------------------|
-| **Trie mastery** | Prefix trees allow you to store shared prefixes once and traverse in `O(L)` | Use a dictionary (`unordered_map`/`HashMap`) per node. |
-| **Path tokenization** | Splitting by `/` yields an array of directory names. | Use `String.split('/')` (Java/Python) or a manual splitter (C++). |
-| **Complexity analysis** | You learn to quantify `O(L)` and to justify it in an answer. | Show a quick derivation: each segment is processed exactly once. |
-| **Clean code** | Demonstrates readability and maintainability. | Keep the node struct/class minimal (name + children + optional value). |
-
-### 5.3  The “Bad” – Things You Should Avoid
-
-| Pitfall | What it Looks Like | What to Do Instead |
-|--------|-------------------|-------------------|
-| **Using a single `HashMap<String, Integer>`** | You’ll still need to check parent existence, but you’ll be doing O(N) scans for each split. | **Don’t** – split the path and walk the Trie; it’s faster. |
-| **Splitting on `.` or other delimiters** | The spec explicitly says directories are separated by `/`. | Always treat `/` as the delimiter and ignore empty tokens. |
-| **Ignoring the “no value” state** | Returning `-1` when a directory exists but no value was set is subtle. | Store `-1` or `None` as the sentinel and treat it specially in `get`. |
-
-### 5.4  The “Ugly” – The Most Common Mistakes
-
-1. **Incorrect parent checks**  
-   ```java
-   // Wrong
-   if (curr == null) return false; // missing *child* but not parent
-   ```
-   *Fix:* Always verify the *parent* node exists **before** you create the child.
-
-2. **Wrong split logic**  
-   ```python
-   parts = path.split('/')            # returns ["", "a", "b"]
-   ```
-   The first token is empty.  Forgetting to skip it results in inserting an empty‑named node.
-
-3. **Infinite recursion on delete**  
-   When you add a destructor in C++, forgetting to delete all nodes leaks memory.  Use `std::unique_ptr` or a recursive `clear()` helper.
-
-4. **Using `StringTokenizer` in Java (pre‑Java 8)** – It treats multiple slashes as a single delimiter and leaves empty strings at the ends, which can break `createPath("/a/b")` if you’re not careful.
-
-### 5.5  How to Nail the Solution on the Whiteboard
-
-1. **Sketch the Trie** – Draw a root ➜ node ➜ node ➜ …  
-2. **Explain the sentinel value** – Use `-1` or `None` to signal “no value stored.”  
-3. **Show the algorithm for `createPath`** – Walk through the segments, check existence, add the last node, return a boolean.  
-4. **Show the algorithm for `get`** – Walk through all segments, return stored value or `-1`.  
-5. **Analyze complexity** – Talk about `O(L)` where `L` is the number of directory names, not characters.  
-
-> *Tip:* When writing the code, keep the “empty‑token” before the first slash out of the loop; otherwise you’ll inadvertently create a node named `""` for the root.
-
-### 5.6  Code‑Snippets: A Quick Reference
-
-| Language | Key Lines |
-|----------|-----------|
-| **Java** | `root.children.put(part, newNode)` |
-| **Python** | `node.children[part] = self._Node(part)` |
-| **C++** | `cur->children[part] = new Node(part);` |
-
-> *Copy‑paste these snippets into your test harnesses and be ready to explain each line in an interview.*
-
-### 5.7  How to Stand Out
-
-1. **Mention persistence** – “In a real system I’d back the trie with disk or a key‑value store.”  
-2. **Talk about concurrency** – “Locks per node or a lock‑free approach could handle multiple threads.”  
-3. **Show extensibility** – “If we needed deletePath or ls, we can add those in O(L) too.”  
-4. **Ask clarifying questions** – e.g. “Do we need to support file names with periods?” – Interviewers love to see you clarify specs.
-
-### 5.8  Final Takeaway
-
-Designing a file system on LeetCode 1166 is not about *how many tricks you can cram in.*  It’s about **choosing the right abstraction** (Trie), **handling edge cases** cleanly, and **explain‑ing your reasoning** clearly.  Mastering it will give you a solid footing for all “design” questions in your engineering interview pipeline.
+Both Java/Python and C++ implementations satisfy the LeetCode constraints easily.
 
 ---
 
-### 6.  Wrap‑Up & Further Practice
+## 5.  Interview‑Specific Trade‑Offs
 
-| Practice | Description |
-|----------|-------------|
-| **Build a “Directory Tree” visualizer** – implement a `ls` operation and print the hierarchy. | Deepens your understanding of recursion on the trie. |
-| **Add deletePath** – handle removal and value clearing. | Tests your ability to manage node lifetimes and reference counts. |
-| **Scale up** – simulate millions of paths to benchmark memory usage. | Shows you how the trie behaves under heavy load. |
-
-Good luck in your next interview!  🚀  
+| Topic | What Interviewers Look For | Pitfalls to Avoid |
+|-------|----------------------------|-------------------|
+| **Edge Cases** | `/`, empty string, duplicate component | Forgetting to skip the first empty component after split |
+| **Parent Existence** | Traversal must reach the *parent* node first | Updating the wrong node or adding a child when the parent is missing |
+| **Value 0 vs. No Value** | 0 is a valid stored value? | In the spec values are ≥ 1, so 0 can safely mean “no value yet.” |
+| **Memory** | Each node holds a map of children | Over‑allocating maps (e.g., creating a new map for each node) can be wasteful |
+| **Garbage Collection** | Java/Python: automatic; C++: manual | Failing to delete nodes leads to leaks |
 
 ---
 
-### 7.  SEO & Interview‑Friendly Tags
+## 5.  Common Pitfalls & How to Fix Them
 
-- `design-a-file-system`
-- `leetcode-1166`
-- `software-engineer-interview`
-- `system-design`
-- `trie-implementation`
-- `O-path-length-time`
-- `interview-preparation`
-- `job-interview`
-- `software-interview-question`
+1. **Splitting `/` incorrectly**  
+   *Fix*: ignore empty strings or skip the leading `/`.
+2. **Assuming the parent exists automatically**  
+   *Fix*: walk down the path *until the parent* and return `false` if any component is missing.
+3. **Returning the wrong value for “no value yet”**  
+   *Fix*: store values only on nodes that are explicitly created, leave other nodes’ values at a sentinel (e.g., 0 or `None`).
+4. **Handling root `/`**  
+   *Fix*: the problem statement says root is not a valid path – treat it specially or reject it outright.
 
-Feel free to copy the article into your blog, LinkedIn, or personal portfolio – it’s Markdown‑ready and packed with the insights you’ll need to impress hiring managers.
+---
+
+## 5.  “What If” Variants
+
+- **Flat Hash‑Table**  
+  ```cpp
+  unordered_map<string,int> val;
+  unordered_map<string,string> parent;   // parent[path] = "/a/b"
+  ```
+  - `createPath` must check `parent[path]` exists.  
+  - `get` is `O(1)` average.
+
+- **Segment Tree** (overkill for this problem) – good for batch queries on numeric ranges.
+
+---
+
+## 5.  Summary – Take‑Away Messages for Your Next Interview
+
+1. **Tree‑based hash map (Trie‑like) is the gold‑standard**: clean, fast, and easy to explain.
+2. **Always validate the parent** before inserting.  
+3. **Keep node storage lightweight** – use a single map per node, a value field, and optionally a sentinel for “no value yet.”
+4. **Time complexity** is linear in the number of path components (≤ 100), which is well below the LeetCode limit.  
+5. **Space usage** is linear in the number of nodes – fine for ≤ 10⁴ nodes.
+
+> **Interviewer‑style tip**: “Can you describe how you would store the data structure?”  
+> Answer: “A root node, each node holds a `children` dictionary keyed by the next path component.”  
+> Then write the two methods – the rest follows naturally.
+
+---
+
+## 6.  Final Take‑Away – “Design File System” in 3 Languages
+
+- **Java**: Use `HashMap<String, Node>` inside each node; split paths with `split("/")`.  
+- **Python**: Same idea, but use `__slots__` to keep nodes lean.  
+- **C++**: `unordered_map` + manual `new`/`delete` gives you both speed and ownership clarity.
+
+All three solutions satisfy the LeetCode constraints and can be demonstrated in any coding interview or technical assessment. Pick the language you’re most comfortable with, or present all three to show breadth of knowledge.
+
+> **Remember** – the real interview value is not just the final code but the ability to discuss *why* you chose this design, what trade‑offs you considered, and how you’d test edge cases. Good luck!

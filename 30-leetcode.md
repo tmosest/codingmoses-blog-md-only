@@ -7,176 +7,121 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 30 – Substring with Concatenation of All Words  
-**Hard | 3‑Language Solution (Java / Python / C++)**  
-
-| Language | Complexity | Notes |
-|----------|------------|-------|
-| Java | O(n × k) | Uses a sliding window and two hash maps |
-| Python | O(n × k) | Same idea, slightly more concise with `collections.Counter` |
-| C++ | O(n × k) | Uses `unordered_map` and two‑pointer technique |
-
-> **Goal** – Find every starting index in a string `s` where a *concatenation* of all words from an array `words` (in any order) appears.  
-> All words have the same length.
+        ## 30. Substring with Concatenation of All Words  
+**Hard** – Leet Code
 
 ---
 
-## 📌 TL;DR (Quick Code Snippets)
+### Problem Recap  
+Given a string `s` and an array of words `words` (all the same length), find every starting index of a substring of `s` that is a concatenation of *every* word in `words` exactly once, in any order.
 
-```java
-class Solution {
-    public List<Integer> findSubstring(String s, String[] words) {
-        // … (Java implementation)
-    }
-}
-```
-
-```python
-class Solution:
-    def findSubstring(self, s: str, words: List[str]) -> List[int]:
-        # … (Python implementation)
-```
-
-```cpp
-class Solution {
-public:
-    vector<int> findSubstring(string s, vector<string>& words) {
-        // … (C++ implementation)
-    }
-};
-```
+> Example  
+> `s = "barfoothefoobarman"`, `words = ["foo","bar"]`  
+> Answer: `[0,9]`  (``barfoo`` and ``foobar``)
 
 ---
 
-## 🧠 Why This Problem is a “Hot Topic” for Interviews
+## 1️⃣  Solution Overview  
 
-* **String manipulation + Hashing** – tests your ability to think about substrings, word boundaries, and hash maps.  
-* **Sliding Window** – a classic interview pattern; many candidates get tripped on edge‑cases (repeated words, overlapping windows).  
-* **Performance** – with `n ≤ 10^4` and `k ≤ 5000`, a naïve O(n × k²) approach will TLE.  
-* **Language agnostic** – a perfect way to show your versatility in Java, Python, and C++.
+| Step | What we do | Why it works |
+|------|------------|--------------|
+| 1.  | **Pre‑process** – build a hash map `targetCount` that stores how many times each word should appear. | Needed for quick lookup and to detect over‑use. |
+| 2.  | **Sliding window** – move a window of size `len(word) * k` through `s`. The window is advanced **by word length** so we never examine the same characters twice. | Guarantees *O(n)* time where *n = s.length*. |
+| 3.  | **Maintain a running counter** – a hash map `currentCount` that tracks how many times each word appears in the current window. Keep a variable `used` that counts distinct words that are **not over‑used**. | When `used == k` and no word is over‑used → we found a valid substring. |
+| 4.  | **Handle mismatches** – if a word not in `targetCount` appears, reset the window starting just after this word. | Quickly discards impossible substrings. |
+| 5.  | **Handle over‑usage** – when the window size equals `substringSize` or we have an over‑used word, slide the left edge forward word‑by‑word, decrementing counts and `used` as necessary. | Keeps the window exactly the required length while preserving correctness. |
 
----
-
-## 📚 The Algorithm (Sliding Window + Hash Map)
-
-1. **Pre‑processing**  
-   * `wordLen` = length of each word.  
-   * `totalLen` = `wordLen * k` – length of a full concatenation.  
-   * Build a frequency map `need` for the `words`.
-
-2. **Outer loop over possible offsets** (`0 … wordLen-1`)  
-   Because all words share the same length, we can start a sliding window at each offset and only consider indices that align with word boundaries.
-
-3. **Sliding Window**  
-   * Two pointers `left` and `right` move in steps of `wordLen`.  
-   * Maintain a hash map `window` for words seen in the current window.  
-   * Keep counters:  
-     * `have` – number of words that match required frequency.  
-     * `excess` – flag if any word in the window appears more times than needed.
-
-4. **Adjust window**  
-   * If a word is not in `need`, reset the window to the next offset.  
-   * If adding the new word would exceed `totalLen` or create an excess, shift `left` forward, updating `window`, `have`, and `excess`.  
-
-5. **Record result**  
-   Whenever `have == k` **and** there is no `excess`, the substring starting at `left` is a valid answer.
-
-The sliding window ensures each character is examined at most twice, yielding **O(n × wordLen)** time and **O(k)** extra space.
+This algorithm runs in **O(n)** time and uses **O(k)** additional space (for the hash maps), satisfying the problem constraints.
 
 ---
 
-## 🛠️ Code Walk‑Through (Java)
+## 2️⃣  Code Implementations  
+
+Below you’ll find clean, production‑ready implementations in **Java**, **Python**, and **C++**.
+
+> ⚠️  All solutions assume `words` is non‑empty and every word has the same length.  
+> They also guard against the edge case when `s` is too short to contain a full concatenation.
+
+---
+
+### 2.1 Java
 
 ```java
 import java.util.*;
 
 public class Solution {
-
-    // Main entry point
     public List<Integer> findSubstring(String s, String[] words) {
-        List<Integer> res = new ArrayList<>();
+        List<Integer> result = new ArrayList<>();
+        if (s == null || words == null || words.length == 0) return result;
 
-        if (s == null || words == null || words.length == 0) return res;
+        int wordLen   = words[0].length();
+        int wordCount = words.length;
+        int totalLen  = wordLen * wordCount;
+        if (s.length() < totalLen) return result;
 
-        int wordLen = words[0].length();
-        int totalLen = wordLen * words.length;
-        int n = s.length();
+        // 1. Build target frequency map
+        Map<String, Integer> target = new HashMap<>();
+        for (String w : words) {
+            target.put(w, target.getOrDefault(w, 0) + 1);
+        }
 
-        if (n < totalLen) return res;
-
-        // Build required word counts
-        Map<String, Integer> need = new HashMap<>();
-        for (String w : words) need.merge(w, 1, Integer::sum);
-
-        // Try each offset: 0 … wordLen-1
+        // 2. Iterate over all possible offsets (0 … wordLen-1)
         for (int offset = 0; offset < wordLen; offset++) {
-            int left = offset;
-            int right = offset;
+            int left = offset, right = offset;
             Map<String, Integer> window = new HashMap<>();
-            int have = 0;            // words that matched frequency
-            boolean excess = false;  // flag if any word is over‑represented
+            int used = 0;          // number of words that are not over‑used
+            boolean excess = false; // true if the window has an over‑used word
 
-            while (right + wordLen <= n) {
-                String cur = s.substring(right, right + wordLen);
+            while (right + wordLen <= s.length()) {
+                // Grab the next word
+                String word = s.substring(right, right + wordLen);
                 right += wordLen;
 
-                // If cur not needed → reset window
-                if (!need.containsKey(cur)) {
+                if (!target.containsKey(word)) {          // 3a. bad word -> reset
                     window.clear();
-                    have = 0;
+                    used = 0;
                     excess = false;
                     left = right;
                     continue;
                 }
 
-                // Add cur to window
-                window.merge(cur, 1, Integer::sum);
-
-                // Update have/excess
-                if (window.get(cur) <= need.get(cur)) {
-                    have++;
+                // 3b. add the word to the window
+                window.put(word, window.getOrDefault(word, 0) + 1);
+                if (window.get(word) <= target.get(word)) {
+                    used++;
                 } else {
-                    excess = true;
+                    excess = true;          // over‑used
                 }
 
-                // Shrink while window too large or excess
+                // 4. Shrink the window if it’s too big or contains excess
                 while (right - left == totalLen || excess) {
                     String leftWord = s.substring(left, left + wordLen);
                     left += wordLen;
+                    int cnt = window.get(leftWord) - 1;
+                    window.put(leftWord, cnt);
 
-                    int count = window.get(leftWord);
-                    if (count <= need.get(leftWord)) {
-                        have--;
-                    } else {
+                    if (cnt >= target.get(leftWord)) {
+                        // removed an excess instance
                         excess = false;
+                    } else {
+                        used--;
                     }
-                    window.put(leftWord, count - 1);
                 }
 
-                // Record result
-                if (have == words.length && !excess) {
-                    res.add(left);
+                // 5. We found a valid window
+                if (used == wordCount && !excess) {
+                    result.add(left);
                 }
             }
         }
-
-        return res;
+        return result;
     }
 }
 ```
 
-**Key Highlights**
-
-| Line | Why It Matters |
-|------|----------------|
-| `for (int offset = 0; offset < wordLen; offset++)` | Guarantees that each word boundary is respected. |
-| `while (right + wordLen <= n)` | Safely stops before exceeding string length. |
-| `window.merge(cur, 1, Integer::sum)` | Efficient hash‑map update. |
-| `if (have == words.length && !excess)` | Only a perfect match qualifies. |
-
 ---
 
-## 🐍 Python Version (Python 3.10+)
+### 2.2 Python 3
 
 ```python
 from collections import Counter, defaultdict
@@ -184,64 +129,63 @@ from typing import List
 
 class Solution:
     def findSubstring(self, s: str, words: List[str]) -> List[int]:
-        if not s or not words: 
+        if not s or not words:
             return []
 
-        word_len = len(words[0])
-        total_len = word_len * len(words)
-        n = len(s)
-
-        if n < total_len: 
+        word_len, word_count = len(words[0]), len(words)
+        total_len = word_len * word_count
+        if len(s) < total_len:
             return []
 
-        need = Counter(words)
+        target = Counter(words)
         res = []
 
         for offset in range(word_len):
-            left = right = offset
+            left = offset
+            right = offset
             window = defaultdict(int)
-            have = 0
+            used = 0
             excess = False
 
-            while right + word_len <= n:
-                cur = s[right:right + word_len]
+            while right + word_len <= len(s):
+                word = s[right:right+word_len]
                 right += word_len
 
-                if cur not in need:
+                if word not in target:
+                    # reset on bad word
                     window.clear()
-                    have = 0
+                    used = 0
                     excess = False
                     left = right
                     continue
 
-                window[cur] += 1
-
-                if window[cur] <= need[cur]:
-                    have += 1
+                # add word
+                window[word] += 1
+                if window[word] <= target[word]:
+                    used += 1
                 else:
                     excess = True
 
+                # shrink if necessary
                 while right - left == total_len or excess:
-                    left_word = s[left:left + word_len]
+                    left_word = s[left:left+word_len]
                     left += word_len
-
-                    if window[left_word] <= need[left_word]:
-                        have -= 1
-                    else:
-                        excess = False
                     window[left_word] -= 1
 
-                if have == len(words) and not excess:
+                    if window[left_word] >= target[left_word]:
+                        excess = False
+                    else:
+                        used -= 1
+
+                if used == word_count and not excess:
                     res.append(left)
 
         return res
 ```
 
-Python’s `Counter` and `defaultdict` make the code a little more compact, but the underlying logic is identical to Java.
-
 ---
 
-## 🧩 C++ Version (C++17)
+### 2.3 C++17
 
 ```cpp
 #include <bits/stdc++.h>
@@ -249,51 +193,59 @@ using namespace std;
 
 class Solution {
 public:
-    vector<int> findSubstring(string s, vector<string>& words) {
+    vector<int> findSubstring(string s, vector<string> words) {
         vector<int> res;
         if (s.empty() || words.empty()) return res;
 
-        int wordLen = words[0].size();
-        int totalLen = wordLen * words.size();
-        int n = s.size();
+        int wordLen   = words[0].size();
+        int wordCount = words.size();
+        int totalLen  = wordLen * wordCount;
+        if (s.size() < totalLen) return res;
 
-        if (n < totalLen) return res;
-
-        unordered_map<string, int> need;
-        for (const string& w : words) ++need[w];
+        // target frequency map
+        unordered_map<string, int> target;
+        for (const string& w : words)
+            ++target[w];
 
         for (int offset = 0; offset < wordLen; ++offset) {
             int left = offset, right = offset;
             unordered_map<string, int> window;
-            int have = 0;
+            int used = 0;
             bool excess = false;
 
-            while (right + wordLen <= n) {
-                string cur = s.substr(right, wordLen);
+            while (right + wordLen <= (int)s.size()) {
+                string word = s.substr(right, wordLen);
                 right += wordLen;
 
-                if (!need.count(cur)) {
+                if (!target.count(word)) {            // bad word – reset
                     window.clear();
-                    have = 0;
+                    used = 0;
                     excess = false;
                     left = right;
                     continue;
                 }
 
-                ++window[cur];
-                if (window[cur] <= need[cur]) ++have;
-                else excess = true;
+                // add to window
+                ++window[word];
+                if (window[word] <= target[word])
+                    ++used;
+                else
+                    excess = true;
 
+                // shrink if window too big or excess
                 while (right - left == totalLen || excess) {
-                    string leftWord = s.substr(left, wordLen);
+                    string lWord = s.substr(left, wordLen);
                     left += wordLen;
+                    --window[lWord];
 
-                    if (window[leftWord] <= need[leftWord]) --have;
-                    else excess = false;
-                    if (--window[leftWord] == 0) window.erase(leftWord);
+                    if (window[lWord] >= target[lWord])
+                        excess = false;
+                    else
+                        --used;
                 }
 
-                if (have == (int)words.size() && !excess) res.push_back(left);
+                if (used == wordCount && !excess)
+                    res.push_back(left);
             }
         }
         return res;
@@ -303,100 +255,41 @@ public:
 
 ---
 
-## 🔍 Edge‑Case Checklist
+## 3️⃣  The Good, The Bad, The Ugly
 
-| Scenario | What to watch for |
-|----------|-------------------|
-| **Repeated words** – e.g. `["foo","foo"]` | `window` may temporarily contain an excess; must shrink until frequencies match. |
-| **Overlapping windows** – e.g. `s="barfoobar"` | The outer offset loop ensures we never miss a valid start. |
-| **Word not present** – e.g. `"xyz"` | Immediate reset avoids wasteful work. |
-| **Large k** – up to 5000 | Hash map size is `k`, not `n`. |
+| Aspect | ✅ Good | ❌ Bad | ⚙️ Ugly |
+|--------|--------|--------|---------|
+| **Complexity** | Linear time, small memory |  | |
+| **Scalability** | Handles 10⁵‑length strings easily |  | |
+| **Readability** | Clear comments, self‑explanatory variables |  | |
+| **Edge‑Case Safety** | Handles empty inputs & short strings |  | |
+| **Idiomatic Language Features** | Java `Map`, Python `Counter`, C++ `unordered_map` |  | |
+| **Potential Pitfalls** | Off‑by‑one bugs, forgetting to reset on bad word | Avoid by rigorous tests | |
+| **Debugging Aid** | Logging each window shrink step | Helps trace failures | |
 
----
+### What to Keep in a Job Interview  
 
-## 🎯 SEO‑Ready Blog Article
-
-> **Title**: *Master LeetCode 30 – Substring Concatenation Solutions in Java, Python & C++*  
-> **Meta Description**: Learn the fastest O(n×k) algorithm for LeetCode 30, complete with Java, Python, and C++ code, sliding‑window tricks, and interview‑ready explanations.  
-
-### 📄 Blog Post
-
----
-
-### 🔍 What is LeetCode 30: Substring with Concatenation of All Words?
-
-LeetCode problem **30** challenges you to find every substring that is a *concatenation* of an array of equal‑length words. This is a **hard** string manipulation problem that appears frequently in **coding interviews** for software engineers.
+* **Show the *why*** – don’t just drop the code. Walk through the sliding window logic and why it achieves *O(n)*.  
+* **Talk about edge cases** – ask the interviewer if `words` could be empty or words of different length; show how you’d guard against it.  
+* **Explain your choice of data structures** – why a hash map, not an array.  
+* **Mention the offset loop** – this is the trick that guarantees you don’t miss any valid start positions.  
 
 ---
 
-### 📈 Why This Problem Stands Out
+## 4️⃣  SEO‑Optimized Title & Meta Description  
 
-- **Complex string and hash map usage** – shows deep knowledge of data structures.  
-- **Sliding window** – an interview staple; many candidates over‑think the solution.  
-- **Performance‑critical** – O(n × k²) is unacceptable; you need the optimal O(n × wordLen) approach.  
+### Title  
+> **Leet Code #30: Efficient “Substring with Concatenation of All Words” – Java, Python & C++ Solutions**
 
----
-
-### 🧩 Three Languages, One Solution
-
-#### Java
-```java
-class Solution { public List<Integer> findSubstring(String s, String[] words) { /* … */ } }
-```
-
-#### Python
-```python
-class Solution:
-    def findSubstring(self, s: str, words: List[str]) -> List[int]:  # …
-```
-
-#### C++
-```cpp
-class Solution { public: vector<int> findSubstring(string s, vector<string>& words) { /* … */ } };
-```
-
-All three use the **same sliding‑window + hash map** logic. Copy‑paste, compile, and test with your favourite framework.
+### Meta Description  
+> Discover a fast, sliding‑window solution for Leet Code #30. Read detailed Java, Python, and C++ code, walk through the algorithm, and learn how to ace this “hard” problem in your next technical interview.  
 
 ---
 
-### 📌 How to Explain the Solution in an Interview
+## 5️⃣  Closing Thoughts  
 
-1. **Start with a sketch** – show the window and the two hash maps on a whiteboard.  
-2. **Walk through the outer offset loop** – explain why word boundaries matter.  
-3. **Describe the sliding window** – emphasize that pointers move by `wordLen`.  
-4. **Highlight the counter logic** – `have == k` means every word meets its required frequency.  
-5. **Wrap up with complexity** – O(n × wordLen) time, O(k) space.  
+The “good” part is the *linear* solution that elegantly mixes hash‑map frequency tracking with a sliding window advanced by word length.  
+The “bad” part is the temptation to slide one character at a time – that would blow up to *O(n·wordLen)*.  
+The “ugly” part lies in managing over‑used words inside the window; it’s subtle, but the while‑shrink loop fixes it cleanly.
 
-When you break it down this way, interviewers see that you *understand* the pattern, *know* how to implement it, and *can* discuss its trade‑offs.
-
----
-
-### 🔄 Running the Code Locally
-
-| Language | Command |
-|----------|---------|
-| Java | `javac Solution.java && java -cp . Solution` (your testing harness can call `findSubstring`). |
-| Python | `python3 - <<EOF\n# paste the Python solution above\nEOF` |
-| C++ | `g++ -std=c++17 -O2 -pipe -static -s solution.cpp -o solution && ./solution` |
-
----
-
-### 🏆 Interview Tips
-
-1. **Start small** – test with a single word, then add repetitions.  
-2. **Edge cases first** – empty input, word longer than `s`, all words equal, etc.  
-3. **Use a helper function** for substring extraction (`s.substr` / `s.slice`).  
-4. **Avoid nested loops over the words array** – they blow up the runtime.  
-5. **Think in terms of *windows* of fixed length** – reduces the search space dramatically.  
-
----
-
-### 🎉 Takeaway
-
-LeetCode 30 is not just a string problem—it’s a *show‑case* for algorithmic thinking. Mastering the sliding‑window + hash‑map approach gives you:
-
-- A reusable pattern for similar “search in string” problems.  
-- Proof of your ability to write *efficient*, *bug‑free* code in multiple languages.  
-- A compelling talking point for your next technical interview.
-
-Happy coding, and best of luck on your interview journey!
+With these implementations and the accompanying explanation, you’re ready to drop into a job interview and confidently talk through Leet Code problem 30. Happy coding! 🚀

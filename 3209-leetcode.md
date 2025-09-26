@@ -7,142 +7,186 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🧠 LeetCode #3209 – *Number of Subarrays With AND Value of K*  
-**Difficulty:** Hard | **Type:** Array | **Bit Manipulation**  
-
-> **Goal** – For a given integer array `nums` and an integer `k`, return the number of sub‑arrays whose bitwise AND equals `k`.  
-> **Example**  
-> `nums = [1,1,2] , k = 1` → answer `3` (sub‑arrays: `[1,1,2]`, `[1,1,2]`, `[1,1,2]`).
-
-> **Why it matters** – Bit‑wise operators are a staple in interviews; they test your ability to reason about binary representation and use of hash maps for counting.  
-> Mastering this problem demonstrates that you can **optimize time & space** while working with cumulative bit‑operations.
-
-Below you’ll find complete, production‑ready implementations in **Java, Python, and C++** (all `O(n log MAX)` time, `O(log MAX)` space), followed by a **SEO‑friendly blog post** that discusses the “Good, the Bad, and the Ugly” of this challenge.
+        # 🎯 LeetCode 3209 – Number of Subarrays With AND Value of K  
+> **Goal:** Count all contiguous sub‑arrays whose bitwise AND equals *k*  
+> **Languages:** Java | Python | C++  
+> **Target audience:** Front‑end/Back‑end engineers, interviewers, recruiters  
 
 ---
 
-## 🚀 Solutions
+## Table of Contents  
+1. [Problem Statement](#problem-statement)  
+2. [Why This Problem Rocks](#why-this-problem-rocks)  
+3. [High‑Level Solution](#high‑level-solution)  
+4. [Complexity Analysis](#complexity-analysis)  
+5. [Implementation – HashMap‑Based](#implementation---hashmap-based)  
+   * Java  
+   * Python  
+   * C++  
+6. [Alternative Approaches](#alternative-approaches)  
+7. [Common Pitfalls & Edge Cases](#common-pitfalls--edge-cases)  
+8. [Blog‑Style “The Good, The Bad, The Ugly”](#blog-style-the-good-the-bad-the-ugly)  
+9. [SEO Tips for Your Resume & Blog](#seo-tips-for-your-resume--blog)  
+10. [Wrap‑Up](#wrap-up)
 
-### 1️⃣ Java
+---
+
+## 1. Problem Statement <a name="problem-statement"></a>
+
+> **Given** an integer array `nums` and an integer `k`,  
+> **Return** the number of **sub‑arrays** (contiguous sub‑segments) such that the bitwise AND of all elements in the sub‑array equals `k`.  
+> **Constraints**  
+> - `1 <= nums.length <= 10^5`  
+> - `0 <= nums[i], k <= 10^9`
+
+The brute force `O(n^2)` solution fails when `n = 10^5`. We need a linear‑ish algorithm.
+
+---
+
+## 2. Why This Problem Rocks <a name="why-this-problem-rocks"></a>
+
+| # | Reason |
+|---|--------|
+| 1 | **Bitwise mastery** – showcases deep understanding of bitwise operations. |
+| 2 | **Sliding window + hashmap** – popular interview combo. |
+| 3 | **Edge‑case heavy** – tricky `k = 0`, large numbers, repeated values. |
+| 4 | **Real‑world relevance** – often appears in data‑streaming and log‑analysis problems. |
+
+A solid solution demonstrates algorithmic thinking, code quality, and problem‑specific tricks that recruiters love.
+
+---
+
+## 3. High‑Level Solution <a name="high-level-solution"></a>
+
+### Observation
+
+The bitwise AND of a sub‑array is always **non‑increasing** as we extend the sub‑array to the right:
+
+```
+a & b & c   <=   a & b   <=   a
+```
+
+Hence, **for a fixed right end `i`, the AND values of sub‑arrays ending at `i` can only take at most 31 distinct values** (one per bit position).  
+
+### Idea
+
+Traverse the array once while maintaining a map:
+
+- **Key** – possible AND value of a sub‑array that ends at the current index.
+- **Value** – how many sub‑arrays ending at the current index produce that AND.
+
+For each new element `x = nums[i]`:
+
+1. Start a new map `curr`.
+2. For every previous AND `prev` in the map:
+   - `newAnd = prev & x`
+   - If `newAnd == k`, add `cnt(prev)` to the answer.
+   - Add `cnt(prev)` to `curr[newAnd]`.
+3. Also account for the sub‑array consisting of only `x`:
+   - If `x == k`, increment answer.
+   - Increment `curr[x]`.
+
+Set `prev = curr` and repeat.
+
+Because each map contains ≤ 31 keys, the whole algorithm runs in **O(n · 31)** time and **O(31)** extra space.
+
+---
+
+## 4. Complexity Analysis <a name="complexity-analysis"></a>
+
+| Metric | Value |
+|--------|-------|
+| **Time** | `O(n · B)` where `B = 31` (bits in 32‑bit int). For `n = 10^5`, about 3 × 10^6 operations – easily under 1 s. |
+| **Space** | `O(B)` – at most 31 key/value pairs at any time. |
+| **Answer Type** | 64‑bit integer (`long` in Java, `int64`/`long long` in C++, `int` in Python). |
+
+---
+
+## 5. Implementation – HashMap‑Based <a name="implementation---hashmap-based"></a>
+
+### 5.1 Java
 
 ```java
 import java.util.HashMap;
-import java.util.Map;
 
 public class Solution {
-    /**
-     * Counts sub‑arrays of nums with AND value == k.
-     *
-     * @param nums the input array
-     * @param k    the target AND value
-     * @return number of qualifying sub‑arrays (long, because answer can exceed 32‑bit)
-     */
     public long countSubarrays(int[] nums, int k) {
-        long ans = 0L;
-        Map<Integer, Integer> prev = new HashMap<>();
+        long answer = 0;
+        HashMap<Integer, Integer> prev = new HashMap<>();
 
-        for (int val : nums) {
-            // 1. Sub‑array that consists solely of the current element
-            if (val == k) ans++;
+        for (int x : nums) {
+            HashMap<Integer, Integer> curr = new HashMap<>();
 
-            Map<Integer, Integer> curr = new HashMap<>();
+            // Sub‑array consisting of only x
+            if (x == k) answer++;
+            curr.merge(x, 1, Integer::sum);
 
-            // 2. Extend every existing AND value with the new element
-            for (Map.Entry<Integer, Integer> e : prev.entrySet()) {
-                int newAnd = e.getKey() & val;
-                int cnt = e.getValue();
-
-                if (newAnd == k) ans += cnt;        // found a valid sub‑array
-
-                // store the new AND for future extensions
+            // Extend all previous sub‑arrays
+            for (var entry : prev.entrySet()) {
+                int prevAnd = entry.getKey();
+                int cnt = entry.getValue();
+                int newAnd = prevAnd & x;
+                if (newAnd == k) answer += cnt;
                 curr.merge(newAnd, cnt, Integer::sum);
             }
-
-            // 3. Start new sub‑array at current position
-            curr.merge(val, 1, Integer::sum);
-            prev = curr; // prepare for next iteration
+            prev = curr;
         }
-        return ans;
+        return answer;
     }
 }
 ```
 
-**Complexity**
-
-| Metric | Calculation |
-|--------|-------------|
-| **Time** | Each element merges at most *O(number of distinct AND values)*, bounded by 32 (bits). → `O(n * 32)` → `O(n)` |
-| **Space** | Stores distinct ANDs of the current window → `O(32)` → `O(1)` |
-
-> **Tip:** `merge()` is a Java 8+ helper that keeps the code clean and avoids manual checks.
-
----
-
-### 2️⃣ Python
+### 5.2 Python
 
 ```python
 from collections import defaultdict
-from typing import List
 
 class Solution:
-    def countSubarrays(self, nums: List[int], k: int) -> int:
+    def countSubarrays(self, nums: list[int], k: int) -> int:
         ans = 0
-        prev = defaultdict(int)          # AND value -> occurrences
+        prev = defaultdict(int)
 
-        for val in nums:
-            if val == k:
-                ans += 1
-
+        for x in nums:
             curr = defaultdict(int)
 
-            # Extend previous ANDs
+            # Single element sub‑array
+            if x == k:
+                ans += 1
+            curr[x] += 1
+
+            # Extend previous sub‑arrays
             for prev_and, cnt in prev.items():
-                new_and = prev_and & val
+                new_and = prev_and & x
                 if new_and == k:
                     ans += cnt
                 curr[new_and] += cnt
 
-            # New sub‑array that starts here
-            curr[val] += 1
             prev = curr
-
         return ans
 ```
 
-**Complexity**
-
-- **Time:** `O(n * 32)` → `O(n)`
-- **Space:** `O(32)` → `O(1)`
-
-> **Pythonic note** – `defaultdict(int)` eliminates the need for `get(..., 0)` boilerplate.
-
----
-
-### 3️⃣ C++
+### 5.3 C++
 
 ```cpp
-#include <vector>
-#include <unordered_map>
+#include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
 public:
     long long countSubarrays(vector<int>& nums, int k) {
         long long ans = 0;
-        unordered_map<int, int> prev;   // AND value -> occurrences
-
-        for (int val : nums) {
-            if (val == k) ans++;
-
-            unordered_map<int, int> curr;
-
+        unordered_map<int, int> prev, curr;
+        for (int x : nums) {
+            curr.clear();
+            // sub‑array of length 1
+            if (x == k) ans++;
+            curr[x] += 1;
             for (auto &p : prev) {
-                int new_and = p.first & val;
-                if (new_and == k) ans += p.second;
-                curr[new_and] += p.second;
+                int prevAnd = p.first, cnt = p.second;
+                int newAnd = prevAnd & x;
+                if (newAnd == k) ans += cnt;
+                curr[newAnd] += cnt;
             }
-
-            curr[val]++;   // sub‑array that starts at this position
             prev.swap(curr);
         }
         return ans;
@@ -150,170 +194,135 @@ public:
 };
 ```
 
-**Complexity**
-
-- **Time:** `O(n * 32)` → `O(n)`
-- **Space:** `O(32)` → `O(1)`
-
-> **C++ tip** – `prev.swap(curr)` avoids a costly copy; it's a constant‑time pointer exchange.
+> **Tip:** In C++ you can replace `unordered_map` with `std::map` if you prefer ordered keys; the performance difference is negligible for ≤ 31 entries.
 
 ---
 
-## 📖 Blog Article – “The Good, the Bad, and the Ugly of LeetCode 3209”
+## 6. Alternative Approaches <a name="alternative-approaches"></a>
 
-> **Title:** *Mastering LeetCode 3209 – Number of Subarrays With AND Value of K: The Good, the Bad, and the Ugly*  
-> **Keywords:** `Number of Subarrays With AND Value of K`, `LeetCode 3209`, `bitwise AND subarray`, `Java solution`, `Python solution`, `C++ solution`, `hashmap`, `time complexity`, `job interview`, `algorithms`
+| Approach | How it works | Pros | Cons |
+|----------|--------------|------|------|
+| **Sliding Window** (two pointers) | Keep a window where AND == k; shrink from left until AND > k. | O(n) * average* | Hard to maintain when AND increases; not guaranteed linear. |
+| **Bit DP** | Count sub‑arrays per bit separately; combine via inclusion‑exclusion. | Conceptually neat | Complex, hard to implement; risk of overflow. |
+| **Segment Tree / Sparse Table** | Pre‑compute AND over ranges; iterate all starts, binary search end. | Can answer queries quickly | O(n log n) space/time, overkill for this problem. |
 
----
-
-### Introduction
-
-If you’re eyeing a software‑engineering role, you’ll soon encounter **bitwise manipulation** questions on LeetCode and technical interviews. One such challenge is **LeetCode #3209 – Number of Subarrays With AND Value of K**. At first glance, it feels like a straightforward sliding‑window problem, but the twist is that *any* sub‑array, not just contiguous blocks of a fixed size, can produce the target value.
-
-In this post we dissect the problem, provide ready‑to‑copy solutions in **Java, Python, and C++**, and discuss the strengths, weaknesses, and pitfalls (“the ugly”) you might encounter while tackling this hard‑level problem.
+The hashmap‑based solution is the most *clean*, *well‑documented*, and *fast* for the given constraints.
 
 ---
 
-### 1. Problem Recap & Constraints
+## 7. Common Pitfalls & Edge Cases <a name="common-pitfalls--edge-cases"></a>
 
-- **Input**: `nums` – array of up to `10^5` integers (0 ≤ nums[i] ≤ 10^9), and `k` – target AND value.
-- **Output**: Number of sub‑arrays where the bitwise AND of all elements equals `k`.
-- **Note**: Answer can exceed 32‑bit integer range; use 64‑bit (`long`/`long long`) to store the result.
-
-Because `k` can be as large as `10^9`, we cannot afford a naive `O(n^2)` solution that checks every sub‑array.
-
----
-
-### 2. The Good – Why This Problem is Worth Solving
-
-1. **Shows mastery of bitwise ops**  
-   Understanding how AND interacts with binary representation is essential. Each bit acts independently; the AND of a bit is 1 iff all sub‑array elements have that bit set.
-
-2. **Demonstrates use of hash maps**  
-   The canonical solution keeps a map of *current AND values* to their frequency, showing how to maintain state efficiently.
-
-3. **Offers linear time complexity**  
-   Even with `10^5` elements, an `O(n)` solution is fast enough. Interviewers love when you can reduce a seemingly quadratic problem to linear.
-
-4. **Reveals subtle edge‑case handling**  
-   For example, `k = 0` requires careful reasoning about how AND tends to zero out bits. Handling 0 correctly shows depth.
+| Pitfall | Fix |
+|---------|-----|
+| **Using `int` for answer** | Use `long` / `int64` / `long long`. For `n=10^5`, answer can be up to ~5 × 10^9. |
+| **Overflow in Java `int` map keys** | Keys are `int`; fine. Values can be `int` counts because each map entry’s count is ≤ n. |
+| **Neglecting sub‑array of length 1** | Always check `x == k` before processing previous ANDs. |
+| **Using `for (int key : prevMap.keySet())` in Java** | Mutating map while iterating leads to `ConcurrentModificationException`. Use a separate list of keys or iterate over entry set. |
+| **Not resetting `curr` map each iteration** | Reuse a single map by calling `curr.clear()`. |
+| **Large `k` (e.g., 10^9)** | Works fine; AND results stay within 32 bits. |
+| **All zeros** | Works: each sub‑array AND is 0. Count will be `n*(n+1)/2`. |
 
 ---
 
-### 3. The Bad – Common Pitfalls & Why the Easy Approach Fails
+## 8. Blog‑Style “The Good, The Bad, The Ugly” <a name="blog-style-the-good-the-bad-the-ugly"></a>
 
-| Pitfall | Why It Happens | What to Do Instead |
-|---------|----------------|--------------------|
-| **Brute force O(n²)** | Checking all sub‑arrays is obvious but too slow. | Use a rolling map to remember AND results. |
-| **Misusing `int` for the answer** | The result can be `> 2^31-1`. | Use `long`/`long long`. |
-| **Ignoring that AND values shrink** | You might think AND values grow. Actually, each new element can only turn bits off. | This property limits distinct AND values to ≤32 per step. |
-| **Re‑building the map from scratch** | Creating a fresh map each iteration without merging is still linear, but you miss the cumulative count optimization. | Merge previous map entries with the new element. |
-| **Forgetting sub‑array that starts at the current index** | The current element alone might satisfy the condition. | Always include `curr[val] += 1`. |
+> *Title: “The Good, The Bad, & The Ugly of Counting Sub‑Arrays With AND Value of K”*  
 
----
+> **SEO Keywords** – Leetcode 3209, bitwise AND subarray, interview coding problem, Java Python C++ solution, hashmap approach, algorithm interview, software engineer interview, get a job.
 
-### 4. The Ugly – Edge Cases & Deep Insights
+### Introduction  
 
-| Ugly Situation | Explanation | Fix |
-|----------------|-------------|-----|
-| **k = 0 and all elements are powers of two** | AND of any sub‑array that includes at least two different bits is 0. Counting correctly requires handling many zero ANDs. | The map automatically tracks `0` counts. Ensure you add `ans += prev.get(0)` when `newAnd == 0`. |
-| **Large `k` that never appears** | The algorithm will still process each element, potentially wasting time on maps with `k` never reached. | Still fine; the constant factor is tiny (≤32 entries). |
-| **Repeated same numbers** | When all numbers are the same, each step doubles the map size until capped by bits. | The algorithm’s `merge` handles this automatically. |
-| **Negative numbers (not in constraints but worth noting)** | Bitwise AND on signed ints can be confusing. | Problem guarantees non‑negative, so ignore. |
+In coding interviews, the *Number of Subarrays With AND Value of K* is a classic test of both bit manipulation prowess and algorithmic efficiency. While the statement is deceptively simple, crafting an optimal solution involves a handful of subtle insights. In this post, we’ll break down the **good** (what you should do), the **bad** (what you should avoid), and the **ugly** (the pitfalls that lurk when you’re not careful).
 
 ---
 
-### 5. Why This Solution Aces Interviews
+#### The Good – Mastering the HashMap Trick  
 
-1. **Time‑space trade‑off clarity** – You can discuss why `O(n)` time and `O(1)` space is possible, citing the 32‑bit limit.
-2. **Showcases map merging** – Demonstrates that you can *combine* previous results with the current element efficiently.
-3. **Versatile language implementation** – Being able to write the same logic in **Java, Python, and C++** proves language‑agnostic algorithmic thinking.
-4. **Handling large outputs** – Using 64‑bit counters shows attention to data type details—a common interview question.
+1. **Leverage the non‑increasing property of AND** – as you extend a sub‑array to the right, its AND can only lose bits, never gain them.  
+2. **Keep only unique AND values** – for any right end, there are at most 31 distinct AND results (one per bit).  
+3. **Update counts incrementally** – use a map `prev` that holds counts of all AND values ending at the previous index. For each new element, compute new ANDs and accumulate answer when they equal `k`.  
+4. **Always account for single‑element sub‑arrays** – they’re the base case.  
 
----
-
-### 6. Final Thoughts & Career‑Boosting Tips
-
-- **Practice the map‑merge pattern** in other bitwise problems (e.g., *count sub‑arrays with OR value K*).  
-- **Explain your reasoning aloud** during interviews; they want to see your thought process.  
-- **Prepare edge‑case tests**: all zeros, all same number, alternating bits.  
-- **Mention the “max 32 distinct AND values” trick**; it often impresses interviewers as a non‑obvious observation.  
-
-With the solutions below, you’re ready to hit the job market armed with a solid, proven algorithm.
+Result: **O(n · 31)** time, **O(31)** space, fully deterministic, and very easy to translate into Java, Python, or C++.
 
 ---
 
-## 📌 Ready‑to‑Copy Code Snippets
+#### The Bad – Common Missteps  
 
-> Use the following snippets directly in your preferred language:
+| # | Mistake | Why it breaks |
+|---|---------|---------------|
+| 1 | **Brute‑force `O(n^2)`** | Fails for `n=10^5`. |
+| 2 | **Updating the same map while iterating** | `ConcurrentModificationException` in Java, subtle bugs in C++/Python. |
+| 3 | **Using `int` for answer** | Overflow on large arrays. |
+| 4 | **Skipping single‑element case** | Under‑counts sub‑arrays when `k == nums[i]`. |
+| 5 | **Assuming sliding window works** | AND does not “grow” when you move the right pointer; window size can become exponential. |
 
-### Java
+---
 
-```java
-public long countSubarrays(int[] nums, int k) {
-    long ans = 0L;
-    Map<Integer, Integer> prev = new HashMap<>();
+#### The Ugly – Tricky Edge Cases  
 
-    for (int val : nums) {
-        if (val == k) ans++;
+1. **All zeros** – While the algorithm handles it, many naive solutions forget that every sub‑array’s AND is 0, causing a massive under‑count.  
+2. **Very large `k` values** – Not a problem for 32‑bit ints, but it can mislead you into thinking bit‑specific optimizations are needed.  
+3. **Non‑standard integer sizes** (e.g., 64‑bit) | You must ensure your map uses the correct width; otherwise you’ll get wrong AND results. |
+4. **Large test inputs** | The map might grow if you use a data structure that doesn’t prune keys, leading to memory blow‑up. |
 
-        Map<Integer, Integer> curr = new HashMap<>();
-        for (Map.Entry<Integer, Integer> e : prev.entrySet()) {
-            int newAnd = e.getKey() & val;
-            if (newAnd == k) ans += e.getValue();
-            curr.merge(newAnd, e.getValue(), Integer::sum);
-        }
+---
 
-        curr.merge(val, 1, Integer::sum);
-        prev = curr;
-    }
-    return ans;
-}
-```
+#### The Ugly – How to Avoid It  
 
-### Python
+- **Always test with edge inputs** – `n=1`, all zeros, all ones, alternating bits, etc.  
+- **Use a copy of keys** when iterating (`List<Integer> keys = new ArrayList<>(prev.keySet());`).  
+- **Swap maps** instead of re‑allocating – `prev.swap(curr)` in C++ or `prev = curr` after a `clear()`.  
+- **Validate with brute‑force for small cases** – ensures correctness before scaling.
 
-```python
-from collections import defaultdict
+---
 
-def countSubarrays(nums, k):
-    ans = 0
-    prev = defaultdict(int)
-    for val in nums:
-        if val == k: ans += 1
-        curr = defaultdict(int)
-        for prev_and, cnt in prev.items():
-            new_and = prev_and & val
-            if new_and == k: ans += cnt
-            curr[new_and] += cnt
-        curr[val] += 1
-        prev = curr
-    return ans
-```
+#### Takeaway  
 
-### C++
+When you walk into an interview room, the interviewer will expect you to think *in bits*. By employing the hashmap approach, you demonstrate:
 
-```cpp
-long long countSubarrays(vector<int>& nums, int k) {
-    long long ans = 0;
-    unordered_map<int,int> prev;
-    for (int val : nums) {
-        if (val == k) ans++;
-        unordered_map<int,int> curr;
-        for (auto &p : prev) {
-            int new_and = p.first & val;
-            if (new_and == k) ans += p.second;
-            curr[new_and] += p.second;
-        }
-        curr[val]++;        // start new sub‑array
-        prev.swap(curr);
-    }
-    return ans;
-}
-```
+- **Algorithmic insight** – recognizing that the AND operation reduces complexity.  
+- **Coding discipline** – careful handling of maps, big integers, and base cases.  
+- **Adaptability** – the solution is language‑agnostic, so you can discuss it in Java, then quickly switch to Python or C++.
 
-Happy coding—and best of luck landing that dream role! 🚀
+This blend of *technical depth* and *implementation simplicity* is exactly what hiring managers look for when they ask, “Can you solve Leetcode 3209?” — and what will help you get that job offer.
+
+---
+
+## 9. Conclusion <a name="conclusion"></a>
+
+The hashmap‑based solution is **robust, fast, and language‑agnostic**. By following the guidelines in this post—careful map updates, correct data types, and handling single‑element sub‑arrays—you’ll avoid the most common pitfalls. Whether you’re preparing for a coding interview or tackling a contest problem, mastering this trick will give you a competitive edge.
+
+> *“The good of this problem is the elegance of the hashmap trick; the bad is the temptation of brute‑force or careless map manipulation; the ugly is the subtle overflow and off‑by‑one bugs that sabotage otherwise correct solutions.”*
+
+Happy coding, and good luck getting that dream job!
+
+---
+
+## 9. Final Thoughts <a name="conclusion"></a>
+
+> *Title: “From Code to Career: Solving Leetcode 3209 with HashMaps”*  
+
+> **SEO** – Leetcode 3209 solution, interview algorithm, bitwise AND, Java Python C++.
+
+**If you’ve just finished coding the solution, you can already use it as a talking point in interviews.** Discuss the observation about non‑increasing AND, the 31‑key limit, and how the algorithm stays linear. Most recruiters will be impressed by that level of insight.
 
 --- 
 
-*Feel free to share this article on LinkedIn, GitHub, or Medium to showcase your algorithmic prowess.*
+> **Download the full implementation** in your language of choice from the GitHub repo (link).  
+> **Try it out** on Leetcode or your local IDE, and keep a timer to see the performance.
+
+Happy interviewing, and *may the bits be ever in your favor!* 🚀
+
+---
+
+## 9. Final Thoughts <a name="final-thoughts"></a>
+
+The hashmap approach is a *no‑frills* solution that scales gracefully. Once you understand the key observation—AND values shrink and are bounded by the number of bits—you can write clean, production‑ready code in any language.  
+
+> **Takeaway for recruiters:**  
+> - *Show the observation.*  
+> - *Mention the 31‑key bound.*  
+> - *Deliver the O(n · 31) solution.*  
+
+That’s a solid answer that says, “I know the trick, I know the limits, and I can implement it correctly.” Perfect for landing a software engineering role!

@@ -7,68 +7,74 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 1039 – Minimum Score Triangulation of a Polygon  
-**A “Good, Bad, and Ugly” Deep‑Dive with 3‑Language Implementations**
+        ## 📌 LeetCode 1039 – Minimum Score Triangulation of Polygon  
+*Medium* | *Dynamic Programming* | *Matrix‑Chain Multiplication Variant*  
 
 ---
 
-## Table of Contents
-
-| Section | Description |
-|---------|-------------|
-| 🔍 Problem Summary | What the problem asks and why it matters |
-| 💡 Key Idea | The DP insight that turns the problem into a Matrix‑Chain Multiplication variant |
-| 🚀 3‑Language Code | Java, Python, C++ solutions (top‑down & bottom‑up) |
-| ⏱ Complexity | Time and space analysis |
-| ⚠️ Gotchas | Common pitfalls & edge cases |
-| 💪 Variants & Extensions | Related interview problems |
-| 🎯 SEO & Career Boost | Why this blog helps you land a job |
-| 📚 Further Reading | Resources & links |
+### TL;DR  
+- **Goal** – Split a convex polygon into `n‑2` triangles such that the sum of  
+  `value[i] * value[j] * value[k]` for every triangle is minimal.  
+- **Solution** – Classic **interval DP** (a variation of Matrix‑Chain Multiplication).  
+- **Complexities** – `O(n³)` time, `O(n²)` space.  
 
 ---
 
-## 🔍 Problem Summary
+## 🔍 Problem Recap  
 
-> **Given a convex polygon with `n` vertices, each vertex has an integer value.**  
-> Divide the polygon into `n‑2` triangles so that the sum of the products of the values of the vertices of each triangle is **minimal**.
+You are given an array `values` (`3 ≤ n ≤ 50`) where `values[i]` is the weight of vertex `i` of a convex `n`‑sided polygon.  
+A triangulation is a set of `n‑2` triangles whose vertices are vertices of the polygon.  
+The score of a triangulation = sum of the product of the values of the three vertices of every triangle.  
 
-The input is an array `values` of length `n` (3 ≤ n ≤ 50, 1 ≤ values[i] ≤ 100).  
-Return the minimum possible total score.
+Return the *minimum* possible score.
 
-> **Why it’s a classic interview question**  
-> – Combines geometry (triangulation) with dynamic programming.  
-> – It’s a perfect example of “divide‑and‑conquer” on a 1‑D structure.  
-> – Many top‑tech companies use it in coding interviews (Google, Facebook, Amazon, etc.).
+> **Example**  
+> `values = [3,7,4,5]` → minimal score = **144** (triangulation: `(3,4,5)` + `(3,4,7)`).
 
 ---
 
-## 💡 Key Idea – A Matrix‑Chain Multiplication Twist
+## 🧠 Intuition – “Matrix‑Chain Multiplication” Meets Geometry  
 
-If you imagine a triangle formed by vertices `i`, `j`, `k` (`i < k < j`), the score contributed by that triangle is
+If you look at a sub‑polygon defined by vertices `i … j`, you can pick a vertex `k` (`i < k < j`) as the third vertex of a triangle that uses the edge `i‑j`.  
 
 ```
-values[i] * values[j] * values[k]
+i ----- k ----- j
+|             |
+|             |
 ```
 
-When you split the polygon at `k`, the remaining left part `(i … k)` and right part `(k … j)` are independent sub‑problems.  
-Thus the recurrence is:
+The score of this triangle is `values[i] * values[j] * values[k]`.  
+The remaining polygon is split into two independent sub‑polygons: `i … k` and `k … j`.  
+Thus, the minimal score for `i … j` can be expressed recursively:
 
 ```
 dp[i][j] = min over k ( dp[i][k] + dp[k][j] + values[i]*values[j]*values[k] )
 ```
 
-**Base case** – If there are only two vertices (`i+1 == j`), you cannot form a triangle, so the cost is 0.
+When the sub‑polygon has only two vertices (`j == i+1`), no triangle can be formed → score `0`.
 
-This is literally the same recurrence as the classic *Matrix Chain Multiplication* DP (hence the name), except the “cost” is a product of three numbers instead of a matrix multiplication count.
+This is exactly the recurrence used in Matrix‑Chain Multiplication, only the “cost” term is a product of three numbers instead of a matrix multiplication cost.
 
 ---
 
-## 🚀 3‑Language Code
+## 🏗️ Algorithm Design  
 
-Below are clean, production‑ready implementations.  
-All three use the *bottom‑up* DP because it is easy to read and has no recursion depth concerns.
+| Step | Action |
+|------|--------|
+| 1 | Initialize a 2‑D array `dp[n][n]` with `-1` (or `∞` for bottom‑up). |
+| 2 | Recursively compute `dp[i][j]` using memoization (top‑down) or iterate over increasing sub‑polygon lengths (bottom‑up). |
+| 3 | For each `i < k < j` evaluate `score = dp[i][k] + dp[k][j] + values[i]*values[j]*values[k]`. |
+| 4 | Store the minimum in `dp[i][j]`. |
+| 5 | Result is `dp[0][n-1]`. |
 
-### 1. Java – `Solution` class for LeetCode
+---
+
+## 📦 Code in Three Languages  
+
+> **Note:** All implementations follow the same logic – top‑down memoization.  
+> Bottom‑up can be added in comments if you prefer an iterative version.
+
+### 1️⃣ Java
 
 ```java
 import java.util.Arrays;
@@ -77,173 +83,128 @@ public class Solution {
     public int minScoreTriangulation(int[] values) {
         int n = values.length;
         int[][] dp = new int[n][n];
-
-        // dp[i][j] is 0 for i+1 == j by default (two vertices, no triangle)
-        for (int len = 3; len <= n; len++) {          // sub‑polygon length
-            for (int i = 0; i + len <= n; i++) {
-                int j = i + len - 1;
-                int best = Integer.MAX_VALUE;
-                for (int k = i + 1; k < j; k++) {
-                    int cost = dp[i][k] + dp[k][j] + values[i] * values[j] * values[k];
-                    if (cost < best) best = cost;
-                }
-                dp[i][j] = best;
-            }
-        }
-        return dp[0][n - 1];
+        for (int[] row : dp) Arrays.fill(row, -1);
+        return dfs(values, 0, n - 1, dp);
     }
 
-    /* ---------   Simple main for local testing   --------- */
-    public static void main(String[] args) {
-        int[] values = {3,7,4,5};
-        System.out.println(new Solution().minScoreTriangulation(values)); // 144
+    private int dfs(int[] values, int i, int j, int[][] dp) {
+        if (i >= j - 1) return 0;              // less than 3 vertices
+        if (dp[i][j] != -1) return dp[i][j];
+
+        int best = Integer.MAX_VALUE;
+        for (int k = i + 1; k < j; k++) {
+            int cost = values[i] * values[j] * values[k]
+                    + dfs(values, i, k, dp)
+                    + dfs(values, k, j, dp);
+            if (cost < best) best = cost;
+        }
+        dp[i][j] = best;
+        return best;
     }
 }
 ```
 
----
-
-### 2. Python – LeetCode style
+### 2️⃣ Python
 
 ```python
-from typing import List
-
 class Solution:
-    def minScoreTriangulation(self, values: List[int]) -> int:
+    def minScoreTriangulation(self, values: list[int]) -> int:
         n = len(values)
-        dp = [[0] * n for _ in range(n)]
+        memo = [[None] * n for _ in range(n)]
 
-        for length in range(3, n + 1):          # sub‑polygon length
-            for i in range(n - length + 1):
-                j = i + length - 1
-                best = float('inf')
-                for k in range(i + 1, j):
-                    cost = dp[i][k] + dp[k][j] + values[i] * values[j] * values[k]
-                    if cost < best:
-                        best = cost
-                dp[i][j] = best
-        return dp[0][n - 1]
+        def dfs(i: int, j: int) -> int:
+            if i >= j - 1:                     # < 3 vertices
+                return 0
+            if memo[i][j] is not None:
+                return memo[i][j]
 
+            best = float("inf")
+            for k in range(i + 1, j):
+                cost = (
+                    values[i] * values[j] * values[k]
+                    + dfs(i, k)
+                    + dfs(k, j)
+                )
+                best = min(best, cost)
 
-# ---------- local test ----------
-if __name__ == "__main__":
-    sol = Solution()
-    print(sol.minScoreTriangulation([3, 7, 4, 5]))  # 144
+            memo[i][j] = best
+            return best
+
+        return dfs(0, n - 1)
 ```
 
----
-
-### 3. C++ – `Solution` class
+### 3️⃣ C++
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
+#include <vector>
+#include <algorithm>
+#include <climits>
 
 class Solution {
 public:
-    int minScoreTriangulation(vector<int>& values) {
+    int minScoreTriangulation(std::vector<int>& values) {
         int n = values.size();
-        vector<vector<int>> dp(n, vector<int>(n, 0));
+        std::vector<std::vector<int>> dp(n, std::vector<int>(n, -1));
+        return dfs(values, 0, n - 1, dp);
+    }
 
-        for (int len = 3; len <= n; ++len) {          // sub‑polygon length
-            for (int i = 0; i + len <= n; ++i) {
-                int j = i + len - 1;
-                int best = INT_MAX;
-                for (int k = i + 1; k < j; ++k) {
-                    int cost = dp[i][k] + dp[k][j] +
-                               values[i] * values[j] * values[k];
-                    best = min(best, cost);
-                }
-                dp[i][j] = best;
-            }
+private:
+    int dfs(const std::vector<int>& v, int i, int j, std::vector<std::vector<int>>& dp) {
+        if (i >= j - 1) return 0;            // less than 3 vertices
+        if (dp[i][j] != -1) return dp[i][j];
+
+        int best = INT_MAX;
+        for (int k = i + 1; k < j; ++k) {
+            int cost = v[i] * v[j] * v[k]
+                     + dfs(v, i, k, dp)
+                     + dfs(v, k, j, dp);
+            best = std::min(best, cost);
         }
-        return dp[0][n - 1];
+        dp[i][j] = best;
+        return best;
     }
 };
-
-/* ---------   Local test   --------- */
-int main() {
-    vector<int> v = {3,7,4,5};
-    Solution s;
-    cout << s.minScoreTriangulation(v) << endl;  // 144
-    return 0;
-}
 ```
 
 ---
 
-## ⏱ Complexity
+## 📈 Complexity Analysis  
 
-| Approach | Time | Space |
-|----------|------|-------|
-| Bottom‑up DP | **O(n³)** | **O(n²)** |
-| Top‑down memo | **O(n³)** | **O(n²)** (recursion stack negligible for n ≤ 50) |
+| Technique | Time | Space |
+|-----------|------|-------|
+| Top‑down memoization (all 3 codes) | **O(n³)** – `O(n²)` sub‑problems, each scans `O(n)` splits. | **O(n²)** – DP table + recursion stack (`O(n)` depth). |
+| Bottom‑up (not shown) | Same | Same |
 
-With `n ≤ 50`, this easily fits into the time limits of any modern interview platform.
-
----
-
-## ⚠️ Gotchas
-
-| Pitfall | Why it matters | Fix |
-|---------|----------------|-----|
-| Off‑by‑one errors in loops | `i+1 == j` should be the base case | Explicit `continue` or start loops at `len = 3` |
-| Integer overflow (in languages with 32‑bit ints) | Product of three numbers up to 100 → 1,000,000 < 2³¹ | Still safe, but use `long long` in C++ if values were larger |
-| Mutable default values in Python lists | All rows reference the same list if `dp = [[0]*n]*n` | Use list comprehension `[[0]*n for _ in range(n)]` |
-| Recursion depth limit in Python | Python recursion limit ~1000, safe for n = 50 | Prefer bottom‑up or set `sys.setrecursionlimit` |
+With `n ≤ 50`, the algorithm easily fits into the limits (≈125 000 iterations).
 
 ---
 
-## 💪 Variants & Extensions
+## 📜 “The Good, The Bad, and The Ugly”  
 
-| Problem | Core Change |
-|---------|-------------|
-| **Maximum Triangulation Score** | Replace `min` with `max` |
-| **Polygon with holes** | DP becomes more complex; you need to handle multiple chains |
-| **Matrix Chain Multiplication** | Same DP structure, but cost is `p[i-1]*p[i]*p[j]` |
-| **Weighted Polygon Triangulation** | Add vertex weights to the product |
+| Category | Discussion |
+|----------|------------|
+| **Good** | • Intuitive recurrence – easy to understand. <br>• Requires only `O(n²)` memory. <br>• Works for all convex polygons (no hidden cases). |
+| **Bad** | • Time is cubic; for very large `n` it would become heavy (though `n=50` is fine). <br>• The product `values[i] * values[j] * values[k]` could overflow 32‑bit int in extreme cases (if values were bigger). In the official problem bounds (`≤100`) it’s safe. |
+| **Ugly** | • The DP recurrence is *not* obvious to novices; they may think “matrix multiplication” and get confused. <br>• Memoization needs careful base‑case handling (`i >= j-1`). A typo there leads to stack overflow or wrong answers. <br>• In languages with small int ranges (e.g., JavaScript), you must use BigInt. |
 
-These variants are often asked in *advanced* interviews or in coding competitions like ACM‑ICPC.
-
----
-
-## 🎯 SEO & Career Boost
-
-*Keywords:*  
-- Minimum Score Triangulation of Polygon  
-- LeetCode 1039  
-- Dynamic programming interview problem  
-- Software engineering coding interview  
-- Top‑tech company interview questions  
-
-**Why this blog helps you land a job**
-
-1. **Keyword‑rich title & headings** → Higher ranking on search engines when recruiters look up “LeetCode 1039 solutions”.
-2. **Comprehensive explanation** → Demonstrates deep understanding of DP, a core CS concept interviewers value.
-3. **Multi‑language code** → Shows versatility – a hiring manager can quickly see that you can write clean Java, Python, and C++.
-4. **“Good, Bad, Ugly” format** → Engages readers and shows you can analyze trade‑offs—a key skill for senior roles.
-5. **Real interview context** → Recruiters see you’ve tackled the exact problem they often use, giving them confidence you’re interview‑ready.
-
-Posting this on your GitHub, personal blog, or Medium will create a high‑visibility showcase piece that recruiters can refer to, boosting your personal brand.
+**Take‑away:** Focus on a clear base case, use long integers where needed, and test edge cases (`n=3`, all equal values, ascending/descending arrays).
 
 ---
 
-## 📚 Further Reading
+## 📈 SEO‑Optimized Blog Title & Meta Description  
 
-| Topic | Link |
-|-------|------|
-| Matrix Chain Multiplication (DP) | https://en.wikipedia.org/wiki/Matrix_chain_multiplication |
-| LeetCode 1039 Discussion (Java) | https://leetcode.com/problems/minimum-score-triangulation-of-polygon/solutions/ |
-| Dynamic Programming Primer | https://www.geeksforgeeks.org/dynamic-programming/ |
-| Interview Coding Questions | https://leetcode.com/problemset/all/ |
+**Title:**  
+> “Minimum Score Triangulation of Polygon – LeetCode 1039 | Java, Python, C++ Solutions”
+
+**Meta Description:**  
+> “Learn how to solve LeetCode 1039 (Minimum Score Triangulation of Polygon) with top‑down memoization. Full Java, Python, and C++ code, complexity analysis, and a deep dive into the good, bad, and ugly of DP solutions.”
 
 ---
 
-### Final Thought
+## 📚 Final Thoughts  
 
-The **Minimum Score Triangulation of a Polygon** problem is a perfect microcosm of algorithm design:  
-- Recognize the sub‑structure (triangle splitting).  
-- Translate into a recurrence.  
-- Optimize with DP.  
+- **Why DP?** Because the optimal triangulation of a sub‑polygon depends only on its endpoints, a perfect fit for interval DP.  
+- **Why memoization?** Recursion keeps the code clean, and the problem size (`n ≤ 50`) guarantees no stack issues.  
+- **When to switch to bottom‑up?** If you need to avoid recursion for very deep recursion limits or want to pre‑allocate the DP table explicitly.
 
-Master it, and you’ll be ready for any DP interview question. Happy coding!
+With the code snippets and explanation above, you can confidently tackle **LeetCode 1039** in interviews, blog posts, or coding competitions. Happy coding! 🚀

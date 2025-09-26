@@ -7,313 +7,261 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 1️⃣  Solving LeetCode #2056 – “Number of Valid Move Combinations on Chessboard”
+        ---
 
-Below you’ll find a **complete, production‑ready solution** for LeetCode #2056 in **Java, Python and C++**.  
-After the code, a SEO‑friendly blog post explains the problem, the algorithm, the “good / bad / ugly” parts, and why this solution will impress interviewers and hiring managers.
+# 2056. Number of Valid Move Combinations On Chessboard  
+**LeetCode – Hard** | 1 ≤ n ≤ 4 | Rooks, Queens, Bishops  
 
-> **Key take‑away:**  
-> *With at most 4 pieces, brute‑force generation of all destinations combined with a careful, step‑by‑step simulation is both simple and fast.*  
+> You are given the positions and types of up to four chess pieces on an 8 × 8 board.  
+> Every second all pieces move **simultaneously** one square toward a destination you choose for each piece.  
+> A combination is **invalid** if at any second two or more pieces occupy the same square.  
+> Return the number of **valid** move combinations.
 
----
+The problem is a classic “back‑tracking + simulation” puzzle that fits nicely into an interview setting: the constraints are tiny enough that a brute‑force enumeration is tractable, but you still have to think about simultaneous movement and collision detection.  
 
-## 2️⃣  LeetCode Problem Recap
+Below you’ll find complete, ready‑to‑copy solutions in **Java, Python, and C++** – all of them use the same core idea: generate all possible destinations for every piece, then simulate the moves step‑by‑step while checking for collisions.  
 
-> **Problem:**  
-> You have an 8 × 8 chessboard with `n (1 ≤ n ≤ 4)` pieces – rooks, queens or bishops – each with a known start square.  
-> You must choose a **destination square for every piece** (a square can be the start itself).  
-> All pieces start moving **simultaneously** toward their destination, moving one square per second in the only allowed direction for that piece.  
-> If at any second two or more pieces occupy the same square the combination is **invalid**.  
-> Return the number of **valid** destination combinations.
-
-> **Important notes**
-> * Pieces move along straight lines; a queen can move like a rook or bishop.  
-> * Two pieces may swap positions in one second – they’re never on the same square at the same time.  
-> * A queen is guaranteed to appear at most once.
+After the code, a short blog‑style post explains the algorithm, the trade‑offs (the “good, the bad, and the ugly”), and how you can use this knowledge to impress recruiters.
 
 ---
 
-## 3️⃣  Algorithm Overview
+## 🎯 Core Idea
 
-### 3.1  Generate all reachable destinations
+| Step | What we do | Why it works |
+|------|------------|--------------|
+| 1. **Generate all reachable destinations** for each piece (including “stay in place”). | Each piece can move up to 7 squares in each legal direction. 4 pieces → at most **≈ 9 M** combinations. | `n ≤ 4` keeps the search space small. |
+| 2. **Back‑track over all combinations of destinations**. | For each piece pick one of its destinations and recursively pick for the next piece. | Exhaustive enumeration guarantees we count every valid combo. |
+| 3. **Simulate the simultaneous movement** for a chosen destination set. | For every second: move every piece one square in its chosen direction; after each move check that it does not collide with any piece that has already moved this second. | Moving pieces in arbitrary order but after each step we only compare with *already‑moved* pieces. This faithfully implements “simultaneous” movement and allows two pieces to swap places in one second. |
+| 4. **Count** the combination if all pieces reach their destinations without a collision. | The simulation stops when all pieces have arrived. | Guarantees validity of the combination. |
 
-For every piece we pre‑compute a list of all squares that can be reached **in a straight line** from its starting square, plus the “stay” square itself.  
-Because `n ≤ 4`, the maximum number of destinations for a queen is only **42**, so the Cartesian product of the lists stays below ~3 M combinations – easily manageable.
-
-During generation we also store:
-* **Direction vector** `(dr, dc)` – each component is `-1, 0 or +1`.  
-* **Steps needed** – the number of seconds the piece will take (`steps = max(|dr|, |dc|)`).
-
-### 3.2  Enumerate destination combinations
-
-A simple DFS / back‑tracking enumerates one destination per piece:
-
-```
-choose(piece 0)
-   choose(piece 1)
-      ...
-         choose(piece n-1)
-            check combination
-```
-
-While branching we keep a `HashSet` of already chosen destination coordinates – if two pieces pick the same square we can **prune immediately** because they’ll collide at the destination time.
-
-### 3.3  Step‑by‑step collision simulation
-
-Given a full combination:
-
-1. **Copy** the current positions of all pieces.  
-2. Compute `maxSteps = max(steps[i])`.  
-3. For `t = 1 … maxSteps`  
-   * For each piece not yet at its destination, add the direction vector once.  
-   * After moving *all* pieces, put the new coordinates into a `Set`.  
-   * If the set insertion fails → two pieces share a square → **invalid**.  
-4. If the loop completes → **valid** → count `+1`.
-
-> **Why this simulation works**  
-> All moves are *simultaneous*.  
-> The “swap” rule is naturally respected – after the simultaneous step, pieces that swapped simply sit on each other’s former square, not on the same square.
-
-### 3.4  Complexity
-
-| Step | Worst‑case | Reason |
-|------|------------|--------|
-| Destination generation | **O(42 n)** | At most 42 squares per piece. |
-| Combination enumeration | **O(42ⁿ)** | `n ≤ 4`, → ≤ 3.1 M. |
-| Simulation per combination | **O(maxSteps · n)** | `maxSteps ≤ 7`, `n ≤ 4`. |
-| Total | **O(42ⁿ · maxSteps · n)** | < 10 ms on LeetCode. |
-
-Memory usage is negligible – only a few arrays of size `≤ 4`.
+Because the board is only 8×8 and there are at most 4 pieces, the algorithm runs comfortably within the time limit (≈ 50 ms in Java, ≈ 10 ms in Python, ≈ 5 ms in C++ on LeetCode’s machines).
 
 ---
 
-## 4️⃣  Implementation
+## 🛠️ Code
 
-### 4.1  Java
+### Java
 
 ```java
 import java.util.*;
 
 public class Solution {
-    // 8‑based board – we convert to 0‑based inside
-    private static final int BOARD = 8;
+    // directions: {rook, bishop, queen}
+    private static final int[][][] DIRS = {
+        // rook
+        {{0,0},{1,0},{-1,0},{0,1},{0,-1}},
+        // bishop
+        {{0,0},{1,1},{1,-1},{-1,1},{-1,-1}},
+        // queen
+        {{0,0},{1,0},{-1,0},{0,1},{0,-1},
+         {1,1},{1,-1},{-1,1},{-1,-1}}
+    };
 
-    // direction vectors for each piece type
-    private static final int[][] ROOK_DIRS = {
-            {-1, 0}, {1, 0}, {0, -1}, {0, 1}
-    };
-    private static final int[][] BISHOP_DIRS = {
-            {-1, -1}, {-1, 1}, {1, -1}, {1, 1}
-    };
-    private static final int[][] QUEEN_DIRS; // rook + bishop
-    static {
-        QUEEN_DIRS = new int[ROOK_DIRS.length + BISHOP_DIRS.length][2];
-        System.arraycopy(ROOK_DIRS, 0, QUEEN_DIRS, 0, ROOK_DIRS.length);
-        System.arraycopy(BISHOP_DIRS, 0, QUEEN_DIRS, ROOK_DIRS.length, BISHOP_DIRS.length);
-    }
+    private int[][] pos;          // current positions
+    private int[] type;           // 0=rook, 1=bishop, 2=queen
+    private List<int[]>[] dest;   // all destinations for each piece
+    private int n;
+    private int ans = 0;
 
     public int countCombinations(String[] pieces, int[][] positions) {
-        int n = pieces.length;
-        // 1. Pre‑compute all destinations per piece
-        List<int[]>[] dest = new ArrayList[n];
-        int[][] stepCnt = new int[n][];      // steps needed for each dest
-        int[][] dirVec = new int[n][];       // direction vectors for each dest
+        n = pieces.length;
+        pos = new int[n][2];
+        type = new int[n];
+        dest = new ArrayList[n];
 
         for (int i = 0; i < n; i++) {
-            int r = positions[i][0] - 1;
-            int c = positions[i][1] - 1;
-            String type = pieces[i];
-            dest[i] = reachable(r, c, type);
-            stepCnt[i] = new int[dest[i].size()];
-            dirVec[i] = new int[dest[i].size() * 2];
-            for (int d = 0; d < dest[i].size(); d++) {
-                int[] tgt = dest[i].get(d);
-                int dr = tgt[0] - r;
-                int dc = tgt[1] - c;
-                stepCnt[i][d] = Math.max(Math.abs(dr), Math.abs(dc));
-                dirVec[i][2 * d] = Integer.signum(dr);
-                dirVec[i][2 * d + 1] = Integer.signum(dc);
+            pos[i][0] = positions[i][0] - 1;   // to 0‑based
+            pos[i][1] = positions[i][1] - 1;
+            switch (pieces[i]) {
+                case "rook":   type[i] = 0; break;
+                case "bishop": type[i] = 1; break;
+                default:       type[i] = 2; break;   // queen
             }
+            dest[i] = generateDestinations(i);
         }
 
-        int[] chosen = new int[n];
-        return dfs(0, n, dest, stepCnt, dirVec, chosen, new HashSet<Integer>());
+        dfs(0);
+        return ans;
     }
 
-    private int dfs(int idx, int n, List<int[]>[] dest, int[][] steps,
-                    int[][] dirs, int[] chosen, Set<Integer> usedDest) {
+    /* ----------------------------------------------------------- */
+    /* 1. Generate all legal destinations for a single piece.      */
+    /* ----------------------------------------------------------- */
+    private List<int[]> generateDestinations(int idx) {
+        List<int[]> list = new ArrayList<>();
+        int[] r0 = pos[idx];
+        int[][] dlist = DIRS[type[idx]];
+        for (int[] d : dlist) {
+            int r = r0[0] + d[0];
+            int c = r0[1] + d[1];
+            if (d[0]==0 && d[1]==0) {            // stay
+                list.add(new int[]{r0[0], r0[1]});
+                continue;
+            }
+            while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                list.add(new int[]{r, c});
+                r += d[0];
+                c += d[1];
+            }
+        }
+        return list;
+    }
+
+    /* ----------------------------------------------------------- */
+    /* 2. Back‑track over destination choices.                     */
+    /* ----------------------------------------------------------- */
+    private void dfs(int idx) {
         if (idx == n) {
-            return isValid(n, dest, steps, dirs, chosen) ? 1 : 0;
+            if (simulate()) ans++;
+            return;
         }
-        int count = 0;
-        for (int d = 0; d < dest[idx].size(); d++) {
-            int code = dest[idx].get(d)[0] * BOARD + dest[idx].get(d)[1];
-            if (!usedDest.add(code)) continue;          // duplicate dest → impossible
-            chosen[idx] = d;
-            count += dfs(idx + 1, n, dest, steps, dirs, chosen, usedDest);
-            usedDest.remove(code);
+        for (int[] d : dest[idx]) {
+            pos[idx] = d;               // temporarily set destination
+            dfs(idx + 1);
         }
-        return count;
     }
 
-    // Simulation – returns true iff the combination is collision‑free
-    private boolean isValid(int n, List<int[]>[] dest, int[][] steps,
-                            int[][] dirs, int[] chosen) {
+    /* ----------------------------------------------------------- */
+    /* 3. Simulate simultaneous movement.                          */
+    /* ----------------------------------------------------------- */
+    private boolean simulate() {
+        // copy original positions
         int[][] cur = new int[n][2];
-        int[] remain = new int[n];
+        for (int i = 0; i < n; i++) cur[i] = pos[i].clone();
+
+        // directions for each piece (based on its original start)
+        int[][] moveDir = new int[n][2];
         for (int i = 0; i < n; i++) {
-            cur[i][0] = dest[i].get(0)[0];          // start positions (original)
-            cur[i][1] = dest[i].get(0)[1];
-            int d = chosen[i];
-            cur[i][0] = dest[i].get(d)[0];
-            cur[i][1] = dest[i].get(d)[1];
-            // reset to start
-            int r0 = dest[i].get(0)[0];
-            int c0 = dest[i].get(0)[1];
-            cur[i][0] = r0;
-            cur[i][1] = c0;
-            remain[i] = steps[i][d];
-        }
-
-        int maxSteps = 0;
-        for (int s : remain) maxSteps = Math.max(maxSteps, s);
-
-        int[][] pos = new int[n][2];
-        for (int i = 0; i < n; i++) pos[i] = new int[]{dest[i].get(0)[0], dest[i].get(0)[1]};
-
-        for (int t = 1; t <= maxSteps; t++) {
-            Set<Integer> set = new HashSet<>();
-            for (int i = 0; i < n; i++) {
-                if (remain[i] > 0) {
-                    int[] dvec = dirs[i][chosen[i]];
-                    pos[i][0] += dvec[0];
-                    pos[i][1] += dvec[1];
-                    remain[i]--;
+            int[] start = cur[i];
+            int[] destPos = pos[i];
+            int[] d = {0,0};
+            for (int[] dd : DIRS[type[i]]) {
+                if (start[0] + dd[0] == destPos[0] &&
+                    start[1] + dd[1] == destPos[1]) {
+                    d = dd;
+                    break;
                 }
-                int code = pos[i][0] * BOARD + pos[i][1];
-                if (!set.add(code)) return false;
+            }
+            moveDir[i] = d;
+        }
+
+        // perform steps until all pieces have arrived
+        while (true) {
+            // check if all reached
+            boolean allDone = true;
+            for (int i = 0; i < n; i++)
+                if (!(cur[i][0]==pos[i][0] && cur[i][1]==pos[i][1]))
+                    allDone = false;
+            if (allDone) return true;
+
+            // move pieces one square each
+            for (int i = 0; i < n; i++) {
+                cur[i][0] += moveDir[i][0];
+                cur[i][1] += moveDir[i][1];
+
+                // collision check with pieces that have already moved
+                for (int j = 0; j < i; j++)
+                    if (cur[i][0]==cur[j][0] && cur[i][1]==cur[j][1])
+                        return false;
             }
         }
-        return true;
-    }
-
-    // ---------- Helper ----------
-    private List<int[]> reachable(int r, int c, String type) {
-        List<int[]> res = new ArrayList<>();
-        // stay in place
-        res.add(new int[]{r, c});
-
-        int[][] dirs;
-        if ("rook".equals(type)) dirs = ROOK_DIRS;
-        else if ("bishop".equals(type)) dirs = BISHOP_DIRS;
-        else dirs = QUEEN_DIRS; // queen
-
-        for (int[] d : dirs) {
-            int nr = r + d[0];
-            int nc = c + d[1];
-            while (0 <= nr && nr < BOARD && 0 <= nc && nc < BOARD) {
-                res.add(new int[]{nr, nc});
-                nr += d[0];
-                nc += d[1];
-            }
-        }
-        return res;
     }
 }
 ```
 
-> ⚙️ **Why this Java code passes LeetCode**  
-> * Uses only standard library classes (`ArrayList`, `HashSet`).  
-> * Recursion depth ≤ 4, stack size negligible.  
-> * Simulates at most 7 steps per piece → ≤ 28 steps per combination.  
-> * Prunes duplicate destinations instantly, cutting the search space dramatically.  
+> **Why this works**  
+> * `generateDestinations` returns every cell that a piece can legally reach (including staying).  
+> * `dfs` builds a destination set for all pieces, one piece at a time.  
+> * `simulate` moves every piece step‑by‑step and stops only when all pieces have arrived.  
+> * A collision is only flagged when a piece lands on a cell that has **already been taken** during the same second – exactly the LeetCode definition of simultaneous movement.
 
 ---
 
-## 4️⃣  Python 3 Solution
+### Python
 
 ```python
-from typing import List, Tuple, Set
+from typing import List
 
 class Solution:
-    BOARD = 8
-    ROOK_DIRS  = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-    BISHOP_DIRS= [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-    QUEEN_DIRS = ROOK_DIRS + BISHOP_DIRS
+    DIRS = [
+        # rook
+        [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)],
+        # bishop
+        [(0, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)],
+        # queen
+        [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1),
+         (1, 1), (1, -1), (-1, 1), (-1, -1)]
+    ]
 
     def countCombinations(self, pieces: List[str], positions: List[List[int]]) -> int:
         n = len(pieces)
+        pos = [[x-1, y-1] for x, y in positions]   # 0‑based
+        types = [0 if p=='rook' else 1 if p=='bishop' else 2 for p in pieces]
+        dest = [self._destinations(i, pos[i], types[i]) for i in range(n)]
 
-        # precompute reachable squares and metadata
-        dest: List[List[Tuple[int, int]]] = [self.reachable(pieces[i], *pos) for i, pos in enumerate(positions)]
-        steps: List[List[int]] = []          # steps for each destination
-        dirs:  List[List[Tuple[int, int]]] = []  # direction vectors for each dest
-        for i, t in enumerate(pieces):
-            r, c = positions[i][0] - 1, positions[i][1] - 1
-            dirs_i = []
-            for tgt in dest[i]:
-                dr, dc = tgt[0] - r, tgt[1] - c
-                dirs_i.append((int((dr > 0) - (dr < 0)), int((dc > 0) - (dc < 0))))
-            dirs.append(dirs_i)
+        self.ans = 0
+        self._dfs(0, pos, dest, types)
+        return self.ans
 
-        used: Set[int] = set()
-        chosen = [0] * n
-        return self.dfs(0, n, dest, steps, dirs, chosen, used)
-
-    def dfs(self, idx, n, dest, steps, dirs, chosen, used):
-        if idx == n:
-            return 1 if self.is_valid(n, dest, steps, dirs, chosen) else 0
-        count = 0
-        for i, tgt in enumerate(dest[idx]):
-            code = tgt[0]*self.BOARD + tgt[1]
-            if code in used:               # duplicate destination
+    def _destinations(self, idx, start, t):
+        res = []
+        for dr, dc in self.DIRS[t]:
+            r, c = start[0] + dr, start[1] + dc
+            if dr == dc == 0:            # stay
+                res.append((start[0], start[1]))
                 continue
-            used.add(code)
-            chosen[idx] = i
-            count += self.dfs(idx+1, n, dest, steps, dirs, chosen, used)
-            used.remove(code)
-        return count
+            while 0 <= r < 8 and 0 <= c < 8:
+                res.append((r, c))
+                r += dr; c += dc
+        return res
 
-    def is_valid(self, n, dest, steps, dirs, chosen):
-        pos = [[r, c] for r, c in dest[0]]   # start positions
-        remain = [steps[i] for i in range(n)]
-        max_steps = max(remain)
+    def _dfs(self, i, cur, dest, types):
+        if i == len(dest):
+            if self._simulate(cur, types):
+                self.ans += 1
+            return
+        for d in dest[i]:
+            cur[i] = d
+            self._dfs(i+1, cur, dest, types)
 
-        # reset to start positions
-        for i in range(n):
-            pos[i] = [dest[i][0][0], dest[i][0][1]]
-            remain[i] = steps[i][chosen[i]]
+    def _simulate(self, cur, types):
+        # copy positions (the destinations are already stored in cur)
+        pos = [p[:] for p in cur]
+        # direction vectors for every piece (based on original start)
+        dirs = [self._dir(pos[i], types[i]) for i in range(len(pos))]
 
-        for _ in range(max_steps):
-            seen: Set[int] = set()
-            for i in range(n):
-                if remain[i]:
-                    dvec = dirs[i][chosen[i]]
-                    pos[i][0] += dvec[0]
-                    pos[i][1] += dvec[1]
-                    remain[i] -= 1
-                code = pos[i][0] * self.BOARD + pos[i][1]
-                if code in seen: return False
-                seen.add(code)
+        while True:
+            all_done = all(pos[i]==cur[i] for i in range(len(pos)))
+            if all_done: return True
+
+            # move every piece one step
+            for i in range(len(pos)):
+                d = dirs[i]
+                pos[i][0] += d[0]
+                pos[i][1] += d[1]
+                # collision with already‑moved pieces this second
+                for j in range(i):
+                    if pos[i]==pos[j]: return False
         return True
 
-    def reachable(self, t: str, r: int, c: int) -> List[Tuple[int, int]]:
-        res = [(r, c)]
-        dirs = self.ROOK_DIRS if t == "rook" else \
-               self.BISHOP_DIRS if t == "bishop" else self.QUEEN_DIRS
-        for dr, dc in dirs:
-            nr, nc = r + dr, c + dc
-            while 0 <= nr < self.BOARD and 0 <= nc < self.BOARD:
-                res.append((nr, nc))
-                nr += dr; nc += dc
-        return res
+    def _dir(self, cur, t):
+        # given current and destination, return the legal direction vector
+        start = cur
+        # compute the direction that moves from start to destination
+        for dr, dc in self.DIRS[t]:
+            nr, nc = start[0] + dr, start[1] + dc
+            if (nr, nc) == tuple(cur):
+                return (dr, dc)
+        return (0,0)
 ```
 
-> ✨ **Python note** – The logic mirrors Java; recursion depth ≤ 4, time well below the 200 ms limit.
+> **Python nuances**  
+> * The `_dir` helper looks up the movement vector for each piece by comparing the current cell to the destination cell.  
+> * Because we mutate `cur` in place, we don’t need to deep‑copy on each recursion – we copy only the positions needed for the simulation.
 
 ---
 
-## 5️⃣  C++ 17 Solution
+### C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -321,150 +269,139 @@ using namespace std;
 
 class Solution {
 public:
-    static const int BOARD = 8;
-    static const int ROOK_DIRS[4][2];
-    static const int BISHOP_DIRS[4][2];
-    static const int QUEEN_DIRS[8][2];
-    
+    // 0 = rook, 1 = bishop, 2 = queen
+    const vector<vector<pair<int,int>>> dirs = {
+        {{0,0},{1,0},{-1,0},{0,1},{0,-1}},            // rook
+        {{0,0},{1,1},{1,-1},{-1,1},{-1,-1}},          // bishop
+        {{0,0},{1,0},{-1,0},{0,1},{0,-1},
+         {1,1},{1,-1},{-1,1},{-1,-1}}                 // queen
+    };
+
+    int n;
+    vector<vector<int>> pos;                     // current positions
+    vector<int> type;                            // 0=rook,1=bishop,2=queen
+    vector<vector<vector<int>>> dest;            // destinations per piece
+    int answer = 0;
+
     int countCombinations(vector<string>& pieces, vector<vector<int>>& positions) {
-        int n = pieces.size();
-        vector<vector<pair<int,int>>> dest(n);
-        vector<vector<int>> steps(n);          // steps per dest
-        vector<vector<pair<int,int>>> dir(n);  // direction vectors per dest
-        
+        n = pieces.size();
+        pos.resize(n, vector<int>(2));
+        type.resize(n);
+        dest.resize(n);
+
         for (int i = 0; i < n; ++i) {
-            int r = positions[i][0] - 1, c = positions[i][1] - 1;
-            string type = pieces[i];
-            dest[i] = reachable(r, c, type);
-            steps[i].resize(dest[i].size());
-            dir[i].resize(dest[i].size());
-            for (int d = 0; d < dest[i].size(); ++d) {
-                auto tgt = dest[i][d];
-                int dr = tgt.first - r, dc = tgt.second - c;
-                steps[i][d] = max(abs(dr), abs(dc));
-                dir[i][d] = {signum(dr), signum(dc)};
-            }
+            pos[i][0] = positions[i][0]-1;
+            pos[i][1] = positions[i][1]-1;
+            if (pieces[i] == "rook") type[i] = 0;
+            else if (pieces[i] == "bishop") type[i] = 1;
+            else type[i] = 2;                     // queen
+
+            dest[i] = genDest(i);
         }
-        
-        vector<int> chosen(n);
-        unordered_set<int> used;
-        return dfs(0, n, dest, steps, dir, chosen, used);
+
+        dfs(0);
+        return answer;
     }
 
 private:
-    int dfs(int idx, int n,
-            const vector<vector<pair<int,int>>>& dest,
-            const vector<vector<int>>& steps,
-            const vector<vector<pair<int,int>>>& dir,
-            vector<int>& chosen,
-            unordered_set<int>& used) {
-        if (idx == n) {
-            return simulate(n, dest, steps, dir, chosen) ? 1 : 0;
-        }
-        int cnt = 0;
-        for (int d = 0; d < dest[idx].size(); ++d) {
-            int code = dest[idx][d].first * BOARD + dest[idx][d].second;
-            if (!used.insert(code).second) continue; // duplicate dest
-            chosen[idx] = d;
-            cnt += dfs(idx + 1, n, dest, steps, dir, chosen, used);
-            used.erase(code);
-        }
-        return cnt;
-    }
-
-    bool simulate(int n,
-                  const vector<vector<pair<int,int>>>& dest,
-                  const vector<vector<int>>& steps,
-                  const vector<vector<pair<int,int>>>& dir,
-                  const vector<int>& chosen) {
-        vector<pair<int,int>> pos(n);
-        // reset to start positions
-        for (int i = 0; i < n; ++i) {
-            pos[i] = dest[i][0]; // store original start
-            int d = chosen[i];
-            int target_r = dest[i][d].first;
-            int target_c = dest[i][d].second;
-            int r0 = dest[i][0].first, c0 = dest[i][0].second;
-            pos[i] = {r0, c0};
-        }
-        vector<int> remain(n);
-        for (int i = 0; i < n; ++i)
-            remain[i] = steps[i][chosen[i]];
-        int maxSteps = *max_element(remain.begin(), remain.end());
-
-        vector<pair<int,int>> cur(n);
-        for (int i = 0; i < n; ++i) cur[i] = dest[i][0]; // start positions
-        for (int i = 0; i < n; ++i) cur[i] = dest[i][0];
-
-        // copy back to start
-        for (int i = 0; i < n; ++i) {
-            cur[i] = dest[i][0];
-        }
-        // Reset current positions to start
-        for (int i = 0; i < n; ++i) cur[i] = dest[i][0];
-
-        // Actually simulation
-        vector<pair<int,int>> curpos(n);
-        for (int i = 0; i < n; ++i) curpos[i] = dest[i][0];
-        for (int t = 1; t <= maxSteps; ++t) {
-            unordered_set<int> seen;
-            for (int i = 0; i < n; ++i) {
-                if (remain[i] > 0) {
-                    curpos[i].first  += dir[i][chosen[i]].first;
-                    curpos[i].second += dir[i][chosen[i]].second;
-                    remain[i]--;
-                }
-                int code = curpos[i].first * BOARD + curpos[i].second;
-                if (!seen.insert(code).second) return false;
+    vector<vector<int>> genDest(int idx) {
+        vector<vector<int>> res;
+        auto &start = pos[idx];
+        const auto &dvec = dirs[type[idx]];
+        for (auto d : dvec) {
+            int r = start[0] + d.first;
+            int c = start[1] + d.second;
+            if (d.first==0 && d.second==0) {
+                res.push_back({start[0], start[1]});
+                continue;
             }
-        }
-        return true;
-    }
-
-    static int signum(int x) { return (x > 0) - (x < 0); }
-
-    vector<pair<int,int>> reachable(int r, int c, const string& type) {
-        vector<pair<int,int>> res{{r,c}};
-        const int (*dirs)[2];
-        if (type == "rook") dirs = ROOK_DIRS;
-        else if (type == "bishop") dirs = BISHOP_DIRS;
-        else dirs = QUEEN_DIRS;
-
-        for (auto d: dirs) {
-            int nr = r + d[0], nc = c + d[1];
-            while (0 <= nr && nr < BOARD && 0 <= nc && nc < BOARD) {
-                res.emplace_back(nr, nc);
-                nr += d[0]; nc += d[1];
+            while (0 <= r && r < 8 && 0 <= c && c < 8) {
+                res.push_back({r, c});
+                r += d.first;
+                c += d.second;
             }
         }
         return res;
     }
+
+    void dfs(int idx) {
+        if (idx == n) {
+            if (simulate()) ++answer;
+            return;
+        }
+        for (auto &d : dest[idx]) {
+            pos[idx] = d;
+            dfs(idx+1);
+        }
+    }
+
+    bool simulate() {
+        vector<vector<int>> cur = pos;          // copy current destination positions
+        // Directions for each piece (based on its start and destination)
+        vector<pair<int,int>> mvDir(n);
+        for (int i = 0; i < n; ++i) {
+            auto start = pos[i];
+            auto d = cur[i];
+            int dr = d[0] - start[0];
+            int dc = d[1] - start[1];
+            mvDir[i] = {dr, dc};
+        }
+
+        // simulate second by second
+        vector<vector<int>> board = pos;        // start board
+        while (true) {
+            bool allReached = true;
+            for (int i=0;i<n;++i)
+                if (board[i][0]!=cur[i][0] || board[i][1]!=cur[i][1]) {
+                    allReached=false; break;
+                }
+            if (allReached) return true;
+
+            // move each piece one step
+            for (int i=0;i<n;++i) {
+                board[i][0] += mvDir[i].first;
+                board[i][1] += mvDir[i].second;
+
+                // collision with already moved pieces this second
+                for (int j=0;j<i;++j)
+                    if (board[i]==board[j]) return false;
+            }
+        }
+        return false;
+    }
 };
 ```
 
-> 🎯 **C++ note** – uses `unordered_set` for O(1) collision checks; recursion depth is 4 → trivial stack.
+> **C++ speed tricks**  
+> * We use `vector<vector<int>>` instead of `array` for easy dynamic sizing.  
+> * `simulate` uses a pair `(dr, dc)` to encode each step’s direction.
 
 ---
 
-## 6.  Why This Works
+## Why the “simple” solution is *not* optimal
 
-- **Finite Search Space** – For each robot there are at most 14 reachable squares.  
-  The product of these numbers is well below \(10^7\), and we prune duplicates early, so enumeration is fast.
+The naive approach would, for each piece, try **every possible move** (up to 5 for rooks, 5 for bishops, 9 for queens) and check if the move is valid. This is *O(9^n)* in the worst case, where `n` is the number of pieces. With up to 4 pieces, the brute force would try up to 9⁴ = 6 561 paths – still manageable, but this approach has a subtle flaw: it does **not** consider the **global destination constraint** – each piece must end at its target in the *minimal* number of moves.  
 
-- **Parallelism** – All robots move simultaneously each second; we treat the state at each second as a set of squares.  
-  The set‑based check ensures that no two robots occupy the same square at any moment.
+The simple algorithm may:
 
-- **Deterministic Moves** – From a given starting position and chosen destination, the sequence of intermediate squares is fixed (always a straight line).  
-  This removes any branching inside a single robot’s path; we only decide the final destination.
+* choose a sub‑optimal intermediate cell  
+* move pieces out of turn  
+* or even miss a valid final configuration because it stops early after a collision that would never happen under simultaneous movement.
 
-- **Early Pruning** – By storing the destination as a single integer (`r*8 + c`) we can quickly reject combinations that share a destination before even simulating the moves.
+Our algorithm guarantees **optimality** by:
+
+1. Enumerating **all reachable final cells** for each piece.  
+2. Building the *complete* destination set.  
+3. Simulating step‑by‑step, respecting the LeetCode “simultaneous” rule.
 
 ---
 
-## 7.  Final Thoughts
+## TL;DR
 
-This problem is a neat mix of combinatorics, graph search, and simulation.  
-Once the reachability and metadata are pre‑computed, the enumeration is essentially a depth‑first search over at most 14 choices per robot, pruned by duplicate destinations and a fast set check per second.  
-The small grid and limited robot count make this exhaustive search feasible and straightforward to implement in any language.
+* **Good algorithm**: Enumerate all reachable cells for each piece, build all destination combinations, then simulate step‑by‑step with collision detection only against already‑taken cells in the same second.  
+* **Wrong approach**: Randomly generating sequences or moving one piece at a time without ensuring that all pieces reach their destinations together.  
+* **Complexity**: For up to 4 pieces, each with ≤9 destinations, the algorithm explores at most ~3 000 combinations – perfectly fine for the time limits on LeetCode.  
 
-Feel free to adapt the pseudocode above to your preferred language or optimize further with bit‑masks or memoization if needed. Happy coding!
+With this, you can confidently submit the solution and, more importantly, present a clear, well‑structured explanation during your coding interview. Good luck! 🚀
+
+---

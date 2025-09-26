@@ -7,47 +7,25 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🎯 LeetCode 1942 – “The Number of the Smallest Unoccupied Chair”
-> *How to win an interview question in under 5 minutes.*
+        ## ✅ 1942. The Number of the Smallest Unoccupied Chair – Solution in **Java, Python & C++**
 
-> **Keywords:** LeetCode 1942, smallest unoccupied chair, priority queue, heap, Java, Python, C++, algorithm, interview, software engineer, coding interview, problem solving.
-
----
-
-## 1️⃣ Problem Overview
-
-At a party there are *infinite* chairs numbered 0…∞.  
-When a friend arrives, they always sit on the **smallest un‑occupied** chair.  
-When a friend leaves, that chair becomes free immediately, and a new arrival at the *same* time can use it.
-
-You are given `times[i] = [arrival_i, leave_i]` for `n` friends (`1 ≤ arrival_i < leave_i ≤ 10⁵`).  
-All arrival times are distinct.  
-`targetFriend` is the index of the friend whose chair you must return.
-
-> **Return** the chair number that `targetFriend` will occupy.
+Below you’ll find a clean, production‑ready implementation of the classic LeetCode “Smallest Unoccupied Chair” problem in three languages.  
+All solutions use **two priority queues (heaps)** – one for available chairs and one for occupied chairs sorted by departure time – giving an **O(n log n)** time and **O(n)** space complexity.
 
 ---
 
-## 2️⃣ Intuition
+### Problem Recap
 
-The natural data‑structures for this problem are **priority queues** (heaps):
-
-| Purpose | What we store | How it works |
-|---------|---------------|--------------|
-| `availableSeats` | chair numbers | always gives the smallest free chair |
-| `occupiedSeats` | `(leaveTime, chair)` | always gives the next chair to be freed |
-
-We process friends **in order of arrival time**.  
-Before seating a friend we “free” every chair whose `leaveTime ≤ currentArrival`.  
-Then we seat the friend on the smallest free chair.
-
-This is the classic “two‑heap” solution that runs in **O(n log n)** time and **O(n)** space.
+> You are at a party with **n** friends (0‑based indices).  
+> There are infinitely many chairs numbered 0…∞.  
+> When a friend arrives they take the **smallest** unoccupied chair.  
+> When a friend leaves the chair becomes free immediately and can be taken by someone arriving at the same time.  
+> `times[i] = [arrival_i, departure_i]` (arrival times are distinct).  
+> Return the chair number that **targetFriend** will occupy.
 
 ---
 
-## 3️⃣ Solution Code
-
-### 3.1 Python (9‑line clean implementation)
+## 1. Python 3 – 9 lines (two heaps)
 
 ```python
 import heapq
@@ -55,34 +33,38 @@ from typing import List
 
 class Solution:
     def smallestChair(self, times: List[List[int]], targetFriend: int) -> int:
-        # Order friends by arrival time
+        # 1️⃣ Sort friends by arrival time
         order = sorted(range(len(times)), key=lambda i: times[i][0])
 
-        # All chairs 0…n-1 are initially free
-        available = list(range(len(times)))
-        heapq.heapify(available)
+        # 2️⃣ Heap of free chairs (initially 0…n-1), heap of occupied chairs (departure, seat)
+        free, occupied = list(range(len(times))), []
 
-        # Min‑heap of (leaveTime, chair)
-        occupied = []
+        for idx in order:
+            arrive, leave = times[idx]
 
-        for i in order:
-            arrival, leave = times[i]
+            # 3️⃣ Release all chairs whose owner has left by the arrival time
+            while occupied and occupied[0][0] <= arrive:
+                heapq.heappush(free, heapq.heappop(occupied)[1])
 
-            # Free all chairs that become available before this arrival
-            while occupied and occupied[0][0] <= arrival:
-                _, chair = heapq.heappop(occupied)
-                heapq.heappush(available, chair)
+            # 4️⃣ Grab the smallest free chair
+            chair = heapq.heappop(free)
 
-            # Seat the friend
-            chair = heapq.heappop(available)
-            if i == targetFriend:
+            if idx == targetFriend:               # 🎯 Found the answer
                 return chair
 
-            # Mark chair as occupied until 'leave'
+            # 5️⃣ Mark chair as occupied until 'leave'
             heapq.heappush(occupied, (leave, chair))
 ```
 
-### 3.2 Java (PriorityQueue version)
+**Why it works**  
+- The `free` heap always contains all chairs that are currently empty.  
+- The `occupied` heap is sorted by departure time; the top element is the chair that will free the soonest.  
+- By repeatedly popping from `occupied` when its departure time ≤ current arrival, we keep `free` up‑to‑date.  
+- The smallest free chair is always at the top of `free`, so we can assign it in O(log n).
+
+---
+
+## 2. Java – `PriorityQueue` version
 
 ```java
 import java.util.*;
@@ -90,134 +72,185 @@ import java.util.*;
 class Solution {
     public int smallestChair(int[][] times, int targetFriend) {
         int n = times.length;
-        // Order friends by arrival time
+
+        // 1️⃣ Sort friend indices by arrival time
         Integer[] order = new Integer[n];
         for (int i = 0; i < n; i++) order[i] = i;
         Arrays.sort(order, Comparator.comparingInt(i -> times[i][0]));
 
-        // Available chairs – min‑heap
+        // 2️⃣ Min‑heap of free chairs
         PriorityQueue<Integer> free = new PriorityQueue<>();
         for (int i = 0; i < n; i++) free.offer(i);
 
-        // Occupied chairs – (leaveTime, chair)
+        // 3️⃣ Min‑heap of occupied chairs: pair(departure, seat)
         PriorityQueue<int[]> occupied = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));
 
         for (int idx : order) {
             int arrive = times[idx][0];
             int leave  = times[idx][1];
 
-            // Release chairs whose leaveTime <= arrive
+            // 4️⃣ Release chairs whose owner left
             while (!occupied.isEmpty() && occupied.peek()[0] <= arrive) {
                 free.offer(occupied.poll()[1]);
             }
 
-            int chair = free.poll();              // smallest free chair
+            // 5️⃣ Take the smallest free chair
+            int chair = free.poll();
+
             if (idx == targetFriend) return chair;
 
+            // 6️⃣ Mark chair as occupied until 'leave'
             occupied.offer(new int[]{leave, chair});
         }
-        return -1; // unreachable for valid input
+        return -1;   // unreachable – input guarantees targetFriend exists
     }
 }
 ```
 
-### 3.3 C++ (priority_queue version)
+---
+
+## 3. C++ – `priority_queue` + `vector`
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
+#include <vector>
+#include <queue>
+#include <algorithm>
 
 class Solution {
 public:
-    int smallestChair(vector<vector<int>>& times, int targetFriend) {
+    int smallestChair(std::vector<std::vector<int>>& times, int targetFriend) {
         int n = times.size();
 
-        // Order friends by arrival time
-        vector<int> order(n);
-        iota(order.begin(), order.end(), 0);
-        sort(order.begin(), order.end(),
-             [&](int a, int b){ return times[a][0] < times[b][0]; });
+        // 1️⃣ Order indices by arrival time
+        std::vector<int> order(n);
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(),
+                  [&](int a, int b){ return times[a][0] < times[b][0]; });
 
-        // Available chairs – min-heap
-        priority_queue<int, vector<int>, greater<int>> free;
+        // 2️⃣ Min‑heap of free chairs
+        std::priority_queue<int, std::vector<int>, std::greater<int>> free;
         for (int i = 0; i < n; ++i) free.push(i);
 
-        // Occupied chairs – (leaveTime, chair)
-        priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> occupied;
+        // 3️⃣ Min‑heap of occupied chairs: pair(departure, seat)
+        std::priority_queue<
+            std::pair<int,int>, 
+            std::vector<std::pair<int,int>>, 
+            std::greater<std::pair<int,int>>
+        > occupied;
 
         for (int idx : order) {
             int arrive = times[idx][0];
             int leave  = times[idx][1];
 
-            // Free chairs whose leaveTime <= arrive
+            // 4️⃣ Free all chairs whose owner left by now
             while (!occupied.empty() && occupied.top().first <= arrive) {
                 free.push(occupied.top().second);
                 occupied.pop();
             }
 
+            // 5️⃣ Grab smallest free chair
             int chair = free.top(); free.pop();
+
             if (idx == targetFriend) return chair;
 
+            // 6️⃣ Mark chair occupied until 'leave'
             occupied.emplace(leave, chair);
         }
-        return -1; // never reached
+        return -1;   // should never happen
     }
 };
 ```
 
-All three solutions run in **O(n log n)** time and use **O(n)** extra memory.
+---
+
+## 🎯 Why These Solutions Win Interviews
+
+| Aspect | Python | Java | C++ |
+|--------|--------|------|-----|
+| **Readability** | 9 lines + comments | Compact, type‑safe | Concise, explicit data structures |
+| **Time Complexity** | O(n log n) | O(n log n) | O(n log n) |
+| **Space Complexity** | O(n) | O(n) | O(n) |
+| **Key Insight** | Two priority queues: free & occupied | Two `PriorityQueue`s | Two `priority_queue`s with custom comparator |
+| **Edge Cases Handled** | Releases at same timestamp, target friend at first or last | Same | Same |
 
 ---
 
-## 4️⃣ The Good, The Bad, The Ugly
+## 🔎 SEO‑Optimized Blog Article Outline
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Time complexity** | Optimal for the constraints (`n ≤ 10⁴`) | Still `O(n log n)` even if we only care about a single friend | There are slower O(n²) greedy approaches that will TLE |
-| **Space complexity** | Linear (`O(n)`) | Still needs two heaps | Avoids storing all arrival times – we only keep `n` chairs |
-| **Corner case** | Handles simultaneous leave & arrive correctly because we free first | Forgetting to free before seating may give wrong chair | If we used a single heap for both available & occupied, we would break the rule |
-| **Readability** | Short, clear code | Requires understanding of heaps and tuple handling | Overly complex if you mix data structures together |
-| **Language support** | Python `heapq`, Java `PriorityQueue`, C++ `priority_queue` | All three have built‑in min‑heap support | No built‑in “min‑heap” in some older languages (C needs custom comparator) |
+> **Title**: “LeetCode 1942 – The Smallest Unoccupied Chair: A Deep Dive into Two‑Heap Solutions (Java, Python & C++)”
 
 ---
 
-## 5️⃣ Why This Approach Rocks for Interviews
+### 1️⃣ Introduction  
+- Hook: “Imagine a party where every new guest must sit on the *smallest* empty chair. How do you keep track of the ever‑shifting chair lineup?”  
+- State the problem, link to LeetCode, mention constraints (n ≤ 10⁴).  
+- SEO keywords: *LeetCode 1942*, *Smallest Unoccupied Chair*, *Interview Question*, *Two Heaps*, *Priority Queue*, *Java*, *Python*, *C++*.
 
-1. **Clear algorithmic idea** – “free before seat” is easy to explain.  
-2. **Scales** – `O(n log n)` is acceptable for 10⁴ elements; interviewers will be impressed.  
-3. **Data‑structure showcase** – you demonstrate knowledge of priority queues, heaps, and custom comparators.  
-4. **Edge‑case coverage** – simultaneous events are a common pitfall; you handle them explicitly.  
-5. **Language agnostic** – you can swap Java ↔️ C++ ↔️ Python without changing the core logic.
+### 2️⃣ Problem Breakdown  
+- Visual diagram of arrivals & departures.  
+- Clarify “chair becomes free instantly” and “arrival times are distinct”.  
+- Why a naive simulation (array of chairs) is O(n²) and impractical.
+
+### 3️⃣ Naïve vs. Optimal Approaches  
+| Approach | Complexity | Drawbacks | When to Use |
+|----------|------------|-----------|-------------|
+| Brute Force Array | O(n²) | Memory heavy, time out | Small n only |
+| Sorted Events + TreeSet | O(n log n) | Slightly more code | When you’re comfortable with set operations |
+| Two Heaps (recommended) | O(n log n) | Simpler logic | **Interview‑ready** |
+
+### 4️⃣ The Two‑Heap Strategy (The Good)  
+- **Free Chair Heap**: always holds the smallest available chair.  
+- **Occupied Chair Heap**: sorted by departure time.  
+- Release logic: pop from occupied while departure ≤ current arrival → push chair back into free.  
+- Assignment: pop the top of free, push into occupied with its departure.  
+- Stop early when the target friend is seated.  
+
+#### Code Walk‑through (Python)  
+- Step‑by‑step explanation with inline comments (the 9‑line solution).  
+- Highlight the `while` loop that frees chairs.  
+- Show how early exit saves work.
+
+### 5️⃣ Translating to Java & C++ (The Ugly)  
+- Discuss language‑specific quirks:  
+  - Java `PriorityQueue` is a min‑heap by default? (No, it’s a min‑heap but needs comparator).  
+  - C++ `priority_queue` is max‑by‑default → use `greater<...>` comparator.  
+- Show how to store pairs (departure, chair) safely.  
+- Common pitfalls: forgetting to `pop` after `peek`, off‑by‑one errors in indices.
+
+### 6️⃣ Edge‑Case Checklist (The Bad)  
+| Edge Case | What to Watch For |
+|-----------|-------------------|
+| Target friend arrives last | Ensure loop processes all arrivals. |
+| Multiple departures at same timestamp | Release all before assigning. |
+| Arrival time equals previous departure | Release first (<= arrival) so the chair can be reused. |
+| Very large n (10⁴) | Two heaps keep memory O(n). |
+
+### 7️⃣ Performance Tuning Tips  
+- Use `heapq`’s `heappush`/`heappop` (Python) – no need for manual `push/pop`.  
+- In Java, pre‑populate free heap with `IntStream.range(0, n).forEach(free::offer)` for readability.  
+- In C++, use `std::vector<int>` for free heap if you want to avoid `push/pop` overhead for the first n elements.
+
+### 8️⃣ Variations & Extensions  
+- What if arrival times weren’t distinct? Add a tie‑break rule (e.g., friend ID).  
+- How would you handle a finite number of chairs? Use a counter for “no available chair” case.  
+- Use a segment tree or binary indexed tree for range minimum queries if you want to practice different data structures.
+
+### 9️⃣ Conclusion & Final Takeaway  
+- Summarize why the two‑heap solution is the *sweet spot* for LeetCode 1942.  
+- Encourage readers to practice by implementing the three versions, test against random inputs (`unittest` / JUnit / Google Test).  
+- Invite comments: “What other interview problems are you struggling with?”
+
+### 🔗 Additional Resources  
+- Link to LeetCode solution discussion threads.  
+- GitHub repo with all three implementations.  
+- Video walkthrough on YouTube for visual learners.
 
 ---
 
-## 6️⃣ Variants & Extensions
+## 🚀 Final Thought
 
-- **Multiple parties** – run the algorithm for each test case.  
-- **Dynamic arrival times** – keep an event queue (arrival & leave events) sorted by time.  
-- **Fixed number of chairs** – replace the “available seats” heap with a simple integer counter.  
-- **Random chair assignment** – switch to a max‑heap to give the largest free chair.
+With these **three concise, efficient implementations** and the **structured interview‑ready explanation**, you’ll be able to confidently tackle LeetCode 1942 and impress interviewers with both speed and clarity. Happy coding! 🚀
 
----
+--- 
 
-## 7️⃣ Take‑away & How to Land That Job
-
-1. **Practice the 2‑heap pattern** – you’ll use it for seating, parking, scheduling, and more.  
-2. **Explain the “free‑before‑seat” step** – interviewers love clear reasoning.  
-3. **Write clean, commented code** – show maintainability.  
-4. **Show the big‑O analysis** – interviewers ask for it; you’ll impress.  
-5. **Mention real‑world analogies** – “parking lot, hotel rooms, CPU cores” – makes the problem relatable.
-
-**Ready to ace your next interview?**  
-Upload this solution to LeetCode, add a README explaining the approach, and share the link in your résumé or GitHub. Recruiters love candidates who can solve real problems and explain them!
-
----
-
-## 8️⃣ Final Checklist
-
-- ✅ Code compiles in Python 3.8+, Java 17, and C++17.  
-- ✅ Handles all edge cases (simultaneous leave & arrival).  
-- ✅ Meets time/space constraints.  
-- ✅ Blog article is SEO‑friendly and covers interview‑relevant insights.
-
-Good luck, and happy coding! 🚀
+> *Feel free to drop questions in the comments – let’s make every new guest feel right at home!*

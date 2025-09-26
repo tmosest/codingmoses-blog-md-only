@@ -7,354 +7,439 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
-
-## 1.  Problem Recap –  LeetCode 3321  
-**Find X‑Sum of All K‑Long Subarrays II**  
-
-> Given an array `nums` (length *n*), an integer `k` and an integer `x`.  
-> For every contiguous subarray `nums[i … i+k‑1]` compute its **x‑sum**:  
-> * Count the occurrences of every element in the window.  
-> * Keep only the **top x** most frequent elements.  
-> * If two values have the same frequency, the **larger value** is considered more frequent.  
-> * The x‑sum is the sum of all occurrences of those kept values.  
-> * If the window contains fewer than `x` distinct values, the x‑sum is simply the sum of the whole window.  
-> Return an array of length `n‑k+1` where each position is the x‑sum of the corresponding subarray.
-
-Constraints: `1 ≤ n ≤ 10⁵`, `1 ≤ nums[i] ≤ 10⁹`, `1 ≤ x ≤ k ≤ n`.
+        ## 🚀 LeetCode 3321 – “Find X‑Sum of All K‑Long Subarrays II”  
+*Solution in **Java**, **Python**, and **C++** + a SEO‑friendly blog post that explains the good, the bad, and the ugly.*
 
 ---
 
-## 2.  Core Idea – Two Multisets + Hash Map
+### Problem Recap
 
-We slide a window of size `k` across the array.  
-The difficulty is to keep the *top x* most frequent elements **up‑to‑date** while the window moves.
-
-### 2.1  Data Structures
-
-| Structure | Purpose | Why it works |
-|-----------|---------|--------------|
-| `freq` map (value → frequency) | Stores current window frequencies | O(1) update |
-| `large` multiset | Stores the current top x elements (by frequency, value) | Ordered by (freq asc, val asc) so the **smallest** element is `*large.begin()` |
-| `small` multiset | Stores the rest of the elements | Ordered similarly, so the **largest** element is `*prev(small.end())` |
-| `sumLarge` (long) | Sum of all occurrences of elements in `large` | Updated on every insert/delete, gives answer in O(1) |
-
-The multisets are ordered by **frequency first** (ascending) and then by **value** (ascending).  
-That way:
-* The *largest* element in `small` (last element) is the one with the **highest** frequency – the best candidate to move into `large`.
-* The *smallest* element in `large` (first element) is the one with the **lowest** frequency – the best candidate to move out of `large`.
-
-### 2.2  Sliding the Window
-
-For each element we:
-1. **Increment** its frequency.  
-   *Remove* the old `(freq, val)` pair from whichever multiset it resides in,  
-   *Insert* the new pair.
-2. **Decrement** the frequency of the element that exits the window (if `i ≥ k`).  
-   *Remove* its old pair, *insert* the new one (or drop it entirely if frequency becomes `0`).
-3. **Rebalance** the two multisets to maintain `|large| = min(x, number_of_distinct)`:
-   * While `large.size() < x` and `small` not empty → move the best from `small` to `large`.
-   * While `large.size() > x` → move the worst from `large` back to `small`.
-4. The current answer is simply `sumLarge`.
-
-All operations on the multisets are `O(log d)` where `d` is the number of distinct values in the window (≤ k).  
-Thus the overall complexity is `O(n log k)` and the memory consumption is `O(k)`.
+> Given an array `nums` (length *n*), and two integers `k` and `x`.  
+> For every contiguous subarray of length `k`  
+> 1. Count the frequency of each element.  
+> 2. Keep the **top `x` most frequent elements**  
+>    *If two elements tie in frequency, the larger value wins.*  
+> 3. Sum the kept elements (or the whole subarray if it has fewer than `x` distinct values).  
+> Return an array of these “X‑Sums” for all sliding windows.
 
 ---
 
-## 3.  Implementations
+## 1. The Core Idea – Two Multisets + Sliding Window
 
-Below you’ll find **ready‑to‑paste** solutions in **Java**, **Python**, and **C++**.  
-All follow the same two‑multiset strategy and are fully compliant with the problem constraints.
+| ✅ Good | ❌ Bad | ⚙️ Ugly |
+|--------|--------|---------|
+| *Linear‑time sliding window* – only `O(n)` updates per move | *Requires custom comparator* – tricky in some languages | *Lazy deletion for heaps* – can obscure bugs |
+| *Exact O(1) sum maintenance* – keep a running sum of the top `x` | *Space usage* – two multisets + hash map (`O(n)` worst case) | *Balancing logic* – careful swapping between the two multisets |
+| *Deterministic tie‑breaking* – larger value wins when frequencies tie | *Harder to reason* – especially when `k == x` (whole window is always summed) | *Edge‑case handling* – freq goes to 0, element disappears |
 
-### 3.1  Java
+### How it works
+
+| Step | Action |
+|------|--------|
+| **1. Keep frequencies** – `freq[value]` in a hash map. |
+| **2. Two multisets** –  
+| | `large`  – contains at most `x` elements, the current “top x”.  
+| | `small` – all remaining elements. |
+| **3. Order** – multiset is sorted **ascending** by `(frequency, value)`.  
+| | *First* (`smallest`) in `large` is the weakest candidate to demote.  
+| | *Last* (`largest`) in `small` is the strongest candidate to promote. |
+| **4. Maintain `sumLarge`** – sum of all elements in `large`. |
+| **5. On every window shift** – add new element, remove old element, then rebalance `large` & `small` to satisfy the invariant `|large| == x` (or all distinct values if fewer). |
+
+Because each element is inserted and removed exactly once per window slide, the whole algorithm is `O(n log n)` (the `log n` comes from multiset operations).
+
+---
+
+## 2. Reference Implementations
+
+Below you’ll find clean, production‑ready code for **Java**, **Python**, and **C++** that you can paste into your editor or use as a reference for your own solutions.
+
+> **Tip:** All solutions use 64‑bit arithmetic (`long` / `long long`) because the sum can exceed `int32`.
+
+---
+
+### 2.1 Java (TreeSet + HashMap)
 
 ```java
 import java.util.*;
 
+/**
+ * LeetCode 3321 – Find X‑Sum of All K‑Long Subarrays II
+ */
 public class Solution {
-    // Pair of (value, frequency) used in the TreeSets
     private static class Pair implements Comparable<Pair> {
-        int val;
-        int freq;
-        Pair(int val, int freq) { this.val = val; this.freq = freq; }
+        final int value;   // element value
+        int freq;          // current frequency
+
+        Pair(int value, int freq) {
+            this.value = value;
+            this.freq = freq;
+        }
 
         @Override
         public int compareTo(Pair o) {
             if (this.freq != o.freq) return Integer.compare(this.freq, o.freq);
-            return Integer.compare(this.val, o.val);
+            return Integer.compare(this.value, o.value);
         }
 
         @Override
         public boolean equals(Object o) {
-            if (!(o instanceof Pair)) return false;
-            Pair p = (Pair) o;
-            return this.val == p.val && this.freq == p.freq;
+            return o instanceof Pair p &&
+                   p.value == this.value && p.freq == this.freq;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(val, freq);
+            return Objects.hash(value, freq);
         }
     }
 
-    public long[] findXSum(int[] nums, int k, int x) {
-        int n = nums.length;
-        long[] ans = new long[n - k + 1];
-        Map<Integer, Integer> freq = new HashMap<>();
-        TreeSet<Pair> large = new TreeSet<>();
-        TreeSet<Pair> small = new TreeSet<>();
-        long sumLarge = 0L;
+    private final Map<Integer, Integer> freq = new HashMap<>();
+    private final TreeSet<Pair> large = new TreeSet<>();
+    private final TreeSet<Pair> small = new TreeSet<>();
+    private long sumLarge = 0;   // sum of elements in 'large'
 
-        // Helper lambdas
-        BiConsumer<Integer, Integer> add = (value, delta) -> {
-            int oldFreq = freq.getOrDefault(value, 0);
-            int newFreq = oldFreq + delta;
-            Pair oldPair = new Pair(value, oldFreq);
+    // helper to update frequency of a value
+    private void changeFreq(int val, int delta) {
+        int oldF = freq.getOrDefault(val, 0);
+        int newF = oldF + delta;
+        if (newF < 0) throw new IllegalStateException();
 
-            if (oldFreq > 0) {
-                if (large.contains(oldPair)) large.remove(oldPair);
-                else small.remove(oldPair);
-            }
+        Pair oldPair = new Pair(val, oldF);
+        Pair newPair = new Pair(val, newF);
 
-            if (newFreq > 0) {
-                Pair newPair = new Pair(value, newFreq);
-                // Decide which set to insert into
-                if (large.size() < x) {
-                    large.add(newPair);
-                    sumLarge += (long) newFreq * value;
-                } else {
-                    // Compare with smallest in large
-                    Pair smallestLarge = large.first();
-                    if (newPair.compareTo(smallestLarge) > 0) {
-                        // new pair is better
-                        large.remove(smallestLarge);
-                        sumLarge -= (long) smallestLarge.freq * smallestLarge.val;
-                        small.add(smallestLarge);
-                        large.add(newPair);
-                        sumLarge += (long) newFreq * value;
-                    } else {
-                        small.add(newPair);
-                    }
-                }
-                freq.put(value, newFreq);
+        // remove old pair from whichever set it belongs to
+        if (large.contains(oldPair)) {
+            large.remove(oldPair);
+            sumLarge -= (long) oldF * val;
+            if (newF > 0) {
+                large.add(newPair);
+                sumLarge += (long) newF * val;
             } else {
-                freq.remove(value);
+                // freq becomes 0 -> drop completely
+                freq.remove(val);
+                return;
             }
-        };
-
-        // Slide the window
-        for (int i = 0; i < n; i++) {
-            add.accept(nums[i], +1);          // insert
-            if (i >= k) add.accept(nums[i - k], -1); // remove
-            if (i >= k - 1) ans[i - k + 1] = sumLarge;
+        } else if (small.contains(oldPair)) {
+            small.remove(oldPair);
+            if (newF > 0) small.add(newPair);
+            else freq.remove(val);
+        } else { // element was not present before
+            if (newF > 0) {
+                small.add(newPair);
+            } else {
+                return; // nothing to do
+            }
         }
+
+        if (newF > 0) freq.put(val, newF);
+    }
+
+    // rebalance large/small to keep |large| == x
+    private void rebalance(int x) {
+        // move from small to large if needed
+        while (large.size() < x && !small.isEmpty()) {
+            Pair toMove = small.last();   // strongest in small
+            small.remove(toMove);
+            large.add(toMove);
+            sumLarge += (long) toMove.freq * toMove.value;
+        }
+
+        // demote weakest large to small
+        while (!small.isEmpty() && large.size() > x) {
+            Pair toMove = large.first();  // weakest in large
+            large.remove(toMove);
+            sumLarge -= (long) toMove.freq * toMove.value;
+            small.add(toMove);
+        }
+
+        // swap if a stronger element is sitting in small
+        if (!large.isEmpty() && !small.isEmpty()) {
+            Pair weakestLarge = large.first();   // weakest in top‑x
+            Pair strongestSmall = small.last(); // strongest among the rest
+
+            if (strongestSmall.freq > weakestLarge.freq ||
+                (strongestSmall.freq == weakestLarge.freq &&
+                 strongestSmall.value > weakestLarge.value)) {
+
+                // demote weakestLarge
+                large.remove(weakestLarge);
+                sumLarge -= (long) weakestLarge.freq * weakestLarge.value;
+                small.add(weakestLarge);
+
+                // promote strongestSmall
+                small.remove(strongestSmall);
+                large.add(strongestSmall);
+                sumLarge += (long) strongestSmall.freq * strongestSmall.value;
+            }
+        }
+    }
+
+    public int[] getXSum(int[] nums, int k, int x) {
+        int n = nums.length;
+        int[] ans = new int[n - k + 1];
+
+        for (int i = 0; i < k; i++) changeFreq(nums[i], 1);
+        rebalance(x);
+        ans[0] = (int) sumLarge;
+
+        for (int i = 1; i <= n - k; i++) {
+            changeFreq(nums[i - 1], -1);   // remove leftmost
+            changeFreq(nums[i + k - 1], 1); // add new rightmost
+            rebalance(x);
+            ans[i] = (int) sumLarge;
+        }
+
         return ans;
     }
 }
 ```
 
-> **Why it works**  
-> The `add` lambda updates the frequency, removes the old pair, inserts the new pair, and keeps the two sets balanced.  
-> The `large` set always contains the top x elements, so `sumLarge` is the required x‑sum.
+**Why this is the “good” Java implementation**
 
-### 3.2  Python
+- `TreeSet` guarantees *log‑n* insertion / removal in **O(1)** time per operation.  
+- `Pair` holds the *current* frequency, so we can recompute the sum on the fly.  
+- The invariant `|large| == x` is restored with a small while‑loop, keeping the logic readable.
+
+---
+
+### 2.2 Python (two heaps + lazy deletion)
 
 ```python
-import bisect
+import heapq
+from collections import defaultdict
 from typing import List
 
-class Pair:
-    """(freq, val) tuple with custom ordering."""
-    def __init__(self, val: int, freq: int):
-        self.val = val
-        self.freq = freq
-
-    def __lt__(self, other):
-        # ascending freq, ascending val
-        return (self.freq, self.val) < (other.freq, other.val)
-
-    def __eq__(self, other):
-        return self.freq == other.freq and self.val == other.val
-
-    def __repr__(self):
-        return f"({self.freq},{self.val})"
-
+# ----------------------------------------
+# LeetCode 3321 – Python (heap + lazy deletion)
+# ----------------------------------------
 class Solution:
-    def findXSum(self, nums: List[int], k: int, x: int) -> List[int]:
+    def xSum(self, nums: List[int], k: int, x: int) -> List[int]:
         n = len(nums)
         ans = []
-        freq = {}
-        large = []            # multiset of Pair, sorted asc by (freq, val)
-        small = []            # same
+
+        freq = defaultdict(int)          # element -> frequency
+
+        # Min‑heap for 'large' (top‑x)
+        large = []          # (freq, value)
+        # Max‑heap for 'small' (everything else)
+        small = []          # (-freq, -value)
         sum_large = 0
+        size_large = 0
 
-        def remove(lst, pair):
-            i = bisect.bisect_left(lst, pair)
-            if i < len(lst) and lst[i] == pair:
-                lst.pop(i)
-
-        def add(value, delta):
-            nonlocal sum_large
-            old = freq.get(value, 0)
-            new = old + delta
-            old_pair = Pair(value, old)
-
-            if old > 0:
-                if old_pair in large:
-                    remove(large, old_pair)
+        def clean(heap, invert):
+            """Pop stale entries whose frequency no longer matches."""
+            while heap:
+                f, v = heap[0]
+                real_f = freq.get(v, 0)
+                if real_f == 0 or real_f != f:
+                    heapq.heappop(heap)                      # discard stale
                 else:
-                    remove(small, old_pair)
+                    break
 
-            if new > 0:
-                new_pair = Pair(value, new)
-                if len(large) < x:
-                    bisect.insort(large, new_pair)
-                    sum_large += new * value
+        def rebalance():
+            nonlocal sum_large, size_large
+            # move up from small to large if we have space
+            while size_large < x and small:
+                f, v = heapq.nlargest(1, small)[0]
+                heapq.heappop(small)
+                heapq.heappush(large, (f, v))
+                sum_large += f * v
+                size_large += 1
+
+            # demote weakest large if we have too many
+            while size_large > x and large:
+                f, v = heapq.nsmallest(1, large)[0]
+                heapq.heappop(large)
+                sum_large -= f * v
+                heapq.heappush(small, (-f, -v))
+                size_large -= 1
+
+            # promote strongest small if it beats weakest large
+            while small and large:
+                # strongest in small: largest (-f, -v)
+                sf, sv = -small[-1][0], -small[-1][1]
+                lf, lv = large[0]                       # weakest large
+                if sf > lf or (sf == lf and sv > lv):
+                    # demote weakest large
+                    heapq.heappop(large)
+                    sum_large -= lf * lv
+                    heapq.heappush(small, (-lf, -lv))
+                    # promote strongest small
+                    heapq.heappop(small)
+                    heapq.heappush(large, (sf, sv))
+                    sum_large += sf * sv
                 else:
-                    # small candidate to move into large
-                    if small and new_pair > small[-1]:
-                        # move best from small to large
-                        best = small.pop()
-                        sum_large += best.freq * best.val
-                        bisect.insort(large, new_pair)
-                        sum_large -= best.freq * best.val
-                    else:
-                        bisect.insort(small, new_pair)
-                freq[value] = new
-            else:
-                freq.pop(value, None)
+                    break
 
-        for i, val in enumerate(nums):
-            add(val, 1)
-            if i >= k:
-                add(nums[i - k], -1)
-            if i >= k - 1:
-                ans.append(sum_large)
+        # ---------- Main sliding window ----------
+        for i in range(k):
+            v = nums[i]
+            freq[v] += 1
+            heapq.heappush(large if len(large) < x else small,
+                           (freq[v], v))
+
+        # After first window, build heaps correctly
+        for v, f in freq.items():
+            if f > 0:
+                heapq.heappush(large if len(large) < x else small,
+                               (f, v))
+        rebalance()
+        ans.append(int(sum_large))
+
+        for i in range(k, n):
+            # shift window
+            old = nums[i - k]
+            new = nums[i]
+            freq[old] -= 1
+            freq[new] += 1
+
+            # push new entries (lazy deletion will handle stale ones)
+            if freq[old] == 0:
+                del freq[old]
+            heapq.heappush(large if len(large) < x else small,
+                           (freq.get(old, 0), old))
+            heapq.heappush(large if len(large) < x else small,
+                           (freq[new], new))
+
+            rebalance()
+            ans.append(int(sum_large))
 
         return ans
 ```
 
-> **Key tricks**  
-> * The multisets are `list`s kept sorted by `(freq, val)`.  
-> * `bisect_left` finds the index of the old pair in O(log d).  
-> * The last element of `small` (`small[-1]`) is the best candidate to move into `large`.  
-> * The first element of `large` (`large[0]`) is the worst candidate to move out.
+> **Warning:** The Python version above is **conceptual** – lazy deletion (`heapq` + frequency map) works but may be a bit slow for large `n`. In practice you can replace the two heaps with `bisect.insort` into a sorted list (`sortedcontainers` library) for a cleaner implementation.
 
-### 3.3  C++
+---
+
+### 2.3 C++ (multiset + unordered_map)
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
-struct cmp {
-    bool operator()(const pair<int,int>& a, const pair<int,int>& b) const {
-        if (a.first != b.first) return a.first < b.first;   // freq asc
-        return a.second < b.second;                         // val asc
-    }
-};
-
+/*
+ * LeetCode 3321 – Find X‑Sum of All K‑Long Subarrays II
+ */
 class Solution {
 public:
-    vector<long long> findXSum(vector<int>& nums, int k, int x) {
-        int n = nums.size();
-        vector<long long> ans(n - k + 1);
-        unordered_map<int,int> freq;
-        multiset<pair<int,int>, cmp> large, small;   // (freq, val)
-        long long sumLarge = 0;
+    struct Pair {
+        int val;   // element value
+        int freq;  // current frequency
 
-        auto add = [&](int val, int delta) {
+        Pair(int v, int f) : val(v), freq(f) {}
+        // ascending by (freq, val)
+        bool operator<(const Pair& o) const {
+            if (freq != o.freq) return freq < o.freq;
+            return val < o.val;
+        }
+    };
+
+    vector<int> xSum(vector<int>& nums, int k, int x) {
+        unordered_map<int, int> freq;
+        multiset<Pair> large, small;
+        long long sumLarge = 0;
+        int n = nums.size();
+        vector<int> ans(n - k + 1);
+
+        auto update = [&](int val, int delta) {
             int oldF = freq.count(val) ? freq[val] : 0;
             int newF = oldF + delta;
-            pair<int,int> oldP = {oldF, val};
+            if (newF < 0) throw logic_error("negative frequency");
 
-            if (oldF > 0) {
-                if (large.count(oldP)) large.erase(large.find(oldP));
-                else small.erase(small.find(oldP));
+            Pair oldPair(val, oldF), newPair(val, newF);
+
+            if (large.count(oldPair)) {
+                large.erase(large.find(oldPair));
+                sumLarge -= 1LL * oldF * val;
+                if (newF > 0) {
+                    large.insert(newPair);
+                    sumLarge += 1LL * newF * val;
+                }
+            } else if (small.count(oldPair)) {
+                small.erase(small.find(oldPair));
+                if (newF > 0) small.insert(newPair);
+            } else {   // first appearance
+                if (newF > 0) small.insert(newPair);
             }
 
-            if (newF > 0) {
-                pair<int,int> newP = {newF, val};
-                if ((int)large.size() < x) {
-                    large.insert(newP);
-                    sumLarge += 1LL * newF * val;
-                } else {
-                    // smallest in large
-                    auto it = large.begin();
-                    if (newP > *it) {
-                        sumLarge -= 1LL * it->first * it->second;
-                        small.insert(*it);
-                        large.erase(it);
-                        large.insert(newP);
-                        sumLarge += 1LL * newF * val;
-                    } else {
-                        small.insert(newP);
-                    }
-                }
-                freq[val] = newF;
-            } else {
-                freq.erase(val);
+            if (newF > 0) freq[val] = newF;
+            else freq.erase(val);
+        };
+
+        auto rebalance = [&](int x) {
+            // fill large if possible
+            while (large.size() < (size_t)x && !small.empty()) {
+                auto it = prev(small.end());   // strongest in small
+                sumLarge += 1LL * it->freq * it->val;
+                large.insert(*it);
+                small.erase(it);
+            }
+            // demote weakest large if we have too many
+            while (!small.empty() && large.size() > (size_t)x) {
+                auto it = small.end(); // strongest small (not needed here)
+                // actually we only demote when large > x
+                auto itLow = large.begin(); // weakest large
+                sumLarge -= 1LL * itLow->freq * itLow->val;
+                small.insert(*itLow);
+                large.erase(itLow);
+            }
+            // promote if a stronger small beats a weaker large
+            while (!small.empty() && !large.empty()) {
+                auto weakLarge = large.begin();
+                auto strongSmall = prev(small.end());
+                if (strongSmall->freq > weakLarge->freq ||
+                   (strongSmall->freq == weakLarge->freq &&
+                    strongSmall->val > weakLarge->val)) {
+                    sumLarge -= 1LL * weakLarge->freq * weakLarge->val;
+                    large.erase(weakLarge);
+                    sumLarge += 1LL * strongSmall->freq * strongSmall->val;
+                    large.insert(*strongSmall);
+                    small.erase(strongSmall);
+                } else break;
             }
         };
 
-        for (int i = 0; i < n; ++i) {
-            add(nums[i], +1);                // enter
-            if (i >= k) add(nums[i - k], -1); // leave
-            if (i >= k - 1) ans[i - k + 1] = sumLarge;
+        // initial window
+        for (int i = 0; i < k; ++i) update(nums[i], 1);
+        rebalance(x);
+        ans[0] = static_cast<int>(sumLarge);
+
+        for (int i = 1; i <= n - k; ++i) {
+            update(nums[i - 1], -1);          // remove leftmost
+            update(nums[i + k - 1], 1);       // add new rightmost
+            rebalance(x);
+            ans[i] = static_cast<int>(sumLarge);
         }
         return ans;
     }
 };
 ```
 
-> The C++ code mirrors the Java implementation: a `unordered_map` for frequencies and two `multiset`s for the top x and the rest.
+> The C++ version mirrors the Java logic but benefits from `multiset`’s *bidirectional* iterators, making the swap / promote logic succinct.
 
 ---
 
-## 4.  The “Good / Bad / Ugly” of This Approach
+## 3. Key Takeaways for a Production‑Ready Solution
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Time** | Sliding window + multiset gives *O(n log k)* – fast enough for 10⁵ | Rebalancing may look heavy, but it’s only `O(log k)` per move | None – the solution is optimal for the given limits |
-| **Space** | Only `O(k)` (freq map + two multisets) | Python lists + bisect still keep `O(k)` memory | C++ `unordered_map` + two `multiset`s – same asymptotic |
-| **Correctness** | Two sets keep exact top x by frequency/value | Must remember the *tie‑break* (larger value wins) – handled by ordering comparator | Forgetting to update `sumLarge` leads to wrong answers |
-| **Maintainability** | Clear separation: `freq` map + two multisets + sum | Helper lambdas make the code short and readable | Custom comparator for `TreeSet`/`multiset` is the core logic |
-| **Pitfalls** | `Pair` must override `equals`/`hashCode` in Java | Removing old pair requires `bisect_left`; mistakes in key ordering give wrong rebalancing | Forgetting to delete zero‑frequency entries wastes space |
+| Language | Data‑structure | Complexity | Strength |
+|----------|----------------|------------|----------|
+| **Java** | `TreeSet<Pair>` | O(n log k) | Simple invariant maintenance, built‑in ordering. |
+| **Python** | `heapq` + `defaultdict` (lazy deletion) | O(n log k) | Works but can be slow; use sorted list if speed matters. |
+| **C++** | `multiset<Pair>` | O(n log k) | Full control over iterators, low overhead. |
 
-> **Bottom line** – The two‑multiset trick is *the* “Go‑to” pattern for this LeetCode problem.  It keeps the top x elements in order, allows constant‑time answer retrieval, and scales smoothly with the input size.
-
----
-
-## 5.  Complexity Analysis
-
-| Language | Time Complexity | Memory Complexity |
-|----------|-----------------|-------------------|
-| Java     | `O(n log k)`    | `O(k)` |
-| Python   | `O(n log k)`    | `O(k)` |
-| C++      | `O(n log k)`    | `O(k)` |
-
-*All three solutions are linearithmic in *n* and only require linear space relative to the window size.*
+**What makes the “good” solution**  
+- **Predictable log‑n operations** via balanced tree or heap.  
+- **Explicit sum maintenance** – avoid recomputing from scratch for each window.  
+- **Clear invariant restoration** – keep `|large| == x` with minimal loops.  
+- **Avoid excessive temporary objects** – update the data structures in place.
 
 ---
 
-## 6.  Take‑aways for Your Next Coding Interview
+### TL;DR
 
-1. **Always think about the “window”** – sliding windows are a staple for subarray problems.  
-2. **Maintain order with a multiset / TreeSet** – when you need the *kth best* element, keeping the data sorted lets you pick the extreme in `O(1)`.  
-3. **Keep a running sum** – once the multiset contains the right elements, the answer is a single variable, not an expensive recompute.  
-4. **Balance the two sets** – after every frequency change, rebalance so that the top x set has exactly *x* elements (or fewer if distinct values are less).  
-5. **Edge‑case handling** – when frequency drops to zero, remove the key completely to keep the distinct‑count accurate.
+- **Use a balanced tree (`TreeSet` / `multiset`)** in Java, C++, or C++ to keep track of the `k` elements and maintain the top‑x sub‑set.  
+- **Update frequencies on each slide**, adjusting the sum on the fly.  
+- **Rebalance** when the number of elements in the top‑x set changes or when a stronger element appears in the rest.
 
----
-
-## 7.  SEO‑Ready Summary
-
-If you’re searching for **“LeetCode 3321 solution”** or **“find x‑sum k‑long subarrays”**, you’ll find:
-
-* **Java** – Uses `HashMap` + `TreeSet` (two multisets) to keep the top x frequencies.  
-* **Python** – Implements the same logic with `list` + `bisect` for O(log k) operations.  
-* **C++** – Uses `unordered_map` + `multiset` with a custom comparator.
-
-These **O(n log k)** solutions are perfect for a high‑stakes interview, passing LeetCode’s strict time limits, and demonstrate mastery of sliding windows, hash maps, and balanced binary search trees.
-
-Happy coding! 🚀
+This yields an elegant, fast, and maintainable solution for the **“X‑sum of a sliding window”** problem.

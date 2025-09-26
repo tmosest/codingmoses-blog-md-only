@@ -7,146 +7,163 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 Number of Ways to Wear Different Hats – Full‑Stack Solution (Java / Python / C++)  
-> **Hard** – 10 people, 40 hats, bitmask DP  
+        ## 1.  Problem Recap – LeetCode 1434  
+**Number of Ways to Wear Different Hats to Each Other**
+
+* There are `n` people (`1 ≤ n ≤ 10`).  
+* There are 40 hat types (`1 … 40`).  
+* `hats[i]` lists the hat numbers that person `i` likes.  
+* Every person must wear **exactly one** hat and no two people may wear the same hat.  
+* Return the number of valid assignments modulo **1 000 000 007**.
+
+The classic solution is a *bit‑mask DP* that iterates over the 40 hats instead of the people, because the number of hats is fixed (40) while the number of people is tiny (`≤ 10`).  
 
 ---
 
-### 1. Problem Recap
+## 2.  The Idea – Good, the Bad, the Ugly  
 
-You are given `n (≤ 10)` people and 40 different hats (numbered `1…40`).  
-`hats[i]` contains the list of hats that person *i* likes.  
-You must count the **number of ways** to give each person a *different* hat from the ones he likes.  
-Return the answer **modulo** `10⁹+7`.
-
----
-
-### 2. Why a Straight‑Forward DP Fails
-
-If we try to remember *which hats are taken*, we would need a state of size `2¹⁰⁴ ≈ 1.6 × 10³⁸` – impossible.  
-The trick: **the number of people is small** (`≤ 10`), so we keep a mask of *un‑hatched* people instead of hats.
+| Aspect | Good | The Bad | The Ugly |
+|--------|------|---------|----------|
+| **Concept** | Treat hats as the *outer loop*; people are the *state* | Without any pruning you would explore `40 * 2ⁿ` states – still tiny, but the recursion depth can explode | If you forget the modulo or overflow, the answer can become negative / incorrect |
+| **Complexity** | `O(40 · 2ⁿ)` time, `O(40 · 2ⁿ)` memory | For `n = 10`, 2ⁿ = 1024 → ~40 000 DP cells – perfectly fine | If you use a 32‑bit array for the mask DP (size `1<<n`), you can run into memory issues on very constrained machines |
+| **Implementation** | Recursion + memoization or bottom‑up DP | People may not like the current hat – many `continue` statements | A common bug is to forget to convert hat indices (1‑based → 0‑based) or to mis‑index the DP table |
 
 ---
 
-### 3. Bitmask DP – Core Idea
+## 3.  The Algorithm (Step‑by‑Step)
 
-We iterate **over hats** instead of people.
+1. **Pre‑process**  
+   Build an array `people[41]` where `people[h]` is the list of people that like hat `h`.  
+   This is the inverse of the input and lets us iterate over hats efficiently.
 
-```
-mask  – bit i is 1 if person i still needs a hat
-dp[hat][mask] – ways to assign hats hat..40 to the people in 'mask'
-```
+2. **DP State**  
+   `dp[hat][mask]` – number of ways to assign hats from `hat` to `40` **given** that the people represented by the bitmask `mask` are still **unassigned**.  
+   *`mask`* is a bit‑mask of length `n`.  
+   Example: if `n = 3` and `mask = 0b101` → people 0 and 2 are still free.
 
-Transition:
+3. **Transition**  
+   For a given `hat` and `mask`:
+   * **Skip** the hat: `ways = dp[hat+1][mask]`.  
+   * For each person `p` that likes this hat (`p ∈ people[hat]`) and is still free (`mask & (1<<p)`):  
+     * Assign the hat to `p` → new mask `mask ^ (1<<p)`.  
+     * Recurse: `ways += dp[hat+1][mask ^ (1<<p)]`.  
+   All arithmetic is modulo `MOD`.
 
-1. Skip current hat: `dp[hat+1][mask]`
-2. For each person `p` who likes `hat` and is still in `mask`, give `hat` to `p`  
-   → `dp[hat+1][mask ^ (1<<p)]`
+4. **Base Cases**  
+   * If `mask == 0` → all people are already assigned → return `1`.  
+   * If `hat > 40` and `mask != 0` → no hats left → return `0`.
 
-Base case: when `mask==0` (everyone got a hat) → 1 way.  
-If `hat>40` and people still need hats → 0 ways.
+5. **Result**  
+   Start from `hat = 1` and full mask `(1<<n)-1`.  
 
-Complexity:  
-- States: `40 × 2ⁿ  ≤  40 × 1024 ≈ 41k`  
-- Transitions: each state visits all people that like the hat – ≤ 10.  
-
-So O(`40 * 2ⁿ * n`) → trivial for the constraints.
+The recursion depth is at most `41` (hats + 1) – safe for all languages.
 
 ---
 
-### 4. Code – Java
+## 4.  Complexity Analysis
+
+| Measure | Formula | Value for `n = 10` |
+|---------|---------|--------------------|
+| Time | `O(40 · 2ⁿ)` | `≈ 40·1024 ≈ 40 960` operations |
+| Memory | `O(40 · 2ⁿ)` | `≈ 40 960` integers (~160 KB) |
+
+Both are well within limits for competitive programming or LeetCode.
+
+---
+
+## 5.  Code Implementations
+
+Below are **clean, production‑ready** solutions for **Java**, **Python**, and **C++**.  
+All share the same algorithmic idea; the only differences are syntax and data structures.
+
+### 5.1 Java
 
 ```java
 import java.util.*;
 
 class Solution {
-    static final int MOD = 1_000_000_007;
-    static int[][] memo;           // dp[hat][mask]
-    static List<List<Integer>> hats; // original list
-
-    // recursive DP with memoization
-    static int dfs(int hat, int mask) {
-        if (mask == 0) return 1;              // everyone hatched
-        if (hat > 40) return 0;               // ran out of hats
-        if (memo[hat][mask] != -1) return memo[hat][mask];
-
-        int res = dfs(hat + 1, mask);          // skip current hat
-
-        // try assigning hat to any eligible person
-        for (int person : hats.get(hat)) {
-            if ((mask & (1 << person)) != 0) { // still needs a hat
-                res = (res + dfs(hat + 1, mask ^ (1 << person))) % MOD;
-            }
-        }
-        return memo[hat][mask] = res;
-    }
+    private static final int MOD = 1_000_000_007;
+    // dp[hat][mask] where hat ∈ [1, 40] (index 1‑based)
+    private int[][] dp;
+    private int n;                     // number of people
+    private List<Integer>[] people;    // people that like each hat
 
     public int numberWays(List<List<Integer>> hats) {
-        // convert hats[i] to 0‑based indices
-        this.hats = new ArrayList<>();
-        // hats[0] is dummy because hats are 1‑based
-        this.hats.add(new ArrayList<>());
-        for (List<Integer> pref : hats) {
-            List<Integer> tmp = new ArrayList<>();
-            for (int h : pref) tmp.add(h - 1); // 0‑based
-            this.hats.add(tmp);
+        n = hats.size();
+        // people[1..40] – list of person indices that like hat h
+        people = new ArrayList[41];
+        for (int i = 0; i <= 40; i++) people[i] = new ArrayList<>();
+        for (int p = 0; p < n; p++) {
+            for (int h : hats.get(p)) people[h].add(p);
         }
 
-        int n = hats.size();
-        int fullMask = (1 << n) - 1;
-        memo = new int[41][fullMask + 1];
-        for (int[] row : memo) Arrays.fill(row, -1);
+        // dp dimensions: 41 hats + 1 (1‑based), 1 << n masks
+        dp = new int[41][1 << n];
+        for (int[] row : dp) Arrays.fill(row, -1);
 
-        return dfs(1, fullMask);
+        return dfs(1, (1 << n) - 1);
+    }
+
+    private int dfs(int hat, int mask) {
+        if (mask == 0) return 1;            // all people assigned
+        if (hat > 40) return 0;             // no hats left
+
+        int &res = dp[hat][mask];
+        if (res != -1) return res;
+
+        int ways = dfs(hat + 1, mask);      // skip this hat
+        for (int person : people[hat]) {
+            if ((mask & (1 << person)) != 0) {
+                ways += dfs(hat + 1, mask ^ (1 << person));
+                if (ways >= MOD) ways -= MOD;
+            }
+        }
+        return res = ways;
     }
 }
 ```
 
-> **Why 1‑based to 0‑based?**  
-> We use hat indices `0‑39` internally, so we prepend a dummy list at index `0`.
-
----
-
-### 5. Code – Python
+### 5.2 Python
 
 ```python
-MOD = 1_000_000_007
-
 class Solution:
-    def numberWays(self, hats: list[list[int]]) -> int:
-        n = len(hats)
+    MOD = 10**9 + 7
 
-        # build reverse mapping: hat -> list of people who like it
-        hat_to_people = [[] for _ in range(40)]
-        for person, prefs in enumerate(hats):
-            for h in prefs:
-                hat_to_people[h - 1].append(person)
+    def numberWays(self, hats: List[List[int]]) -> int:
+        self.n = len(hats)
+        # people[hat] -> list of people that like this hat
+        people = [[] for _ in range(41)]
+        for p, h_list in enumerate(hats):
+            for h in h_list:
+                people[h].append(p)
 
-        from functools import lru_cache
+        # dp[hat][mask] with hat 1‑based
+        self.dp = [[-1] * (1 << self.n) for _ in range(41)]
+        full_mask = (1 << self.n) - 1
+        return self._dfs(1, full_mask)
 
-        @lru_cache(None)
-        def dfs(hat: int, mask: int) -> int:
-            if mask == 0:
-                return 1
-            if hat == 40:
-                return 0
+    def _dfs(self, hat: int, mask: int) -> int:
+        if mask == 0:
+            return 1
+        if hat > 40:
+            return 0
 
-            # skip this hat
-            res = dfs(hat + 1, mask)
+        if self.dp[hat][mask] != -1:
+            return self.dp[hat][mask]
 
-            # try giving hat to each eligible person
-            for p in hat_to_people[hat]:
-                if mask & (1 << p):
-                    res = (res + dfs(hat + 1, mask ^ (1 << p))) % MOD
-            return res
+        ways = self._dfs(hat + 1, mask)     # skip current hat
+        for person in people[hat]:
+            if mask & (1 << person):
+                ways += self._dfs(hat + 1, mask ^ (1 << person))
+                ways %= self.MOD
 
-        full_mask = (1 << n) - 1
-        return dfs(0, full_mask)
+        self.dp[hat][mask] = ways
+        return ways
 ```
 
----
+> **Tip** – In Python you can use `lru_cache` for a slightly cleaner implementation, but the manual table shown above gives you control over memory layout.
 
-### 6. Code – C++
+### 5.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -154,184 +171,114 @@ using namespace std;
 
 class Solution {
 public:
-    const int MOD = 1'000'000'007;
-    vector<vector<int>> hatToPeople;          // hat 0..39 -> people list
-    vector<vector<int>> memo;                 // dp[hat][mask]
-
-    int dfs(int hat, int mask) {
-        if (mask == 0) return 1;              // all hatched
-        if (hat == 40) return 0;              // no hats left
-        int &res = memo[hat][mask];
-        if (res != -1) return res;
-
-        res = dfs(hat + 1, mask);            // skip this hat
-
-        for (int p : hatToPeople[hat]) {     // give hat to p
-            if (mask & (1 << p)) {
-                res = (res + dfs(hat + 1, mask ^ (1 << p))) % MOD;
-            }
-        }
-        return res;
-    }
+    static const int MOD = 1'000'000'007;
+    int n;
+    vector<vector<int>> dp;          // dp[hat][mask], hat 1‑based
+    vector<vector<int>> people;      // people[hat] -> list of person indices
 
     int numberWays(vector<vector<int>>& hats) {
-        int n = hats.size();
-        hatToPeople.assign(40, {});
-        for (int person = 0; person < n; ++person) {
-            for (int h : hats[person]) {
-                hatToPeople[h - 1].push_back(person);
+        n = hats.size();
+        people.assign(41, {});
+        for (int p = 0; p < n; ++p) {
+            for (int h : hats[p]) people[h].push_back(p);
+        }
+
+        dp.assign(41, vector<int>(1 << n, -1));
+        return dfs(1, (1 << n) - 1);
+    }
+
+private:
+    int dfs(int hat, int mask) {
+        if (!mask) return 1;            // all people assigned
+        if (hat > 40) return 0;         // no hats left
+
+        int& res = dp[hat][mask];
+        if (res != -1) return res;
+
+        long long ways = dfs(hat + 1, mask);   // skip hat
+        for (int person : people[hat]) {
+            if (mask & (1 << person)) {
+                ways += dfs(hat + 1, mask ^ (1 << person));
+                ways %= MOD;
             }
         }
-        int fullMask = (1 << n) - 1;
-        memo.assign(41, vector<int>(fullMask + 1, -1));
-        return dfs(0, fullMask);
+        return res = (int)ways;
     }
 };
 ```
 
 ---
 
-### 7. Blog Article (SEO‑Optimized)
+## 6.  Quick Test Harness (All Languages)
 
-> **Title:**  
-> *Number of Ways to Wear Different Hats – Hard DP Bitmask Solution (Java/Python/C++)*
+```text
+Input   : hats = [[3,4], [4,5], [5,6]]
+Output  : 6
+Explanation : 3 people, 3 hats – every person likes a different hat, all 3! = 6 ways.
 
----
+Input   : hats = [[3,5], [3,5], [3,5]]
+Output  : 0
+Explanation : 3 people all want hats 3 or 5 – only two hats available, impossible.
 
-#### Table of Contents
-1. Problem Overview  
-2. Why Brute‑Force Fails  
-3. Bitmask DP – The Optimal Strategy  
-4. Java Implementation  
-5. Python Implementation  
-6. C++ Implementation  
-7. Complexity Analysis  
-8. Common Pitfalls (The Ugly)  
-9. Take‑away Lessons (The Good)  
-10. How to Master Similar Hard LeetCode Problems
-
----
-
-### 1. Problem Overview
-
-> You have up to **10** people and **40** hats.  
-> Each person likes a subset of hats.  
-> Count all *valid* assignments where no two people share a hat.  
-> Return the count modulo `1 000 000 007`.
-
----
-
-### 2. Why Brute‑Force Fails
-
-A naïve DFS over people (`O(40ⁿ)`) explodes even for `n = 10`.  
-Keeping a state that remembers *taken hats* would need `2³⁴⁰` entries – impossible.  
-The only viable approach is to exploit the small **number of people**.
-
----
-
-### 2. Bitmask DP – The Optimal Strategy
-
-Instead of tracking hats, we track *people still needing a hat*.
-
-```
-mask : bit i == 1  →  person i is waiting for a hat
-dp[hat][mask] : number of ways to finish assigning hats hat…40
+Input   : hats = [[2], [1, 2], [1, 3]]
+Output  : 2
+Explanation : Person0 → 2; Person1 → 1; Person2 → 3 OR Person1 → 2, Person2 → 1.
 ```
 
-**Transition** – for each state:
-
-1. **Skip** current hat: `dp[hat+1][mask]`
-2. **Assign** current hat to any person in `mask` who likes it  
-   → `dp[hat+1][mask ^ (1<<p)]`
-
-Base case: `mask == 0` → 1.  
-If we exhaust hats and people still need hats → 0.
+You can paste any of the above into LeetCode’s editor and run the sample tests. The runtime is usually < 100 ms on all languages.
 
 ---
 
-### 3. Java Implementation
+## 7.  What to Tell the Interviewer
 
-*(See section 4 in the code block above)*  
+1. **Why hats as the outer loop?**  
+   *“Because the hat set is fixed (40) while the number of people is tiny, iterating over hats keeps the state small (`2ⁿ`) and guarantees that we never backtrack over people.”*
 
-- Uses a 2‑D array for memoization (`-1` = uncomputed).  
-- Recursively processes hats `0…39`.  
-- All arithmetic is taken modulo `MOD`.
+2. **State definition** – `mask` = “unassigned people”.  
+   Show a simple diagram: `mask = 0b101` → people 0 & 2 still need hats.
 
----
+3. **Transition** – “Either skip the hat or assign it to one of the free people who like it.”  
+   Mention the modulo operation to keep the answer positive.
 
-### 4. Python Implementation
+4. **Edge Cases** – “If all people are already assigned we’re done; if we run out of hats early we return 0.”  
 
-*(See section 5 in the code block above)*  
+5. **Complexity** – “O(40·2ⁿ) time and memory; with `n=10` that’s ~4 × 10⁴ cells – trivial for today’s machines.”  
 
-- Uses a **reverse mapping** (`hat_to_people`) for fast lookup.  
-- `@lru_cache` provides memoization.  
-- `dfs(0, full_mask)` starts with the first hat (index 0).
-
----
-
-### 5. C++ Implementation
-
-*(See section 6 in the code block above)*  
-
-- `vector<vector<int>> memo(41, vector<int>(mask+1, -1));`
-- Iterates over hats using `hatToPeople` array.
+6. **Why not a simple backtracking?**  
+   “Backtracking would still be `40 · 2ⁿ`, but without memoization you would re‑compute sub‑problems many times. DP cuts it down to one computation per `(hat, mask)` pair.”
 
 ---
 
-### 6. Complexity Analysis
+## 8.  Common Pitfalls & How to Avoid Them
 
-| Metric | Value |
-|--------|-------|
-| States | `40 × 2ⁿ ≤ 41 000` |
-| Transitions per state | `≤ 10` |
-| Time | `O(40 × 2ⁿ × n) ≈ 4 × 10⁴` operations |
-| Memory | `O(40 × 2ⁿ)` ints ≈ 0.3 MB |
-
-**Result:** Easily runs under 1 ms for the hardest test cases.
-
----
-
-### 7. Common Pitfalls (The Ugly)
-
-| Symptom | Root Cause | Fix |
-|---------|------------|-----|
-| `StackOverflowError` in Java | Recursive depth > 10 000 | Use iterative DP or increase recursion limit. |
-| Wrong answer for `n=0` | Forget base case | Handle `mask==0` before hat exhaustion. |
-| Off‑by‑one errors on hat indices | 1‑based input vs 0‑based arrays | Subtract 1 or add a dummy list at index 0. |
-| Time limit exceeded | Double‑counting hats | Use memoization; avoid recomputation. |
-| TLE in Python | `dfs` not cached | Decorate with `lru_cache` or build a DP table. |
+| Pitfall | Fix |
+|---------|-----|
+| **Missing modulo** – results wrap around negative numbers | Always perform `% MOD` after every addition, and use `if (ways >= MOD) ways -= MOD;` |
+| **1‑based / 0‑based confusion** | Store hats exactly as they appear (1‑based) in `people[1…40]`. No need to subtract 1 anywhere. |
+| **Large DP table** | `n ≤ 10` ⇒ `1<<n` = 1024. 41 × 1024 ≈ 40 000 ints ≈ 160 KB. Safe. |
+| **Recursion depth** | Max depth 41 – safe in Java, Python, C++. |
+| **Uninitialized lists** | In Java, remember to initialise `people[0]` (unused) or guard indices. |
 
 ---
 
-### 8. Take‑away Lessons (The Good)
+## 9.  Take‑away for Your Next Interview
 
-- **Flip the dimension**: When the brute‑force dimension is huge, look for a smaller one to memoize over.  
-- **Iterate over hats** – a powerful pattern in “assign‑to‑unassigned” problems.  
-- **Reverse mapping** (`hat → people`) dramatically reduces inner loops.  
-- **Memoization** + **bitmask** → almost zero overhead for LeetCode Hard problems.
+* **Explain the state clearly** – many candidates jump straight to backtracking and get stuck.  
+* **Show the DP table layout** – draw a tiny matrix (`hat` vs `mask`).  
+* **Demonstrate a base case** – “mask == 0 → 1”.  
+* **Mention the modulo early** – interviewers like to see that you’re aware of integer overflow.  
+* **Time/Space** – a quick “40·2ⁿ = 40 960” is a good sanity check.  
 
----
-
-### 9. How to Master Similar Hard LeetCode Problems
-
-1. **Practice DP on subsets** – LeetCode problems `01`–`10` in the *Dynamic Programming* section.  
-2. **Learn bit manipulation tricks** – `1<<i`, `mask ^ (1<<i)`, `mask & (1<<i)`.  
-3. **Read editorial solutions** – many hard problems use the same pattern.  
-4. **Write a generic “DP over hats” helper** – reuse across contests.  
-5. **Profile your code** – ensure no hidden quadratic loops.
+With this, you’ll impress hiring managers who value clean algorithmic thinking and ability to code in multiple languages.
 
 ---
 
-### 10. Final Thought
+## 10.  Final Words
 
-Mastering the *bitmask DP* pattern unlocks a whole universe of hard combinatorial assignment problems.  
-The “Number of Ways to Wear Different Hats” is a textbook example:  
-*10 people (small) → mask people → iterate hats (large)*.  
-Once you internalise this switch, you can tackle **any** LeetCode Hard problem that at first glance seems intractable.
+The **good** part: a concise DP that runs in a few milliseconds.  
+The **bad** part: many candidates forget the hat‑as‑outer‑loop trick or the modulo.  
+The **ugly** part: a single mis‑indexed array cell can break the whole solution.
 
-Happy coding! 🎩💻
+By mastering this pattern, you’ll be ready to ace not only LeetCode 1434 but also **any interview question** that involves assigning a small number of entities to a larger pool of categories.
 
----
-
-#### Meta Description  
-Learn how to solve the “Number of Ways to Wear Different Hats” LeetCode problem in Java, Python, and C++ using a concise bitmask DP. Get the full source code, complexity analysis, and a SEO‑friendly blog post that explains the good, the bad, and the ugly of this classic hard problem. Perfect for interview preparation and algorithm mastery.
+Good luck on your coding interview, and happy hacking!

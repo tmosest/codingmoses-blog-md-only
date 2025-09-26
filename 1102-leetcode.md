@@ -7,15 +7,81 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Code Solutions  
-
-Below are three clean, production‑ready implementations of **LeetCode 1102 – Path With Maximum Minimum Value**.  
-All three use a *max‑heap priority‑queue* (Dijkstra‑style) to explore the grid in order of the highest possible “minimum‑value‑so‑far” at each step.  
-The approach works in **O(m n log(m n))** time and **O(m n)** space, where *m* and *n* are the grid dimensions.
+        # 1102. Path With Maximum Minimum Value – A Complete Guide  
+*(Java, Python, C++ – Dijkstra’s Max‑Heap + 4‑direction BFS)*  
 
 ---
 
-### 1.1  Java – 1‑Liner Style
+## Table of Contents  
+1. 📌 Problem Summary  
+2. 🚀 Why Dijkstra + Max‑Heap Works  
+3. 🛠️ 3‑Language Implementation (Java / Python / C++)  
+4. ⚖️ Time & Space Complexity  
+5. 🤔 Common Pitfalls (The “Bad” & “Ugly” parts)  
+6. 🎯 Variants & Extensions  
+7. 👋 Take‑away & Career‑boosting Tips  
+8. 📚 Further Reading & Resources  
+
+> **SEO Keywords**: Path With Maximum Minimum Value, LeetCode 1102, Dijkstra algorithm, grid path problem, Java BFS, Python priority queue, C++ priority queue, interview coding problem, interview preparation, software engineering interview, coding interview tips, algorithm blog, data structure interview, algorithmic thinking.
+
+---
+
+## 1. 📌 Problem Summary
+
+**LeetCode #1102 – Path With Maximum Minimum Value**
+
+> *Given an `m × n` integer grid `grid`, find a path from the top‑left cell `(0,0)` to the bottom‑right cell `(m‑1,n‑1)` that maximizes the **minimum** value encountered along the path.*  
+
+The path may move only in the four cardinal directions (up, down, left, right).  
+The answer is the *score* of the best path – the largest possible value of the **smallest** grid entry on that path.
+
+### Examples
+
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[[5,4,5],[1,2,6],[7,4,6]]` | `4` | The highlighted path yields min = 4. |
+| `[[2,2,1,2,2,2],[1,2,2,2,1,2]]` | `2` | |
+| `[[3,4,6,3,4],[0,2,1,1,7],[8,8,3,2,7],[3,2,4,9,8],[4,1,2,0,0],[4,6,5,4,3]]` | `3` | |
+
+> **Constraints**  
+> 1 ≤ m, n ≤ 100, 0 ≤ grid[i][j] ≤ 10⁹
+
+---
+
+## 2. 🚀 Why Dijkstra + Max‑Heap Works
+
+The problem is a *maximization of a minimum* along a path.  
+Think of each cell as a node with weight `grid[i][j]`.  
+When we move to a neighbor, the path’s score becomes `min(current_score, neighbor_value)`.  
+We want the best score for every node – the **maximum** possible such score.  
+
+This is exactly what Dijkstra’s algorithm does if we interpret the edge cost as “negative” or use a *max‑heap* instead of a min‑heap.  
+At each step we take the node that currently has the highest reachable score, then relax its neighbours.
+
+*Why max‑heap?*  
+The priority queue stores tuples `(score, x, y)` sorted by **descending** score.  
+When we pop a node, its score is guaranteed to be the largest possible among all unreached nodes – the same greedy property that underpins Dijkstra.
+
+**Key invariant**
+
+> The first time we pop the destination cell, the score we pop is the maximum minimum score of any path from `(0,0)` to that cell.
+
+Proof is identical to the classic Dijkstra proof, just with `max` instead of `min` in the comparison.
+
+---
+
+## 3. 🛠️ 3‑Language Implementation
+
+> All three solutions follow the same logic:  
+> *Initialize a `scores` matrix (`-1` = unreached).  
+> Push `(grid[0][0], 0, 0)` into a priority queue.  
+> While the queue is non‑empty, pop the cell with the largest score, relax its four neighbours, and update their scores if we found a better one.*
+
+> **Important:**  
+> *Avoid visiting a node twice with a lower score.*  
+> Only enqueue a neighbour if the new score is strictly greater than the current stored score for that cell.
+
+### 3.1 Java (JDK 17+)
 
 ```java
 import java.util.*;
@@ -25,373 +91,194 @@ public class Solution {
 
     public int maximumMinimumPath(int[][] grid) {
         int m = grid.length, n = grid[0].length;
-        boolean[][] visited = new boolean[m][n];
+        int[][] best = new int[m][n];
+        for (int[] row : best) Arrays.fill(row, -1);
+        best[0][0] = grid[0][0];
 
-        // max‑heap: element = {row, col, min‑value‑so‑far}
-        PriorityQueue<int[]> pq = new PriorityQueue<>(
-            (a, b) -> Integer.compare(b[2], a[2])
-        );
-        pq.offer(new int[]{0, 0, grid[0][0]});
-        visited[0][0] = true;
+        // max‑heap ordered by score
+        PriorityQueue<int[]> pq = new PriorityQueue<>((a,b) -> Integer.compare(b[2], a[2]));
+        pq.offer(new int[]{0, 0, grid[0][0]}); // {x, y, score}
 
         while (!pq.isEmpty()) {
             int[] cur = pq.poll();
-            int r = cur[0], c = cur[1], score = cur[2];
+            int x = cur[0], y = cur[1], score = cur[2];
 
-            // Reached the target
-            if (r == m - 1 && c == n - 1) return score;
+            if (x == m-1 && y == n-1) return score;
 
             for (int[] d : DIRS) {
-                int nr = r + d[0], nc = c + d[1];
-                if (nr < 0 || nr >= m || nc < 0 || nc >= n || visited[nr][nc]) continue;
-                visited[nr][nc] = true;
-                int newScore = Math.min(score, grid[nr][nc]);
-                pq.offer(new int[]{nr, nc, newScore});
+                int nx = x + d[0], ny = y + d[1];
+                if (nx < 0 || ny < 0 || nx >= m || ny >= n) continue;
+
+                int newScore = Math.min(score, grid[nx][ny]);
+                if (newScore > best[nx][ny]) {
+                    best[nx][ny] = newScore;
+                    pq.offer(new int[]{nx, ny, newScore});
+                }
             }
         }
-        return -1; // unreachable – should never happen with valid input
+        return -1; // unreachable (never happens on valid input)
+    }
+
+    // --- Driver for quick local testing
+    public static void main(String[] args) {
+        int[][] g = {{5,4,5},{1,2,6},{7,4,6}};
+        System.out.println(new Solution().maximumMinimumPath(g)); // 4
     }
 }
 ```
 
----
+> **Why this Java version is great**  
+> *Explicit `int[][] best` matrix → O(mn) memory.*  
+> *Max‑heap comparator with `Integer.compare(b[2], a[2])` – no wrapper objects.*  
+> *Clear separation of relaxation logic.*
 
-### 1.2  Python – 3.10+
+### 3.2 Python (3.9+)
 
 ```python
 import heapq
 from typing import List
 
 class Solution:
+    DIRS = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
     def maximumMinimumPath(self, grid: List[List[int]]) -> int:
         m, n = len(grid), len(grid[0])
-        visited = [[False] * n for _ in range(m)]
+        best = [[-1] * n for _ in range(m)]
+        best[0][0] = grid[0][0]
 
-        # Python's heapq is a min‑heap; we store negative values to simulate a max‑heap
-        pq = [(-grid[0][0], 0, 0)]          # (neg_score, row, col)
-        visited[0][0] = True
+        # max‑heap: store (-score, x, y) because heapq is a min‑heap
+        heap = [(-grid[0][0], 0, 0)]
 
-        dirs = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-
-        while pq:
-            neg_score, r, c = heapq.heappop(pq)
+        while heap:
+            neg_score, x, y = heapq.heappop(heap)
             score = -neg_score
 
-            if r == m - 1 and c == n - 1:
+            if x == m - 1 and y == n - 1:
                 return score
 
-            for dr, dc in dirs:
-                nr, nc = r + dr, c + dc
-                if nr < 0 or nr >= m or nc < 0 or nc >= n or visited[nr][nc]:
-                    continue
-                visited[nr][nc] = True
-                new_score = min(score, grid[nr][nc])
-                heapq.heappush(pq, (-new_score, nr, nc))
+            for dx, dy in self.DIRS:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < m and 0 <= ny < n:
+                    new_score = min(score, grid[nx][ny])
+                    if new_score > best[nx][ny]:
+                        best[nx][ny] = new_score
+                        heapq.heappush(heap, (-new_score, nx, ny))
+        return -1  # unreachable – never occurs for valid inputs
 
-        return -1  # Should never hit this with a valid grid
+# quick sanity test
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.maximumMinimumPath([[5,4,5],[1,2,6],[7,4,6]]))   # 4
 ```
 
----
+> **Why this Python version is great**  
+> *No external dependencies – only the standard library.*  
+> *`-score` trick turns the min‑heap into a max‑heap, keeping the code minimal.*  
+> *Using `best` as a memoization table prevents revisiting cells with lower scores.*
 
-### 1.3  C++17 – Modern STL
+### 3.3 C++ (C++17)
 
 ```cpp
-#include <queue>
-#include <vector>
-#include <algorithm>
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
 public:
-    int maximumMinimumPath(std::vector<std::vector<int>>& grid) {
-        const std::vector<std::pair<int,int>> dirs{{0,1},{1,0},{0,-1},{-1,0}};
+    int maximumMinimumPath(vector<vector<int>>& grid) {
         int m = grid.size(), n = grid[0].size();
+        vector<vector<int>> best(m, vector<int>(n, -1));
+        best[0][0] = grid[0][0];
 
-        // priority queue holds tuples: (min_value, row, col).  Greater min_value has higher priority.
-        struct Node {
-            int r, c, score;
-            bool operator<(Node const& o) const { return score < o.score; }
-        };
-        std::priority_queue<Node> pq;
-        std::vector<std::vector<bool>> vis(m, std::vector<bool>(n,false));
+        using T = tuple<int,int,int>; // (score, x, y)
+        priority_queue<T> pq;                 // max‑heap by default
+        pq.emplace(grid[0][0], 0, 0);
 
-        pq.push({0,0,grid[0][0]});
-        vis[0][0] = true;
-
+        const int dirs[4][2] = {{0,1},{1,0},{0,-1},{-1,0}};
         while (!pq.empty()) {
-            Node cur = pq.top(); pq.pop();
-            if (cur.r == m-1 && cur.c == n-1) return cur.score;
+            auto [score, x, y] = pq.top(); pq.pop();
 
-            for (auto [dr, dc] : dirs) {
-                int nr = cur.r + dr, nc = cur.c + dc;
-                if (nr<0 || nr>=m || nc<0 || nc>=n || vis[nr][nc]) continue;
-                vis[nr][nc] = true;
-                int ns = std::min(cur.score, grid[nr][nc]);
-                pq.push({nr,nc,ns});
+            if (x == m-1 && y == n-1) return score;
+
+            for (auto& d : dirs) {
+                int nx = x + d[0], ny = y + d[1];
+                if (nx < 0 || ny < 0 || nx >= m || ny >= n) continue;
+
+                int newScore = min(score, grid[nx][ny]);
+                if (newScore > best[nx][ny]) {
+                    best[nx][ny] = newScore;
+                    pq.emplace(newScore, nx, ny);
+                }
             }
         }
-        return -1;
+        return -1; // unreachable (won't happen)
     }
 };
 ```
 
----
-
-## 2.  Blog Article – “The Good, the Bad & the Ugly of LeetCode 1102”
-
-> **Title**:  
-> **“LeetCode 1102 Explained: Path With Maximum Minimum Value – Dijkstra, Union‑Find, & Binary Search Strategies”**
-
-> **Meta‑description**:  
-> Master the interview‑favorite grid‑path problem with clear code snippets, complexity breakdown, and real‑world pitfalls. Perfect for developers preparing for top‑tech interviews.  
+> **Why this C++ version is great**  
+> *Zero‑overhead priority queue – the `tuple` is packed into the heap.*  
+> *Explicit `dirs` array makes direction handling crystal clear.*  
+> *Use of `min` and `max` keeps the algorithm concise.*
 
 ---
 
-### 2.1  Introduction
+## 3. ⚖️ Time & Space Complexity
 
-In software interviews, *grid‑based path problems* are a recurring theme.  
-**LeetCode 1102** asks for the **maximum possible “minimum value”** along any path from the top‑left to the bottom‑right cell.  
-While the statement looks simple, the subtlety of *maximizing the minimum* pushes candidates to think beyond straight‑forward BFS.
+| Language | Complexity | Notes |
+|----------|------------|-------|
+| **Java / Python / C++** | **O(m · n log(m · n))** | Each cell can be pushed into the heap up to 4 times (worst‑case). |
+| Memory | **O(m · n)** | `best` matrix + heap storage. |
 
-This article walks you through three mainstream solutions, evaluates their trade‑offs, and shares interview‑savvy tips that can land you a role at the likes of Google, Amazon, or Microsoft.
-
----
-
-### 2.2  Problem Recap
-
-> **Input**: 2‑D integer array `grid` (`1 ≤ grid[i][j] ≤ 10⁶`)  
-> **Goal**: Find a path from `(0, 0)` to `(m‑1, n‑1)` that **maximizes** the minimum cell value encountered.  
-> **Output**: The value of that maximum “minimum” along an optimal path.  
-
-The four cardinal moves (up, down, left, right) are allowed; the grid is always reachable.
+The log factor comes from the heap operations.  
+With `m, n ≤ 100`, this is easily fast enough (≈ 4 000 log 4 000 ≈ 48 000 operations).
 
 ---
 
-### 2.3  Three Winning Strategies
+## 4. 🤔 Common Pitfalls (The “Bad” & “Ugly” parts)
 
-| Strategy | Core Idea | Pros | Cons | When to Pick |
-|----------|-----------|------|------|--------------|
-| **1️⃣ Dijkstra / Max‑Heap** | Keep a priority‑queue of cells ordered by the highest *minimum‑value‑so‑far*. When a cell is popped, we know we have reached it with the best possible score. | Simple to implement, no extra data structures beyond the heap & visited array. | Requires O(m n log(m n)) – heavy for huge grids. | Small‑to‑medium grids, when you want clean, readable code. |
-| **2️⃣ Binary Search + Union‑Find (Disjoint Set)** | Binary‑search over possible “minimum” values `x`. For each `x`, flood‑fill all cells `≥ x` using DSU. If start & end belong to the same set, `x` is feasible. | **O(m n α(m n))** time per binary‑search step; overall **O(m n log V)** where *V* is the max cell value. Good for dense grids where union‑find is fast. | More involved; extra bookkeeping for DSU and BFS to find connected components. | Very large grids, tight time constraints, or when interviewers explicitly ask for Union‑Find. |
-| **3️⃣ BFS + Priority‑Queue (Lazy Dijkstra)** | Same as (1) but you only push a cell when you discover a *better* score for it. | Avoids pushing duplicate states → fewer heap operations. | Requires an auxiliary score matrix. | When you want to tighten performance slightly, or want to show understanding of “relaxation” concept. |
-
----
-
-### 2.4  Detailed Walk‑Through of the Dijkstra Solution
-
-1. **Why Dijkstra Works**  
-   The path score is defined as `min(value of all cells along the path)`.  
-   If you always expand the frontier with the **highest current score**, any alternative path that could yield a better final score must pass through a cell with a higher or equal score.  
-   Therefore, the first time you pop the destination, you have found the optimal path.
-
-2. **Data Structures**  
-   * **Max‑heap** – keeps the next best frontier.  
-   * **Visited/Score matrix** – guarantees we never process a cell with a sub‑optimal score twice.  
-
-3. **Pseudo‑code**  
-
-```
-push (0,0, grid[0][0]) into max‑heap
-while heap not empty:
-    r,c,curScore = pop max
-    if (r,c) is goal: return curScore
-    for each neighbor (nr,nc):
-        if inside grid and not visited:
-            newScore = min(curScore, grid[nr][nc])
-            push (nr,nc,newScore)
-            mark visited
-```
-
-4. **Complexity**  
-   *Time*: Each of the *m n* cells is inserted/popped once → **O(m n log(m n))**.  
-   *Space*: Heap + visited → **O(m n)**.
+| Problem | Bad/Ugly Code | Fix / Good Practice |
+|---------|---------------|---------------------|
+| **Using a min‑heap** | `priority_queue<pair<int,int>> pq;`  // wrong order | Switch to max‑heap: `priority_queue<pair<int,int>> pq;` or push negative values. |
+| **Ignoring better scores** | Popping a node once and never revisiting | Keep a `best` matrix; only relax neighbours when the new score is higher. |
+| **Off‑by‑one errors in bounds** | Forgetting `x+dx < 0` check | Always validate `0 ≤ nx < m` and `0 ≤ ny < n` before accessing the grid. |
+| **Mutable grid as “visited”** | `grid[nx][ny] = -1` | Use a separate `best` matrix or a `visited` boolean array; modifying input can be surprising. |
+| **Using recursion / DFS** | Recursion depth > 10⁴ | Not stack‑safe for large grids; use iterative BFS. |
 
 ---
 
-### 2.5  Common Pitfalls & “Ugly” Code Patterns
+## 5. 🎯 Variants & Extensions
 
-| Pitfall | Why it’s ugly | Fix |
-|---------|---------------|-----|
-| **Using a min‑heap without negating values (Python)** | Accidentally finds *minimum* rather than *maximum* scores → wrong answer. | Store negative values or use `heapq.nlargest`. |
-| **Not marking visited before pushing** | Duplicate pushes inflate heap size dramatically → TLE. | Set `visited[nr][nc] = true` immediately after pushing. |
-| **Assuming the grid is always reachable** | In real interview settings you might be given an unreachable grid. | Add a guard: return `-1` or throw an exception. |
-| **Using recursion for BFS** | Stack overflow on large grids. | Use an explicit queue / heap. |
-| **Over‑complicating with Union‑Find but not resetting DSU per binary‑search step** | Bugs when re‑using DSU across iterations. | Re‑initialize DSU each time or use a fresh DSU per binary search iteration. |
-
----
-
-### 2.6  “Show‑off” Interview Tips
-
-1. **Explain the “max‑heap” rationale** – highlight that we’re effectively maximizing the *bottleneck* value.  
-2. **Mention edge‑cases** – e.g., single‑cell grid, all cells equal, very large values.  
-3. **Discuss time‑space trade‑offs** – for 1000×1000 grid, log factor ≈ 20, still fine in practice.  
-4. **Talk about alternate solutions** – Union‑Find + Binary Search if you want to impress with algorithmic diversity.  
+| Variant | How to Adapt |
+|---------|--------------|
+| **Binary Search + Union‑Find** | Search for the maximum threshold `t` such that cells ≥ `t` are connected. |
+| **Binary Search + DFS** | For each threshold, run a DFS to check connectivity; log‑time *O(log(maxValue) · m·n)*. |
+| **Minimum Effort Path (LeetCode 1631)** | Replace `min(current, neighbor)` with `max(current, abs(diff))`; similar max‑heap approach. |
+| **Weighted edges (non‑cell weights)** | Dijkstra with edge costs instead of node costs. |
 
 ---
 
-### 2.7  Quick One‑Liner (Optional)
+## 6. 👋 Take‑away & Career‑boosting Tips
 
-> ```java
-> // Java: priority‑queue with visited array (O(mn log mn))
-> public int maximumMinimumPath(int[][] g){...}
-> ```
+1. **Show the invariant** – In interviews, articulate that the max‑heap guarantees you’re always picking the best possible score so far.  
+2. **Explain the “max” vs. “min” switch** – Highlight how swapping the comparison turns a standard Dijkstra into the exact solution.  
+3. **Avoid mutating the input** – Keep the grid untouched; use a `best` matrix for clarity.  
+4. **Keep the code tidy** – Use helper constants (`DIRS`) and short‑lived local variables.  
+5. **Benchmark mentally** – Even if the problem is small, discuss the asymptotic complexity; this shows algorithmic awareness.
 
----
-
-## 3.  Blog Post – SEO‑Optimized
-
-> **Title**: *LeetCode 1102 – Path With Maximum Minimum Value: A Deep Dive into Dijkstra, Binary Search & Union‑Find*  
-
-> **Keywords**: LeetCode 1102, Path With Maximum Minimum Value, grid path problems, Dijkstra algorithm interview, Union‑Find interview, binary search interview problems, software interview preparation, top tech company interview questions, algorithm interview questions, coding interview tips.  
+Mastering this problem demonstrates proficiency in graph algorithms, data structures, and careful coding—a perfect showcase for technical interviews or technical blogs.
 
 ---
 
-### 3.1  Introduction
+### Keywords for SEO & Knowledge Base
 
-If you’re reading this, you’re probably a developer or data scientist gearing up for **software engineering interviews** at **Google, Amazon, Facebook, Microsoft** or similar.  
-One of the most frequently asked interview questions is **LeetCode 1102** – “Path With Maximum Minimum Value”.  
-It’s not just a coding exercise; it’s a **bottleneck path** problem that tests your understanding of graph traversal, greedy strategies, and advanced data structures.
+- `Maximum Minimum Path`  
+- `LeetCode 1091`  
+- `Dijkstra max‑heap`  
+- `Java priority queue`  
+- `Python heapq max‑heap`  
+- `C++ priority_queue tuple`  
+- `Graph connectivity binary search`  
+- `Union-Find LeetCode`  
+- `Minimum Effort Path`  
 
-This article delivers **clear, concise code snippets in Java, Python, and C++**, an in‑depth complexity analysis, and a “real‑world” perspective on the trade‑offs every candidate should know.
-
----
-
-### 3.2  The Problem in a Nutshell
-
-You’re given a grid of integers.  
-You can move up, down, left, or right.  
-Your **path score** is the **minimum** number you encounter along that path.  
-You’re asked to **maximize** that minimum.  
-In other words: *“Find a path that keeps the lowest cell value as high as possible.”*
-
-This is a classic **bottleneck path problem**.
-
----
-
-### 3.3  The Classic Dijkstra Solution (Your First Go‑To)
-
-**Why Dijkstra?**  
-Because we’re looking for a **maximum bottleneck** value.  
-A max‑heap ensures we always explore the frontier with the highest possible score.  
-The first time we pop the destination cell, we’re guaranteed optimality.
-
-**Code Snapshot (Java)**
-
-```java
-public int maximumMinimumPath(int[][] grid) {
-    int m = grid.length, n = grid[0].length;
-    boolean[][] visited = new boolean[m][n];
-    PriorityQueue<int[]> pq = new PriorityQueue<>((a,b) -> b[2]-a[2]); // [r,c,score]
-    pq.offer(new int[]{0,0,grid[0][0]});
-    visited[0][0] = true;
-    int[] dirs = {0,1,0,-1,0};
-    while(!pq.isEmpty()){
-        int[] cur = pq.poll();
-        if(cur[0]==m-1 && cur[1]==n-1) return cur[2];
-        for(int k=0;k<4;k++){
-            int nr=cur[0]+dirs[k], nc=cur[1]+dirs[k+1];
-            if(nr>=0&&nr<m&&nc>=0&&nc<n&&!visited[nr][nc]){
-                visited[nr][nc]=true;
-                pq.offer(new int[]{nr,nc,Math.min(cur[2],grid[nr][nc])});
-            }
-        }
-    }
-    return -1;
-}
-```
-
-**Complexity**  
-*Time*: **O(m n log(m n))**  
-*Space*: **O(m n)** (heap + visited array)
-
-**Why this is *good*:**  
-- **Readability**: The algorithm is almost self‑documenting.  
-- **Universality**: Works for all grid sizes where `m n log(m n)` fits in 1 second.  
-- **Interview‑friendly**: Most interviewers expect a priority‑queue based solution.
-
----
-
-### 3.4  Binary Search + Union‑Find – The “Efficient” Alternative
-
-Sometimes, the grid can be **very large** (e.g., 10⁴×10⁴), or the interviewer is specifically looking for a DSU based answer.
-
-**Idea**  
-1. Binary‑search over answer `x` in `[1, max(grid)]`.  
-2. For each `x`, union‑all neighboring cells whose value ≥ x.  
-3. After the flood, check if the top‑left and bottom‑right cells are in the same set.  
-
-**Why it’s efficient**  
-- DSU operations are nearly **O(1)** (α‑inverse‑Ackermann).  
-- The BFS/DFS that builds components runs in **O(m n)** for each binary‑search step.  
-- Overall **O(m n log V)** where *V* ≤ 10⁶ → log V ≈ 20, so about 20 full scans.
-
-**Pitfalls**  
-- Re‑initializing DSU each iteration.  
-- Managing the frontier of cells with values ≥ x.
-
----
-
-### 3.5  Union‑Find Implementation Sketch
-
-```java
-class DSU {
-    int[] parent, rank;
-    DSU(int N){ parent=new int[N]; rank=new int[N]; for(int i=0;i<N;i++) parent[i]=i;}
-    int find(int x){ return parent[x]==x?x:parent[x]=find(parent[x]); }
-    void union(int a,int b){ a=find(a); b=find(b); if(a==b) return; if(rank[a]<rank[b]){parent[a]=b;} else if(rank[a]>rank[b]){parent[b]=a;} else{parent[b]=a;rank[a]++;}}
-}
-```
-
-- Convert 2‑D indices to 1‑D with `idx = r*n + c`.  
-- While scanning cells `≥ x`, union them with adjacent eligible cells.  
-- After processing all, check `find(start)==find(end)`.
-
----
-
-### 3.6  “Lazy” Dijkstra – Cutting Heap Duplication
-
-A more advanced variation only pushes a cell when you find a **better** bottleneck for it.  
-
-**Benefits**  
-- Fewer pushes → smaller heap → faster runtime.  
-- Showcases understanding of “relaxation” from classic shortest‑path theory.
-
-**When to Use**  
-If the interview question asks for *optimal space/time*, this “lazy” approach is a good way to demonstrate depth.
-
----
-
-### 3.7  Final Takeaway
-
-- **LeetCode 1102** is a **grid bottleneck problem** that can be solved cleanly with a max‑heap.  
-- For **larger inputs or specialized interview scenarios**, Binary Search + Union‑Find is a powerful competitor.  
-- Always be ready to **explain the intuition** behind the chosen data structure; interviewers value conceptual clarity as much as correct code.
-
----
-
-> **Author**: *Jane Doe – Software Engineer & Interview Coach*  
-> **Contact**: `janedoe@example.com` | **LinkedIn**: `linkedin.com/in/janedoe`  
-
---- 
-
-**End of Blog Post**
-
---- 
-
-> **Tip**: Use this article in your portfolio or GitHub readme to showcase not only coding skills but also algorithmic thinking – a critical asset for top‑tech roles.  
-
---- 
-
-> **Call‑to‑Action**:  
-> *Ready to tackle your next interview? Grab the code snippets, practice on LeetCode, and share your solutions on Twitter with #LeetCode1102 for community feedback.*  
-
---- 
-
-*Happy coding!* 🚀
-
---- 
-
-> *Note*: The article content is fully original and crafted to highlight both the **good** clear code, the **bad** typical mistakes, and the **ugly** pitfalls that can derail your interview. Adjust the level of detail based on your target audience.  
-
---- 
-
-This completes the *complete set* of answers: efficient code, a deep dive article, and an SEO‑ready blog post.
+Feel free to adapt any of the snippets to your preferred IDE or online judge. Happy coding!

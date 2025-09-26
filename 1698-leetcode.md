@@ -7,473 +7,295 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🎯 LeetCode 1698 – Number of Distinct Substrings  
-### “The Good, The Bad, and The Ugly”  
-**Java | Python | C++ – Full‑fledged Solutions + SEO‑Optimised Blog**
+        ## 🎯 1698. Number of Distinct Substrings in a String  
+**Difficulty:** Medium  
+**Languages:** Java · Python · C++  
+**Goal:** Count how many *different* substrings a given string contains.
+
+> **Why it matters for your job hunt**  
+> Interviewers love problems that let you showcase *algorithmic thinking*, *data‑structure mastery* and *clean code*.  
+> This problem is a classic “hidden gem” – you can solve it with a simple set, a clever Trie, or even an advanced suffix‑automaton.  
+> Writing a clear solution in three languages proves you’re comfortable with cross‑platform coding, a must‑have for senior roles.
 
 ---
 
-## 1️⃣ Problem Overview
+## 1️⃣ The Brute‑Force / Trie Solution (O(n²))
 
-**LeetCode 1698**  
-> Given a string `s` (1 ≤ |s| ≤ 500, only lowercase English letters), return the number of **distinct** substrings of `s`.  
+| Approach | Time | Space |
+|----------|------|-------|
+| **Set of substrings** | O(n² log n) (hashing) | O(n²) |
+| **Trie (prefix‑tree)** | **O(n²)** | O(n²) (worst‑case) |
 
-A *substring* is a contiguous slice of the string.  
-For example, `s = "aabbaba"` → 21 distinct substrings.
+The Trie is a “space‑saving” version of the set: each new substring is represented by a unique path in the tree.  
+We only add a node when a new character sequence appears for the first time, so the total number of nodes equals the number of distinct substrings.
 
-> **Follow‑up:** Can you solve this in *O(n)* time?
-
----
-
-## 2️⃣ Why the Problem Matters
-
-- **Interview‑classic**: Distinct substrings is a staple for suffix‑array / suffix‑automaton questions.
-- **Algorithmic thinking**: Requires mastery of trie structures, rolling hashes, and advanced string algorithms.
-- **Job‑boost**: Mastery shows you can tackle *hard* string problems and optimise to linear time.
+Below are clean, production‑ready implementations in **Java**, **Python** and **C++**.
 
 ---
 
-## 3️⃣ Solution Landscape
-
-| Approach | Time | Space | Comments |
-|----------|------|-------|----------|
-| **Brute Force + Set** | O(n²) (enumerate all substrings, insert into a `HashSet`) | O(n²) | Simple, but too slow for larger inputs. |
-| **Trie (Prefix Tree)** | O(n²) | O(n²) | Eliminates duplicates early but still quadratic. |
-| **Suffix Array + LCP** | O(n log n) | O(n) | Classic “good” solution – efficient for up to 10⁵ length. |
-| **Suffix Automaton** | **O(n)** | O(n) | The *ugly* but fastest; a little hard to implement. |
-| **Rolling Hash + HashSet** | O(n²) | O(n²) | Easier than trie but needs careful collision handling. |
-
-Below we provide working code for **Trie**, **Suffix Array**, and **Suffix Automaton** in **Java**, **Python**, and **C++**.
-
----
-
-## 4️⃣ 4‑Letter Code Snippets
-
-> **Note**: All snippets compile with modern compilers (`javac 17`, `python3.9`, `g++ -std=c++17`).
-
-### 4.1 Java
+## 2️⃣ Java Implementation (Trie)
 
 ```java
 import java.util.*;
 
 public class Solution {
+    // Trie node containing 26 children (lowercase letters)
+    private static class TrieNode {
+        TrieNode[] child = new TrieNode[26];
+    }
 
-    /* ---------- 1️⃣ Trie – O(n²) ---------- */
-    public int countDistinctTrie(String s) {
-        Trie root = new Trie();
+    public int countDistinct(String s) {
+        TrieNode root = new TrieNode();
         int distinct = 0;
+
         for (int i = 0; i < s.length(); i++) {
-            Trie cur = root;
+            TrieNode cur = root;
             for (int j = i; j < s.length(); j++) {
                 int idx = s.charAt(j) - 'a';
-                if (cur.next[idx] == null) {
-                    cur.next[idx] = new Trie();
-                    distinct++;          // new substring found
+                if (cur.child[idx] == null) {
+                    cur.child[idx] = new TrieNode();
+                    distinct++;                    // New distinct substring found
                 }
-                cur = cur.next[idx];
+                cur = cur.child[idx];
             }
         }
         return distinct;
     }
 
-    private static class Trie {
-        Trie[] next = new Trie[26];
-    }
-
-    /* ---------- 2️⃣ Suffix Array + LCP – O(n log n) ---------- */
-    public int countDistinctSA(String s) {
-        int n = s.length();
-        int[] sa = buildSuffixArray(s);
-        int[] lcp = buildLCPArray(s, sa);
-
-        long total = 0;
-        for (int i = 0; i < n; i++) {
-            long substringsFromSuffix = n - sa[i];      // all substrings starting at sa[i]
-            long unique = substringsFromSuffix - lcp[i]; // minus overlap with previous suffix
-            total += unique;
-        }
-        return (int) total;
-    }
-
-    private int[] buildSuffixArray(String s) {
-        int n = s.length(), k = 1;
-        int[] sa = new int[n], rank = new int[n], tmp = new int[n];
-        for (int i = 0; i < n; i++) sa[i] = i, rank[i] = s.charAt(i);
-        for (; ; k <<= 1) {
-            final int kk = k;
-            Arrays.sort(sa, (a, b) -> {
-                if (rank[a] != rank[b]) return Integer.compare(rank[a], rank[b]);
-                int ra = a + kk < n ? rank[a + kk] : -1;
-                int rb = b + kk < n ? rank[b + kk] : -1;
-                return Integer.compare(ra, rb);
-            });
-            tmp[sa[0]] = 0;
-            for (int i = 1; i < n; i++) {
-                tmp[sa[i]] = tmp[sa[i - 1]] +
-                        (rank[sa[i - 1]] != rank[sa[i]] ||
-                                (sa[i - 1] + kk < n ? rank[sa[i - 1] + kk] : -1) !=
-                                (sa[i] + kk < n ? rank[sa[i] + kk] : -1) ? 1 : 0);
-            }
-            System.arraycopy(tmp, 0, rank, 0, n);
-            if (rank[sa[n - 1]] == n - 1) break;
-        }
-        return sa;
-    }
-
-    private int[] buildLCPArray(String s, int[] sa) {
-        int n = s.length();
-        int[] rank = new int[n], lcp = new int[n];
-        for (int i = 0; i < n; i++) rank[sa[i]] = i;
-        int h = 0;
-        for (int i = 0; i < n; i++) {
-            if (rank[i] > 0) {
-                int j = sa[rank[i] - 1];
-                while (i + h < n && j + h < n && s.charAt(i + h) == s.charAt(j + h))
-                    h++;
-                lcp[rank[i]] = h;
-                if (h > 0) h--;
-            }
-        }
-        return lcp;
-    }
-
-    /* ---------- 3️⃣ Suffix Automaton – O(n) ---------- */
-    public int countDistinctSAM(String s) {
-        SAM sam = new SAM(s.length() * 2);
-        for (char c : s.toCharArray()) sam.extend(c - 'a');
-        long total = 0;
-        for (int i = 1; i < sam.size; i++) {
-            total += sam.len[i] - sam.len[sam.link[i]];
-        }
-        return (int) total;
-    }
-
-    private static class SAM {
-        static final int ALPHA = 26;
-        int[] len, link, next;
-        int size, last;
-
-        SAM(int maxStates) {
-            len = new int[maxStates];
-            link = new int[maxStates];
-            next = new int[maxStates * ALPHA];
-            Arrays.fill(next, -1);
-            size = 1;
-            last = 0;
-        }
-
-        void extend(int c) {
-            int cur = size++;
-            len[cur] = len[last] + 1;
-            int p = last;
-            while (p != -1 && next[p * ALPHA + c] == -1) {
-                next[p * ALPHA + c] = cur;
-                p = link[p];
-            }
-            if (p == -1) link[cur] = 0;
-            else {
-                int q = next[p * ALPHA + c];
-                if (len[p] + 1 == len[q]) link[cur] = q;
-                else {
-                    int clone = size++;
-                    len[clone] = len[p] + 1;
-                    System.arraycopy(next, q * ALPHA, next, clone * ALPHA, ALPHA);
-                    link[clone] = link[q];
-                    while (p != -1 && next[p * ALPHA + c] == q) {
-                        next[p * ALPHA + c] = clone;
-                        p = link[p];
-                    }
-                    link[q] = link[cur] = clone;
-                }
-            }
-            last = cur;
-        }
+    // Optional: main for quick manual testing
+    public static void main(String[] args) {
+        System.out.println(new Solution().countDistinct("aabbaba")); // 21
+        System.out.println(new Solution().countDistinct("abcdefg")); // 28
     }
 }
 ```
 
-### 4.2 Python
+### Why this is **good**
+
+- No need for an extra HashSet; memory is bounded by the Trie nodes.
+- Easy to read, O(1) char lookup per node.
+
+### What’s **bad** / **ugly**
+
+- Still quadratic time; for very long strings (n > 10⁵) it will be too slow.
+- Memory can blow up on pathological inputs (e.g., all unique characters).
+
+---
+
+## 3️⃣ Python Implementation (Trie)
 
 ```python
-from collections import defaultdict
+class TrieNode:
+    __slots__ = ("child",)
+    def __init__(self):
+        # 26 lowercase letters
+        self.child = [None] * 26
+
 
 class Solution:
-
-    # ---------- 1️⃣ Trie (O(n²)) ----------
-    def countDistinctTrie(self, s: str) -> int:
-        root = {}
+    def countDistinct(self, s: str) -> int:
+        root = TrieNode()
         distinct = 0
+
         for i in range(len(s)):
             node = root
-            for j in range(i, len(s)):
-                c = s[j]
-                if c not in node:
-                    node[c] = {}
+            for ch in s[i:]:
+                idx = ord(ch) - 97   # 'a' -> 0
+                if node.child[idx] is None:
+                    node.child[idx] = TrieNode()
                     distinct += 1
-                node = node[c]
+                node = node.child[idx]
         return distinct
 
-    # ---------- 2️⃣ Suffix Array + LCP (O(n log n)) ----------
-    def countDistinctSA(self, s: str) -> int:
-        n = len(s)
-        sa = sorted(range(n), key=lambda i: s[i:])
-        rank = [0] * n
-        for i, p in enumerate(sa):
-            rank[p] = i
 
-        # Kasai's LCP
-        lcp = [0] * n
-        h = 0
-        for i in range(n):
-            if rank[i]:
-                j = sa[rank[i] - 1]
-                while i + h < n and j + h < n and s[i + h] == s[j + h]:
-                    h += 1
-                lcp[rank[i]] = h
-                if h:
-                    h -= 1
-
-        total = 0
-        for i in range(n):
-            substrings = n - sa[i]
-            unique = substrings - lcp[i]
-            total += unique
-        return total
-
-    # ---------- 3️⃣ Suffix Automaton (O(n)) ----------
-    def countDistinctSAM(self, s: str) -> int:
-        class State:
-            __slots__ = ('next', 'link', 'len')
-            def __init__(self):
-                self.next = {}
-                self.link = -1
-                self.len = 0
-
-        st = [State()]   # state 0 is the initial state
-        last = 0
-
-        for ch in s:
-            c = ch
-            cur = len(st)
-            st.append(State())
-            st[cur].len = st[last].len + 1
-            p = last
-            while p >= 0 and c not in st[p].next:
-                st[p].next[c] = cur
-                p = st[p].link
-            if p == -1:
-                st[cur].link = 0
-            else:
-                q = st[p].next[c]
-                if st[p].len + 1 == st[q].len:
-                    st[cur].link = q
-                else:
-                    clone = len(st)
-                    st.append(State())
-                    st[clone].len = st[p].len + 1
-                    st[clone].next = st[q].next.copy()
-                    st[clone].link = st[q].link
-                    while p >= 0 and st[p].next.get(c) == q:
-                        st[p].next[c] = clone
-                        p = st[p].link
-                    st[q].link = st[cur].link = clone
-            last = cur
-
-        total = 0
-        for i in range(1, len(st)):
-            total += st[i].len - st[st[i].link].len
-        return total
+# Quick test
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.countDistinct("aabbaba"))  # 21
+    print(sol.countDistinct("abcdefg"))  # 28
 ```
 
-### 4.3 C++
+### Clean‑up points
+
+- `__slots__` keeps each node light‑weight.
+- The algorithm is identical to Java’s – just adapted to Python’s syntax.
+
+---
+
+## 4️⃣ C++ Implementation (Trie)
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
-class Solution {
-public:
-    /* ---------- 1️⃣ Trie – O(n²) ---------- */
-    int countDistinctTrie(const string& s) {
-        struct Node {
-            int child[26];
-            Node() { fill(begin(child), end(child), -1); }
-        };
-        vector<Node> trie(1);                     // root at 0
-        int distinct = 0;
-        for (int i = 0; i < (int)s.size(); ++i) {
-            int node = 0;
-            for (int j = i; j < (int)s.size(); ++j) {
-                int idx = s[j] - 'a';
-                if (trie[node].child[idx] == -1) {
-                    trie[node].child[idx] = trie.size();
-                    trie.emplace_back();
-                    ++distinct;
-                }
-                node = trie[node].child[idx];
-            }
-        }
-        return distinct;
-    }
-
-    /* ---------- 2️⃣ Suffix Array + LCP – O(n log n) ---------- */
-    int countDistinctSA(const string& s) {
-        int n = s.size();
-        vector<int> sa(n), rank(n), tmp(n);
-        iota(sa.begin(), sa.end(), 0);
-        for (int i = 0; i < n; ++i) rank[i] = s[i];
-        for (int k = 1;; k <<= 1) {
-            auto cmp = [&](int a, int b) {
-                if (rank[a] != rank[b]) return rank[a] < rank[b];
-                int ra = a + k < n ? rank[a + k] : -1;
-                int rb = b + k < n ? rank[b + k] : -1;
-                return ra < rb;
-            };
-            sort(sa.begin(), sa.end(), cmp);
-            tmp[sa[0]] = 0;
-            for (int i = 1; i < n; ++i)
-                tmp[sa[i]] = tmp[sa[i-1]] +
-                             (cmp(sa[i-1], sa[i]) ? 1 : 0);
-            swap(rank, tmp);
-            if (rank[sa[n-1]] == n-1) break;
-        }
-
-        // Kasai LCP
-        vector<int> lcp(n), inv(n);
-        for (int i=0;i<n;++i) inv[sa[i]] = i;
-        int h=0;
-        for (int i=0;i<n;++i) if(inv[i]) {
-            int j = sa[inv[i]-1];
-            while (i+h<n && j+h<n && s[i+h]==s[j+h]) ++h;
-            lcp[inv[i]] = h;
-            if (h) --h;
-        }
-
-        long long ans = 0;
-        for (int i=0;i<n;++i) {
-            long long substrFromSuffix = n - sa[i];
-            ans += substrFromSuffix - lcp[i];
-        }
-        return (int)ans;
-    }
-
-    /* ---------- 3️⃣ Suffix Automaton – O(n) ---------- */
-    int countDistinctSAM(const string& s) {
-        struct SAM {
-            static const int ALPHA = 26;
-            vector<int> len, link, next;
-            int last = 0, sz = 1;
-            SAM(int maxStates = 400000) {
-                len.assign(maxStates,0);
-                link.assign(maxStates,-1);
-                next.assign(maxStates*ALPHA,-1);
-            }
-            void extend(int c) {
-                int cur = sz++;
-                len[cur] = len[last]+1;
-                int p = last;
-                while(p!=-1 && next[p*ALPHA+c]==-1) {
-                    next[p*ALPHA+c] = cur;
-                    p = link[p];
-                }
-                if(p==-1) link[cur] = 0;
-                else {
-                    int q = next[p*ALPHA+c];
-                    if(len[p]+1==len[q]) link[cur] = q;
-                    else {
-                        int clone = sz++;
-                        len[clone] = len[p]+1;
-                        next[clone*ALPHA] = next[q*ALPHA];
-                        link[clone] = link[q];
-                        while(p!=-1 && next[p*ALPHA+c]==q) {
-                            next[p*ALPHA+c] = clone;
-                            p = link[p];
-                        }
-                        link[q] = link[cur] = clone;
-                    }
-                }
-                last = cur;
-            }
-        };
-
-        SAM sam(s.size()*2);
-        for(char ch: s) sam.extend(ch-'a');
-        long long ans = 0;
-        for (int i=1;i<sam.sz;++i)
-            ans += sam.len[i] - sam.len[sam.link[i]];
-        return (int)ans;
+struct TrieNode {
+    TrieNode* child[26];
+    TrieNode() {
+        memset(child, 0, sizeof(child));
     }
 };
+
+class Solution {
+public:
+    int countDistinct(string s) {
+        TrieNode* root = new TrieNode();
+        int distinct = 0;
+
+        for (size_t i = 0; i < s.size(); ++i) {
+            TrieNode* cur = root;
+            for (size_t j = i; j < s.size(); ++j) {
+                int idx = s[j] - 'a';
+                if (!cur->child[idx]) {
+                    cur->child[idx] = new TrieNode();
+                    ++distinct;            // New substring discovered
+                }
+                cur = cur->child[idx];
+            }
+        }
+        // (Optional) Clean up memory if you want to avoid leaks.
+        return distinct;
+    }
+};
+
+// Demo
+int main() {
+    Solution sol;
+    cout << sol.countDistinct("aabbaba") << '\n'; // 21
+    cout << sol.countDistinct("abcdefg") << '\n'; // 28
+    return 0;
+}
 ```
 
----
-
-## 5️⃣ The Big Picture – Why These Matter
-
-1. **Understanding suffix structures**  
-   - Suffix Array & LCP are the most straightforward tools for substring counting.  
-   - They’re **stable** (no hashing, no collisions) and easy to explain to recruiters.
-
-2. **Suffix Automaton (SAM)**  
-   - A linear‑time data structure that captures all distinct substrings in its *state transitions*.  
-   - The formula  
-     \[
-     \text{distinct} = \sum_{v\neq 0} (\text{len}[v] - \text{len}[\text{link}[v]])
-     \]
-     directly counts every unique substring.
-
-3. **Time–Space Trade‑offs**  
-   - **Trie**: simplest but slow for `|s| > 2000`.  
-   - **Suffix Array**: \(O(n \log n)\) and uses only arrays → great for interview coding.  
-   - **SAM**: optimal \(O(n)\) but more complex; good to impress hiring managers who care about performance.
+> **Tip:** In competitive coding environments you usually don’t delete the nodes; but for a real project you’d implement a recursive delete or use smart pointers.
 
 ---
 
-## 6️⃣ Complexity in Words
+## 5️⃣ The “Follow‑Up” – O(n) with a Suffix Automaton
 
-| Method | Time | Extra Space | Collisions? |
-|--------|------|-------------|-------------|
-| Trie | \(O(n^2)\) | \(O(n^2)\) (worst) | No |
-| Suffix Array + LCP | \(O(n \log n)\) | \(O(n)\) | No |
-| Suffix Automaton | \(O(n)\) | \(O(n)\) | No |
+If you’re interviewing for a **Senior/Lead** role, showing an O(n) solution demonstrates deeper knowledge:
 
-**Why `n` can be `10⁶`?**  
-All linear solutions (`SAM`) run comfortably on `n = 10⁶` within 1‑2 seconds in Java/C++.
+```java
+public int countDistinct(String s) {
+    int n = s.length();
+    int[] link = new int[2 * n];
+    int[] len = new int[2 * n];
+    int[][] next = new int[2 * n][26];
+    Arrays.fill(link, -1);
+    for (int i = 0; i < 2 * n; ++i) Arrays.fill(next[i], -1);
+
+    int last = 0, size = 1;
+    for (char ch : s.toCharArray()) {
+        int cur = size++;
+        len[cur] = len[last] + 1;
+        int p = last;
+        int c = ch - 'a';
+        while (p != -1 && next[p][c] == -1) {
+            next[p][c] = cur;
+            p = link[p];
+        }
+        if (p == -1) {
+            link[cur] = 0;
+        } else {
+            int q = next[p][c];
+            if (len[p] + 1 == len[q]) {
+                link[cur] = q;
+            } else {
+                int clone = size++;
+                len[clone] = len[p] + 1;
+                System.arraycopy(next[q], 0, next[clone], 0, 26);
+                link[clone] = link[q];
+                while (p != -1 && next[p][c] == q) {
+                    next[p][c] = clone;
+                    p = link[p];
+                }
+                link[q] = link[cur] = clone;
+            }
+        }
+        last = cur;
+    }
+
+    long ans = 0;
+    for (int i = 1; i < size; ++i) ans += len[i] - len[link[i]];
+    return (int) ans;
+}
+```
+
+> **Why use it?**  
+> - Handles strings up to 10⁶+ comfortably.  
+> - Showcases knowledge of automata theory – a plus in algorithm‑centric roles.
 
 ---
 
-## 7️⃣ Performance Checklist
+## 6️⃣ Blog Article: “The Good, The Bad, and The Ugly of Distinct Substrings”
 
-| Test | Length | Method | Time (≈) |
-|------|--------|--------|----------|
-| Short string | 10 | Trie | 0.01 s |
-| Medium string | 1 000 | Trie | 0.2 s |
-| Medium string | 1 000 | Suffix Array | 0.03 s |
-| Long string | 10⁵ | SAM | 0.08 s |
-| Long string | 10⁶ | SAM | 0.8 s (Java) / 0.3 s (C++) |
+> **Title:** *From Tries to Suffix Automata: Mastering the “Number of Distinct Substrings” Problem*
 
-(Benchmarks run on a 3 GHz Intel i7 with no garbage‑collection pause.)
+### Abstract
+Counting distinct substrings is deceptively simple yet a powerhouse interview question. It tests your grasp of data structures (sets, tries, suffix trees/automata), hashing, and algorithmic complexity. This article walks through the most common solutions, their trade‑offs, and how to explain them to interviewers like a pro.
+
+### Keywords
+`#LeetCode #CodingInterview #DistinctSubstrings #Trie #SuffixAutomaton #AlgorithmDesign #Java #Python #C++`
 
 ---
 
-## 8️⃣ Final Take‑Away
+### 1️⃣ The “Good” – A Set or Trie
+- **What**: Enumerate every substring, insert into a hash set, or build a Trie to avoid duplicates.
+- **Why**: Simple to implement, passes LeetCode’s constraints (n ≤ 500).
+- **Result**: `O(n²)` time, `O(n²)` memory.  
+  *Ideal for quick wins or when constraints are modest.*
 
-- **Always start with the simplest**: a Trie is easy to code and perfect for LeetCode‑style test data (`|s| ≤ 2000`).  
-- **For production‑grade performance**: use a **Suffix Array + LCP** or a **Suffix Automaton**.  
-- **Why SAM?** It gives a single linear pass and a clean mathematical formula for the answer.
+### 2️⃣ The “Bad” – Quadratic Time with Rolling Hash
+- **What**: Generate all substrings, compute a rolling hash (e.g., Rabin‑Karp), insert into a hash set.
+- **Why**: Slightly faster constants than a set of strings, but still `O(n²)`.
+- **Result**: Still quadratic, risk of hash collisions, more complex code.  
+  *Not worth the extra code unless you need to avoid string allocation.*
 
-> **Recruiter‑ready tip**: In an interview, mention **SA** first (clear, proven, works in `O(n log n)`), then show how to optimize to `O(n)` with a SAM. Highlight that both methods need careful handling of arrays for speed and minimal overhead.
+### 3️⃣ The “Ugly” – Suffix Tree (Too Heavy)
+- **What**: Construct a suffix tree, then count leaf edges.
+- **Why**: Historically the textbook solution (`O(n)`).
+- **Result**: Implementation is long (~200 lines), hard to debug, rarely required on LeetCode.  
+  *Best avoided unless you’re truly prepared to prove mastery of advanced data structures.*
 
-Good luck landing that software engineering role! 🚀
+### 4️⃣ The “Heroic” – Suffix Automaton (O(n))
+- **What**: Build a minimal DFA that recognises all suffixes; the number of distinct substrings equals the sum over states of `len[state] - len[link[state]]`.
+- **Why**: Linear time, linear memory. Handles strings up to millions of characters.
+- **Result**: A concise, clever code that impresses senior interviewers.  
+  *If you can explain it in plain English, you’re a cut above the rest.*
+
+---
+
+## 7️⃣ How to Talk About It in an Interview
+
+1. **Start Simple**  
+   *“I’ll first implement a Trie because it’s intuitive and works for the given constraints.”*  
+2. **Mention the Follow‑Up**  
+   *“If we had to process very long strings, we would switch to a suffix automaton for linear time.”*  
+3. **Explain Complexity**  
+   *“The Trie gives O(n²) time; the automaton reduces it to O(n) by reusing already seen suffixes.”*  
+4. **Show Code Readability**  
+   *Use comments, `__slots__`, and clear variable names.*  
+5. **Relate to Real‑World**  
+   *“In search engines or genome sequencing, we often need to count distinct patterns efficiently, so suffix automata are practical.”*
+
+---
+
+## 8️⃣ SEO‑Optimized Takeaway
+
+- **Keywords**: “LeetCode 1698”, “distinct substrings solution”, “Trie vs suffix automaton”, “O(n) distinct substrings”, “Java/Python/C++ implementation”.
+- **Meta Description**: “Solve LeetCode 1698 (Number of Distinct Substrings) with clean Java, Python, and C++ code. Compare Trie, Rolling Hash, and the linear‑time Suffix Automaton approach.”
+- **Content Hierarchy**: Clear headings (`H1`, `H2`, `H3`) to boost search engine readability.
+
+---
+
+### Call to Action
+> *Ready to ace your next coding interview? Grab the code snippets, practice explaining them, and let the “Number of Distinct Substrings” problem become your secret weapon.*
 
 --- 
 
-### References
+**End of Article**  
 
-1.  Cormen, R. L. et al. *Introduction to Algorithms* – section on Suffix Arrays.  
-2.  E. V. Fedorov, “Suffix Automaton”, *Journal of Algorithms*, 2015.  
-3.  Ukkonen, “On-Line Construction of Suffix Trees”, *Algorithmica*, 1995.  
+Feel free to copy, adapt, and publish on your blog or LinkedIn to attract recruiters looking for algorithm experts. Good luck! 🚀
 
 --- 
 
-**Happy coding!** 🎉
+**#Answer** – The problem can be solved cleanly in all three languages with a Trie. For bigger constraints, show the O(n) suffix automaton. The blog above explains the trade‑offs, ready for interview storytelling and SEO visibility.

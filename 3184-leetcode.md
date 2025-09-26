@@ -7,325 +7,196 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 📌 3184 – Count Pairs That Form a Complete Day I  
-> **“The Good, The Bad & The Ugly – A Job‑Seeking Guide”**  
+        ## 🎯 LeetCode 3184 – Count Pairs That Form a Complete Day (Easy)
+
+| Language | Complexity | Link to Code |
+|----------|------------|--------------|
+| **Java** | O(n) | `Solution.java` |
+| **Python** | O(n) | `solution.py` |
+| **C++** | O(n) | `solution.cpp` |
+
+> *“A complete day is a time duration that is an exact multiple of 24 hours.”*
+
+The problem is a classic “two‑sum‑mod‑k” puzzle.  Below you’ll find a clean, production‑ready implementation in **Java**, **Python**, and **C++**, followed by a blog‑style walkthrough that highlights the *good*, *bad*, and *ugly* aspects of solving this interview problem.
 
 ---
 
-### 🚀 1. Problem Summary
+## 📚 Problem Recap
 
-You’re given an integer array `hours` (1 ≤ `hours.length` ≤ 100, 1 ≤ `hours[i]` ≤ 10⁹).  
-Return the number of index pairs `(i, j)` with `i < j` such that  
-`hours[i] + hours[j]` is a *multiple of 24* (a “complete day”).
+Given an array `hours[]` (1 ≤ n ≤ 100, 1 ≤ hours[i] ≤ 10⁹), count how many unordered pairs `(i, j)` with `i < j` satisfy
 
----
+```
+(hours[i] + hours[j]) % 24 == 0
+```
 
-### 🏎️ 2. High‑Level Strategy
-
-The key observation:  
-Only the remainder of each hour when divided by 24 matters.
-
-| hour | remainder `h % 24` |
-|------|--------------------|
-| 12   | 12                 |
-| 30   | 6                  |
-| 24   | 0                  |
-
-Two numbers form a complete day **iff** their remainders sum to 24 (or 0).  
-So we just need to:
-
-1. Count how many times each remainder appears (`cnt[0…23]`).
-2. For each remainder `r`:
-   - If `r == 0`, add `C(cnt[0], 2)` pairs.
-   - If `r == 12` (the only other remainder that pairs with itself), add `C(cnt[12], 2)` pairs.
-   - Otherwise, add `cnt[r] * cnt[24 - r]` pairs (take care not to double‑count).
-
-Time complexity: **O(n)**, memory: **O(1)**.
+In other words, the sum is a multiple of 24.
 
 ---
 
-### 📚 3. The Good, The Bad & The Ugly
+## 🧠 Solution Idea – HashMap + Remainder Counting
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Clarity** | Simple mod‑24 logic, easy to read | The double‑loop brute‑force solution (O(n²)) is straightforward but slow | Using a hash map for every test case can be overkill if the array is tiny |
-| **Performance** | Linear time, works for the upper bound (100) instantly | Brute force can reach 5 000 operations, still fine but unnecessary | An implementation that forgets to use `long` for the answer could overflow when `n=100` |
-| **Maintainability** | One small array of size 24 keeps the code compact | None | Mixing data types (`int` vs `long`) and failing to guard against negative remainders can lead to subtle bugs |
-| **Interview‑friendly** | Demonstrates awareness of modular arithmetic and counting pairs | Brute force shows problem comprehension but may be penalized for sub‑optimality | Over‑engineering (e.g., a fancy class hierarchy) can distract from the core solution |
+Instead of checking every pair (`O(n²)`), we can solve it in linear time:
+
+1. **Store counts of remainders**  
+   For each hour, compute `rem = hour % 24`.  
+   The complement remainder needed to reach a multiple of 24 is  
+   `comp = (24 - rem) % 24`.
+
+2. **Count valid pairs on the fly**  
+   While iterating, the number of pairs involving the current element equals the current count of `comp` already seen.
+
+3. **Update frequency map**  
+   Increment the counter for `rem`.
+
+This technique is the same as the classic two‑sum trick, but we’re working modulo 24.
 
 ---
 
-### 💻 4. Code Solutions
+## ✅ Reference Implementation
 
-Below are clean, production‑ready implementations in **Java**, **Python**, and **C++**.
-
----
-
-#### Java (Java 17)
+### Java
 
 ```java
-// 3184. Count Pairs That Form a Complete Day I
+// Solution.java
+import java.util.HashMap;
+import java.util.Map;
+
 public class Solution {
-    public long countCompleteDayPairs(int[] hours) {
-        // Count remainders modulo 24
-        long[] cnt = new long[24];
+    public int countCompleteDayPairs(int[] hours) {
+        Map<Integer, Integer> freq = new HashMap<>();
+        int count = 0;
+
         for (int h : hours) {
-            cnt[h % 24]++;
-        }
+            int rem = h % 24;
+            int complement = (24 - rem) % 24; // 0 maps to 0
+            count += freq.getOrDefault(complement, 0);
 
-        long pairs = 0;
-        // Remainder 0 pairs with itself
-        pairs += cnt[0] * (cnt[0] - 1) / 2;
-        // Remainder 12 pairs with itself
-        pairs += cnt[12] * (cnt[12] - 1) / 2;
-
-        // Remaining remainders pair r with 24 - r (r < 12)
-        for (int r = 1; r < 12; r++) {
-            pairs += cnt[r] * cnt[24 - r];
+            freq.merge(rem, 1, Integer::sum);
         }
-        return pairs;
+        return count;
     }
 }
 ```
 
----
-
-#### Python (Python 3.10+)
+### Python
 
 ```python
-# 3184. Count Pairs That Form a Complete Day I
-def countCompleteDayPairs(hours: list[int]) -> int:
-    from collections import Counter
+# solution.py
+from collections import defaultdict
+from typing import List
 
-    # Remainder counts
-    cnt = Counter(h % 24 for h in hours)
-
-    pairs = 0
-    pairs += cnt[0] * (cnt[0] - 1) // 2          # 0 with 0
-    pairs += cnt[12] * (cnt[12] - 1) // 2        # 12 with 12
-
-    for r in range(1, 12):                       # 1..11
-        pairs += cnt[r] * cnt[24 - r]
-
-    return pairs
+class Solution:
+    def countCompleteDayPairs(self, hours: List[int]) -> int:
+        freq = defaultdict(int)
+        ans = 0
+        for h in hours:
+            rem = h % 24
+            comp = (24 - rem) % 24
+            ans += freq[comp]
+            freq[rem] += 1
+        return ans
 ```
 
----
-
-#### C++ (C++17)
+### C++
 
 ```cpp
-// 3184. Count Pairs That Form a Complete Day I
+// solution.cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
 public:
-    long long countCompleteDayPairs(vector<int>& hours) {
-        long long cnt[24] = {0};
-        for (int h : hours) cnt[h % 24]++;
-
-        long long pairs = 0;
-        pairs += cnt[0] * (cnt[0] - 1) / 2;          // 0 with 0
-        pairs += cnt[12] * (cnt[12] - 1) / 2;        // 12 with 12
-
-        for (int r = 1; r < 12; ++r)                 // 1..11
-            pairs += cnt[r] * cnt[24 - r];
-
-        return pairs;
+    int countCompleteDayPairs(vector<int>& hours) {
+        unordered_map<int, int> freq;
+        long long ans = 0;
+        for (int h : hours) {
+            int rem = h % 24;
+            int comp = (24 - rem) % 24;
+            ans += freq[comp];
+            freq[rem]++;
+        }
+        return static_cast<int>(ans);
     }
 };
 ```
 
 ---
 
-### 📈 5. Complexity Analysis
+## 📖 Blog Article – “The Good, The Bad, and The Ugly of Solving LeetCode 3184”
 
-| Approach | Time | Space |
-|----------|------|-------|
-| **Optimal** (mod‑24 counting) | **O(n)** | **O(1)** (24 counters) |
-| **Brute‑Force** | **O(n²)** | **O(1)** |
+### 1. Introduction
 
-The constraints (`n ≤ 100`) allow either approach, but the optimal one is the standard interview choice.
+If you’re eyeing a software engineering role, you’ll likely encounter LeetCode 3184 in your interview prep. It’s labeled *Easy*, but the mental gymnastics required to avoid the quadratic pitfall are non‑trivial. This post breaks the problem into its core elements, explains why a linear approach shines, and even touches on how interviewers may evaluate your solution.
 
----
+### 2. The Problem in Plain English
 
-### 🔑 6. SEO‑Optimized Blog Article
+You’re given a list of hours. Any two of them that sum to an exact multiple of 24 form a “complete day.” Count how many such pairs exist. For small arrays, a double loop works; for arrays with 10⁵ elements, it would blow up.
 
----
+### 3. The *Good* – A Linear Time Solution
 
-# Mastering LeetCode 3184: Count Pairs That Form a Complete Day I – The Good, the Bad, and the Ugly
+The elegant solution uses a **frequency map of remainders**. Think of each hour as a bucket in a 24‑hour cycle. If a number’s remainder is `r`, you need another number with remainder `24 – r` (or `0` if `r` is `0`) to reach a multiple of 24. By keeping a counter for each remainder as you iterate, you can instantly know how many valid partners the current number has already seen. The algorithm runs in O(n) time and O(1) additional space (constant 24 buckets).
 
-**Meta Description** – Learn how to crack LeetCode 3184 with clean Java, Python, and C++ solutions. Understand the algorithm, complexity, and interview pitfalls. Get coding interview ready and boost your job prospects!
+#### Why It’s Good
 
-**Keywords** – LeetCode 3184, Count Pairs Complete Day, Java coding interview, Python algorithm, C++ interview questions, job interview coding, algorithm explanation, modular arithmetic, pair counting problem
+- **Speed** – Linear time is the only way to meet the constraints if the array grows.
+- **Simplicity** – One pass, one map, no nested loops.
+- **Scalability** – Works for `hours.length` up to 10⁵ or more, without hitting time limits.
 
----
+### 4. The *Bad* – The Brute‑Force Approach
 
-## Introduction
-
-If you’re gearing up for a software engineering interview, mastering LeetCode problems is a must‑do. One such problem, **3184. Count Pairs That Form a Complete Day I**, tests your ability to think about *modular arithmetic* and *efficient counting*.  
-
-In this article, we’ll dissect the problem, walk through a clean solution in **Java, Python, and C++**, and discuss the *good, the bad, and the ugly* of common approaches. We’ll also highlight interview‑friendly strategies to impress recruiters.
-
-> **Why this matters:**  
-> - It showcases your *algorithmic thinking*.  
-> - It proves you can write **concise, bug‑free code**.  
-> - It demonstrates awareness of **time/space trade‑offs**—key interview criteria.
-
----
-
-## Problem Statement (Restated)
-
-Given an array `hours` (size ≤ 100, values up to 10⁹), count the number of index pairs `(i, j)` (`i < j`) such that the sum of the two values is a multiple of 24.
-
----
-
-## The Good: Elegant Modulo Counting
-
-The *core insight* is that only the remainder when each hour is divided by 24 matters.
-
-- **Why**?  
-  `a + b` is a multiple of 24  
-  ⟺ `(a % 24) + (b % 24)` is 0 or 24.  
-  ⟺ The remainders are complementary: `r` and `24 - r`.
-
-So we:
-1. Count how many times each remainder appears (`cnt[0…23]`).
-2. Compute pair counts using combinations for `r = 0` and `r = 12`, and product counts for `1 ≤ r ≤ 11`.
-
-The algorithm runs in linear time, uses constant space, and is trivial to implement.
-
----
-
-## The Bad: Brute Force Quadratic Time
-
-A common beginner approach loops over all pairs:
-
-```python
-for i in range(n):
-    for j in range(i+1, n):
-        if (hours[i] + hours[j]) % 24 == 0:
-            ans += 1
-```
-
-While this works for `n ≤ 100`, it is **O(n²)**. In larger interview settings, such a solution might be penalized for not being optimal.
-
----
-
-## The Ugly: Over‑engineering & Edge‑Case Pitfalls
-
-- **Using HashMaps** for every call adds unnecessary overhead.
-- **Neglecting long/64‑bit arithmetic** can cause overflow for large inputs.
-- **Mis‑handling negative remainders** (not an issue here, but a common bug in modulo problems).
-
-Aim for a **simple, clear implementation** that covers the constraints.
-
----
-
-## Solution Walk‑through (Java)
+A naive double loop:
 
 ```java
-public class Solution {
-    public long countCompleteDayPairs(int[] hours) {
-        long[] cnt = new long[24];
-        for (int h : hours) cnt[h % 24]++;
+int count = 0;
+for (int i = 0; i < n; i++)
+  for (int j = i + 1; j < n; j++)
+    if ((hours[i] + hours[j]) % 24 == 0) count++;
+```
 
-        long pairs = 0;
-        pairs += cnt[0] * (cnt[0] - 1) / 2;          // 0 + 0
-        pairs += cnt[12] * (cnt[12] - 1) / 2;        // 12 + 12
+This O(n²) algorithm is fine for the problem’s original constraints (n ≤ 100), but it’s a *bad* choice if you’re talking interview prep because:
 
-        for (int r = 1; r < 12; r++)                // 1..11
-            pairs += cnt[r] * cnt[24 - r];
+- **Performance** – It’s easy to say “I'll just do this in the interview”; interviewers expect you to optimize.
+- **Clarity** – Shows lack of insight into the problem’s modular nature.
+- **Scalability** – Not a future‑proof solution for larger datasets.
 
-        return pairs;
-    }
+### 5. The *Ugly* – Common Pitfalls
+
+| Pitfall | Why It Happens | Fix |
+|---------|----------------|-----|
+| **Using `% 24` on huge numbers** | Forgetting that the sum may overflow `int` | Use `long` for sum if language permits; however, for Java you can keep `% 24` safe because `int` stays within 32 bits, but use `long` if you plan to sum explicitly. |
+| **Mis‑handling remainder 0** | Thinking `comp = 24 - rem` gives 24 instead of 0 | Use `(24 - rem) % 24` so that `rem = 0` yields `comp = 0`. |
+| **Mutable map during iteration** | Accidentally resetting counts inside the loop | Keep a separate `freq` map and update it after counting. |
+| **Overflow in counter** | Counting pairs for huge inputs | Use `long` for the answer. |
+
+### 6. Interview‑Ready Tips
+
+1. **Explain the O(n) idea before coding** – Interviewers love to see you think about time complexity.
+2. **Mention edge cases** – Zero remainder, large numbers, duplicates.
+3. **Test on small samples** – Show you understand the expected output.
+4. **Talk about space** – Clarify that you only use 24 counters, regardless of input size.
+5. **Optional** – Show a one‑pass version that avoids a second map look‑up by incrementing a counter first.  
+
+```java
+// one-pass trick
+int count = 0;
+for (int h : hours) {
+    int rem = h % 24;
+    count += freq.getOrDefault( (24 - rem) % 24, 0 );
+    freq.put(rem, freq.getOrDefault(rem, 0) + 1);
 }
 ```
 
-- **Why `long`?**  
-  The maximum answer for `n = 100` is `C(100, 2) = 4950`, which fits in `int`. However, using `long` protects against future scale‑ups and keeps the code safe.
+### 7. Summary
 
----
+- **Good**: One‑pass remainder counting, O(n) time, O(1) space.
+- **Bad**: Brute‑force nested loops; easy but not interview‑grade.
+- **Ugly**: Common mistakes around modulus and integer overflow.
 
-## Python Implementation
+If you can code the solution in **Java**, **Python**, and **C++**—as shown above—and explain the reasoning clearly, you’ll be well‑positioned to ace this question during a coding interview.
 
-```python
-def countCompleteDayPairs(hours: list[int]) -> int:
-    from collections import Counter
-    cnt = Counter(h % 24 for h in hours)
-    pairs = 0
-    pairs += cnt[0] * (cnt[0] - 1) // 2
-    pairs += cnt[12] * (cnt[12] - 1) // 2
-    for r in range(1, 12):
-        pairs += cnt[r] * cnt[24 - r]
-    return pairs
-```
+### 8. SEO‑Optimized Takeaway
 
-Python’s `Counter` is a natural fit for frequency counting, and integer overflow is handled automatically.
+- **Keywords**: LeetCode 3184, Count Pairs That Form a Complete Day, interview coding, algorithm, hashmap, two‑sum modulo 24, Java solution, Python solution, C++ solution, job interview, software engineering interview.
+- **Meta Description**: “Master LeetCode 3184 with a linear‑time hashmap solution. Get Java, Python, and C++ code plus an SEO‑friendly interview guide that covers the good, bad, and ugly of solving Count Pairs That Form a Complete Day.”
 
----
-
-## C++17 Implementation
-
-```cpp
-class Solution {
-public:
-    long long countCompleteDayPairs(vector<int>& hours) {
-        long long cnt[24] = {0};
-        for (int h : hours) cnt[h % 24]++;
-
-        long long pairs = 0;
-        pairs += cnt[0] * (cnt[0] - 1) / 2;
-        pairs += cnt[12] * (cnt[12] - 1) / 2;
-
-        for (int r = 1; r < 12; ++r)
-            pairs += cnt[r] * cnt[24 - r];
-
-        return pairs;
-    }
-};
-```
-
-The array of size 24 keeps memory usage trivial. Using `long long` safeguards against overflow.
-
----
-
-## Complexity Recap
-
-| Approach | Time | Space |
-|----------|------|-------|
-| **Optimal (Modulo Counting)** | **O(n)** | **O(1)** |
-| **Brute‑Force** | **O(n²)** | **O(1)** |
-
-Given the constraints, the optimal solution is both **efficient** and **clean**.
-
----
-
-## Interview‑Ready Tips
-
-| Tip | Why It Helps |
-|-----|--------------|
-| **Explain the modulo logic** | Shows conceptual depth. |
-| **Show a simple counter array** | Keeps the code readable. |
-| **Use `long`/`long long`** | Demonstrates defensive coding. |
-| **Mention edge cases** (`0`, `12`, duplicates) | Reveals thoroughness. |
-| **Compare to brute force** | Gives a benchmark and shows you know the trade‑offs. |
-
----
-
-## Final Thought
-
-LeetCode 3184 is a *micro‑problem* that can showcase a lot about your coding style:
-
-- **Simplicity** → Keep the logic focused on remainders.  
-- **Performance** → Use a single pass and constant extra space.  
-- **Robustness** → Guard against overflow and special remainders.
-
-By mastering this problem—and being able to articulate the *good*, *bad*, and *ugly* aspects—you’ll demonstrate to hiring managers that you can write efficient, maintainable code that scales. Happy coding, and good luck landing that interview!  
-
----  
-
-### 🎯 Call to Action
-
-- **Try** the code in your favorite IDE.  
-- **Run** the provided test cases.  
-- **Push** the solutions to GitHub with a clear README.  
-- **Share** your results on LinkedIn—show recruiters you’re ready for the next role!
+Happy coding, and good luck on your next interview! 🚀

@@ -7,24 +7,148 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 2313 – “Minimum Flips in Binary Tree to Get Result”  
-### Java | Python | C++ – Full Working Solutions + SEO‑Optimized Blog Post
+        # 🧩 2313 – Minimum Flips in Binary Tree to Get Result  
+**A Deep‑Dive into a LeetCode Hard Problem (Java, Python & C++)**  
 
 ---
 
-### TL;DR  
-- **Goal** – Flip the minimum number of leaf nodes (0 ↔ 1) so that evaluating the root of a Boolean‑expression tree gives the desired result (`true` or `false`).  
-- **Idea** – For every node compute **two** values:  
-  *`dp[0]`* – min flips to make the subtree evaluate to **false**.  
-  *`dp[1]`* – min flips to make the subtree evaluate to **true**.  
-- **Combine** the child results according to the operator stored in the node (OR, AND, XOR, NOT).  
-- Complexity: **O(N)** time, **O(H)** space (recursion stack).  
+## Table of Contents  
+
+| Section | Link |
+|---------|------|
+| Problem Overview | #problem-overview |
+| Quick Solution | #quick-solution |
+| Detailed Algorithm | #algorithm |
+| Complexity Analysis | #complexity |
+| Code – Java | #java |
+| Code – Python | #python |
+| Code – C++ | #cpp |
+| The Good, The Bad, & The Ugly | #good-bad-ugly |
+| How This Helps Your Job Hunt | #job-hunt |
+| Final Thoughts | #final |
 
 ---
 
-## 🔧 Code Snippets
+## Problem Overview <a name="problem-overview"></a>
 
-### 1. Java (DFS + DP)
+You’re given a rooted binary tree where:
+
+| Node Value | Meaning |
+|------------|---------|
+| **0** | Leaf, evaluates to **false** |
+| **1** | Leaf, evaluates to **true** |
+| **2** | OR node (two children) |
+| **3** | AND node (two children) |
+| **4** | XOR node (two children) |
+| **5** | NOT node (one child) |
+
+You may **flip any leaf** (0 ↔ 1).  
+Your goal: find the **minimum number of flips** that make the root evaluate to a given boolean `result`.  
+It’s guaranteed that a solution always exists.
+
+Constraints:  
+- 1 ≤ #nodes ≤ 10⁵  
+- 0 ≤ node.val ≤ 5
+
+---
+
+## Quick Solution <a name="quick-solution"></a>
+
+**Bottom‑up DFS** that returns, for each node, a 2‑tuple:
+
+```
+[flipsNeededToBeFalse, flipsNeededToBeTrue]
+```
+
+- For a leaf: 0 flips if its value already matches the desired boolean, otherwise 1.
+- For internal nodes: combine the two children’s tuples according to the logic operation.
+
+The answer is `result ? root[1] : root[0]`.
+
+The solution runs in **O(N)** time and uses **O(H)** stack space (H = tree height, ≤ N).
+
+---
+
+## Detailed Algorithm <a name="algorithm"></a>
+
+### 1.  What to compute at each node?
+
+For every node we need two numbers:
+
+| Desired Result | Minimum flips |
+|----------------|--------------|
+| `false` | `costFalse` |
+| `true`  | `costTrue`  |
+
+We’ll compute these numbers in a single post‑order traversal.
+
+### 2.  Base Case – Leaf
+
+A leaf has no children.
+
+| Current leaf value | costFalse | costTrue |
+|--------------------|-----------|----------|
+| 0 (false)          | 0         | 1        |
+| 1 (true)           | 1         | 0        |
+
+Implementation:
+
+```python
+if node.left is None and node.right is None:   # leaf
+    costFalse = 0 if node.val == 0 else 1
+    costTrue  = 0 if node.val == 1 else 1
+```
+
+### 3.  Recurrence – Internal Nodes
+
+Let `L = [lf, lt]` and `R = [rf, rt]` be the tuples of the left and right child
+(`lt`/`rt` may be `None` for a NOT node).
+
+| Node type | Boolean expression | costFalse | costTrue |
+|-----------|--------------------|-----------|----------|
+| **OR** (2) | `L OR R` | `lf + rf` | `min(lt, rt)` |
+| **AND** (3) | `L AND R` | `min(lf, rf)` | `lt + rt` |
+| **XOR** (4) | `L XOR R` | `min(lf + rt, lt + rf)` | `min(lf + rt, lt + rf)`? Wait we must be careful. |
+| **NOT** (5) | `NOT L` (only one child) | `lt` | `lf` |
+
+#### XOR Correct Derivation
+
+`XOR` is true when the two operands differ, false when they are equal.
+
+```
+costTrue  = min( lf + rt, lt + rf )  # left false & right true  OR left true & right false
+costFalse = min( lf + rt, lt + rf )? Wait same? No.
+
+costFalse = min( lf + rt, lt + rf )? Actually equal outcomes:
+
+- Both false: lf + rf
+- Both true : lt + rt
+So:
+
+costFalse = min( lf + rf, lt + rt )
+costTrue  = min( lf + rt, lt + rf )
+```
+
+That’s the final formula.
+
+### 4.  Implementation Tips
+
+- Use `int` everywhere. The maximum flips needed can’t exceed the number of leaves (≤ 10⁵).
+- Recursion depth may reach 10⁵ in a degenerate tree; most interview environments allow it, but you can switch to an explicit stack if necessary.
+- For the NOT node, only one child is present – check which one is not `None`.
+
+---
+
+## Complexity Analysis <a name="complexity"></a>
+
+| Metric | Value |
+|--------|-------|
+| Time | **O(N)** – each node is processed once. |
+| Space | **O(H)** – recursion stack depth; worst case O(N). |
+
+---
+
+## Code – Java <a name="java"></a>
 
 ```java
 /**
@@ -44,39 +168,41 @@ hideToc: true
  */
 class Solution {
     public int minimumFlips(TreeNode root, boolean result) {
-        int[] dp = dfs(root);                 // dp[0] = flips for false, dp[1] = flips for true
-        return result ? dp[1] : dp[0];
+        int[] cost = dfs(root);
+        return result ? cost[1] : cost[0];
     }
 
     private int[] dfs(TreeNode node) {
-        // leaf
+        // Leaf
         if (node.left == null && node.right == null) {
-            // leaf value 0 → false cost 0, true cost 1
-            // leaf value 1 → false cost 1, true cost 0
-            return new int[]{node.val, 1 - node.val};
+            int costFalse = node.val == 0 ? 0 : 1;
+            int costTrue  = node.val == 1 ? 0 : 1;
+            return new int[]{costFalse, costTrue};
         }
 
-        int[] left = dfs(node.left);
-        int[] right = dfs(node.right);
+        // Internal node
+        int[] left  = node.left != null ? dfs(node.left) : null;
+        int[] right = node.right != null ? dfs(node.right) : null;
 
         switch (node.val) {
-            case 2: // OR
+            case 2:  // OR
                 return new int[]{
-                    left[0] + right[0],                    // both false
-                    Math.min(left[1], right[1])            // at least one true
+                    left[0] + right[0],          // false
+                    Math.min(left[1], right[1])  // true
                 };
-            case 3: // AND
+            case 3:  // AND
                 return new int[]{
-                    Math.min(left[0], right[0]),           // at least one false
-                    left[1] + right[1]                     // both true
+                    Math.min(left[0], right[0]), // false
+                    left[1] + right[1]           // true
                 };
-            case 4: // XOR
+            case 4:  // XOR
                 return new int[]{
-                    Math.min(left[0] + right[0], left[1] + right[1]), // same value
-                    Math.min(left[0] + right[1], left[1] + right[0])  // different value
+                    Math.min(left[0] + right[0], left[1] + right[1]), // false
+                    Math.min(left[0] + right[1], left[1] + right[0])  // true
                 };
-            case 5: // NOT – only one child exists
-                return new int[]{right[1], right[0]};     // flip child result
+            case 5:  // NOT – only one child exists
+                int[] child = left != null ? left : right;
+                return new int[]{child[1], child[0]}; // costFalse = true of child, etc.
             default:
                 throw new IllegalArgumentException("Invalid node value");
         }
@@ -86,87 +212,90 @@ class Solution {
 
 ---
 
-### 2. Python (Recursive DFS)
+## Code – Python <a name="python"></a>
 
 ```python
 # Definition for a binary tree node.
-class TreeNode:
-    def __init__(self, val=0, left=None, right=None):
-        self.val = val
-        self.left = left
-        self.right = right
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
 
 class Solution:
     def minimumFlips(self, root: TreeNode, result: bool) -> int:
-        false_cost, true_cost = self._dfs(root)
-        return true_cost if result else false_cost
+        cost = self._dfs(root)
+        return cost[1] if result else cost[0]
 
-    def _dfs(self, node: TreeNode):
-        # leaf node
-        if not node.left and not node.right:
-            return (node.val, 1 - node.val)
+    def _dfs(self, node: TreeNode) -> list[int]:
+        # Leaf
+        if node.left is None and node.right is None:
+            costFalse = 0 if node.val == 0 else 1
+            costTrue  = 0 if node.val == 1 else 1
+            return [costFalse, costTrue]
 
-        left = self._dfs(node.left)
-        right = self._dfs(node.right)
+        # Recurse on children
+        left  = self._dfs(node.left) if node.left else None
+        right = self._dfs(node.right) if node.right else None
 
-        if node.val == 2:        # OR
-            return (
-                left[0] + right[0],              # both false
-                min(left[1], right[1])           # at least one true
-            )
-        elif node.val == 3:      # AND
-            return (
-                min(left[0], right[0]),          # at least one false
-                left[1] + right[1]               # both true
-            )
-        elif node.val == 4:      # XOR
-            return (
-                min(left[0] + right[0], left[1] + right[1]),  # same value
-                min(left[0] + right[1], left[1] + right[0])   # different value
-            )
-        else:                    # NOT (only right child)
-            return (right[1], right[0])                 # flip child result
+        if node.val == 2:          # OR
+            return [left[0] + right[0],
+                    min(left[1], right[1])]
+        if node.val == 3:          # AND
+            return [min(left[0], right[0]),
+                    left[1] + right[1]]
+        if node.val == 4:          # XOR
+            return [min(left[0] + right[0], left[1] + right[1]),
+                    min(left[0] + right[1], left[1] + right[0])]
+        if node.val == 5:          # NOT
+            child = left if left is not None else right
+            return [child[1], child[0]]   # false cost = child true, true cost = child false
 ```
 
 ---
 
-### 3. C++ (Recursive DFS)
+## Code – C++ <a name="cpp"></a>
 
 ```cpp
-/* Definition for a binary tree node. */
-struct TreeNode {
-    int val;
-    TreeNode *left;
-    TreeNode *right;
-    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
-};
-
+/**
+ * Definition for a binary tree node.
+ * struct TreeNode {
+ *     int val;
+ *     TreeNode *left;
+ *     TreeNode *right;
+ *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+ * };
+ */
 class Solution {
 public:
     int minimumFlips(TreeNode* root, bool result) {
-        auto dp = dfs(root);          // dp[0] → false, dp[1] → true
-        return result ? dp[1] : dp[0];
+        auto cost = dfs(root);
+        return result ? cost.second : cost.first;
     }
 
 private:
-    vector<int> dfs(TreeNode* node) {
-        if (!node->left && !node->right) {          // leaf
-            return {node->val, 1 - node->val};
+    pair<int,int> dfs(TreeNode* node) {   // {costFalse, costTrue}
+        if (!node->left && !node->right) {   // leaf
+            int costFalse = (node->val == 0) ? 0 : 1;
+            int costTrue  = (node->val == 1) ? 0 : 1;
+            return {costFalse, costTrue};
         }
 
-        auto left = dfs(node->left);
-        auto right = dfs(node->right);
+        pair<int,int> L = node->left  ? dfs(node->left)  : pair<int,int>{0,0};
+        pair<int,int> R = node->right ? dfs(node->right) : pair<int,int>{0,0};
 
         switch (node->val) {
-            case 2:   // OR
-                return {left[0] + right[0], min(left[1], right[1])};
-            case 3:   // AND
-                return {min(left[0], right[0]), left[1] + right[1]};
-            case 4:   // XOR
-                return {min(left[0] + right[0], left[1] + right[1]),
-                        min(left[0] + right[1], left[1] + right[0])};
-            case 5:   // NOT (only right child exists)
-                return {right[1], right[0]};
+            case 2:  // OR
+                return {L.first + R.first,
+                        min(L.second, R.second)};
+            case 3:  // AND
+                return {min(L.first, R.first),
+                        L.second + R.second};
+            case 4:  // XOR
+                return {min(L.first + R.first, L.second + R.second),
+                        min(L.first + R.second, L.second + R.first)};
+            case 5:  // NOT
+                return {L.second, L.first};  // only one child is non‑null
             default:
                 throw invalid_argument("Invalid node value");
         }
@@ -176,125 +305,46 @@ private:
 
 ---
 
-## 📘 Blog Article – “The Good, The Bad, and The Ugly of LeetCode 2313”
+## The Good, The Bad, & The Ugly <a name="good-bad-ugly"></a>
 
-### 1. Introduction  
-In the world of **coding interviews**, LeetCode problem **2313** – *Minimum Flips in Binary Tree to Get Result* – is a perfect test of your understanding of **recursive dynamic programming** and **expression evaluation**. If you’re eyeing roles that demand **Java, Python, or C++** mastery, cracking this problem can significantly boost your interview dossier.  
+| Aspect | What Worked | What Could Go Wrong |
+|--------|-------------|---------------------|
+| **Good** | 1️⃣ Bottom‑up DP eliminates the need for memo‑tables. <br>2️⃣ One pass gives *both* answers (false/true) so the final `if (result)` is trivial. <br>3️⃣ All formulas are O(1) per node → linear time. |  |
+| **Bad** | 1️⃣ Recursion depth may hit 10⁵ – stack overflow on very old judges. <br>2️⃣ The XOR formulas are a *common pitfall*; many candidates write the wrong “same vs. different” logic. |  |
+| **Ugly** | 1️⃣ Hard‑coded node values (2–5) hide intent; a map of enum values can make the code cleaner. <br>2️⃣ Forgetting that NOT nodes have *one* child can lead to null‑pointer exceptions. |  |
 
-**SEO Keywords**: *LeetCode 2313, minimum flips binary tree, interview coding interview, Java DFS, Python recursion, C++ recursion stack, Boolean expression tree, job interview algorithm, coding interview preparation*  
-
----
-
-### 2. Problem Statement  
-You're given a rooted tree where:
-- Leaves contain binary values (`0` or `1`).  
-- Internal nodes contain operator codes:  
-  - `2` → OR  
-  - `3` → AND  
-  - `4` → XOR  
-  - `5` → NOT (only one child)  
-Flipping a leaf toggles its value (`0 ↔ 1`).  
-**Goal**: Find the smallest number of flips needed so that evaluating the tree from the root yields a **desired boolean** (`true` or `false`).
+> **Bottom line:** The algorithm is elegant and fast, but the devil is in the formulas. Test the XOR logic with a few hand‑crafted trees before submitting.
 
 ---
 
-### 3. Solution Overview – Dynamic Programming on Subtrees  
+## How This Helps Your Job Hunt <a name="job-hunt"></a>
 
-1. **Bottom‑up DP**:  
-   For any subtree rooted at node `u`, compute two integers:  
-   - `dp[u][0]` – minimum flips to make the subtree evaluate to **false**.  
-   - `dp[u][1]` – minimum flips to make the subtree evaluate to **true**.  
+1. **Interview‑Ready Pattern**  
+   - *Binary tree + bottom‑up DP* is a classic interview pattern. Mastering it signals you can handle recursive state‑transition problems.
 
-2. **Base Case (Leaf)**  
-   - If leaf value is `0`: `dp[0] = 0`, `dp[1] = 1`.  
-   - If leaf value is `1`: `dp[0] = 1`, `dp[1] = 0`.  
+2. **LeetCode Hard Mastery**  
+   - Solving this problem earns you a **hard badge** on LeetCode, boosting your résumé and GitHub profile.
 
-3. **Combine Children**  
-   | Operator | False Cost (`dp[0]`) | True Cost (`dp[1]`) |
-   |----------|---------------------|--------------------|
-   | OR (2)   | `L0 + R0` (both false) | `min(L1, R1)` (at least one true) |
-   | AND (3)  | `min(L0, R0)` (at least one false) | `L1 + R1` (both true) |
-   | XOR (4)  | `min(L0+R0, L1+R1)` (same values) | `min(L0+R1, L1+R0)` (different values) |
-   | NOT (5)  | `child[1]` | `child[0]` (child only has one child, usually right) |
+3. **Java/Python/C++ Show‑case**  
+   - Providing three implementations demonstrates language‑agnostic thinking—a plus for **full‑stack** or **system‑design** roles.
 
-4. **Result** – After running DFS from the root, simply pick `dp[1]` if we need `true`, otherwise `dp[0]`.
+4. **Algorithmic Clarity**  
+   - Clear pseudocode + complexity analysis shows you can communicate ideas to hiring managers and teammates.
+
+5. **SEO Keywords**  
+   - If recruiters search for *“Java interview binary tree problems”* or *“LeetCode hard solutions”*, this article ranks high thanks to targeted headings and keyword‑rich explanations.
 
 ---
 
-### 4. Detailed Implementations  
+## Final Thoughts <a name="final"></a>
 
-#### Java – Explained  
-- Uses a **switch‑case** on the operator code.  
-- The leaf handling returns `{node.val, 1 - node.val}` to keep the pair semantics.  
-- Each case returns a **two‑element array** `[falseCost, trueCost]`.
+*Minimum Flips in Binary Tree to Get Result* is more than a coding challenge—it’s a micro‑ecosystem of recursion, dynamic programming, and logical reasoning.  
+The DFS‑DP pattern we used is reusable across many tree‑based interview questions (e.g., *Minimum Depth*, *Maximum Path Sum*, *House Robber III*).  
 
-#### Python – Explained  
-- Mirrors the Java logic but with tuples for readability.  
-- Raises an exception on unexpected operator codes.  
+**Keep practicing**:  
 
-#### C++ – Explained  
-- Uses `vector<int>` of size 2 instead of an array for safety.  
-- The recursion is identical in spirit to Java/Python.
+- Try variations (e.g., “flip at most K leaves”, “count distinct flip sets”).
+- Optimize for space: implement an iterative post‑order traversal if stack depth worries you.
+- Explain your thought process aloud; this mirrors real interview conditions.
 
----
-
-### 5. Complexity Analysis  
-
-| Measure | Java | Python | C++ |
-|---------|------|--------|-----|
-| **Time** | **O(N)** – each node processed once | **O(N)** | **O(N)** |
-| **Space** | **O(H)** recursion stack (H = height) | **O(H)** | **O(H)** |
-| **Why it matters** | Linear time is the upper‑hand limit for 100k nodes | Linear time is essential for interview grading systems | Same as Java/Python |
-
----
-
-### 6. Edge Cases & Gotchas  
-
-| Edge | Why it matters | Mitigation |
-|------|----------------|------------|
-| Deeply skewed trees (height ≈ N) | Recursion depth > stack limit → stack overflow | Use iterative stack or set recursion limit (Python) |
-| NOT node with left child instead of right | The problem guarantees NOT nodes have only one child, but if left exists you can treat `left` instead of `right` | `return {child[1], child[0]}` for whichever child is non‑null |
-| Operator code out of 2‑5 | Invalid input | Throw an exception or handle with a default case |
-| Large sub‑trees of XOR | Summation may overflow int | Use `long long` in C++ or `int` in Java/Python (range is ≤ N) |
-
----
-
-## 🌟 The Good, The Bad, The Ugly
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Good** | • Clean DP on two results – O(1) per node. <br>• Works for all four operators with a single DFS. <br>• Easily translatable to Java, Python, C++. <br>• Leverage for interview talks on *bottom‑up tree DP*. | | |
-| **Bad** | • The problem statement is a bit obscure: operator codes 2‑5 are not obvious. <br>• Requires careful handling of XOR’s two separate formulas. <br>• Recursion depth risk on extremely unbalanced trees. | | |
-| **Ugly** | • In many solutions people accidentally use `+` or `*` instead of `min` leading to incorrect counts. <br>• Forgetting that a NOT node has only **one** child can cause `NullPointerException`/`Segmentation fault`. <br>• Some online judges still have hidden tests with NOT nodes placed on the left side. | | |
-
----
-
-### 🎯 SEO Highlights  
-
-- **LeetCode 2313**  
-- **Minimum Flips Binary Tree**  
-- **Coding Interview**  
-- **Java DFS**  
-- **Python Recursion**  
-- **C++ Binary Tree DP**  
-- **Boolean Expression Tree**  
-- **Interview Question Solution**  
-- **Job Interview Preparation**  
-- **Algorithm Design**  
-
----
-
-### 📌 Final Takeaway  
-
-LeetCode 2313 is a textbook example of **bottom‑up DP on trees**. The key insight is that each subtree can be reduced to two integers (cost for false, cost for true). Once you master this pattern, you can solve a host of similar expression‑tree problems in any language.
-
-Feel free to copy‑paste the code above, run it on LeetCode, and add the “LeetCode 2313 – Minimum Flips” tag to your GitHub repo. The clean, commented solutions demonstrate your ability to:
-
-- Translate problem statements into DP recurrence relations  
-- Write idiomatic code in Java, Python, and C++  
-- Reason about time/space complexity  
-- Handle corner cases with defensive programming  
-
-Happy coding, and may your interviews be *always* **The Good**! 🎉
-
----
+Happy coding—and happy hunting! 🚀

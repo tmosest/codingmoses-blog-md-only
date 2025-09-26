@@ -7,275 +7,404 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
-
-## Cracking LeetCode 2070 – “Most Beautiful Item for Each Query”
-
-**The Good, The Bad, and The Ugly**  
-A complete, interview‑ready walk‑through with **Java, Python, and C++** solutions, plus a *SEO‑optimized* blog post that you can publish on LinkedIn or Medium to showcase your problem‑solving chops and land a tech job.
+        # 🚀 LeetCode 2070 – Most Beautiful Item for Each Query  
+**Language‑agnostic solution (Java, Python, C++) + a full SEO‑friendly blog post**
 
 ---
 
-### Table of Contents
-1. [Problem Statement](#problem-statement)  
-2. [Intuition & Key Observations](#intuition)  
-3. [Approach](#approach)  
-4. [Time & Space Complexity](#complexity)  
-5. [Full Code (Java / Python / C++)](#code)  
-6. [Edge Cases & Pitfalls](#edgecases)  
-7. [Good / Bad / Ugly](#goodbadugly)  
-8. [Alternative Brute‑Force Approach](#bruteforce)  
-9. [Interview Tips & How to Use This Post](#interview)  
-10. [SEO Meta Tags & Keywords](#seo)
+## 1️⃣ Problem Recap
+
+> **Given**:  
+> * `items` – `n` pairs `[price, beauty]`  
+> * `queries` – `q` budget values  
+> **Return** an array `answer` where `answer[j]` is the maximum beauty of any item whose price ≤ `queries[j]`.  
+> If no item fits, the answer is `0`.
+
+> **Constraints**  
+> * `1 ≤ n, q ≤ 10⁵`  
+> * `1 ≤ price, beauty, queries[j] ≤ 10⁹`
+
+> **Goal**:  Handle up to 100 000 items and queries in *O((n+q) log n)* time.
 
 ---
 
-## Problem Statement <a name="problem-statement"></a>
-You’re given a list of **items** where each item is `[price, beauty]`.  
-You’re also given a list of **queries**, each representing a budget.  
-For each query `q`, find the maximum beauty among all items whose price is ≤ `q`.  
-If no item is affordable, the answer is `0`.
+## 2️⃣ The Core Idea
 
-Constraints  
-```
-1 ≤ items.length, queries.length ≤ 10^5
-1 ≤ price, beauty, queries[j] ≤ 10^9
-```
+1. **Sort** all items by price (ascending).  
+2. Build a **prefix maximum array** `maxBeauty[i]` – the best beauty you can get with any item priced ≤ `price[i]`.  
+3. For each query, perform a **binary search** on the sorted prices to find the rightmost price ≤ `budget`.  
+4. The answer is the `maxBeauty` value at that index (or `0` if none).
+
+This guarantees *O(n log n + q log n)* time and *O(n)* space.
 
 ---
 
-## Intuition & Key Observations <a name="intuition"></a>
-* Sorting by price gives us a natural “budget axis”.  
-* While iterating through sorted items we can maintain the **prefix maximum beauty** up to that price.  
-* Once we have the two arrays  
-  * `prices[i]` – the i‑th smallest price  
-  * `maxBeauty[i]` – the best beauty we can get for any price ≤ `prices[i]`  
-  we can answer each query with a **binary search** in `O(log n)` time.
+## 3️⃣ Implementation in Three Languages  
 
----
+Below are production‑ready snippets for **Java**, **Python**, and **C++**.  
+Each file is self‑contained and ready to paste into your LeetCode editor.
 
-## Approach <a name="approach"></a>
-1. **Sort the items** by price (ascending).  
-2. Build two parallel arrays  
-   * `prices[]` – just the price part of each sorted item.  
-   * `maxBeauty[]` – running maximum of beauty values while scanning.  
-3. For each query `q`  
-   * `idx = upper_bound(prices, q) - 1`  
-   * If `idx` is negative → answer `0`.  
-   * Else → answer `maxBeauty[idx]`.
-
-The binary search is the classic “last index ≤ value” pattern.  
-The overall runtime is `O(n log n + m log n)` (sorting + queries),  
-and the memory consumption is `O(n)`.
-
----
-
-## Time & Space Complexity <a name="complexity"></a>
-| Step | Time | Space |
-|------|------|-------|
-| Sort items | `O(n log n)` | `O(1)` (in‑place) |
-| Build prefix maxima | `O(n)` | `O(n)` (two arrays) |
-| Answer queries | `O(m log n)` | `O(1)` per query |
-| **Total** | **`O(n log n + m log n)`** | **`O(n)`** |
-
-`n = items.length`, `m = queries.length`.
-
----
-
-## Full Code (Java / Python / C++) <a name="code"></a>
-Below are *production‑ready* snippets you can paste straight into your IDE.
-
-### Java 17
+### 3.1 Java
 
 ```java
 import java.util.*;
 
 class Solution {
     public int[] maximumBeauty(int[][] items, int[] queries) {
-        // 1️⃣  Sort by price
+        // 1️⃣ Sort items by price
         Arrays.sort(items, Comparator.comparingInt(a -> a[0]));
 
         int n = items.length;
         int[] prices = new int[n];
         int[] maxBeauty = new int[n];
-        int curMax = 0;
+        int currentMax = 0;
 
-        // 2️⃣  Build prefix maximum beauty
         for (int i = 0; i < n; i++) {
-            int price  = items[i][0];
-            int beauty = items[i][1];
-            prices[i] = price;
-            curMax = Math.max(curMax, beauty);
-            maxBeauty[i] = curMax;
+            prices[i] = items[i][0];
+            currentMax = Math.max(currentMax, items[i][1]); // prefix max
+            maxBeauty[i] = currentMax;
         }
 
-        // 3️⃣  Answer queries with binary search
-        int[] ans = new int[queries.length];
-        for (int i = 0; i < queries.length; i++) {
-            int q   = queries[i];
-            int idx = Arrays.binarySearch(prices, q);
-
-            if (idx < 0) {                      // no price ≤ q
-                idx = -idx - 2;                 // last position < q
-            }
-
-            ans[i] = idx >= 0 ? maxBeauty[idx] : 0;
+        // 2️⃣ Answer queries with binary search
+        int q = queries.length;
+        int[] ans = new int[q];
+        for (int i = 0; i < q; i++) {
+            int budget = queries[i];
+            int idx = upperBound(prices, budget); // last index with price <= budget
+            ans[i] = (idx == -1) ? 0 : maxBeauty[idx];
         }
         return ans;
+    }
+
+    // Helper: returns last index where arr[idx] <= target; -1 if none
+    private int upperBound(int[] arr, int target) {
+        int l = 0, r = arr.length - 1, res = -1;
+        while (l <= r) {
+            int mid = l + (r - l) / 2;
+            if (arr[mid] <= target) {
+                res = mid;
+                l = mid + 1;
+            } else {
+                r = mid - 1;
+            }
+        }
+        return res;
     }
 }
 ```
 
-### Python 3
+> **Why it works**  
+> *Sorting is `O(n log n)`*  
+> *Prefix max is linear*  
+> *Each binary search is `O(log n)`*, so overall `O((n+q) log n)`.
+
+---
+
+### 3.2 Python
 
 ```python
 from bisect import bisect_right
 from typing import List
 
-def maximumBeauty(items: List[List[int]], queries: List[int]) -> List[int]:
-    # 1️⃣  Sort by price
-    items.sort(key=lambda x: x[0])
+class Solution:
+    def maximumBeauty(self, items: List[List[int]], queries: List[int]) -> List[int]:
+        # 1️⃣ Sort by price
+        items.sort(key=lambda x: x[0])
 
-    # 2️⃣  Build prefix arrays
-    prices, maxBeauty = [], []
-    cur = 0
-    for price, beauty in items:
-        prices.append(price)
-        cur = max(cur, beauty)
-        maxBeauty.append(cur)
+        prices, max_beauty = [], []
+        cur_max = 0
+        for price, beauty in items:
+            prices.append(price)
+            cur_max = max(cur_max, beauty)
+            max_beauty.append(cur_max)
 
-    # 3️⃣  Answer each query
-    ans = []
-    for q in queries:
-        idx = bisect_right(prices, q) - 1
-        ans.append(maxBeauty[idx] if idx >= 0 else 0)
-
-    return ans
+        # 2️⃣ Answer queries
+        res = []
+        for q in queries:
+            idx = bisect_right(prices, q) - 1  # last price <= q
+            res.append(max_beauty[idx] if idx >= 0 else 0)
+        return res
 ```
 
-### C++17
+> **Python specifics**  
+> *`bisect_right` gives the insertion point; subtract 1 to get the last valid index.*  
+> *Both time and space complexities match the Java version.*
+
+---
+
+### 3.3 C++
 
 ```cpp
-#include <vector>
-#include <algorithm>
+#include <bits/stdc++.h>
+using namespace std;
 
 class Solution {
 public:
     vector<int> maximumBeauty(vector<vector<int>>& items, vector<int>& queries) {
-        // 1️⃣  Sort by price
+        // 1️⃣ Sort by price
         sort(items.begin(), items.end(),
-             [](const auto& a, const auto& b){ return a[0] < b[0]; });
+             [](const vector<int>& a, const vector<int>& b) { return a[0] < b[0]; });
 
-        // 2️⃣  Build prefix arrays
-        vector<int> prices;
-        vector<int> maxBeauty;
-        int cur = 0;
-        for (auto &it : items) {
-            prices.push_back(it[0]);
-            cur = max(cur, it[1]);
-            maxBeauty.push_back(cur);
+        int n = items.size();
+        vector<int> prices(n), prefMax(n);
+        int curMax = 0;
+        for (int i = 0; i < n; ++i) {
+            prices[i] = items[i][0];
+            curMax = max(curMax, items[i][1]);
+            prefMax[i] = curMax;
         }
 
-        // 3️⃣  Answer queries
+        // 2️⃣ Answer queries
         vector<int> ans;
+        ans.reserve(queries.size());
         for (int q : queries) {
-            int idx = upper_bound(prices.begin(), prices.end(), q)
-                      - prices.begin() - 1;
-            ans.push_back(idx >= 0 ? maxBeauty[idx] : 0);
+            // upper_bound returns iterator to first > q
+            auto it = upper_bound(prices.begin(), prices.end(), q);
+            if (it == prices.begin())
+                ans.push_back(0);                     // all prices > q
+            else
+                ans.push_back(prefMax[it - prices.begin() - 1]); // last <= q
         }
         return ans;
     }
 };
 ```
 
-> **Tip** – In all three languages the *binary search* is the same idea:  
-> find the rightmost price that does not exceed the budget.
+> **C++ details**  
+> *`upper_bound` is a standard STL binary search.*  
+> *We subtract one from the iterator to get the correct index.*
 
 ---
 
-## Edge Cases & Pitfalls <a name="edgecases"></a>
-| Edge case | Why it matters | Fix |
-|-----------|----------------|-----|
-| All prices > query | `idx` becomes `-1` | Return `0`. |
-| Duplicate prices | Prefix array handles it; just keep the best beauty. |
-| `queries` unsorted | Not required – we answer them independently. |
-| Large input (`10^5`) | Use fast I/O (e.g., `BufferedReader` in Java, `ios::sync_with_stdio(false)` in C++). |
-| Negative result from `binary_search` | Convert `-insertion_point - 2` (Java) or `bisect_right` logic (Python). |
+## 4️⃣ The Good, The Bad, and The Ugly
+
+| Aspect | What’s Good | What’s Bad | Ugly Truth | How to Fix |
+|--------|-------------|------------|------------|------------|
+| **Algorithm** | Simple, fast, proven (binary search + prefix max) | None (optimal for constraints) | Might be overkill for small data | None |
+| **Complexity** | `O((n+q) log n)` time, `O(n)` space | Still needs `O(n log n)` sort | Sorting may appear heavy in interviews | Acceptable; can’t be improved without a different approach |
+| **Edge Cases** | Works for empty items, duplicate prices | None | Duplicate prices with lower beauty can confuse naive “last‑price” logic | Keep prefix max independent of duplicates |
+| **Implementation Pitfalls** | Careful binary‑search boundaries | Off‑by‑one errors | Wrong `upperBound` can return `-1` or wrong index | Use helper function or `bisect_right-1` |
+| **Readability** | Short, readable code | None | Java `Comparator` syntax can be confusing | Add comments, keep code lean |
+| **Testing** | Multiple test harnesses (LeetCode, local) | None | None | None |
+
+### 🚨 Common “Ugly” mistakes in interviews
+
+1. **O(n²) solution** – looping over all items for each query quickly times out.  
+   👉 *Never.*  
+2. **Using `while (l <= r)` incorrectly** – off‑by‑one errors when searching.  
+   👉 *Always test boundary conditions on the smallest and largest budgets.*  
+3. **Assuming `int` is safe in C++/Java** – prices and beauties up to `10⁹`.  
+   👉 *Use 64‑bit (`long long` in C++, `long` in Java) if you plan to do arithmetic.*
 
 ---
 
-## Good / Bad / Ugly <a name="goodbadugly"></a>
-| Aspect | What’s *Good* | What’s *Bad* | What’s *Ugly* |
-|--------|---------------|--------------|---------------|
-| **Good** | • `O((n+m) log n)` time – fast for 10^5 items. <br>• No nested loops – scalable. <br>• Uses standard library functions (`Arrays.binarySearch`, `bisect`, `upper_bound`). | – | – |
-| **Bad** | • Requires a sort – `O(n log n)` preprocessing cost. <br>• Uses two extra arrays → `O(n)` space. | • For real‑time systems, sorting may be unacceptable if items arrive in real‑time. | – |
-| **Ugly** | • Binary‑search negative‑index gymnastics can trip newbies. <br>• Slightly confusing “upper_bound‑minus‑1” pattern. | – | • A fully manual implementation of binary search can read as cryptic, especially in interview settings. |
+## 5️⃣ Testing & Edge‑Case Checklist
 
-> **Bottom line:** The solution is *clean*, *efficient*, and *easy to explain* – that’s the sweet spot you want in a coding interview.
+| Case | Expected Result | Why it matters |
+|------|-----------------|----------------|
+| No items (`items = []`) | `0` for every query | Checks empty‑prefix handling |
+| All items too expensive | `0` | Checks binary search boundary |
+| Multiple items with same price | Best beauty only | Prefix max removes redundancy |
+| Very large budgets (≥ max price) | Max overall beauty | Binary search returns last index |
+| Very small budgets (≤ min price) | `0` or first item’s beauty | Edge case for `upper_bound` |
+
+> **Tip**: On LeetCode, run `Test Case 1`‑`10` before the final submission; they usually cover these edge cases.
 
 ---
 
-## Alternative Brute‑Force Approach <a name="bruteforce"></a>
-```text
-for each query q:
-    best = 0
-    for each item (price, beauty):
-        if price <= q:
-            best = max(best, beauty)
-    answer[q] = best
+## 5️⃣️  Complexity Analysis
+
+| Language | Time | Space |
+|----------|------|-------|
+| Java | `O((n + q) log n)` | `O(n)` |
+| Python | `O((n + q) log n)` | `O(n)` |
+| C++ | `O((n + q) log n)` | `O(n)` |
+
+> **Why this is optimal**  
+> You must sort the items at least once: `n log n`.  
+> For each query you need *log‑time* lookup → `q log n`.  
+> No algorithm can beat this asymptotically for the given constraints.
+
+---
+
+## 6️⃣ Final Take‑Away
+
+> **If you’re preparing for a coding interview, LeetCode 2070 is a perfect playground for:**
+> - **Sorting + prefix arrays**  
+> - **Binary search on arrays**  
+> - **Time‑space trade‑offs**  
+> - **Clear, maintainable code**  
+
+> **Remember**:  
+> *Keep the prefix array separate from the original `items`.*  
+> *Always use `upper_bound / bisect_right` + `-1`.*  
+> *Reserve space for answer vectors to avoid reallocations.*  
+
+---  
+
+## 📄 SEO‑Optimized Blog Post (Markdown)
+
+```markdown
+# LeetCode 2070 – Most Beautiful Item for Each Query  
+## Java | Python | C++ Solutions + Interview Guide
+
+**Keywords**: LeetCode 2070, Most Beautiful Item for Each Query, Java solution, Python solution, C++ solution, binary search, prefix maximum, time complexity, interview coding
+
+---
+
+### 1. Introduction  
+LeetCode problem **2070 – Most Beautiful Item for Each Query** asks you to find, for every budget value, the most beautiful item that can be bought.  
+In a technical interview, this is a classic *sorting + binary search* exercise that tests your ability to optimize both time and space.
+
+---
+
+### 2. Problem Statement  
+Given `items = [[price₁, beauty₁], …, [priceₙ, beautyₙ]]` and `queries = [q₁, …, qₘ]`, return an array where each entry is the maximum beauty of an item priced ≤ the corresponding query.  
+If no item fits the budget, the answer is `0`.
+
+---
+
+### 3. Intuitive Approach  
+1. **Sort** items by price.  
+2. Build a **prefix‑maximum beauty** array – at each price we know the best beauty achievable so far.  
+3. For each query, **binary search** the sorted price list to find the rightmost price that does not exceed the budget.  
+4. The result is the beauty stored at that index.
+
+This solution runs in `O((n+m) log n)` time and `O(n)` space, comfortably handling 100 k items/queries.
+
+---
+
+### 4. Code Walkthrough  
+
+#### 4.1 Java  
+```java
+import java.util.*;
+
+class Solution {
+    public int[] maximumBeauty(int[][] items, int[] queries) {
+        Arrays.sort(items, Comparator.comparingInt(a -> a[0]));
+        int n = items.length;
+        int[] prices = new int[n];
+        int[] pref = new int[n];
+        int cur = 0;
+        for (int i = 0; i < n; i++) {
+            prices[i] = items[i][0];
+            cur = Math.max(cur, items[i][1]);
+            pref[i] = cur;
+        }
+        int[] ans = new int[queries.length];
+        for (int i = 0; i < queries.length; i++) {
+            int budget = queries[i];
+            int idx = upperBound(prices, budget); // last ≤ budget
+            ans[i] = (idx == -1) ? 0 : pref[idx];
+        }
+        return ans;
+    }
+    private int upperBound(int[] arr, int target) {
+        int l=0, r=arr.length-1, res=-1;
+        while(l<=r){
+            int mid=l+(r-l)/2;
+            if(arr[mid]<=target){ res=mid; l=mid+1; }
+            else r=mid-1;
+        }
+        return res;
+    }
+}
 ```
-*Time:* `O(n × m)` → 10^10 operations → **impossible for 10^5**.  
-*Space:* `O(1)`.
 
-> Mentioning this in an interview shows you understand why the optimal solution is needed.
+#### 4.2 Python  
+```python
+from bisect import bisect_right
+from typing import List
+
+class Solution:
+    def maximumBeauty(self, items: List[List[int]], queries: List[int]) -> List[int]:
+        items.sort(key=lambda x: x[0])
+        prices, pref = [], []
+        cur = 0
+        for p,b in items:
+            prices.append(p)
+            cur = max(cur,b)
+            pref.append(cur)
+        return [pref[bisect_right(prices, q)-1] if bisect_right(prices, q)>0 else 0
+                for q in queries]
+```
+
+#### 4.3 C++  
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+class Solution {
+public:
+    vector<int> maximumBeauty(vector<vector<int>>& items, vector<int>& queries) {
+        sort(items.begin(), items.end(),
+             [](const auto &a, const auto &b){ return a[0] < b[0]; });
+        int n = items.size();
+        vector<int> price(n), pref(n);
+        int cur = 0;
+        for (int i=0;i<n;++i){
+            price[i] = items[i][0];
+            cur = max(cur, items[i][1]);
+            pref[i] = cur;
+        }
+        vector<int> ans;
+        ans.reserve(queries.size());
+        for (int q : queries){
+            auto it = upper_bound(price.begin(), price.end(), q);
+            if(it==price.begin()) ans.push_back(0);
+            else ans.push_back(pref[it-price.begin()-1]);
+        }
+        return ans;
+    }
+};
+```
+
+---
+
+### 5. Complexity  
+
+| Operation | Java | Python | C++ |
+|-----------|------|--------|-----|
+| Sort items | `O(n log n)` | `O(n log n)` | `O(n log n)` |
+| Build prefix | `O(n)` | `O(n)` | `O(n)` |
+| Binary search per query | `O(log n)` | `O(log n)` | `O(log n)` |
+| Total time | `O((n+m) log n)` | `O((n+m) log n)` | `O((n+m) log n)` |
+| Extra space | `O(n)` | `O(n)` | `O(n)` |
 
 ---
 
-## Interview Tips & How to Use This Post <a name="interview"></a>
-1. **Explain the idea first** – “sort → prefix max → binary search”.  
-2. **Show the two key data structures** (prices + prefix maxima).  
-3. **Walk through a sample** – keep the talk natural and intuitive.  
-4. **Mention pitfalls** – e.g., off‑by‑one in binary search, handling `idx < 0`.  
-5. **Ask follow‑up questions**:  
-   * “What if items could be added/removed after sorting?”  
-   * “How would you solve it if queries were also sorted?”  
-   * “Can you improve the memory usage?”  
-6. **Connect to real world** – e.g., e‑commerce recommendation engines, auction systems, dynamic pricing.  
+### 6. Common Pitfalls & Fixes  
 
-> **Why publish this article?**  
-> • Demonstrates *algorithmic maturity* (sorting + prefix + binary search).  
-> • Shows you can write *clean, cross‑platform* code (Java, Python, C++).  
-> • Gives recruiters a tangible sample to discuss during an interview.  
-> • Your blog will rank for LeetCode interview keywords, attracting recruiters who search for “LeetCode 2070 solution” or “most beautiful item interview problem”.
+| Mistake | Fix |
+|---------|-----|
+| Off‑by‑one in binary search (using `upper_bound` then subtracting `1`) | Always test with minimal & maximal budgets. |
+| Forgetting to store **prefix max** after sorting | Build a running max while iterating the sorted array. |
+| Using a linear scan for each query | Replace with binary search (`bisect_right` / `upper_bound`). |
+| Not reserving vector space (C++) | `ans.reserve(queries.size());` |
+| Using `int` for sums that may overflow | Not required here because we only store individual beauties, but keep `long`/`long long` if you plan to sum values. |
 
 ---
 
-## SEO Meta Tags & Keywords <a name="seo"></a>
-- **Title**: Cracking LeetCode 2070 – Most Beautiful Item for Each Query (Java, Python, C++)  
-- **Description**: Fast, interview‑ready solutions to LeetCode 2070. Learn the binary‑search approach, analyze complexity, and publish this post to impress hiring managers.  
-- **Keywords**:  
-  * LeetCode 2070  
-  * Most Beautiful Item for Each Query  
-  * coding interview  
-  * binary search algorithm  
-  * algorithm interview question  
-  * Java interview problem  
-  * Python interview solution  
-  * C++ interview question  
-  * interview coding challenge  
-  * data structures  
-  * time complexity  
-  * space complexity  
-  * software engineer interview  
+### 7. Take‑Home Tips for Interviews  
+
+* **Explain the approach first** – sorting + prefix array + binary search.  
+* **Show the time‑space trade‑off** – why sorting is inevitable.  
+* **Demonstrate edge case handling** – show that your binary search handles budgets smaller than any price and larger than all prices.  
+* **Show confidence with boundaries** – be ready to answer “what happens if budgets equal min or max price?”.  
 
 ---
 
-### Final Words
+### 8. Final Words  
 
-- **Be concise** when you talk to interviewers; start with “We sort by price, maintain prefix maxima, then binary‑search each query.”
-- **Show the code** on GitHub or your portfolio; link to this blog post.
-- **Ask follow‑ups**: “What if we had to update an item’s price after preprocessing?” – this keeps the conversation alive and demonstrates depth.
+LeetCode 2070 may look simple, but it’s a great test of your algorithmic toolkit.  
+By mastering **sorting + prefix arrays + binary search**, you’ll be prepared for a wide range of interview questions that revolve around *efficient query answering on sorted data*.  
 
-Happy coding, and may this post land you that dream software‑engineering role! 🚀
+Happy coding and good luck on your interview prep! 🚀
 
 ---
+```
+
+---
+
+**Deploy** this Markdown on your personal blog or on a platform like GitHub Pages, and you’ll have a ready‑to‑share solution set with all the key interview concepts and the optimal algorithmic approach for LeetCode 2070.

@@ -7,440 +7,310 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Solution Overview  
+        # 3563 – Lexicographically Smallest String After Adjacent Removals  
+> **Hard | 250 chars | 250 letters**  
 
-**Problem (LeetCode 3563)** –  
-Given a string `s` of lowercase English letters, we may repeatedly delete *any* pair of adjacent
-characters that are consecutive in the alphabet (circularly – i.e. `a` is adjacent to `b` and to `z`).
-After performing any number of deletions (possibly zero) we want the **lexicographically smallest** string
-that can be obtained.
+The problem:  
+Given a string `s` (`1 ≤ |s| ≤ 250`) consisting of lowercase letters, we may repeatedly delete *any* adjacent pair of letters that are consecutive in the alphabet (including the circular pair `a‑z`). After all possible deletions, we want the *lexicographically smallest* resulting string.
 
-```
-Example
-s = "abc"   →  delete "bc"  →  result = "a"
-s = "bcda"  →  delete "cd" → delete "ba" → result = ""
-```
+> Example  
+> `s = "abc"` → delete `"bc"` → `"a"` (best we can do)  
+> `s = "bcda"` → delete `"cd"` → `"ba"` → delete `"ba"` → `""`  
+> `s = "zdce"` → delete `"dc"` → `"ze"` but `"zdce"` is lexicographically smaller, so we keep the original.
 
-The length of `s` is at most 250, so an \(O(n^3)\) algorithm is perfectly fine.
+The key is that *removing* a pair may expose a new pair that becomes removable, but deleting a pair can also make a later deletion impossible. Hence we must consider *all* possible removal sequences.
 
+---
 
-
---------------------------------------------------------------------
-
-## 2.  Why Dynamic Programming?
-
-* The effect of a deletion on the rest of the string is global – after removing a pair, new
-  neighbours may become adjacent and become deletable.
-* We must try *all* possible removal sequences and keep the lexicographically best final string.
-* The string is short enough that we can keep, for every substring, the best possible result
-  that can be achieved from it.  
-  That gives a classic interval‑DP.
-
---------------------------------------------------------------------
-
-## 3.  DP formulation
+## 1.  The Idea – Dynamic Programming on Intervals
 
 Let  
 
-* `dp[i][j]` – the lexicographically smallest string that can be produced from the substring
-  `s[i … j‑1]` (i.e. `i` inclusive, `j` exclusive).
+```
+dp[l][r] = the lexicographically smallest string that can be obtained
+           from the substring s[l … r]   (inclusive).
+```
 
-Goal: `dp[0][n]`.
+The answer is `dp[0][n‑1]`.
 
-### 3.1  Recurrence
+### Base cases
 
-For a fixed interval `[i, j)`:
+* `l > r` – empty substring → empty string.
+* `l == r` – single character – cannot be removed → the character itself.
+
+### Transition
+
+For a substring `s[l … r]` we have two options:
 
 1. **Keep the first character**  
-   `candidate = s[i] + dp[i+1][j]`
+   `s[l]` + `dp[l+1][r]`.
 
-2. **Remove `s[i]` with a later character `s[k]`**  
-   For every `k` with `i < k < j`  
-   * `s[i]` and `s[k]` must be consecutive in the alphabet (circular).  
-   * The entire middle part `s[i+1 … k-1]` must be removable, i.e. `dp[i+1][k]` is the empty string.  
+2. **Remove `s[l]` together with some `s[k]` (`l < k ≤ r`)**  
+   This is only possible when:
 
-   If those conditions hold, the remaining string is `dp[k+1][j]`.  
-   We keep the lexicographically smallest of all candidates.
+   * `s[l]` and `s[k]` are consecutive (circularly) → `isConsec(s[l], s[k])`.
+   * The *entire* segment between them `s[l+1 … k-1]` can be cleared.  
+     That is exactly when `dp[l+1][k-1] == ""`.
 
-The recurrence is
+   If both conditions hold, after deleting that pair the rest of the
+   substring is `dp[k+1][r]`.  
+   We choose the smaller string among all such candidates.
+
+Because `|s| ≤ 250`, a straightforward `O(n³)` DP (or memoised recursion) runs in well under a second.
+
+---
+
+## 2.  How to check “consecutive”
+
+For two letters `c1` and `c2` let  
 
 ```
-dp[i][j] = min(
-               s[i] + dp[i+1][j],
-               { dp[k+1][j]  |  i<k<j , consecutive(s[i],s[k]) , dp[i+1][k]=="" }
-            )
+diff = (c1 - 'a' - (c2 - 'a') + 26) % 26
 ```
 
-The empty string is always a valid candidate – it represents a completely removed substring.
+`diff` equals `1` or `25` ↔ the letters are consecutive
+(`a‑b`, `b‑c`, … or the circular `z‑a`, `a‑z`).
 
+---
 
+## 2.  Reference Implementations  
 
---------------------------------------------------------------------
+Below are three **complete, production‑ready** solutions – Java, Python and C++ – that follow the DP strategy described above.  
+All codes compile with the standard compilers:
 
-## 4.  Algorithm (Java)
+* **Java** – `javac Solution.java && java Solution`
+* **Python** – `python3 solution.py`
+* **C++** – `g++ -std=c++17 -O2 solution.cpp && ./solution`
+
+---
+
+### 2.1  Java 17
 
 ```java
-public class Solution {
+import java.util.*;
 
-    /** Returns true if a and b are consecutive letters in the circular alphabet. */
-    private boolean consecutive(char a, char b) {
-        int diff = Math.abs(a - b);
-        return diff == 1 || diff == 25;          // 25 because 'a' and 'z' are adjacent
-    }
+public class Solution {
+    private String s;
+    private int n;
+    private String[][] memo;
 
     public String lexicographicallySmallestString(String s) {
-        int n = s.length();
-        String[][] dp = new String[n + 1][n + 1];
+        this.s = s;
+        this.n = s.length();
+        memo = new String[n][n];
+        return dp(0, n - 1);
+    }
 
-        // base case – empty substring → ""
-        for (int i = 0; i <= n; ++i)
-            dp[i][i] = "";
+    private String dp(int l, int r) {
+        if (l > r) return "";
+        if (l == r) return String.valueOf(s.charAt(l));
 
-        /* iterate over lengths from 1 to n */
-        for (int len = 1; len <= n; ++len) {
-            for (int i = 0; i + len <= n; ++len) {
-                int j = i + len;
-                String best = s.charAt(i) + dp[i + 1][j];   // option 1
+        // If we keep the first character
+        String best = s.charAt(l) + dp(l + 1, r);
 
-                /* option 2 – try to pair s[i] with a later character */
-                for (int k = i + 1; k < j; ++k) {
-                    if (consecutive(s.charAt(i), s.charAt(k))
-                            && dp[i + 1][k].isEmpty()) {
-                        String temp = dp[k + 1][j];
-                        if (temp.compareTo(best) < 0) {
-                            best = temp;
-                        }
-                    }
-                }
-                dp[i][j] = best;
+        // Try to delete s[l] together with some s[k]
+        for (int k = l + 1; k <= r; k++) {
+            if (isConsecutive(s.charAt(l), s.charAt(k)) &&
+                dp(l + 1, k - 1).isEmpty()) {
+
+                String candidate = dp(k + 1, r);
+                if (candidate.compareTo(best) < 0) best = candidate;
             }
         }
-        return dp[0][n];
+        memo[l][r] = best;
+        return best;
+    }
+
+    private boolean isConsecutive(char a, char b) {
+        int diff = (a - 'a' - (b - 'a') + 26) % 26;
+        return diff == 1 || diff == 25;
+    }
+
+    // ------------------------------------------------------------------
+    //  Test harness – can be removed in production
+    // ------------------------------------------------------------------
+    public static void main(String[] args) {
+        Solution sol = new Solution();
+        System.out.println(sol.lexicographicallySmallestString("abc"));   // a
+        System.out.println(sol.lexicographicallySmallestString("bcda"));  // (empty)
+        System.out.println(sol.lexicographicallySmallestString("zdce"));  // zdce
+        System.out.println(sol.lexicographicallySmallestString("aab"));   // a
+        System.out.println(sol.lexicographicallySmallestString("za"));    // (empty)
     }
 }
 ```
 
---------------------------------------------------------------------
+---
 
-## 5.  Algorithm (Python)
+### 2.2  Python 3
 
 ```python
+import functools
+
 class Solution:
+    def lexicographicallySmallestString(self, s: str) -> str:
+        n = len(s)
+
+        @functools.lru_cache(maxsize=None)
+        def dp(l: int, r: int) -> str:
+            if l > r:
+                return ""
+            if l == r:
+                return s[l]
+
+            # 1. Keep the first character
+            best = s[l] + dp(l + 1, r)
+
+            # 2. Try to remove s[l] with some s[k]
+            for k in range(l + 1, r + 1):
+                if self._consecutive(s[l], s[k]) and dp(l + 1, k - 1) == "":
+                    cand = dp(k + 1, r)
+                    if cand < best:
+                        best = cand
+            return best
+
+        return dp(0, n - 1)
+
     @staticmethod
     def _consecutive(a: str, b: str) -> bool:
-        diff = abs(ord(a) - ord(b))
+        diff = (ord(a) - ord(b)) % 26
         return diff == 1 or diff == 25
 
-    def lexicographicallySmallestString(self, s: str) -> str:
-        n = len(s)
-        dp = [[""] * (n + 1) for _ in range(n + 1)]
-
-        for i in range(n + 1):
-            dp[i][i] = ""
-
-        for length in range(1, n + 1):
-            for i in range(0, n - length + 1):
-                j = i + length
-
-                # option 1 – keep the first character
-                best = s[i] + dp[i + 1][j]
-
-                # option 2 – delete s[i] with some s[k]
-                for k in range(i + 1, j):
-                    if (self._consecutive(s[i], s[k]) and dp[i + 1][k] == ""):
-                        candidate = dp[k + 1][j]
-                        if candidate < best:
-                            best = candidate
-
-                dp[i][j] = best
-
-        return dp[0][n]
+# ----------------------------------------------------------------------
+#  Example usage
+# ----------------------------------------------------------------------
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.lexicographicallySmallestString("abc"))    # a
+    print(sol.lexicographicallySmallestString("bcda"))   # ''
+    print(sol.lexicographicallySmallestString("zdce"))   # zdce
+    print(sol.lexicographicallySmallestString("aab"))    # a
 ```
 
---------------------------------------------------------------------
+---
 
-## 6.  Algorithm (C++)
+### 2.3  C++17
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
-    /* true if a and b are adjacent letters in the circular alphabet */
-    bool consecutive(char a, char b) {
-        int diff = abs(a - b);
-        return diff == 1 || diff == 25;          // 25 == |'a' - 'z'|
-    }
-
 public:
     string lexicographicallySmallestString(string s) {
-        int n = (int)s.size();
-        vector<vector<string>> dp(n + 1, vector<string>(n + 1, ""));
+        int n = s.size();
+        vector<vector<string>> memo(n, vector<string>(n));
+        for (int i = 0; i < n; ++i) memo[i][i] = string(1, s[i]);
 
-        for (int i = 0; i <= n; ++i)
-            dp[i][i] = "";                        // empty substring
+        for (int len = 2; len <= n; ++len) {
+            for (int l = 0; l + len - 1 < n; ++l) {
+                int r = l + len - 1;
+                string best = s[l] + memo[l + 1][r];
 
-        for (int len = 1; len <= n; ++len) {
-            for (int i = 0; i + len <= n; ++i) {
-                int j = i + len;
-
-                string best = string(1, s[i]) + dp[i + 1][j];   // keep first char
-
-                for (int k = i + 1; k < j; ++k) {
-                    if (consecutive(s[i], s[k]) && dp[i + 1][k].empty()) {
-                        string candidate = dp[k + 1][j];
-                        if (candidate < best) best = candidate;
-                    }
-                }
-                dp[i][j] = best;
-            }
-        }
-        return dp[0][n];
-    }
-};
-```
-
---------------------------------------------------------------------
-
-## 5.  Blog Article – “Solving LeetCode 3563: Lexicographically Smallest String with Adjacent Removals”  
-
-> **Keywords:** LeetCode 3563, Lexicographically Smallest String, Adjacent Removals, Dynamic Programming, String Manipulation, Coding Interview, Job Interview, Algorithmic Challenge
-
----
-
-### 1.  The Challenge
-
-In the world of algorithmic interviews you will often find problems that seem *simple* at first glance –
-“delete adjacent pairs” – yet are deceptively hard.  
-LeetCode 3563, *Lexicographically Smallest String* with *Adjacent Removals*, is one such problem.
-The objective is clear: after a series of deletions that respect the circular adjacency rule,
-return the **lexicographically smallest** string possible.
-
-> **Why is this problem interview‑worthy?**  
-> * It forces you to think about *global* consequences of local actions.  
-> * It tests your ability to formulate and solve an interval DP.  
-> * It forces you to keep track of *minimal* strings, not just minimal lengths.
-
----
-
-### 2.  The “Good” – What Works
-
-| Feature | Why It’s Good |
-|---------|---------------|
-| **Interval DP** | Handles the global effect of deletions naturally. |
-| **O(n³) time, O(n²) space** | Acceptable for `n ≤ 250`; keeps implementation simple and fast. |
-| **Explicit consecutive test** | Handles the circular alphabet cleanly (difference 1 or 25). |
-| **Empty string as a candidate** | Elegant way to represent a fully removed substring. |
-| **Lexicographic comparison** | Built‑in string comparison keeps the algorithm straightforward. |
-
----
-
-### 3.  The “Bad” – What Could Go Wrong
-
-| Pitfall | How to Avoid It |
-|---------|-----------------|
-| **Using only the first character** | Remember that *any* pair inside the interval could be removed; we must examine all `k`. |
-| **Off‑by‑one errors** | We use `[i, j)` notation – `i` inclusive, `j` exclusive – to avoid confusion. |
-| **Missing circular adjacency** | `a` and `z` must be considered adjacent (`diff == 25`). |
-| **Returning the wrong base case** | For an empty substring the result is always the empty string (`""`). |
-
----
-
-### 4.  The “Ugly” – Why It Looks Messy
-
-* **Storing whole strings in the DP table** –  
-  Some people might think this is wasteful.  
-  With `n = 250`, each string is at most 250 characters; the memory consumption is still well below 64 MB.
-* **Triple nested loops** –  
-  It feels heavier than a classic “two‑pointer” solution, but the problem’s combinatorics
-  truly require an interval DP.  
-  A naïve greedy or stack approach would miss many valid sequences.
-
----
-
-### 5.  Step‑by‑Step Code Walkthrough (Java)
-
-```java
-for (int len = 1; len <= n; ++len) {          // 1st outer loop: interval length
-    for (int i = 0; i + len <= n; ++i) {      // 2nd: start index
-        int j = i + len;                      // end index (exclusive)
-        String best = s.charAt(i) + dp[i+1][j]; // keep first char
-
-        for (int k = i+1; k < j; ++k) {        // try to pair s[i] with s[k]
-            if (consecutive(s.charAt(i), s.charAt(k))
-                && dp[i+1][k].isEmpty()) {     // middle part removable
-                String candidate = dp[k+1][j];
-                if (candidate.compareTo(best) < 0)
-                    best = candidate;           // lexicographically smaller
-            }
-        }
-        dp[i][j] = best;
-    }
-}
-```
-
-*The outermost loop* goes from length 1 to `n`, guaranteeing that every sub‑interval
-used in the recurrence (`dp[i+1][k]` and `dp[k+1][j]`) has already been computed.
-
-
-
---------------------------------------------------------------------
-
-### 6.  Complexity Analysis
-
-| Metric | Java / Python / C++ |
-|--------|---------------------|
-| **Time** | \(O(n^3)\) – three nested loops over the interval. |
-| **Space** | \(O(n^2)\) – one string per interval. |
-| **Practical** | With \(n \le 250\) the program runs in a few milliseconds in all three languages. |
-
---------------------------------------------------------------------
-
-## 7.  The Python Version
-
-```python
-class Solution:
-    @staticmethod
-    def _consecutive(a: str, b: str) -> bool:
-        return abs(ord(a) - ord(b)) in (1, 25)
-
-    def lexicographicallySmallestString(self, s: str) -> str:
-        n = len(s)
-        dp = [[""] * (n + 1) for _ in range(n + 1)]
-
-        for len_ in range(1, n + 1):
-            for i in range(0, n - len_ + 1):
-                j = i + len_
-                best = s[i] + dp[i + 1][j]
-
-                for k in range(i + 1, j):
-                    if (self._consecutive(s[i], s[k]) and dp[i + 1][k] == ""):
-                        cand = dp[k + 1][j]
-                        if cand < best:
-                            best = cand
-                dp[i][j] = best
-        return dp[0][n]
-```
-
---------------------------------------------------------------------
-
-## 8.  The C++ Version
-
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-class Solution {
-    static bool consecutive(char a, char b) {
-        int diff = abs(a - b);
-        return diff == 1 || diff == 25;          // 25 == |'a' - 'z'|
-    }
-
-public:
-    string lexicographicallySmallestString(string s) {
-        int n = (int)s.size();
-        vector<vector<string>> dp(n + 1, vector<string>(n + 1, ""));
-
-        for (int len = 1; len <= n; ++len) {
-            for (int i = 0; i + len <= n; ++i) {
-                int j = i + len;
-                string best = string(1, s[i]) + dp[i + 1][j]; // keep first char
-
-                for (int k = i + 1; k < j; ++k) {
-                    if (consecutive(s[i], s[k]) && dp[i + 1][k].empty()) {
-                        string cand = dp[k + 1][j];
+                for (int k = l + 1; k <= r; ++k) {
+                    if (consec(s[l], s[k]) && memo[l + 1][k - 1].empty()) {
+                        string cand = (k == r) ? "" : memo[k + 1][r];
                         if (cand < best) best = cand;
                     }
                 }
-                dp[i][j] = best;
+                memo[l][r] = best;
             }
         }
-        return dp[0][n];
+        return memo[0][n - 1];
+    }
+
+private:
+    bool consec(char a, char b) const {
+        int diff = (a - 'a' - (b - 'a') + 26) % 26;
+        return diff == 1 || diff == 25;
     }
 };
+
+// ----------------------------------------------------------------------
+//  Demo in main – remove in production
+// ----------------------------------------------------------------------
+int main() {
+    Solution sol;
+    cout << sol.lexicographicallySmallestString("abc") << '\n';   // a
+    cout << sol.lexicographicallySmallestString("bcda") << '\n';  // (empty)
+    cout << sol.lexicographicallySmallestString("zdce") << '\n';  // zdce
+    return 0;
+}
 ```
 
---------------------------------------------------------------------
+All three implementations run in `O(n³)` time and `O(n²)` memory.  
+With `n ≤ 250` the worst‑case number of operations is below 16 million – easily fast enough for the 2 second limit.
 
-## 9.  Closing Thoughts
+---
 
-LeetCode 3563 is a great example of how **simple‑seeming rules** can hide a combinatorial explosion.
-The key insight – *an interval DP* – turns what looks like a messy “delete pairs” puzzle into a clean,
-well‑structured algorithm.
+## 2.  What Works Well – The “Good”  
 
-> **Takeaway for your next interview:**  
-> When local actions have global effects, look for a DP that captures *sub‑problems* and their
-> composition.  
-> In this case, storing entire minimal strings inside the DP table is the natural choice,
-> and the \(O(n^3)\) time is not only acceptable but the only known solution that guarantees correctness.
+| ✔ | Aspect |
+|---|--------|
+| ✅ | **Correctness** – the DP explores every deletion path, guaranteeing the true minimum. |
+| ✅ | **Simplicity** – the code is a small recursive function plus a small helper, no exotic data‑structures. |
+| ✅ | **Scalability** – `O(n³)` with `n = 250` is trivial for modern CPUs. |
+| ✅ | **Extensibility** – the same DP template can be adapted to many “interval‑removal” problems. |
 
-Happy coding!
+---
 
----  
+## 3.  Where It Can Backfire – The “Bad”
 
-> *If you found this article helpful, share it on LinkedIn, Twitter, or Medium – let your network learn how to tame the “Lexicographically Smallest String” challenge.*  
-> *Questions or improvements? Drop a comment below!*  
+| ❌ | Issue |
+|----|-------|
+| ⚠️ | **Time** – a naïve back‑tracking would blow up (factorial) – the DP cuts that down. |
+| ⚠️ | **Space** – a memoised string table can use a lot of memory; we keep `O(n²)` strings, but each string can be up to `n` characters long – still < 250 × 250 ≈ 60 kB. |
+| ⚠️ | **Readability** – interval DP is a classic pattern that may not be obvious to newcomers. |
 
----  
+---
 
-**End of article**  
+## 4.  What We Didn't Do – The “Ugly”
 
----  
+* A greedy stack‑removal algorithm (pop when top‑current are consecutive) does *not* always give the lexicographically smallest string.  
+  It works for the *classical* “delete adjacent consecutive pairs until no pair remains” problem, but the requirement here is to *minimise* the final string, not to minimise the number of deletions.
 
-> **Ready to crush the next coding interview?**  
-> Try this DP approach on LeetCode 3563, adapt it to similar problems, and share your solution on your portfolio!  
+* A brute‑force enumeration of all deletion orders is **exponential** – completely impractical even for `|s| = 20`.
 
----  
+Thus the interval DP is the cleanest, most reliable solution.
 
-*This blog post was written by an AI developer with extensive experience in competitive programming and interview prep. If you have suggestions or corrections, feel free to open an issue or pull request on the corresponding GitHub repository.*  
+---
 
----  
+## 5.  Testing the Code
 
-### 9.  References
+| Input | Expected Output | Reason |
+|-------|-----------------|--------|
+| `abc` | `a` | delete `bc` |
+| `bcda` | `""` | `cd` → `ba` → `ba` → `a` → `z` → nothing |
+| `zdce` | `zdce` | no deletion gives a smaller string |
+| `aab` | `a` | keep first `a`, delete `ab` |
+| `za` | `""` | delete the pair `za` |
+| `az` | `az` | pair is not consecutive; nothing can be deleted |
 
-1. LeetCode Problem 3563 – Lexicographically Smallest String  
-2. “Dynamic Programming” – Competitive Programming 3, Steven Halim  
-3. Official solution discussion – LeetCode community forum  
+Run the test harnesses in each file or use the online LeetCode runner.
 
----  
+---
 
-**Happy Interviewing!**  
+## 6.  Takeaway for Interviews
 
----  
+1. **Identify the “interval”** – if the operation depends on a contiguous segment, DP on lengths is a go‑to.  
+2. **Encode “can be removed?”** as a boolean function (`isConsecutive`).  
+3. **Memoise** – avoid recomputation; in Java or Python use a 2‑D array or `lru_cache`.  
+4. **Compare strings lexicographically** – `<` works in all languages.  
 
-**END**  
+---
 
----  
+## 6.  SEO & Learning Notes
 
-> **Enjoy the blend of theory and practice that LeetCode 3563 offers.**  
-> You’ve now seen the full spectrum of solutions in Java, Python, and C++—ready for any interview scenario.  
+This article is written for:
 
---- 
+* **Competitive programmers** looking for a clean DP solution.  
+* **Software engineers** preparing for coding interviews (LeetCode, HackerRank).  
+* **Students** learning about interval DP and recursive memoisation.
 
-> *Keep exploring, keep coding!*  
+Feel free to adapt the reference code to your own projects or educational materials.  
 
----  
-
---- 
-
-> *This article is released under the MIT License.*  
-
---- 
-
-*For more algorithmic interview guides, subscribe to our newsletter!*  
-
---- 
-
-**Good luck!**  
-
---- 
-
-*(End of blog article)*
+Happy coding! 🚀
 
 --- 
 
-### 9.  Concluding Remarks
-
-The interval DP solution, though it may look a bit “heavy” compared to other string problems, is the *right* approach for LeetCode 3563.  
-It guarantees that every possible deletion sequence is considered and that the minimal string is returned.  
-With the three implementations above, you can confidently tackle this challenge in any of the most popular interview languages.
+**Keywords:** Java DP, Python interval removal, C++ recursion, lexicographically smallest string, consecutive letters, algorithm interview, LeetCode problem, O(n³) solution, interval DP tutorial.

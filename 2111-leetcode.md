@@ -7,177 +7,225 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Overview
-
-**LeetCode #2111 – Minimum Operations to Make the Array K‑Increasing**  
-*Difficulty: Hard | Public*
-
-> Given a 0‑indexed array `arr` of positive integers and an integer `k`, an array is **K‑increasing** if  
-> `arr[i‑k] ≤ arr[i]` for every `k ≤ i < n`.  
-> In one operation you can replace any element `arr[i]` by *any* positive integer.  
-> **Return the minimum number of operations required to make the array K‑increasing.**
-
-| Example | Input | Output | Explanation |
-|---------|-------|--------|-------------|
-| 1 | `arr = [5,4,3,2,1]`, `k = 1` | `4` | Must become non‑decreasing → change 4 elements |
-| 2 | `arr = [4,1,5,2,6,2]`, `k = 2` | `0` | Already K‑increasing |
-| 3 | `arr = [4,1,5,2,6,2]`, `k = 3` | `2` | Change positions 3 and 5 |
-
-`1 ≤ arr.length ≤ 10^5` – the solution must be **O(n log n)**.
+        ## 2111. Minimum Operations to Make the Array K‑Increasing  
+### The Good, the Bad, and the Ugly  
+*An SEO‑friendly guide that will help you ace the interview and get hired.*
 
 ---
 
-## 2.  High‑Level Idea – “LIS in Disguise”
+### Table of Contents  
 
-1. **Break the array into `k` independent subsequences**  
-   For every start offset `s (0 … k‑1)` take the elements `arr[s], arr[s+k], arr[s+2k] …`.  
-   Each of those subsequences must be **non‑decreasing** in the final array because of the
-   definition of K‑increasing.
+| Section | What you’ll learn |
+|---------|-------------------|
+| 🎯 Problem Overview | The formal statement and constraints |
+| 🏁 Naïve & Brute‑Force | Why a simple DP fails |
+| ⚡️ Optimal Solution | `LIS in disguise` – O(n log n) |
+| 📚 Code | Java, Python, and C++ implementations |
+| 🔍 Edge Cases | Common pitfalls and how to avoid them |
+| 📈 Complexity | Time & space |
+| 📖 Summary | Take‑aways for your next interview |
 
-2. **Keep the longest non‑decreasing subsequence (LNDS) inside each subsequence**  
-   The elements that belong to the LNDS can stay unchanged; everything else must be
-   updated.  
-   For a subsequence of length `m` with LNDS length `ℓ` we need `m – ℓ` operations.
-
-3. **Sum the required operations over the `k` subsequences**  
-   The answer is  
-   ```
-   total_ops = Σ( subsequence_length – LNDS_length )
-   ```
-
-4. **Compute LNDS in O(m log m) time**  
-   The classical patience‑sorting / binary‑search LIS algorithm works for
-   *non‑decreasing* sequences if we use **upper_bound** (the first element
-   > current value) instead of lower_bound.  
-   Complexity per subsequence: `O(m log m)`.  
-   Summed over all `k` subsequences: `O(n log n)`.
+> **SEO Keywords**: *LeetCode 2111*, *Minimum Operations to Make the Array K‑Increasing*, *LIS in disguise*, *Longest Non‑Decreasing Subsequence*, *k‑increasing array*, *Java Python C++ solution*, *dynamic programming*, *binary search*, *O(n log n)*
 
 ---
 
-## 3.  Why This Works
+## 1. Problem Overview
 
-- The K‑increasing constraint splits the array into independent “tracks”.
-  Each track behaves like a classic “make array non‑decreasing with minimum updates”.
-- For a single track the optimal strategy is exactly: *keep a longest non‑decreasing subsequence*.
-  Any other element must be changed, because it breaks the non‑decreasing property.
-- The patience‑sorting algorithm finds the LNDS length in `O(m log m)` while only using
-  a single vector of “tails” – no DP table needed.
+You’re given a 0‑indexed array `arr` of `n` positive integers and a positive integer `k`.
+
+> **Definition**  
+> The array is *k‑increasing* if for every `i` with `k ≤ i < n` we have  
+> `arr[i‑k] ≤ arr[i]`.
+
+> **Operation**  
+> In one operation you may choose any index `i` and change `arr[i]` into any positive integer.
+
+> **Goal**  
+> Return the *minimum* number of operations required to transform the given array into a k‑increasing array.
+
+### Constraints
+
+```
+1 ≤ arr.length ≤ 10^5
+1 ≤ arr[i] ≤ 10^5
+1 ≤ k ≤ arr.length
+```
 
 ---
 
-## 4.  Complexity Analysis
+## 2. The Naïve Idea (and Why It Fails)
 
-| Step | Cost | Reason |
-|------|------|--------|
-| Split into `k` subsequences | `O(n)` | Simple indexing |
-| Compute LNDS per subsequence | `O(m log m)` | Patience sorting |
-| Sum over all subsequences | `O(n)` | Adding integers |
-| **Total** | **`O(n log n)`** | `n = arr.length` |
-| **Extra space** | `O(n)` (worst case all tails stored at once) | Storing one tail vector per track |
+A first instinct is to treat the whole array as a single sequence and try to make it non‑decreasing.  
+For `k = 1` this reduces to the classic “minimum changes to make an array non‑decreasing”, which is equivalent to `n – LIS(arr)`.  
+
+But for general `k` you might think of:
+
+```
+for each i from 0 to k-1:
+    consider subarray arr[i], arr[i+k], arr[i+2k], ...
+    fix that subarray
+```
+
+If you apply a quadratic DP (O(m²) where *m* is the subarray length) for each subarray, the total cost becomes O(k * (n/k)²) = O(n²/k), which blows up for `n = 10^5`.
+
+So the brute force is **O(n²)** in the worst case—impossible to pass.
 
 ---
 
-## 5.  Reference Implementations
+## 3. The Optimal Insight: *LIS in Disguise*
 
-Below you’ll find a clean, self‑contained implementation for **Java**, **Python** and **C++**.
-All three versions use the same patience‑sorting LNDS routine.
+### Observation
 
-> **NOTE**:  
-> * In **C++** and **Java** we need a custom `upperBound` because the standard library
-> functions work with *strict* comparisons.  
-> * In **Python** we can use `bisect_right` which is equivalent to `upper_bound`.
+Each index `i` belongs to exactly one of `k` independent “k‑separated” subarrays:
 
-### 5.1  Java (Java 17)
+```
+S0 = arr[0], arr[k], arr[2k], ...
+S1 = arr[1], arr[1+k], arr[1+2k], ...
+...
+Sk‑1 = arr[k-1], arr[2k-1], arr[3k-1], ...
+```
+
+The condition `arr[i‑k] ≤ arr[i]` is *exactly* the same as demanding that every subarray `Sx` be **non‑decreasing**.
+
+### What does “minimum operations” mean for a single subarray?
+
+If you keep some elements unchanged, the rest must be replaced.  
+The best you can do is to keep a **Longest Non‑Decreasing Subsequence (LNDS)** of that subarray and change all the other elements.
+
+Hence, for subarray `S`:
+
+```
+operations(S) = |S| – LNDS(S)
+```
+
+The answer for the whole array is the sum over all `k` subarrays:
+
+```
+answer = Σ (|Sx| – LNDS(Sx))  =  n – Σ LNDS(Sx)
+```
+
+So we need a fast algorithm to compute LNDS for many short sequences.
+
+---
+
+## 4. Computing LNDS in O(m log m)
+
+The classic O(m log m) algorithm for the Longest Increasing Subsequence (LIS) also works for **non‑decreasing** subsequences if you change the binary‑search condition to *“greater‑than”*.
+
+Algorithm sketch for a sequence `seq`:
+
+```
+ends = []                     # smallest possible last value for a subsequence of length i+1
+for v in seq:
+    pos = first index where ends[pos] > v   (bisect_right for non‑decreasing)
+    if pos == len(ends):   ends.append(v)
+    else:                 ends[pos] = v
+return len(ends)
+```
+
+Because we only *replace* an element that is larger than `v`, the subsequence represented by `ends` stays sorted and keeps the optimal length.
+
+---
+
+## 5. Final Algorithm (Pseudocode)
+
+```
+1. Build an array ends[0 … k-1] – each entry is an empty vector.
+2. For each subarray Sx (x = 0 … k-1):
+        m = 0
+        for each element v in Sx:
+            pos = first index in ends[x] with ends[x][pos] > v   (bisect_right)
+            if pos == m:          ends[x].append(v)      // extend LNDS
+            else:                 ends[x][pos] = v
+        // after the loop, m = LNDS(Sx)
+        operations += |Sx| - m
+3. Return operations
+```
+
+The inner binary search runs in `O(log m)`.  
+Each element participates in **exactly one** subarray, so the total runtime is
+
+```
+O( Σ ( |Sx| log |Sx| ) )  =  O( n log (n/k) )  =  O( n log n )
+```
+
+The memory usage is `O(k)` for the `k` vectors plus `O(n)` for the array itself.
+
+---
+
+## 5. Reference Implementations
+
+Below are three implementations that run in `O(n log n)` and satisfy the LeetCode time limits.  
+Feel free to copy‑paste, test, and tweak.
+
+### 5.1 Java (using `ArrayList` and `Collections.binarySearch`)
 
 ```java
 import java.util.*;
 
-public class Solution {
-    // ----- Main API ---------------------------------------------------------
+class Solution {
     public int kIncreasing(int[] arr, int k) {
         int n = arr.length;
-        long answer = 0;              // use long to avoid overflow when n=1e5
+        int totalLnds = 0;
 
-        // Process each of the k independent tracks
+        // For each of the k separated subsequences
         for (int start = 0; start < k; start++) {
-            List<Integer> track = new ArrayList<>();
+            List<Integer> subseq = new ArrayList<>();
             for (int idx = start; idx < n; idx += k) {
-                track.add(arr[idx]);
+                subseq.add(arr[idx]);
             }
-            int m = track.size();
-            int lnnds = longestNonDecreasingSubseq(track);
-            answer += (m - lnnds);
+            totalLnds += lndsLength(subseq);
         }
-        return (int) answer;
+
+        return n - totalLnds;            // n – Σ LNDS(Sx)
     }
 
-    // ----- LNDS using patience sorting (upper_bound) -----------------------
-    private int longestNonDecreasingSubseq(List<Integer> track) {
-        // tails[i] = smallest possible last element of an LNDS of length i+1
-        int[] tails = new int[track.size()];
-        int size = 0;               // current number of tails
+    // Longest Non‑Decreasing Subsequence (LNDS) – O(m log m)
+    private int lndsLength(List<Integer> seq) {
+        List<Integer> tail = new ArrayList<>();   // tail[i] = minimal last value of LNDS of length i+1
 
-        for (int value : track) {
-            int pos = upperBound(tails, 0, size, value);
-            tails[pos] = value;
-            if (pos == size) size++;   // a longer subsequence found
+        for (int v : seq) {
+            int pos = Collections.binarySearch(tail, v, Comparator.naturalOrder());
+            if (pos < 0) pos = -(pos + 1);        // first index where tail[pos] > v
+            if (pos == tail.size())
+                tail.add(v);                     // extend
+            else
+                tail.set(pos, v);                 // replace
         }
-        return size;
-    }
-
-    // Equivalent to C++ std::upper_bound: first element > target
-    private int upperBound(int[] arr, int left, int right, int target) {
-        int lo = left, hi = right;
-        while (lo < hi) {
-            int mid = lo + (hi - lo) / 2;
-            if (arr[mid] <= target) {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
-        return lo;
+        return tail.size();
     }
 }
 ```
 
-> **Why upperBound?**  
-> For a non‑decreasing LNDS we replace the *first element that is greater* than the
-> current value; if all existing tails are ≤ value we append a new tail.
-
-### 5.2  Python (Python 3)
+### 5.2 Python (using `bisect`)
 
 ```python
-import bisect
+from bisect import bisect_right
 from typing import List
 
 class Solution:
     def kIncreasing(self, arr: List[int], k: int) -> int:
-        total_ops = 0
         n = len(arr)
+        total_lnds = 0
 
-        # Process each of the k independent tracks
         for start in range(k):
-            track = [arr[start + i * k] for i in range((n - start + k - 1) // k)]
-            lnnds = self._lnnds_length(track)
-            total_ops += len(track) - lnnds
+            subseq = arr[start:n:k]
+            total_lnds += self.lnds_length(subseq)
 
-        return total_ops
+        return n - total_lnds
 
-    # Patience sorting variant for non‑decreasing subsequence
-    def _lnnds_length(self, seq: List[int]) -> int:
-        tails = []                         # tails[i] = smallest last value of LNDS of len i+1
+    def lnds_length(self, seq: List[int]) -> int:
+        tail = []          # minimal possible last element of LNDS of each length
         for v in seq:
-            # upper_bound: first element > v
-            idx = bisect.bisect_right(tails, v)
-            if idx == len(tails):
-                tails.append(v)
+            pos = bisect_right(tail, v)     # find first tail[pos] > v
+            if pos == len(tail):
+                tail.append(v)
             else:
-                tails[idx] = v
-        return len(tails)
+                tail[pos] = v
+        return len(tail)
 ```
 
-### 5.3  C++ (C++17)
+### 5.3 C++ (using `vector` and `upper_bound`)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -187,221 +235,96 @@ class Solution {
 public:
     int kIncreasing(vector<int>& arr, int k) {
         int n = arr.size();
-        long long ans = 0;
+        int totalLnds = 0;
 
-        // For every starting offset build the corresponding track
         for (int start = 0; start < k; ++start) {
-            vector<int> track;
-            for (int i = start; i < n; i += k) track.push_back(arr[i]);
+            vector<int> subseq;
+            for (int idx = start; idx < n; idx += k)
+                subseq.push_back(arr[idx]);
 
-            int m = track.size();
-            int lnnds = longestNonDecreasing(track);
-            ans += m - lnnds;                // operations for this track
+            totalLnds += lndsLength(subseq);
         }
-        return static_cast<int>(ans);
+
+        return n - totalLnds;   // n - Σ LNDS
     }
 
 private:
-    // Patience sorting for non‑decreasing LNDS
-    int longestNonDecreasing(const vector<int>& v) {
-        vector<int> tails;                  // tails[i] = minimal last value of LNDS of len i+1
-        for (int x : v) {
-            // upper_bound : first element > x
-            auto it = upper_bound(tails.begin(), tails.end(), x);
-            if (it == tails.end())
-                tails.push_back(x);
+    int lndsLength(const vector<int>& seq) {
+        vector<int> tail;              // minimal last value for LNDS of each length
+        for (int v : seq) {
+            auto it = upper_bound(tail.begin(), tail.end(), v);  // first > v
+            if (it == tail.end())
+                tail.push_back(v);
             else
-                *it = x;
+                *it = v;
         }
-        return static_cast<int>(tails.size());
+        return (int)tail.size();
     }
 };
 ```
 
-All three implementations share the same logic and run in `O(n log n)` time and `O(n)` auxiliary space.
+> **Why the C++ version uses `upper_bound`**  
+> `upper_bound` finds the first element **greater** than `v`, which is perfect for *non‑decreasing* subsequences.  
+> If we used `lower_bound` (first **not less**), we would mistakenly enforce strictly increasing subsequences.
 
 ---
 
-## 5.  “Good – Bad – Ugly” Quick Take
+## 5.4 Common Pitfalls (The Ugly)
 
-| Aspect | What it is | Why it matters |
-|--------|------------|----------------|
-| **Good** | *Patience‑sorting LNDS* – linear‑time splitting + `O(log n)` updates per element. | Gives an optimal, proven‑optimal solution in one sweep. |
-| **Bad** | Handling duplicates (`upper_bound` vs `lower_bound`) can be a source of bugs. | A wrong bound leads to an *over‑optimistic* LNDS length and wrong answer. |
-| **Ugly** | The problem statement’s wording (“replace by *any* positive integer”) can mislead into thinking we must keep original values. | In fact we can *replace* with *any* value; we only care about relative ordering. |
-
-> **Interview Tip**  
-> In a technical interview, ask the interviewer to confirm the track‑decomposition
-> idea – it saves time and shows you understand the problem structure.
+| Mistake | Why it breaks | Fix |
+|---------|----------------|-----|
+| **Using LIS instead of LNDS** | Strictly increasing removes equal elements, giving a smaller subsequence | Replace `lower_bound` with `upper_bound` (or `bisect_right`) |
+| **Treating the whole array as one sequence** | Violates the independence of the k‑separated subarrays | Split into `k` subarrays as shown |
+| **Not handling empty subarray** | For `k = n` the subarray lengths are 1; `LNDS` should be 1 | The algorithm naturally handles it (`|S|=1, LNDS=1`) |
+| **Using `bisect_left` instead of `bisect_right`** | Fails when there are repeated values, producing wrong LNDS length | Use `bisect_right` for non‑decreasing |
+| **O(n log n) per subarray** | Rebuilding `ends` array for each subarray leads to O(nk log n) | Process each index only once, keep `ends` per subsequence |
 
 ---
 
-## 6.  Blog Article – “LeetCode 2111: From K‑Increasing to LIS in Disguise”
+## 6. Complexity Analysis
 
-> *SEO keywords: “LeetCode 2111”, “Minimum Operations to Make the Array K‑Increasing”, “K‑increasing array”, “Longest Non‑Decreasing Subsequence”, “Job interview algorithm”, “LIS in disguise”, “K‑track dynamic programming”.*
-
----
-
-### 🎯  Master LeetCode 2111 – K‑Increasing Arrays (and Nail Your Next Tech Interview)
-
-If you’re preparing for a software‑engineering interview, **LeetCode 2111** is a *must‑knock* because it combines two classic topics:
-
-1. **K‑increasing array constraint** – a subtle split into independent tracks.
-2. **Longest Non‑Decreasing Subsequence (LNDS)** – a classic O(n log n) algorithm.
-
-Below you’ll find a step‑by‑step solution, reference code in Java/Python/C++, and a quick “good‑bad‑ugly” cheat‑sheet that you can flash in an interview.
+| Metric | Java | Python | C++ |
+|--------|------|--------|-----|
+| **Time** | `O(n log n)` (each element part of one LNDS computation) | `O(n log n)` | `O(n log n)` |
+| **Space** | `O(k)` auxiliary lists + input array | `O(k)` auxiliary lists + input array | `O(k)` auxiliary lists + input array |
+| **Why it passes** | `n = 10^5`, `log n ≈ 17`, so about 1.7 M operations – comfortably under the 1‑second limit on LeetCode |
 
 ---
 
-#### 📌  What Is a K‑Increasing Array?
-
-> `arr[i‑k] ≤ arr[i]` for every `k ≤ i < n`.
-
-Think of `k` parallel rails.  Every element must be ≥ the element that sits `k` positions before it.
-
----
-
-#### 🚀  The “LIS in Disguise” Strategy
-
-1. **Split the array into `k` tracks**  
-   `track_s = arr[s], arr[s+k], arr[s+2k], …`
-
-2. **For each track keep the longest non‑decreasing subsequence (LNDS)**  
-   *All other elements must be updated.*
-
-3. **Sum updates across tracks** – that’s the answer.
-
-The key to an *optimal* solution is the **patience‑sorting (binary‑search) LNDS algorithm**.  
-For each element we maintain a “tail” array and use **upper_bound** to keep the array sorted.
-
----
-
-#### ⚡  Why This is a Great Interview Question
-
-- **Shows algorithmic depth** – splitting into tracks is non‑obvious.  
-- **Demonstrates mastery of LIS** – a staple in many interview sets.  
-- **Highlights careful handling of equal values** – subtle use of `upper_bound`.  
-- **Time complexity** – you need to prove `O(n log n)`.
-
----
-
-#### 📦  Reference Implementations
-
-```java
-// Java 17 – K‑Increasing via LNDS on each k‑track
-public class Solution {
-    public int kIncreasing(int[] arr, int k) {
-        int n = arr.length, ans = 0;
-        for (int start = 0; start < k; start++) {
-            List<Integer> track = new ArrayList<>();
-            for (int i = start; i < n; i += k) track.add(arr[i]);
-
-            int len = track.size();
-            int lnnds = lengthOfLNDS(track);   // patience sorting
-            ans += len - lnnds;                // elements to change
-        }
-        return ans;
-    }
-
-    private int lengthOfLNDS(List<Integer> seq) {
-        int[] tails = new int[seq.size()];
-        int m = 0;                                 // current size
-        for (int v : seq) {
-            int pos = upperBound(tails, 0, m, v);
-            tails[pos] = v;
-            if (pos == m) m++;
-        }
-        return m;
-    }
-
-    private int upperBound(int[] a, int l, int r, int x) {
-        while (l < r) {
-            int mid = l + (r - l) / 2;
-            if (a[mid] <= x) l = mid + 1;
-            else r = mid;
-        }
-        return l;
-    }
-}
-```
+## 7. Quick Test Cases
 
 ```python
-# Python 3 – Using bisect_right for upper_bound
-from bisect import bisect_right
+# Python version
+sol = Solution()
 
-class Solution:
-    def kIncreasing(self, arr, k):
-        n, ans = len(arr), 0
-        for start in range(k):
-            track = arr[start::k]
-            lnnds = self.lnnds(track)
-            ans += len(track) - lnnds
-        return ans
-
-    def lnnds(self, seq):
-        tails = []
-        for v in seq:
-            i = bisect_right(tails, v)
-            if i == len(tails): tails.append(v)
-            else: tails[i] = v
-        return len(tails)
+assert sol.kIncreasing([1,2,3], 1) == 0          # already non‑decreasing
+assert sol.kIncreasing([3,1,2,4,5], 2) == 1
+assert sol.kIncreasing([5,4,3,2,1], 3) == 2
 ```
 
-```cpp
-// C++17 – K‑Increasing using upper_bound on each k‑track
-class Solution {
-public:
-    int kIncreasing(vector<int>& arr, int k) {
-        long long ans = 0;
-        for (int s = 0; s < k; ++s) {
-            vector<int> track;
-            for (int i = s; i < arr.size(); i += k) track.push_back(arr[i]);
-
-            int lnnds = longestNonDecreasing(track); // patience sorting
-            ans += (int)track.size() - lnnds;
-        }
-        return (int)ans;
-    }
-
-private:
-    int longestNonDecreasing(const vector<int>& v) {
-        vector<int> tails;
-        for (int x : v) {
-            auto it = upper_bound(tails.begin(), tails.end(), x);
-            if (it == tails.end()) tails.push_back(x);
-            else *it = x;
-        }
-        return tails.size();
-    }
-};
-```
-
-All three solutions run in `O(n log n)` time, the *golden standard* for LIS‑based problems.
+> Use a random array generator to sanity‑check both Python and C++ against the Java solution.
 
 ---
 
-#### 📌  Good‑Bad‑Ugly Cheat‑Sheet
+## 8. Take‑Aways for Your Next Interview
 
-- **Good** – Linear track splitting + `O(log n)` tail updates = *optimal* solution.
-- **Bad** – Choosing the wrong bound (`lower_bound` instead of `upper_bound`) → incorrect LNDS.
-- **Ugly** – Thinking the problem requires *keeping original values*; you can replace with *any* integer, only relative ordering matters.
+1. **Recognize independence** – the k‑separated subarrays are *independent* constraints.
+2. **Reduce to a known problem** – LNDS is the exact sub‑problem.  
+   The whole array transforms into “sum of (subarray length – LNDS)”.
+3. **Leverage O(n log n)** LIS algorithm for each subarray.  
+   It’s faster than DP and works for up to 10⁵ elements.
+4. **Implement cleanly** – use `upper_bound` (C++), `bisect_right` (Python), or `Collections.binarySearch` (Java) for the non‑decreasing variant.
+5. **Edge‑cases** – always test `k = 1`, `k = n`, and random large inputs.
+6. **Explain your thought process** – interviewers love seeing the “why” behind the code.
 
 ---
 
-### 🚀  Takeaway
+### Final Thought
 
-*LeetCode 2111 is more than a math‑puzzle; it’s a showcase of deep algorithmic reasoning and efficient implementation.*
+The beauty of LeetCode 2111 lies in turning a seemingly hard “array‑rearrangement” problem into a handful of classic LIS problems. Once you spot the *k‑separated* independence, the rest follows naturally.  
 
-- **Use the reference code** to test your own solutions.  
-- **Ask your interviewer**: “Do you confirm the `k`‑track decomposition?” – a quick sanity check.  
-- **Remember**: the subtlety is in the *bound* you use for equal values.
+Show this trick in your next interview and you’ll impress the panel with both **algorithmic insight** and **clean code**—exactly what hiring managers are looking for.
 
-Good luck nailing the question – you’ll be a step closer to landing that software‑engineering role!
+Happy coding, and may your next offer be a “k‑increasing” one! 🚀
 
---- 
-
-> **Stay tuned** for more “From LeetCode to Job” deep dives. Drop your favorite LeetCode problems in the comments!  
-
---- 
-
-That’s it. You’ve got the theory, the code, and a quick cheat‑sheet ready for the interview. Happy coding!
+---

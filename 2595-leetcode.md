@@ -7,164 +7,252 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
-
-# LeetCode 2595 – Number of Even and Odd Bits  
-*Easy – Bit‑Manipulation – Java / Python / C++ Solutions – SEO‑Optimised Blog Post*  
+        ## 🚀 Master LeetCode 2595 – “Number of Even and Odd Bits”  
+*Learn how to solve it in **Java, Python, and C++** and ace your next software‑engineering interview.*
 
 ---
 
-## 1️⃣ Problem Overview  
+### Table of Contents  
 
-> **LeetCode #2595 – Number of Even and Odd Bits**  
-> **Difficulty:** Easy  
-> **Tags:** Bit Manipulation, Integer, Counting  
+| Section | Link |
+|---------|------|
+| 📝 Problem Statement | #problem-statement |
+| ⚙️ Solution Overview | #solution-overview |
+| 💡 Good, Bad, Ugly | #good-bad-ugly |
+| 🔢 Bit‑Mask Approach | #bit‑mask-approach |
+| 📦 Code Snippets | #code-snippets |
+| ⏱️ Complexity | #complexity |
+| ⚠️ Edge Cases & Pitfalls | #pitfalls |
+| 🗣️ Interview Tips | #interview-tips |
+| 📚 Alternatives | #alternatives |
+| 🎯 Summary | #summary |
 
-> **Statement**  
-> Given a positive integer `n`, let:
-> - **even** = the number of set bits (1‑bits) whose index is *even* (0‑based from the rightmost bit).  
-> - **odd**  = the number of set bits whose index is *odd*.  
-> Return the array `[even, odd]`.
-
-> **Examples**  
-> | `n` | Binary | `even` | `odd` | Result |  
-> |-----|--------|--------|-------|--------|  
-> | 50  | 110010 | 1      | 2     | `[1, 2]` |  
-> | 2   | 10      | 0      | 1     | `[0, 1]` |
-
-> **Constraints**  
-> `1 ≤ n ≤ 1000`  
-
-> **LeetCode link**: https://leetcode.com/problems/number-of-even-and-odd-bits/  
+> **SEO keywords**: *LeetCode 2595, Number of Even and Odd Bits, bit manipulation, Java solution, Python solution, C++ solution, interview coding, job interview, software engineer, bitmasking, popcount, coding interview tips*
 
 ---
 
-## 2️⃣ Why This Problem Matters  
+## 📝 Problem Statement
 
-Bit‑manipulation is a classic topic in technical interviews, especially for roles that involve systems, embedded programming, or performance‑critical code. Mastering small tricks—like counting bits on even/odd positions—helps you:
-- **Think in binary** (a core skill for any software engineer).  
-- **Write cleaner, faster code** by avoiding string conversion.  
-- **Answer tricky interview questions** that test your depth of understanding.  
+> **Given** a positive integer `n`  
+> **Return** an array `[even, odd]` where:
+> * `even` = number of **even‑indexed** bits (0‑based from the right) that are set to `1`
+> * `odd`  = number of **odd‑indexed** bits that are set to `1`
 
----
+**Indices** are counted from the least significant bit (LSB) to the most significant bit (MSB), starting at `0`.
 
-## 3️⃣ Solution Ideas  
+**Examples**
 
-### 3.1 Naïve String‑Based Approach  
-Convert `n` to a binary string, iterate from the right, and increment counters based on the parity of the index.  
-*Pros*: Easy to understand.  
-*Cons*: Extra memory allocation, slower due to string manipulation.
+| `n` | Binary | Even‑index 1s | Odd‑index 1s | Output |
+|-----|--------|--------------|--------------|--------|
+| 50  | 110010 | 1 (index 4)  | 2 (indices 1,5) | `[1, 2]` |
+| 2   | 10     | 0            | 1 (index 1) | `[0, 1]` |
 
-### 3.2 Bit Mask + Pop‑Count (One‑liner)  
-Use two masks:
+**Constraints**
 
-- `0x55555555` (binary `0101 0101 0101 …`) selects *even* indices.  
-- `0xAAAAAAAA` (binary `1010 1010 1010 …`) selects *odd* indices.  
-
-Apply `n & mask` and count the remaining set bits with the CPU’s pop‑count instruction (or language‑provided helper).  
-
-*Pros*: O(1) time, no loops, minimal memory.  
-*Cons*: Slightly less readable for beginners; requires knowledge of masks.
-
-### 3.3 Classic Bit‑Loop  
-Iterate over the bits of `n`, using a flag that flips between even and odd on each iteration.  
-
-*Pros*: No external helpers; easy to implement.  
-*Cons*: O(log n) loops; slower than the mask‑based method for large inputs.
+```
+1 <= n <= 1000
+```
 
 ---
 
-## 4️⃣ Reference Implementations  
+## ⚙️ Solution Overview
 
-Below are clean, production‑ready solutions in **Java, Python, and C++** that you can paste directly into your LeetCode workspace.
+| Approach | Idea | Complexity | When to use |
+|----------|------|------------|-------------|
+| **Bit‑Mask & Popcount** | Use two alternating masks (`0b010101…` & `0b101010…`) to isolate even and odd bits, then count the set bits with a built‑in popcount. | **O(1)** time, **O(1)** space | Production‑grade, interview‑friendly |
+| **String Conversion** | Convert `n` to binary string, iterate from LSB to MSB and increment counters based on index parity. | **O(log n)** time, **O(log n)** space | Quick prototyping |
+| **Manual Bit Loop** | Shift `n` right each iteration, check LSB, toggle index parity. | **O(log n)** time, **O(1)** space | Educational, if built‑ins aren’t allowed |
 
-| Language | Code |
-|----------|------|
-| **Java** | ```java<br>import java.util.*;<br>public class Solution {<br>    public int[] evenOddBit(int n) {<br>        // Masks for even (0‑based) and odd bits<br>        final int EVEN_MASK = 0x55555555; // 0101…<br>        final int ODD_MASK  = 0xAAAAAAAAL; // 1010…<br>        int even = Integer.bitCount(n & EVEN_MASK);<br>        int odd  = Integer.bitCount(n & ODD_MASK);<br>        return new int[]{even, odd};<br>    }<br>}<br>``` |
-| **Python** | ```python<br>from typing import List<br>class Solution:<br>    def evenOddBit(self, n: int) -> List[int]:<br>        # Masks for even and odd positions (32‑bit)<br>        EVEN_MASK = 0x55555555  # 0101…<br>        ODD_MASK  = 0xAAAAAAAAL  # 1010…<br>        even = (n & EVEN_MASK).bit_count()<br>        odd  = (n & ODD_MASK).bit_count()<br>        return [even, odd]<br>``` |
-| **C++** | ```cpp<br>#include <vector><cstdint> // for uint32_t<br>using namespace std;<br>class Solution {<br>public:<br>    vector<int> evenOddBit(int n) {<br>        const uint32_t EVEN_MASK = 0x55555555; // 0101…<br>        const uint32_t ODD_MASK  = 0xAAAAAAAAL; // 1010…<br>        int even = __builtin_popcount(n & EVEN_MASK);<br>        int odd  = __builtin_popcount(n & ODD_MASK);<br>        return {even, odd};<br>    }<br>};<br>``` |
-
-> **Why the masks?**  
-> `0x55555555` in binary is `0101 0101 …`.  
-> When you `AND` this mask with `n`, all bits at odd positions are zeroed out, leaving only the even‑indexed bits.  
-> The pop‑count operation (`bitCount`, `.bit_count()`, `__builtin_popcount`) counts the number of `1`s in that result, which is precisely the `even` count.  
-> The same logic applies to the odd mask.
+The **Bit‑Mask & Popcount** method is the “good” one—short, efficient, and demonstrates mastery of bit manipulation.
 
 ---
 
-## 5️⃣ The Good, The Bad, and The Ugly  
+## 💡 Good, Bad, Ugly
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Readability** | Mask‑based solution is concise and fast for seasoned developers. | Beginners may find masks opaque; the string‑based method is more intuitive. | Using magic numbers without explanation can confuse reviewers. |
-| **Performance** | O(1) time; no loops; CPU pop‑count is hardware‑accelerated. | String conversion introduces heap allocation and O(log n) time. | Using a loop that checks each bit individually (e.g., shifting and modulo) is slower but still passes for small `n`. |
-| **Portability** | Relies on language built‑ins (`bitCount`, `bit_count`, `__builtin_popcount`). | Some environments may lack these helpers; fallback logic may be required. | Hard‑coding masks for 32‑bit while `int` could be 64‑bit on some platforms – leads to subtle bugs. |
-| **Edge Cases** | Works for `n = 1` and `n = 1000` without special handling. | String‑based approach mis‑counts if leading zeros are considered. | Negative numbers (not in constraints) would break the bit‑mask logic unless unsigned types are used. |
-
-### Best Practices  
-
-1. **Comment the Masks** – Write a short note that explains which indices each mask covers.  
-2. **Use `long` / `uint64_t` if 64‑bit integers are possible** – adjust the mask accordingly.  
-3. **Avoid Magic Numbers** – Name the masks (e.g., `EVEN_MASK`, `ODD_MASK`).  
+| Stage | What to do | What to avoid |
+|-------|------------|---------------|
+| **Good** | Use bitwise masks + built‑in popcount (e.g., `Integer.bitCount`). | Anything that loops over the entire binary string unless you have to. |
+| **Bad** | Convert to string when debugging, but not in production. | Forgetting that indices start at `0`. |
+| **Ugly** | Manually maintain counters and index parity in an `if/else` block that gets tangled. | Writing a long hard‑coded mask like `0b0101010101010101` without explanation. |
 
 ---
 
-## 6️⃣ Complexity Analysis  
+## 🔢 Bit‑Mask Approach
 
-| Approach | Time | Space |
-|----------|------|-------|
-| Mask + Pop‑Count | **O(1)** | **O(1)** |
-| String conversion | **O(log n)** | **O(log n)** (binary string length) |
-| Classic bit‑loop | **O(log n)** | **O(1)** |
+1. **Masks**  
+   * Even indices (0, 2, 4, …) → binary `010101…`  
+   * Odd indices (1, 3, 5, …)  → binary `101010…`  
 
-For the given constraints (`n ≤ 1000`), all approaches are trivial, but the mask‑based method remains the most elegant for production code.
+   In decimal:  
+   * Even mask = `0b0101010101` = `341` (for numbers up to 10 bits; you can generate it programmatically if you like).  
+   * Odd mask  = `0b1010101010` = `682`.
 
----
+2. **Apply & Count**  
+   * `even = popcount(n & evenMask)`  
+   * `odd  = popcount(n & oddMask)`
 
-## 7️⃣ Variations & Extensions  
-
-- **Count Bits in a Range** – Summing the even/odd counts for every number in `[L, R]`.  
-- **Bit‑parity Problems** – “Number of bits with odd parity” or “bitwise XOR with all numbers”.  
-- **Hardware‑Accelerated APIs** – Using `std::popcount` in C++20 or `std::bitset` in modern C++.  
+3. **Return** `[even, odd]`
 
 ---
 
-## 8️⃣ Interview Tips  
+## 📦 Code Snippets
 
-1. **Explain the Mask Idea** – Show you understand binary patterns.  
-2. **Mention Pop‑Count** – Many interviewers expect knowledge of built‑in pop‑count functions.  
-3. **Talk About Edge Cases** – Discuss how the solution handles the minimum and maximum values in the constraints.  
-4. **Time & Space** – Be ready to state the complexity succinctly.  
+### Java
+
+```java
+class Solution {
+    public int[] evenOddBit(int n) {
+        // Even indices: 0,2,4,... -> 0b0101010101 (341)
+        // Odd indices: 1,3,5,...  -> 0b1010101010 (682)
+        int evenMask = 0b0101010101; // 341
+        int oddMask  = 0b1010101010; // 682
+        int even = Integer.bitCount(n & evenMask);
+        int odd  = Integer.bitCount(n & oddMask);
+        return new int[]{even, odd};
+    }
+}
+```
+
+#### One‑liner (Java 17+)
+
+```java
+public int[] evenOddBit(int n) {
+    return new int[]{Integer.bitCount(n & 0b0101010101), Integer.bitCount(n & 0b1010101010)};
+}
+```
 
 ---
 
-## 9️⃣ SEO‑Optimised Takeaway  
+### Python
 
-If you’re targeting roles in **software engineering**, **embedded systems**, or **performance optimisation**, mastering *bit‑manipulation tricks* like the **Number of Even and Odd Bits** problem boosts both your interview performance and your code‑quality skills.  
+```python
+class Solution:
+    def evenOddBit(self, n: int) -> List[int]:
+        even_mask = 0b0101010101  # 341
+        odd_mask  = 0b1010101010  # 682
+        even = (n & even_mask).bit_count()
+        odd  = (n & odd_mask).bit_count()
+        return [even, odd]
+```
 
-**Key SEO keywords**:  
-- LeetCode 2595  
-- Number of Even and Odd Bits  
-- Bit manipulation interview question  
-- Java bit count solution  
-- Python bit count example  
-- C++ popcount technique  
-- Job interview preparation  
+#### One‑liner (Python 3.10+)
 
-Include these in your résumé, LinkedIn articles, and personal blog posts to increase visibility to recruiters searching for *bit‑wise logic*, *integer manipulation*, or *coding interview solutions*.  
+```python
+class Solution:
+    def evenOddBit(self, n: int) -> List[int]:
+        return [(n & 0b10101010101).bit_count(), (n & 0b01010101010).bit_count()]
+```
 
 ---
 
-## 10️⃣ Conclusion  
+### C++
 
-The **Number of Even and Odd Bits** problem is a textbook illustration of how a clever bit mask can turn a seemingly “O(log n)” question into an *O(1)* one. By implementing the one‑liner mask solution in **Java, Python, and C++**, you demonstrate:
+```cpp
+class Solution {
+public:
+    vector<int> evenOddBit(int n) {
+        // Even indices mask: 0b0101010101 (341)
+        // Odd indices  mask: 0b1010101010 (682)
+        int evenMask = 0b0101010101;
+        int oddMask  = 0b1010101010;
+        int even = __builtin_popcount(n & evenMask);
+        int odd  = __builtin_popcount(n & oddMask);
+        return {even, odd};
+    }
+};
+```
 
-- **Efficiency** – leveraging CPU‑level pop‑count instructions.  
-- **Clarity** – using well‑named constants and concise logic.  
-- **Readiness for Interviews** – showcasing your ability to translate problem constraints into optimal code.  
+#### One‑liner (C++14+)
 
-Feel free to copy the snippets above into your LeetCode workspace or into your personal project to showcase your mastery of bit‑wise operations. Good luck on your coding journey and in your next technical interview! 🚀  
+```cpp
+vector<int> evenOddBit(int n) {
+    return {__builtin_popcount(n & 0b0101010101), __builtin_popcount(n & 0b1010101010)};
+}
+```
 
----  
+---
 
-*Happy coding!*
+## ⏱️ Complexity
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Bit‑Mask + Popcount | **O(1)** (constant, independent of `n`) | **O(1)** |
+| String conversion | **O(log n)** | **O(log n)** |
+| Manual loop | **O(log n)** | **O(1)** |
+
+For `n <= 1000` the differences are negligible, but the bit‑mask approach is *universally* optimal.
+
+---
+
+## ⚠️ Edge Cases & Pitfalls
+
+| Pitfall | Fix |
+|---------|-----|
+| Off‑by‑one index when iterating a string | Use `i % 2 == 0` for even, `i % 2 == 1` for odd, counting from LSB (reverse index). |
+| Wrong mask size | The masks must cover all bits that may appear in `n`. For 32‑bit integers, use `0x55555555` (even) & `0xAAAAAAA` (odd). |
+| Not using built‑in popcount | Manual popcount is slower and error‑prone. |
+| Assuming `n` is zero | Problem guarantees `n >= 1`, but if you allow `0`, masks still work (both counts will be `0`). |
+
+---
+
+## 🗣️ Interview Tips
+
+1. **Explain the bit‑mask logic**: Show that even and odd indices alternate; therefore we can create a mask that matches those positions.
+2. **Show why popcount is efficient**: It's hardware‑accelerated and constant time for fixed word sizes.
+3. **Discuss alternatives briefly**: Mention string conversion and manual loop to demonstrate thoroughness, but quickly argue why they’re suboptimal.
+4. **Talk about scalability**: For `int` vs `long`, just change the mask constants (`0x55555555`, `0xAAAAAAAA`).
+5. **Time‑space trade‑off**: Emphasize constant time & space, which is a hallmark of a good interview answer.
+
+---
+
+## 📚 Alternatives (If you must avoid built‑ins)
+
+### Manual Bit Counting
+
+```java
+public int[] evenOddBit(int n) {
+    int even = 0, odd = 0, idx = 0;
+    while (n != 0) {
+        if ((n & 1) == 1) {
+            if (idx % 2 == 0) even++;
+            else odd++;
+        }
+        n >>= 1;
+        idx++;
+    }
+    return new int[]{even, odd};
+}
+```
+
+### String Conversion
+
+```python
+def evenOddBit(n):
+    bits = bin(n)[2:][::-1]  # LSB first
+    even = sum(1 for i, b in enumerate(bits) if i % 2 == 0 and b == '1')
+    odd  = sum(1 for i, b in enumerate(bits) if i % 2 == 1 and b == '1')
+    return [even, odd]
+```
+
+These are excellent for *educational* purposes or languages lacking popcount.
+
+---
+
+## 🎯 Summary
+
+- The **Bit‑Mask + Popcount** method is the fastest, most concise, and showcases deep understanding of bit operations.  
+- For `n <= 1000`, any solution passes, but interviewers expect the constant‑time approach.  
+- Masks like `0b0101010101` (`341`) for even and `0b1010101010` (`682`) for odd indices isolate the bits in one go.  
+- Built‑ins (`Integer.bitCount`, `__builtin_popcount`, `.bit_count()`) make the code a single line—ideal for coding interviews.  
+
+> **Remember**: “Show the mask → apply → popcount → return.” That's all you need to impress.
+
+---
+
+## 🎉 Final Thought
+
+Bit manipulation problems are a staple of technical interviews. Mastering this one not only lands you the `[even, odd]` array in constant time but also gives you a reusable pattern for a wide range of bit‑related questions. Happy coding! 🚀
+
+--- 
+
+> **Want more interview prep?** Check out my other guides on *two‑sum*, *reverse bits*, and *count bits*—all optimized for interview success.

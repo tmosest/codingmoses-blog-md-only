@@ -7,175 +7,157 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # LeetCode 1523 – “Count Odd Numbers in an Interval Range”  
-**The Good, The Bad, and The Ugly – A Complete SEO‑Optimized Guide for Job Interviews**
-
-> *Keywords: LeetCode 1523, Count Odd Numbers, O(1) algorithm, interview coding, job interview, algorithmic problem, coding interview solutions, Java, Python, C++*
-
----
-
-## 📌 Table of Contents  
-
-| Section | Link |
-|---------|------|
-| 🚀 Introduction | #introduction |
-| 📚 Problem Statement | #problem-statement |
-| ✅ Constraints | #constraints |
-| 🏗️ Naïve Approach | #naïve-approach |
-| ⚡ Optimized O(1) Solution | #optimized-solution |
-| 💻 Code Implementations | #code-implementations |
-| 📈 Complexity Analysis | #complexity-analysis |
-| 🔎 Edge‑Case Checklist | #edge‑case-checklist |
-| 🤝 Interview Tips | #interview-tips |
-| 🎯 The Good | #the-good |
-| ⚠️ The Bad | #the-bad |
-| 👿 The Ugly | #the-ugly |
-| 🎉 Wrap‑up & Takeaways | #wrap‑up |
-| 📚 Further Reading | #further-reading |
+        ## 🚀 LeetCode 1523 – Count Odd Numbers in an Interval Range  
+### The Good, the Bad, and the Ugly  
+*(SEO‑friendly guide that will help you land that software engineering interview)*  
 
 ---
 
-## 🚀 Introduction
+### TL;DR  
+- **Problem**: Count the odd integers in the inclusive range `[low, high]`.  
+- **Constraints**: `0 ≤ low ≤ high ≤ 10^9`.  
+- **Optimal solution**: O(1) time, O(1) space.  
+- **Common pitfalls**: off‑by‑one errors, integer division quirks, ignoring large values.  
 
-When you’re scrolling through **LeetCode** for interview prep, you’ll often stumble upon the *“easy”* category.  
-One such problem is **LeetCode 1523 – Count Odd Numbers in an Interval Range**.  
-It looks simple, but it’s a perfect example of how a solid mathematical insight can transform a brute‑force loop into an **O(1)** constant‑time solution.  
-
-In this blog we’ll walk through:
-
-1. The problem and its constraints.  
-2. A naïve two‑pointer approach (good for teaching, bad for production).  
-3. A concise O(1) formula that’s perfect for a live interview.  
-4. Full code snippets in **Java, Python, and C++**.  
-5. SEO‑friendly explanations so recruiters find you on Google.  
-
-Ready to turn a seemingly trivial problem into a showcase of clean, efficient coding? Let’s dive in.  
+> **Want to impress interviewers?**  
+> Show you know *why* the math works, and be ready to discuss *edge cases* and *alternatives* (e.g., two‑pointer).  
 
 ---
 
-## 📚 Problem Statement
+## 1. Problem Statement
 
-> **Count Odd Numbers in an Interval Range**  
-> **LeetCode ID:** 1523  
-> **Difficulty:** Easy  
+> **LeetCode 1523 – Count Odd Numbers in an Interval Range**  
+> Given two non‑negative integers `low` and `high`, return the count of odd numbers between `low` and `high` (inclusive).
 
-Given two non‑negative integers `low` and `high` (`low ≤ high`), return the number of odd integers in the inclusive range `[low, high]`.
+Examples  
+| low | high | Output | Explanation |
+|-----|------|--------|-------------|
+| 3   | 7    | 3      | 3, 5, 7 |
+| 8   | 10   | 1      | 9 |
+
+---
+
+## 2. Constraints Recap
+
+| Item | Value |
+|------|-------|
+| `low` | `0 … 10^9` |
+| `high` | `low … 10^9` |
+
+Because the input range can be huge, *iterating* over every integer is **not** acceptable for an interview‑style solution.
+
+---
+
+## 3. Approaches
+
+### 3.1. Brute‑Force (O(n) time)
 
 ```text
-Input: low = 3, high = 7
-Output: 3          // 3, 5, 7
-
-Input: low = 8, high = 10
-Output: 1          // 9
+count = 0
+for i from low to high:
+    if i % 2 == 1:
+        count += 1
+return count
 ```
 
----
-
-## ✅ Constraints
-
-- `0 ≤ low ≤ high ≤ 10^9`  
-- Both `low` and `high` fit in a 32‑bit signed integer.  
+**Why it’s bad**:  
+- Linear time → 1 billion iterations worst‑case.  
+- Fails time limits on large inputs.  
+- Not something an interviewer will expect.
 
 ---
 
-## 🏗️ Naïve Approach
+### 3.2. Math Formula – **Good** (O(1) time)
 
-A straightforward way is to iterate from `low` to `high`, count the odds, and return the result:
+**Observation**  
+- The number of odd integers in `[0, x]` is `(x + 1) / 2` (integer division).  
+  *Why?*  
+  - For `x = 0` → 0 odds → `(0+1)/2 = 0`.  
+  - For `x = 1` → 1 odd → `(1+1)/2 = 1`.  
+  - Each step adds 1 odd if `x` is odd, otherwise no new odd.
 
-```java
-int count = 0;
-for (int i = low; i <= high; i++) {
-    if ((i & 1) == 1) count++;  // i is odd
+Therefore:
+
+```
+oddCount(high) - oddCount(low-1)
+```
+
+```cpp
+int countOdds(int low, int high) {
+    auto oddUpTo = [](long long x) {
+        return (x + 1) / 2;        // integer division
+    };
+    return oddUpTo(high) - oddUpTo(low - 1);
 }
-return count;
 ```
 
-**Time Complexity:** O(high‑low+1) – linear in the interval length.  
-**Space Complexity:** O(1).
+- **Time**: `O(1)`  
+- **Space**: `O(1)`  
+- **Edge‑case**: When `low = 0`, `low-1 = -1` → `(−1+1)/2 = 0`, which is correct.
 
-This approach is acceptable for tiny ranges but will time‑out for the maximum input (`high = 10^9`).  
-The **two‑pointer** solution you saw in the LeetCode discussions reduces the loop but still runs in O(n/2). It’s still suboptimal for interview settings where a single‑line solution is expected.
+> **Why this is the “good” solution**  
+> *Simplicity*, *correctness*, *constant time*, and *constant memory*.  
+> Perfect for interviews.
 
 ---
 
-## ⚡ Optimized O(1) Solution
-
-The trick: **an arithmetic progression of odds**.  
-All odd numbers can be expressed as `2k + 1`.  
-The number of odd integers between two numbers can be derived from simple floor/ceil math.
-
-### Derivation
-
-1. Count of odd numbers ≤ `x`:
-   - If `x` is odd: `(x / 2) + 1`
-   - If `x` is even: `x / 2`
-
-   In one line:
-   ```text
-   oddUpTo(x) = (x + 1) / 2
-   ```
-
-   Because integer division truncates toward zero in Java/Python/C++.
-
-2. Count of odds in `[low, high]`:
-   ```text
-   oddsInRange = oddUpTo(high) - oddUpTo(low - 1)
-   ```
-
-### Final Formula
+### 3.3. Two‑Pointer – **The Ugly** (O(n) but still better than brute‑force)
 
 ```text
-answer = ((high + 1) / 2) - ((low) / 2)
+1. Make low the first odd number in the range.
+2. Make high the last odd number in the range.
+3. Count how many steps you can jump in 2‑step increments.
 ```
 
-Explanation:
-
-- `high + 1` ensures we include the upper bound if it’s odd.  
-- `low / 2` counts the odds strictly **below** `low`.
-
-This works for all `low`, `high` pairs, including when `low = 0`.
-
----
-
-## 💻 Code Implementations
-
-Below are clean, idiomatic solutions in **Java**, **Python**, and **C++** that run in **O(1)** time and **O(1)** space.
-
-### Java (LeetCode‑style)
+**Java** (from the snippet you posted):
 
 ```java
-/**
- * LeetCode 1523. Count Odd Numbers in an Interval Range
- */
 class Solution {
     public int countOdds(int low, int high) {
-        // (high + 1)/2 counts odds <= high
-        // low/2 counts odds < low
-        return (high + 1) / 2 - low / 2;
+        if (low == high) return (low % 2 == 0) ? 0 : 1;
+
+        // Make low odd
+        low = (low % 2 == 0) ? low + 1 : low;
+        // Make high odd
+        high = (high % 2 == 0) ? high - 1 : high;
+
+        int count = (low != high) ? 2 : 0;
+        while (low < high) {
+            low += 2;
+            high -= 2;
+            if (low < high) count += 2;
+        }
+        if (low == high) count += 1;
+        return count;
     }
 }
 ```
 
-*Why it’s great:*  
-- Single line inside the method.  
-- No loops, no extra variables.  
-- Handles `low = 0` naturally.  
+- **Time**: `O(n/2)` (worst‑case ~5 × 10⁸ iterations → still too slow for interview).  
+- **Space**: `O(1)`  
 
-### Python
+> **Why it’s the “ugly” solution**  
+> It works, but you still loop over the interval.  
+> The math version is far cleaner and faster.
+
+---
+
+### 3.4. One‑Line Python – **Clean** (O(1))
 
 ```python
-# LeetCode 1523 – Count Odd Numbers in an Interval Range
 class Solution:
     def countOdds(self, low: int, high: int) -> int:
         return (high + 1) // 2 - low // 2
 ```
 
-Python’s integer division (`//`) behaves like Java’s `/` for integers, so the logic is identical.
+- Uses integer division (`//`).  
+- Handles the edge case `low = 0` automatically.
 
-### C++ (C++17)
+---
+
+### 3.5. One‑Line C++ – **Even Cleaner** (O(1))
 
 ```cpp
-// LeetCode 1523. Count Odd Numbers in an Interval Range
 class Solution {
 public:
     int countOdds(int low, int high) {
@@ -184,112 +166,59 @@ public:
 };
 ```
 
-All three snippets use the same O(1) formula; the only differences are language‑specific syntax and comments.
+---
+
+## 4. Complexity Analysis
+
+| Approach | Time | Space |
+|----------|------|-------|
+| Brute‑Force | `O(high - low + 1)` | `O(1)` |
+| Math Formula | `O(1)` | `O(1)` |
+| Two‑Pointer | `O(high - low)` | `O(1)` |
+| One‑Line Python / C++ | `O(1)` | `O(1)` |
+
+The optimal solution runs in constant time, regardless of input size, and uses only a couple of variables.
 
 ---
 
-## 📈 Complexity Analysis
+## 5. Common Edge Cases
 
-| Metric | Naïve / Two‑Pointer | Optimized O(1) |
-|--------|---------------------|----------------|
-| **Time** | O(high - low + 1) | O(1) |
-| **Space** | O(1) | O(1) |
-| **Practical Impact** | Can hit time limits for `high = 10^9`. | Instantly passes all test cases, even with huge ranges. |
-
----
-
-## 🔎 Edge‑Case Checklist
-
-| Edge Case | What to Test | Expected Result |
-|-----------|--------------|-----------------|
-| `low = high` | Single‑number interval | `1` if odd, `0` if even |
-| `low = 0` | Lower bound at zero | Count odds from 1 to `high` |
-| `high = 10^9` | Max value | Works without overflow (Java/C++ 32‑bit signed int still ok) |
-| `low = 1, high = 1` | Odd single element | `1` |
-| `low = 2, high = 2` | Even single element | `0` |
-
-The formula handles all these gracefully.
+| Edge Case | Why it matters | How the math solution handles it |
+|-----------|----------------|---------------------------------|
+| `low = 0` | `low-1 = -1` → negative division | `(−1+1)/2 = 0` → correct |
+| `low = high` | Single number interval | The formula still works |
+| Large inputs (`10^9`) | Potential overflow in some languages | Use `long long` in C++ / `long` in Java if needed |
+| `low` or `high` odd vs. even | Off‑by‑one in naive loop | The integer division logic naturally accounts for parity |
 
 ---
 
-## 🤝 Interview Tips
+## 6. Interview Tips
 
-1. **Explain the math upfront.**  
-   “The number of odds up to x is (x+1)/2…”.  
-   This shows you understand the underlying pattern.
+1. **Start with the math insight** – explain how you can count odds up to any `x`.  
+2. **Write the formula** on the board: `count = (high + 1) / 2 - low / 2`.  
+3. **Discuss edge cases**: zero, single element ranges, very large numbers.  
+4. **Time & space complexity**: mention O(1) and why it’s optimal.  
+5. **Show awareness of alternatives**: you could use a two‑pointer approach, but it’s unnecessary.  
 
-2. **Show the one‑liner.**  
-   Recruiters love concise, readable code.  
-   “`return (high + 1) / 2 - low / 2;`”
-
-3. **Mention edge cases.**  
-   Highlight that `low = 0` is already covered.
-
-4. **If they ask for a two‑pointer solution, discuss its inefficiency** and why the O(1) approach is preferable.
-
-5. **Be ready to implement in any language** you’re comfortable with. The formula is language‑agnostic.
+Interviewers love when you:
+- *Know* the fastest solution.  
+- *Explain* why it works (mathematical reasoning).  
+- *Anticipate* pitfalls and edge cases.  
 
 ---
 
-## 🎯 The Good
+## 7. Takeaway
 
-- **Simplicity:** A single arithmetic line.  
-- **Performance:** Constant time even for the largest inputs.  
-- **Readability:** Easy to understand at a glance.  
-- **Portability:** Works in Java, Python, C++, and most other languages.  
+- **Good**: Constant‑time formula.  
+- **Bad**: Brute‑force enumeration.  
+- **Ugly**: Two‑pointer with unnecessary looping.  
 
----
+Master the formula, understand its derivation, and you’ll nail this question in any technical interview.  
 
-## ⚠️ The Bad
+---  
 
-- **Misreading the problem** can lead to a wrong formula.  
-- **Neglecting edge cases** (e.g., forgetting `low = 0`).  
-- **Assuming a loop is necessary** – many candidates write O(n) code by default.  
+### 🚀 Ready to impress recruiters?  
+- **Add** this solution to your portfolio.  
+- **Tag** your blog post with: `LeetCode 1523`, `Count Odd Numbers`, `O(1) algorithm`, `Java`, `Python`, `C++`, `Coding Interview`, `Software Engineer`.
 
----
-
-## 👿 The Ugly
-
-- **Two‑pointer solutions** that still run in linear time (`O(n/2)`), e.g.,
-
-  ```java
-  int count = 0;
-  int l = low | 1;          // make l odd
-  int r = high & ~1;        // make r odd
-  while (l <= r) { count++; l += 2; r -= 2; }
-  ```
-
-  *Why it’s ugly:* Still loops over every second number, wasted time on large intervals.
-
-- **Using floating point arithmetic** for integer counts can introduce rounding errors.  
-  Always stick to integer division.
-
----
-
-## 🎉 Wrap‑up
-
-*LeetCode 1523* is a textbook example of how a mathematical insight turns a linear scan into a constant‑time solution.  
-- Use the formula: **`(high + 1)/2 - low/2`**.  
-- Write it in one line – recruiters love brevity.  
-- Cover edge cases quickly.  
-
-By mastering this problem, you’ll demonstrate:
-
-- **Algorithmic thinking** (identifying patterns).  
-- **Coding efficiency** (optimal time/space).  
-- **Interview poise** (clear explanation + concise code).  
-
-These skills are exactly what recruiters look for in a coding candidate.
-
----
-
-## 📚 Further Reading
-
-- [LeetCode 1523 on the official site](https://leetcode.com/problems/count-odd-numbers-in-an-interval-range/)  
-- “Algorithmic Thinking” – *Coding Interview Prep*  
-- “Time Complexity in Coding Interviews” – *InterviewBit Blog*  
-
----
-
-*Ready to impress your next interviewer?*  
-Copy the snippets, practice explaining the math, and rock that interview! 🚀
+Happy coding—and good luck on your next interview!

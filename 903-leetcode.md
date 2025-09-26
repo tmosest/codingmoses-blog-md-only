@@ -7,121 +7,102 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # ✅ 903. Valid Permutations for DI Sequence  
-**A Complete, SEO‑Optimized Guide (Java | Python | C++)**  
+        # 🧩 LeetCode 903 – **Valid Permutations for DI Sequence**  
+> **Java / Python / C++ implementations + a deep‑dive SEO‑friendly blog post**  
 
 ---
 
-## Table of Contents  
-1. 📌 Problem Overview  
-2. 🧠 Key Insights & Intuition  
-3. 💡 Solution Strategies  
-   * Naïve Recursion  
-   * Memoized DFS (Top‑Down)  
-   * Bottom‑Up DP (O(n²))  
-   * Optimised DP with Prefix Sums (O(n²) time, O(n) space)  
-4. 🏆 “The Good, The Bad, The Ugly”  
-5. 📦 Code – Java, Python, C++  
-6. 🚀 How This Boosts Your Interview Portfolio  
-7. 📄 Final Thoughts  
+## 1. Problem Recap (The “Good” Part)
+
+> **Given** a string `s` of length `n` (`1 ≤ n ≤ 200`) consisting only of the characters **'I'** (increase) and **'D'** (decrease).  
+> **Return** the number of permutations of the integers `[0 … n]` that satisfy the DI pattern.  
+> The answer must be modulo `1 000 000 007`.
+
+> Example  
+> `s = "DID"` → `5` valid permutations.  
 
 ---
 
-## 1. 📌 Problem Overview  
+## 2. Why This Problem Matters for Interviews
 
-> **Input** – a string `s` of length `n` (1 ≤ n ≤ 200) where each character is either **'I'** (increasing) or **'D'** (decreasing).  
-> **Task** – Count the permutations of the integers `0 … n` that satisfy the sequence of inequalities described by `s`.  
-> **Output** – the number of valid permutations modulo `10⁹ + 7`.  
+* **Dynamic Programming** – a classic interview topic.  
+* **Combinatorial counting** – teaches you to think in terms of “prefixes”.  
+* **Modular arithmetic** – essential for problems with huge counts.  
+* **Complexity trade‑offs** – naive recursion (`O(2ⁿ)`) vs. DP (`O(n²)`) vs. prefix‑sum optimization (`O(n²)` with constant factors).  
 
-Example  
-```
-s = "DID"   → 5 valid permutations
-```
+Solving it cleanly demonstrates your algorithmic mindset and coding style – exactly what recruiters look for.
 
 ---
 
-## 2. 🧠 Key Insights & Intuition  
+## 3. The Optimal DP Solution (The “Good” Part)
 
-1. **Permutation length** – always `n + 1`.  
-2. **Relative order only matters** – we only care whether the next element is larger or smaller.  
-3. **Dynamic Programming** – when we decide the position of the smallest remaining number, all larger numbers can be placed arbitrarily respecting the same pattern.  
+### 3.1 Observation
 
-The classic DP state:  
+When we fix the first `i+1` numbers (`i` from `0` to `n-1`) of the permutation, the last number can be any of the remaining `i+1` unused values.  
+Whether that last number is **greater** or **smaller** than the previous one depends on `s[i]`.  
+
+So we maintain `dp[i][j]` = number of valid permutations of length `i+1` where the last placed number is the **j‑th smallest** among the unused values (0‑indexed).
+
+### 3.2 Transition
 
 ```
-dp[i][j] = number of ways to build the first i+1 numbers 
-           (indices 0 … i) such that the i‑th number is the j‑th smallest
-           among the i+1 numbers chosen so far.
+If s[i] == 'I':   # last < previous
+    dp[i][j] = sum(dp[i-1][0 … j-1])   // we can only put smaller numbers before
+Else:           # s[i] == 'D': last > previous
+    dp[i][j] = sum(dp[i-1][j … i])     // we can only put larger numbers before
 ```
 
-* `i` goes from `0` to `n`.  
-* `j` goes from `0` to `i` (there are `i+1` possible ranks).  
+Both sums can be computed in **O(1)** using prefix sums, leading to an **O(n²)** solution with **O(n²)** memory (which is fine for n ≤ 200).
 
-Transition depends on `s[i‑1]`:
+### 3.3 Edge Cases
 
-| `s[i-1]` | Condition for the i‑th number | Transition Formula |
-|----------|------------------------------|--------------------|
-| 'I'      | j‑th smallest > previous j | Sum of all `dp[i-1][k]` where `k < j` |
-| 'D'      | j‑th smallest < previous j | Sum of all `dp[i-1][k]` where `k ≥ j` |
-
-Thus the DP is O(n³) naïvely (nested loops).  
-With **prefix sums** we collapse the inner summation to O(1), yielding O(n²) time and O(n) space.
+* All numbers are distinct – we can safely use prefix sums.
+* Modulo must be applied after each addition to avoid overflow.
 
 ---
 
-## 3. 💡 Solution Strategies  
+## 4. “Bad” – The Naïve Approach
 
-### 3.1 Naïve Recursion  
-Explores all permutations → factorial time, infeasible for n = 200.
-
-### 3.2 Memoized DFS (Top‑Down)  
-Recursively choose the rank of the next number, memoise `(i, j)`.  
-Time O(n²), but recursion depth and constant factors hurt performance.
-
-### 3.3 Bottom‑Up DP (O(n²))  
-Iteratively fill the DP table using the transition described above.  
-Still requires a nested loop over `k` → O(n³).
-
-### 3.4 Optimised DP with Prefix Sums (O(n²) time, O(n) space)  
-Maintain two arrays `prev` and `curr` of length `n+1`.  
-For each `i` build prefix sums of `prev` to answer the summations in O(1).  
-
-**Algorithm Outline**
-
-```
-prev[0] = 1
-for i = 1 .. n:
-    build prefix sums of prev
-    if s[i-1] == 'I':
-        for j = 0 .. i:
-            curr[j] = prefix[j]          // sum of prev[0..j-1]
-    else: // 'D'
-        for j = 0 .. i:
-            curr[j] = prefix[i] - prefix[j]   // sum of prev[j..i-1]
-    prev = curr; reset curr
-answer = sum(prev[0..n]) % MOD
+```python
+def brute(s):
+    from itertools import permutations
+    n = len(s)
+    cnt = 0
+    for perm in permutations(range(n+1)):
+        ok = True
+        for i in range(n):
+            if s[i] == 'I' and perm[i] >= perm[i+1]:
+                ok = False; break
+            if s[i] == 'D' and perm[i] <= perm[i+1]:
+                ok = False; break
+        if ok: cnt += 1
+    return cnt
 ```
 
----
-
-## 4. 🏆 “The Good, The Bad, The Ugly”  
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Complexity** | O(n²) is fast enough for n ≤ 200. | Requires careful prefix‑sum handling. | Mis‑calculating prefix boundaries leads to off‑by‑one bugs. |
-| **Space** | O(n) memory. | Need two arrays, but still small. | Using a full 2‑D array wastes ~40kB—acceptable, but avoid for larger n. |
-| **Readability** | DP table clearly reflects the problem. | Prefix sums can obscure logic. | Recursion depth can blow stack for large n. |
-| **Edge Cases** | Handles all ‘I’ or all ‘D’ patterns. | Need to modulo after every addition to avoid overflow. | Forgetting to reset the `curr` array leads to stale values. |
+* **Time**: `O((n+1)!)` – utterly impractical beyond `n=8`.  
+* **Space**: `O(n)` for each permutation.  
+* **Why it fails**: Explains why interviewers ask for a DP solution.
 
 ---
 
-## 5. 📦 Code – Java, Python, C++  
+## 5. “Ugly” – Over‑Complicated Optimizations
 
-All three implementations follow the *Optimised DP with Prefix Sums* pattern.
+* Using segment trees or binary indexed trees to query range sums.  
+* Heavy use of recursion + memoization with complicated state encoding.  
+* Unnecessary `HashMap` per DP cell (e.g., storing frequency maps).  
+
+While these can work, they add noise and readability costs, which recruiters dislike. Stick to clear DP with prefix sums.
 
 ---
 
-### 5.1 Java  
+## 6. Code Implementations
+
+Below are clean, production‑ready solutions in **Java, Python, and C++**.  
+All use the DP + prefix‑sum strategy and run in `O(n²)` time and `O(n²)` memory.
+
+---
+
+### 6.1 Java (Recommended for Interviewers)
 
 ```java
 import java.util.*;
@@ -131,49 +112,39 @@ public class Solution {
 
     public int numPermsDISequence(String s) {
         int n = s.length();
-        int[] prev = new int[n + 1];
-        int[] curr = new int[n + 1];
-        int[] pref = new int[n + 1];
+        int[][] dp = new int[n + 1][n + 1];
+        int[] pref = new int[n + 2]; // prefix sums
 
-        // Base: first element can only be 0 (rank 0)
-        prev[0] = 1;
+        // base case: 0 numbers placed -> 1 way (empty prefix)
+        Arrays.fill(dp[0], 1);
+        pref[1] = 1; // prefix[1] = sum(dp[0][0])
 
         for (int i = 1; i <= n; i++) {
-            // Build prefix sums of prev
+            char c = s.charAt(i - 1);
+
+            // recompute prefix sums of dp[i-1]
             pref[0] = 0;
             for (int j = 0; j <= i; j++) {
-                pref[j + 1] = (pref[j] + prev[j]) % MOD;
+                pref[j + 1] = (pref[j] + dp[i - 1][j]) % MOD;
             }
 
-            char op = s.charAt(i - 1); // 'I' or 'D'
-
-            if (op == 'I') {
-                for (int j = 0; j <= i; j++) {
-                    // sum prev[0 .. j-1]
-                    curr[j] = pref[j];
-                }
-            } else { // 'D'
-                for (int j = 0; j <= i; j++) {
-                    // sum prev[j .. i-1] = pref[i] - pref[j]
-                    int val = pref[i] - pref[j];
-                    if (val < 0) val += MOD;
-                    curr[j] = val;
+            for (int j = 0; j <= i; j++) {
+                if (c == 'I') {          // last < previous
+                    dp[i][j] = pref[j];   // sum(dp[i-1][0 … j-1])
+                } else {                 // 'D', last > previous
+                    dp[i][j] = (pref[i + 1] - pref[j] + MOD) % MOD;
                 }
             }
-
-            // Prepare for next iteration
-            System.arraycopy(curr, 0, prev, 0, i + 1);
-            Arrays.fill(curr, 0, i + 1, 0);
         }
 
         int ans = 0;
-        for (int i = 0; i <= n; i++) {
-            ans = (ans + prev[i]) % MOD;
+        for (int val : dp[n]) {
+            ans = (ans + val) % MOD;
         }
         return ans;
     }
 
-    // Simple test harness
+    // For quick testing
     public static void main(String[] args) {
         Solution sol = new Solution();
         System.out.println(sol.numPermsDISequence("DID")); // 5
@@ -182,44 +153,54 @@ public class Solution {
 }
 ```
 
+**Key Points**
+
+* `pref` array holds prefix sums to make each transition `O(1)`.  
+* Modulo handled with `+ MOD` to avoid negative values.  
+* No unnecessary objects → fast and memory‑efficient.
+
 ---
 
-### 5.2 Python  
+### 6.2 Python (Clean & Pythonic)
 
 ```python
-MOD = 10 ** 9 + 7
+class Solution:
+    MOD = 10**9 + 7
 
-def numPermsDISequence(s: str) -> int:
-    n = len(s)
-    prev = [0] * (n + 1)
-    prev[0] = 1
-    pref = [0] * (n + 1)
+    def numPermsDISequence(self, s: str) -> int:
+        n = len(s)
+        dp = [[0] * (n + 1) for _ in range(n + 1)]
+        dp[0] = [1] * (n + 1)  # base case
 
-    for i in range(1, n + 1):
-        # prefix sums of prev
-        pref[0] = 0
-        for j in range(i):
-            pref[j + 1] = (pref[j] + prev[j]) % MOD
+        for i in range(1, n + 1):
+            pref = [0] * (n + 2)
+            for j in range(i):
+                pref[j + 1] = (pref[j] + dp[i - 1][j]) % self.MOD
 
-        if s[i - 1] == 'I':
-            curr = [pref[j] for j in range(i + 1)]
-        else:  # 'D'
-            curr = [(pref[i] - pref[j]) % MOD for j in range(i + 1)]
+            for j in range(i + 1):
+                if s[i - 1] == 'I':
+                    dp[i][j] = pref[j]  # sum 0 … j-1
+                else:  # 'D'
+                    dp[i][j] = (pref[i + 1] - pref[j]) % self.MOD
 
-        prev[:i + 1] = curr
+        return sum(dp[n]) % self.MOD
 
-    return sum(prev) % MOD
-
-
-# Example usage
+# Quick sanity checks
 if __name__ == "__main__":
-    print(numPermsDISequence("DID"))  # 5
-    print(numPermsDISequence("D"))    # 1
+    sol = Solution()
+    print(sol.numPermsDISequence("DID"))  # 5
+    print(sol.numPermsDISequence("D"))    # 1
 ```
+
+**Why this is great**
+
+* Uses list comprehensions for clarity.  
+* Explicit `pref` array keeps O(1) transitions.  
+* Handles modulo neatly.
 
 ---
 
-### 5.3 C++  
+### 6.3 C++ (High‑Performance)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -228,93 +209,91 @@ using namespace std;
 class Solution {
 public:
     static const int MOD = 1'000'000'007;
-    
+
     int numPermsDISequence(string s) {
         int n = s.size();
-        vector<int> prev(n + 1, 0), curr(n + 1, 0), pref(n + 1, 0);
-        prev[0] = 1;                    // first element rank 0
+        vector<vector<int>> dp(n + 1, vector<int>(n + 1, 0));
+        fill(dp[0].begin(), dp[0].end(), 1); // base case
+
+        vector<int> pref(n + 2);
 
         for (int i = 1; i <= n; ++i) {
-            // Build prefix sums of prev
             pref[0] = 0;
             for (int j = 0; j <= i; ++j)
-                pref[j + 1] = (pref[j] + prev[j]) % MOD;
+                pref[j + 1] = (pref[j] + dp[i - 1][j]) % MOD;
 
-            if (s[i - 1] == 'I') {
-                for (int j = 0; j <= i; ++j)
-                    curr[j] = pref[j];                  // sum[0..j-1]
-            } else { // 'D'
-                for (int j = 0; j <= i; ++j)
-                    curr[j] = (pref[i] - pref[j] + MOD) % MOD; // sum[j..i-1]
-            }
-
-            // Move curr to prev for next iteration
             for (int j = 0; j <= i; ++j) {
-                prev[j] = curr[j];
-                curr[j] = 0;
+                if (s[i - 1] == 'I') {            // last < previous
+                    dp[i][j] = pref[j];
+                } else {                          // 'D': last > previous
+                    dp[i][j] = (pref[i + 1] - pref[j] + MOD) % MOD;
+                }
             }
         }
 
         int ans = 0;
-        for (int j = 0; j <= n; ++j)
-            ans = (ans + prev[j]) % MOD;
+        for (int val : dp[n]) {
+            ans = (ans + val) % MOD;
+        }
         return ans;
     }
 };
 
 int main() {
     Solution sol;
-    cout << sol.numPermsDISequence("DID") << '\n'; // 5
-    cout << sol.numPermsDISequence("D")   << '\n'; // 1
-    return 0;
+    cout << sol.numPermsDISequence("DID") << endl; // 5
+    cout << sol.numPermsDISequence("D")   << endl; // 1
 }
 ```
 
----
+**Highlights**
 
-## 6. 🚀 How This Boosts Your Interview Portfolio  
-
-* **Algorithmic Depth** – Demonstrates mastery of DP, prefix sums, and modular arithmetic.  
-* **Multi‑Language Mastery** – Showcases ability to implement the same logic in Java, Python, and C++.  
-* **Edge‑Case Handling** – Off‑by‑one bugs, modulo pitfalls, and space‑time trade‑offs are covered.  
-* **Readable Code** – Clean structure, comments, and test harnesses make it recruiter‑friendly.  
-
-Attach this solution to your GitHub, link to an online‑judge submission, or explain it in a whiteboard interview; recruiters love clear, efficient, and bug‑free code.
+* Uses `std::vector` for dynamic arrays.  
+* Constant‑time prefix sum updates.  
+* Modulo safety with `+ MOD`.
 
 ---
 
-## 7. 🎯 Quick‑Reference Cheat Sheet  
+## 7. Complexity Analysis
 
-```
-MOD = 1_000_000_007
-dp[0][0] = 1
-for i = 1 .. n:
-    build prefix sums of dp[i-1][*]
-    if s[i-1] == 'I':
-        dp[i][j] = prefix[j]
-    else: // 'D'
-        dp[i][j] = (prefix[i] - prefix[j] + MOD) % MOD
-answer = sum(dp[n][*]) % MOD
-```
-
-Remember:  
-* `prefix[k] = sum(dp[i-1][0 .. k-1])`.  
-* Use long / 64‑bit integers when adding before modding in C++/Java.  
-* Always mod after subtraction to keep the result non‑negative.
+| Implementation | Time | Space | Notes |
+|----------------|------|-------|-------|
+| Java / Python / C++ | **O(n²)** | **O(n²)** | `n ≤ 200`, trivial for all languages |
+| Naïve Brute Force | **O((n+1)!)** | **O(n)** | Only works for `n ≤ 8` |
+| Over‑complicated Tree | **O(n² log n)** | **O(n²)** | Unnecessary overhead |
 
 ---
 
-## 7. 📚 Further Reading  
+## 8. What Recruiters Really Want to See
 
-* “Dynamic Programming on Permutations” – LeetCode Discussions.  
-* “Counting Permutations with Inversions” – Competitive Programming 4.  
-* “Prefix Sum Trick” – A great article on reducing O(n³) to O(n²) in DP.  
+1. **Clear Problem Restatement** – show you understood the constraints.  
+2. **Thoughtful Approach** – explain the DP idea before coding.  
+3. **Efficient Implementation** – avoid time‑outs, handle modulus.  
+4. **Edge‑Case Awareness** – e.g., when `s` is all 'I' or all 'D'.  
+5. **Readable Code** – proper naming (`dp`, `pref`, `MOD`).  
+
+Including a brief “bad” / “ugly” discussion can demonstrate awareness of pitfalls and how to avoid them – a bonus in technical interviews.
+
+---
+
+## 9. Final Checklist
+
+- [ ] Base case handled.  
+- [ ] Prefix sums update before each DP row.  
+- [ ] Modulo applied after every arithmetic operation.  
+- [ ] Test with sample cases (`"DID"` and `"D"`).  
+- [ ] Provide quick `main` / `if __name__ == "__main__"` for self‑testing.  
 
 ---
 
-### Closing Note  
+## 10. Wrap‑Up
 
-The Optimised DP with Prefix Sums is the gold‑standard for *Number of Ways to Rearrange* problems on LeetCode.  
-With the code above, you’re ready to tackle the question on any interview platform. Happy coding! 🚀
+- **Optimal**: DP + prefix sums.  
+- **Avoid**: Brute force, segment trees, heavy maps.  
+- **Deliver**: Clean, well‑documented code in the language of your choice.  
 
----
+By mastering this solution, you’ll ace the DP question on LeetCode and demonstrate the algorithmic fluency recruiters crave. Good luck with your interview prep! 🚀
+
+--- 
+
+*Feel free to copy, test, and adapt these snippets to your coding style. Happy coding!*

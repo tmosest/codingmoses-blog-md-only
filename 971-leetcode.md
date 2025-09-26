@@ -7,67 +7,119 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## ✅ Flip Binary Tree to Match Preorder Traversal – 971 (LeetCode)
+        ## 🎯 971 – Flip Binary Tree To Match Pre‑Order Traversal  
+*Medium | Binary Tree | DFS*  
 
-> **Problem** –  
-> Given a binary tree whose node values are unique 1…n and a desired preorder traversal `voyage` (also 1…n), flip any node (swap its left and right children) so that the tree’s preorder equals `voyage`.  
-> Return the list of node values that were flipped. If impossible, return `[-1]`.
-
-| Language | Runtime | Memory | Complexity |
-|----------|---------|--------|------------|
-| **Java** | O(n)   | O(n)   | O(n)       |
-| **Python** | O(n)   | O(n)   | O(n)       |
-| **C++** | O(n)   | O(n)   | O(n)       |
-
-> **SEO Keywords**: LeetCode 971, Flip Binary Tree, Preorder Traversal, Binary Tree Flipping, DFS, Interview Algorithm, Java, Python, C++.
+> **Problem Recap**  
+> You’re given a binary tree whose node values are a permutation of `1 … n`.  
+> You’re also given an array `voyage` (length `n`) that represents a *desired* pre‑order traversal.  
+> In one operation you can “flip” a node, i.e., swap its left and right subtrees.  
+> **Goal:** Flip the **fewest** nodes so that the tree’s pre‑order traversal equals `voyage`.  
+> Return a list of the values of all flipped nodes. If it’s impossible, return `[-1]`.
 
 ---
 
-## 🔧 Code Implementations
+## 💡 Core Idea (The “Good” part)
 
-### 1. Java (DFS)
+The pre‑order traversal visits nodes in the order *root → left → right*.  
+If we walk down the tree while simultaneously walking through `voyage`:
+
+1. The current node **must** match the current element of `voyage`.  
+   If it doesn’t, we’re doomed → return `[-1]`.
+
+2. After consuming the root, look at the *next* element in `voyage` (`voyage[idx]`).  
+   - If the left child exists **and** its value is **not** `voyage[idx]`, the only way to match the order is to flip the current node.  
+   - Record the flip, then recurse on *right* first, then *left*.
+
+3. Otherwise (left child matches or left child is `null`), recurse normally *left → right*.
+
+Because we only flip when the next value in `voyage` forces it, we are guaranteed to use the minimal number of flips.
+
+---
+
+## ⚠️ The “Bad” part
+
+- **Global state**: A single `idx` pointer is used across recursive calls.  
+  In languages with strict typing (e.g., Java, C++), you must guard against overflow or accidental modification.  
+- **Edge‑case handling**: The code must gracefully handle empty subtrees (`null` nodes) and the impossibility case (`[-1]`).  
+- **Debugging complexity**: If the tree is large (though `n ≤ 100` here), stack depth may become a concern in recursive languages.
+
+---
+
+## 🔥 The “Ugly” part
+
+- **Code duplication**: Writing almost identical logic in multiple languages can lead to maintenance headaches.  
+- **Verbosity**: The Java version often feels verbose due to boilerplate `TreeNode` definitions, imports, and list handling.  
+- **Implicit assumptions**: Relying on `voyage[idx]` without bounds checks can produce `ArrayIndexOutOfBoundsException` if the algorithm logic goes wrong.
+
+---
+
+## 📦 Complete Solutions
+
+Below are clean, production‑ready implementations in **Java**, **Python**, and **C++**.  
+All three solve the problem in *O(n)* time and *O(h)* space (where `h` is the tree height, worst‑case `O(n)`).
+
+> ⚠️ **Important**: All snippets assume the existence of a `TreeNode` class/struct defined exactly as shown.  
+> They also assume that `root` is never `null` in the public API (LeetCode guarantees this).
+
+---
+
+### Java (DFS Recursion)
 
 ```java
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+
+// Definition for a binary tree node.
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+    TreeNode() {}
+    TreeNode(int val) { this.val = val; }
+    TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val; this.left = left; this.right = right;
+    }
+}
 
 class Solution {
-    private List<Integer> answer = new ArrayList<>();
-    private int index = 0;          // pointer to current element in voyage
+    private int idx = 0;                // current position in voyage
+    private List<Integer> flips = new ArrayList<>();
+    private int[] voyage;               // reference to avoid passing around
 
     public List<Integer> flipMatchVoyage(TreeNode root, int[] voyage) {
-        dfs(root, voyage);
-        return answer;
+        this.voyage = voyage;
+        dfs(root);
+        return flips;
     }
 
-    private void dfs(TreeNode node, int[] voyage) {
+    private void dfs(TreeNode node) {
         if (node == null) return;
 
-        // impossible early exit
-        if (!answer.isEmpty() && answer.get(answer.size() - 1) == -1) return;
-
-        // current node must match voyage[index]
-        if (node.val != voyage[index++]) {
-            answer.clear();
-            answer.add(-1);
+        // Mismatch → impossible
+        if (node.val != voyage[idx]) {
+            flips.clear();
+            flips.add(-1);
             return;
         }
+        idx++; // consume current value
 
-        // decide if we need to flip
-        if (node.left != null && node.left.val != voyage[index]) {
-            // flip required
-            answer.add(node.val);
-            dfs(node.right, voyage);  // visit right first
-            dfs(node.left, voyage);
+        // If left child exists and next expected value isn't it, we must flip
+        if (node.left != null && node.left.val != voyage[idx]) {
+            flips.add(node.val);   // record flip
+            dfs(node.right);
+            dfs(node.left);
         } else {
-            // no flip, normal preorder
-            dfs(node.left, voyage);
-            dfs(node.right, voyage);
+            dfs(node.left);
+            dfs(node.right);
         }
     }
 }
 ```
 
-### 2. Python (DFS)
+---
+
+### Python (DFS Recursion)
 
 ```python
 # Definition for a binary tree node.
@@ -78,25 +130,20 @@ class TreeNode:
         self.right = right
 
 class Solution:
-    def flipMatchVoyage(self, root: TreeNode, voyage: List[int]) -> List[int]:
+    def flipMatchVoyage(self, root: TreeNode, voyage: list[int]) -> list[int]:
         self.idx = 0
-        self.res = []
+        self.flips = []
 
-        def dfs(node: TreeNode):
+        def dfs(node: TreeNode | None):
             if not node:
                 return
-            # impossible early exit
-            if self.res and self.res[0] == -1:
-                return
-
             if node.val != voyage[self.idx]:
-                self.res = [-1]
+                self.flips = [-1]
                 return
             self.idx += 1
-
-            # need to flip if left child doesn't match next voyage
+            # need to flip?
             if node.left and node.left.val != voyage[self.idx]:
-                self.res.append(node.val)
+                self.flips.append(node.val)
                 dfs(node.right)
                 dfs(node.left)
             else:
@@ -104,10 +151,12 @@ class Solution:
                 dfs(node.right)
 
         dfs(root)
-        return self.res
+        return self.flips
 ```
 
-### 3. C++ (DFS)
+---
+
+### C++ (DFS Recursion)
 
 ```cpp
 /**
@@ -123,29 +172,24 @@ class Solution {
 public:
     vector<int> flipMatchVoyage(TreeNode* root, vector<int>& voyage) {
         idx = 0;
-        ans.clear();
+        flips.clear();
         dfs(root, voyage);
-        return ans;
+        return flips;
     }
 
 private:
-    int idx;                  // index in voyage
-    vector<int> ans;          // answer list
+    int idx = 0;
+    vector<int> flips;
 
-    void dfs(TreeNode* node, const vector<int>& voyage) {
+    void dfs(TreeNode* node, vector<int>& voyage) {
         if (!node) return;
-        if (!ans.empty() && ans[0] == -1) return;  // impossible early exit
-
-        if (node->val != voyage[idx]) {            // mismatch
-            ans.clear();
-            ans.push_back(-1);
+        if (node->val != voyage[idx]) {
+            flips = {-1};
             return;
         }
         ++idx;
-
-        // Flip if left child doesn't match next element
         if (node->left && node->left->val != voyage[idx]) {
-            ans.push_back(node->val);
+            flips.push_back(node->val);
             dfs(node->right, voyage);
             dfs(node->left, voyage);
         } else {
@@ -158,107 +202,173 @@ private:
 
 ---
 
-## 📚 Blog Article – *“Flip Binary Tree to Match Preorder Traversal: Good, Bad, and Ugly”*
+## 🔍 Complexity Analysis
 
-> **Meta Description** – Master LeetCode 971 with a clear DFS solution in Java, Python, and C++. Learn the good, bad, and ugly parts of binary‑tree flipping, plus interview‑ready tips and pitfalls.
+| Algorithm | Time | Space |
+|-----------|------|-------|
+| All 3 implementations | **O(n)** | **O(h)** (call stack + flips list) |
 
-### 1. Introduction
-
-If you’re prepping for a software‑engineering interview, binary‑tree problems are a staple. One of the trickier yet highly‑scoring LeetCode questions is **Flip Binary Tree To Match Preorder Traversal** (971). It tests your understanding of preorder traversal, recursion, and state‑tracking. In this article, we’ll dissect the problem, present a clean DFS implementation, and highlight **good**, **bad**, and **ugly** aspects of typical solutions—so you can nail it in the interview room.
-
-### 2. Problem Recap
-
-- **Input**: `root` of a binary tree, array `voyage` of size `n` (values 1…n, unique).
-- **Operation**: “Flip” a node means swapping its left and right subtrees.
-- **Goal**: Flip as few nodes as possible so that the preorder traversal of the tree equals `voyage`.  
-  Return the list of flipped node values, or `[-1]` if impossible.
-
-### 3. Intuition – Walking Preorder in Parallel
-
-Think of a **preorder traversal** as a strict sequence: **root → left → right**.  
-The `voyage` array tells us *what* we should see next.  
-If we visit the tree in preorder and keep an index `i` into `voyage`, we can decide on‑the‑fly whether a flip is required.
-
-> **Key Insight**  
-> At a node, if the next expected value in `voyage` is **not** the value of its left child, the only way to make the sequence match is to **flip** that node and visit the right child first.
-
-This simple rule drives all correct solutions.
-
-### 4. Algorithm – DFS with a Global Index
-
-1. **Initialize** `i = 0`, `answer = []`.
-2. **Recursive DFS(node)**  
-   * If `node == null` → return.  
-   * If `node.val != voyage[i]` → impossible → `answer = [-1]`.  
-   * Increment `i`.  
-   * **Flip Decision**  
-     *If left child exists and its value ≠ `voyage[i]` →**  
-     Add `node.val` to `answer` and recurse as `right → left`.  
-     *Else* → recurse `left → right` normally.
-
-3. **Return** `answer` (might be `[-1]`).
-
-### 4. Code Review – Good, Bad & Ugly
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Time Complexity** | O(n) – each node visited once. | | |
-| **Space Complexity** | O(h) recursion stack (≤ n). | | |
-| **Clarity** | Global index + short conditional. | Hard‑to‑read if nested loops or too many early returns. | Over‑using global variables or mutating `voyage` (e.g., `pop()` in Python) makes the logic brittle. |
-| **Early Exit** | Clear check for impossible case (`ans[0] == -1`). | Forgetting early exit leads to wrong answers on large trees. | Throwing exceptions inside recursion for failure (not interview‑friendly). |
-| **Edge‑Case Handling** | Handles `null` children, empty tree, `n = 1`. | Failing when `index` goes out of bounds. | Assuming left/right always non‑null – leads to segmentation faults in C++. |
-| **Language Idioms** | Java `List<Integer>`, Python `List[int]`, C++ `vector<int>`. | Use of static/global variables may look un‑idiomatic in some languages. | Mixing iterative and recursive logic in one function can confuse interviewers. |
-
-### 5. Complexity Analysis
-
-- **Time**: Each node is processed once → **O(n)**.  
-- **Space**: Recursion depth ≤ tree height `h` (worst case `O(n)`).  
-- **Worst‑case flips**: Up to `n` (every node might need a flip).
-
-### 6. Common Pitfalls & How to Avoid Them
-
-| Pitfall | Why it happens | Fix |
-|---------|----------------|-----|
-| Forgetting to increment the voyage index | Mis‑aligned sequence | `i++` immediately after a match. |
-| Not checking for `null` before accessing child value | RuntimeError / SegFault | `if (node.left && node.left.val != voyage[i])` |
-| Returning `answer` before the entire tree is processed | Early termination after a single flip | Use an “impossible flag” (`answer[0] == -1`) to exit early, but only after setting it. |
-| Using iterative stack but not preserving the preorder order after a flip | Mis‑ordered visit | Simpler to stick with recursion for readability in interviews. |
-
-### 7. Alternative Approaches
-
-- **Iterative DFS with a stack** – simulate preorder manually; still needs the same index logic.  
-- **Dynamic Programming** – overkill for this size; unnecessary extra space.  
-- **BFS + Heuristic** – wrong order; preorder is depth‑first.
-
-> **Recommendation**  
-> Stick to the recursive DFS; it’s concise, expressive, and most interviewers expect a recursive solution for tree problems.
-
-### 8. Interview‑Ready Tips
-
-1. **State Tracking** – Explain that the `index` variable keeps the traversal state.  
-2. **Flip Condition** – Emphasize the decision rule: “if left child doesn’t match the next voyage element, flip”.
-3. **Early Exit** – Mention the impossible flag to avoid needless work.
-4. **Edge Cases** – Discuss what happens with a single node, an empty tree, or when `voyage` is already a valid preorder.
-5. **Testing** – Write unit tests for the provided examples, plus random trees + random voyages to catch edge cases.
-
-### 9. Final Thoughts
-
-**Flip Binary Tree To Match Preorder Traversal** is a perfect blend of tree traversal and state management. The recursive DFS solution is elegant, runs in linear time, and is straightforward to explain in an interview. By highlighting the good (clear state, early exit), bad (mutating global state without protection), and ugly (unnecessary complexity), you’ll be ready to demonstrate both code mastery and problem‑solving mindset.
-
-> **Takeaway** – Master the DFS “walk‑in‑parallel” pattern; it will help you solve this LeetCode 971 and many other tree‑flipping or rearrangement problems that show up in coding interviews.
+- `n` = number of nodes (≤ 100).  
+- `h` = height of the tree (worst‑case `n`).
 
 ---
 
-### 10. Conclusion
+## 🎓 Why This Code Rocks (And How It Helps Your Interview)
 
-With the code snippets above and the interview‑ready commentary, you’re all set to crush LeetCode 971. Practice explaining the intuition, complexity, and edge‑case handling, then showcase the clean implementation in **Java**, **Python**, or **C++**. Good luck, and may those flips be minimal and your answers correct! 🚀
+| Feature | Benefit |
+|---------|---------|
+| **Linear traversal** | Guarantees the solution is fast enough for the constraints. |
+| **Minimal flips** | The logic is deterministic; no back‑tracking or brute‑force needed. |
+| **Clear recursion** | Makes the pre‑order logic obvious, which is what interviewers look for. |
+| **Fail‑fast** | Immediately detects impossibility, saving time. |
+| **Reusable pattern** | The same DFS-with-index pattern can solve many “voyage” style LeetCode problems (e.g., 1043, 1129). |
+
+During an interview, you can:
+
+1. **Explain the intuition** first—shows that you understand the problem.  
+2. **Write the skeleton** of `dfs(node)` and the global index.  
+3. **Handle the flip condition** in one `if`.  
+4. **Return `[-1]`** as a special case.  
+
+You’ll impress the interviewer with a solution that is **both elegant and correct**.
 
 ---
 
-> **Author**: *Your Name* – Software Engineer & Interview Coach  
-> **Contact**: <your.email@example.com> | **LinkedIn**: <https://linkedin.com/in/yourprofile>  
-> **Follow**: #LeetCode #BinaryTree #InterviewPrep #AlgorithmDesign
+## 📈 SEO‑Ready Blog Post
 
---- 
+> **Title**  
+> LeetCode 971 – Flip Binary Tree To Match Pre‑Order Traversal (Java / Python / C++ Solutions)  
 
-> *Disclaimer*: The above article is SEO‑optimized for interview‑preparation blogs and may be used for personal study or shared with your peers. Happy coding!
+> **Meta Description**  
+> Master LeetCode 971 by learning the optimal DFS solution to flip a binary tree for a desired pre‑order traversal. Get Java, Python, and C++ code snippets that solve the problem in linear time – perfect for software engineering interviews.  
+
+---
+
+### 📝 Blog Post
+
+### Flip Binary Tree To Match Pre‑Order Traversal – 971 – A Full Interview Guide
+
+---
+
+#### Introduction
+
+Interviewers often ask *binary tree* questions to gauge your recursion and greedy‑strategy skills.  
+LeetCode 971 – **Flip Binary Tree To Match Pre‑Order Traversal** is a classic “voyage” problem that tests exactly those skills.
+
+In this article you’ll discover:
+
+- A **complete, linear‑time solution** in **Java**, **Python**, and **C++**.  
+- The **why** behind each line of code (minimal flips, fail‑fast, DFS‑with‑index).  
+- A **job‑interview cheat sheet** for explaining your approach in a coding interview.  
+
+Let’s dive in!
+
+---
+
+#### 1️⃣ Problem Breakdown
+
+| Constraint | Value |
+|------------|-------|
+| Node values | Permutation of `1 … n` |
+| `voyage` length | `n` |
+| `n` | ≤ 100 |
+| Allowed operation | Flip (swap left/right children) |
+| Goal | Minimal flips → desired pre‑order traversal |
+
+---
+
+#### 2️⃣ Intuitive Walkthrough (Pre‑Order + Index)
+
+Imagine you’re standing in the tree.  
+The *root* must match the first number in `voyage`.  
+After you pick that number, the *next* number tells you which child you’ll visit next.
+
+If the next number belongs to the right subtree, we must flip the current node.  
+If it belongs to the left subtree (or left child is `null`), we stay as is.
+
+This greedy rule yields the **fewest** flips.
+
+---
+
+#### 3️⃣ Code Highlights
+
+- **DFS recursion** keeps the algorithm simple.  
+- **Index pointer** (`idx`) moves linearly through `voyage`.  
+- **Flips list** stores only flipped node values.  
+- **Early exit** for impossible cases saves time.
+
+---
+
+#### 4️⃣ Code Snippets
+
+> **Java**
+
+```java
+public List<Integer> flipMatchVoyage(TreeNode root, int[] voyage) { ... }
+```
+
+> **Python**
+
+```python
+class Solution:
+    def flipMatchVoyage(self, root: TreeNode, voyage: List[int]) -> List[int]: ...
+```
+
+> **C++**
+
+```cpp
+class Solution {
+public:
+    vector<int> flipMatchVoyage(TreeNode* root, vector<int>& voyage) { ... }
+};
+```
+
+(See the full code above for the exact implementation.)
+
+---
+
+#### 5️⃣ Complexity
+
+- **Time:** O(n)  
+- **Space:** O(h) – call stack + result array
+
+---
+
+#### 6️⃣ Interview‑Ready Tips
+
+| Situation | How to Explain |
+|-----------|----------------|
+| **DFS pattern** | “I traverse the tree exactly once, using the global index to sync with `voyage`.” |
+| **Minimal flips** | “The only flip occurs when the next element forces it, so we’re guaranteed minimal flips.” |
+| **Impossible case** | “If at any point the current node value does not match the expected value, I immediately return `[-1]`.” |
+| **Edge‑case** | “I guard against `null` children and ensure the index stays within bounds.” |
+
+---
+
+#### 7️⃣ TL;DR
+
+- The **good** part is a linear, greedy DFS that flips only when necessary.  
+- The **bad** part is managing global state safely in recursive code.  
+- The **ugly** part is code duplication across languages and boilerplate.
+
+All three language versions below solve the problem in `O(n)` time and `O(h)` space while being easy to understand and ready for a technical interview.
+
+---
+
+### 🚀 Takeaway
+
+Mastering LeetCode 971 showcases:
+
+- Proficiency in **binary tree traversal**.  
+- Ability to write **clean, fail‑fast recursive code**.  
+- Understanding of **greedy strategies** for minimal‑change problems.
+
+If you can explain this solution clearly in an interview, you’ll demonstrate:
+
+1. **Algorithmic insight** – knowing the right pattern to use.  
+2. **Coding style** – concise yet readable.  
+3. **Problem‑solving mindset** – handling edge cases and impossibility early.
+
+Add this solution to your interview prep stack and you’ll be a step closer to landing that software engineering role!  
+
+Good luck 🚀, and happy coding!

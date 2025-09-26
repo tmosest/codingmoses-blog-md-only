@@ -7,396 +7,261 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 📊 2397 – Maximum Rows Covered by Columns  
-**LeetCode Medium – Bit‑mask + Backtracking**
+        # 2397. Maximum Rows Covered by Columns – 3‑Way Code, Blog, and Job‑Ready SEO
 
-| Language | Runtime | Memory |
-|----------|---------|--------|
-| **Java** | 0‑ms (fastest) | 39 MB |
-| **Python** | 68‑ms | 16 MB |
-| **C++** | 1‑ms | 5 MB |
+> **TL;DR**  
+> *Problem:* Pick exactly `numSelect` columns from an `m × n` binary matrix to cover the maximum number of rows (a row is *covered* if every `1` in that row lies in a chosen column).  
+> *Key insight:* The constraints are tiny (`n ≤ 12`), so a **bitmask + backtracking** solution is both simple and fast.  
+> *Complexity:* `O( (n choose numSelect) · m · n )` time, `O(1)` extra space.  
 
-> 👉 **Takeaway for interviews** – *When you see “m,n ≤ 12” it’s a hint that a bit‑mask over columns (2¹² = 4096) is perfectly fine.*  
+Below you’ll find:
 
-Below you’ll find a clean implementation in **Java, Python, and C++**, followed by a detailed blog‑style explanation that’s SEO‑friendly and job‑ready.
-
----
-
-## 1️⃣  Problem Restatement
-
-You’re given an `m × n` binary matrix `matrix` and an integer `numSelect`.  
-You must choose **exactly** `numSelect` columns so that the **maximum number of rows** are “covered”.
-
-A row is covered when **all of its `1` entries lie in the chosen columns**.  
-Rows that contain no `1` are covered by definition.
-
-Return the maximum number of rows that can be covered.
+1. A **SEO‑optimized blog** explaining the problem, pitfalls, and the algorithm in plain English.  
+2. Three working implementations – **Java**, **Python**, and **C++** – that you can copy‑paste into LeetCode.  
+3. A quick “what to talk about in an interview” section.  
 
 ---
 
-## 2️⃣  Brute‑Force “Why it’s not good”
+## The Problem (LeetCode 2397)
 
-The obvious way is to try every subset of columns (there are `C(n, numSelect)` of them).  
-For each subset, check every row in `O(m · n)` time.  
+```text
+Input: matrix: List[List[int]], numSelect: int
+Output: int   // max number of rows that can be covered
+```
 
-*Worst‑case complexity*: `O(C(n, k) · m · n)`  
-With `n ≤ 12`, `C(12, 6) = 924`, still fine, but the naive recursion or nested loops can waste a lot of work when many branches can be pruned.
+- `matrix` is `m × n`, `0 ≤ m,n ≤ 12`, entries are `0` or `1`.  
+- You must pick **exactly** `numSelect` distinct columns.  
+- A row is *covered* if **every** `1` in that row lies in a chosen column (or the row has no `1`s).  
 
----
-
-## 3️⃣  The “Good” Solution – Bitmask + Subset Enumeration
-
-Because `n` is tiny, we can encode a set of columns as a bitmask of `n` bits.  
-The number of 1‑bits in the mask tells us how many columns we’ve chosen.
-
-**Algorithm**
-
-1. **Pre‑compute** a `maskForRow[i]` – a bitmask where a `1` indicates that column `j` is `1` in row `i`.
-2. Iterate over **all masks** of size `n`.  
-   - Skip masks whose popcount ≠ `numSelect`.  
-   - For each remaining mask, a row `i` is covered iff  
-     `(maskForRow[i] & ~mask) == 0` – meaning all `1` bits of the row are inside the chosen columns.
-3. Keep the maximum number of covered rows.
-
-**Why it works**
-
-- **O(2ⁿ)** masks = at most 4096 iterations.  
-- Checking all rows for one mask is `O(m)` (bitwise operations are constant‑time).  
-- Total time: `O(2ⁿ · m)` ≈ `4096 · 12 ≈ 5·10⁴` operations – blazing fast.  
-- Memory is `O(m)` for the row masks.
+> Example  
+> matrix = [[0,0,0],[1,0,1],[0,1,1],[0,0,1]], numSelect = 2 → **3**
 
 ---
 
-## 4️⃣  The “Bad” Approach – Backtracking (Pick / Not‑Pick)
+## Why Brute Force Works (but is still a Bad Idea)
 
-If you want to show interviewers you can solve it with recursion, use a depth‑first search that decides for each column whether to **pick** it or **skip** it.  
-The recursion stops when we’ve considered all `n` columns or already selected `numSelect` columns.  
+With `n ≤ 12`, the total number of column subsets is `2^n ≤ 4096`.  
+You could enumerate all subsets and pick those of size `numSelect`.  
+That is fine **time‑wise**, but the code gets noisy, and it’s hard to explain in an interview.
 
-Inside the base case, recompute the covered rows by scanning `matrix`.  
-
-This works and is easy to explain, but the recursion still visits `2ⁿ` calls (just like the bitmask) – it’s essentially the same as the “good” solution but with more overhead.
-
----
-
-## 5️⃣  “Ugly” pitfalls
-
-| Pitfall | Why it hurts |
-|---------|--------------|
-| **Full nested loops** | Re‑computes row coverage from scratch for every branch. |
-| **Large recursion stack** | Even with `n ≤ 12`, a recursive DFS can hit a stack depth of 12 – still fine, but adding memoization is usually unnecessary. |
-| **Using `ArrayList` for visited columns** | Creates a new list for every recursion – high allocation cost. |
-| **No early pruning** | Many subsets of size `k` are examined, even if we already know the best possible rows is `m`. |
+The **backtracking** approach, however, naturally mirrors the decision tree:  
+*pick the current column?* – *or skip it?* – and prune when you’ve already chosen `numSelect` columns.  
+This yields clean, recursive code that’s easy to read, test, and extend.
 
 ---
 
-## 6️⃣  Code (Java, Python, C++)
+## Core Idea – Bitmask + Backtracking
 
-### 6.1 Java – Bitmask + Pre‑computation
+1. **Represent a set of selected columns as a bitmask** (an `int` where bit `j` = 1 ⇔ column `j` selected).  
+2. **Recursive DFS**:
+   * `idx` – current column index (0 … n-1).  
+   * `cnt` – number of columns already chosen.  
+   * `mask` – mask of chosen columns.  
+3. **Base case**: when `cnt == numSelect` → count covered rows.  
+4. **Branch**:
+   * *Pick* column `idx` → set its bit, recurse with `cnt+1`.  
+   * *Skip* column `idx` → leave bit 0, recurse with same `cnt`.  
+5. **Pruning**: if remaining columns are fewer than the columns still needed, stop early.
+
+Counting covered rows for a given `mask` is `O(m · n)` – small enough for our constraints.
+
+---
+
+## Complexity
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Enumerating all subsets of size `k` | `O((n choose k) · m · n)` | `O(1)` |
+| Counting rows for one mask | `O(m · n)` | `O(1)` |
+| Recursion depth | `O(n)` | `O(1)` (besides call stack) |
+
+Because `(12 choose 6) = 924` at worst, the algorithm runs in far less than a millisecond on LeetCode.
+
+---
+
+## 1. Java (LeetCode Style)
 
 ```java
-import java.util.*;
-
 class Solution {
-    public int maximumRows(int[][] matrix, int numSelect) {
-        int m = matrix.length, n = matrix[0].length;
-        // rowMasks[i] has a 1 for every column j that is 1 in row i
-        int[] rowMasks = new int[m];
-        for (int i = 0; i < m; i++) {
-            int mask = 0;
-            for (int j = 0; j < n; j++)
-                if (matrix[i][j] == 1) mask |= 1 << j;
-            rowMasks[i] = mask;
-        }
+    private int m, n, target;
+    private int[][] mat;
 
-        int maxCovered = 0;
-        int fullMask = 1 << n;
-        for (int mask = 0; mask < fullMask; mask++) {
-            if (Integer.bitCount(mask) != numSelect) continue;
-            int covered = 0;
-            int complement = ~mask;
-            for (int rMask : rowMasks) {
-                if ((rMask & complement) == 0) covered++;
+    public int maximumRows(int[][] matrix, int numSelect) {
+        this.mat = matrix;
+        this.m = matrix.length;
+        this.n = matrix[0].length;
+        this.target = numSelect;
+        return dfs(0, 0, 0);
+    }
+
+    private int dfs(int idx, int cnt, int mask) {
+        if (cnt == target)          // we have picked enough columns
+            return countCovered(mask);
+
+        if (idx == n)               // no more columns to consider
+            return 0;
+
+        int remaining = n - idx;
+        if (remaining + cnt < target)   // impossible to reach target
+            return 0;
+
+        // Option 1: pick this column
+        int pick = dfs(idx + 1, cnt + 1, mask | (1 << idx));
+
+        // Option 2: skip this column
+        int skip = dfs(idx + 1, cnt, mask);
+
+        return Math.max(pick, skip);
+    }
+
+    private int countCovered(int mask) {
+        int covered = 0;
+        for (int i = 0; i < m; i++) {
+            boolean ok = true;
+            for (int j = 0; j < n; j++) {
+                if (mat[i][j] == 1 && ((mask & (1 << j)) == 0)) {
+                    ok = false;
+                    break;
+                }
             }
-            maxCovered = Math.max(maxCovered, covered);
+            if (ok) covered++;
         }
-        return maxCovered;
+        return covered;
     }
 }
 ```
 
-> *Why this is fast:* `Integer.bitCount` is a single CPU instruction; bitwise AND is `O(1)`.  
-
 ---
 
-### 6.2 Python – `itertools.combinations`
+## 2. Python (3.8+)
 
 ```python
-from itertools import combinations
-from typing import List
-
 class Solution:
-    def maximumRows(self, matrix: List[List[int]], numSelect: int) -> int:
-        m, n = len(matrix), len(matrix[0])
-        row_masks = [0] * m
-        for i, row in enumerate(matrix):
-            mask = 0
+    def maximumRows(self, mat: List[List[int]], numSelect: int) -> int:
+        self.mat = mat
+        self.m = len(mat)
+        self.n = len(mat[0])
+        self.target = numSelect
+        return self._dfs(0, 0, 0)
+
+    def _dfs(self, idx: int, cnt: int, mask: int) -> int:
+        if cnt == self.target:
+            return self._count(mask)
+
+        if idx == self.n:
+            return 0
+
+        remaining = self.n - idx
+        if remaining + cnt < self.target:
+            return 0
+
+        # Pick
+        pick = self._dfs(idx + 1, cnt + 1, mask | (1 << idx))
+        # Skip
+        skip = self._dfs(idx + 1, cnt, mask)
+        return max(pick, skip)
+
+    def _count(self, mask: int) -> int:
+        covered = 0
+        for row in self.mat:
+            ok = True
             for j, val in enumerate(row):
-                if val:
-                    mask |= 1 << j
-            row_masks[i] = mask
-
-        best = 0
-        cols = list(range(n))
-        for comb in combinations(cols, numSelect):
-            chosen_mask = 0
-            for c in comb:
-                chosen_mask |= 1 << c
-            covered = sum(1 for rm in row_masks if (rm & ~chosen_mask) == 0)
-            best = max(best, covered)
-        return best
+                if val and not (mask & (1 << j)):
+                    ok = False
+                    break
+            if ok:
+                covered += 1
+        return covered
 ```
-
-> *Python’s `itertools.combinations` internally generates the `C(n, k)` masks efficiently.*  
 
 ---
 
-### 6.3 C++ – Fastest Bit‑mask Enumeration
+## 3. C++ (GNU C++17)
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
 class Solution {
 public:
     int maximumRows(vector<vector<int>>& matrix, int numSelect) {
-        int m = matrix.size(), n = matrix[0].size();
-        vector<int> rowMask(m, 0);
-        for (int i = 0; i < m; ++i) {
-            int mask = 0;
-            for (int j = 0; j < n; ++j)
-                if (matrix[i][j]) mask |= 1 << j;
-            rowMask[i] = mask;
-        }
+        m = matrix.size();
+        n = matrix[0].size();
+        mat = matrix;
+        target = numSelect;
+        return dfs(0, 0, 0);
+    }
 
-        int best = 0;
-        int limit = 1 << n;
-        for (int mask = 0; mask < limit; ++mask) {
-            if (__builtin_popcount(mask) != numSelect) continue;
-            int covered = 0;
-            int complement = ~mask;
-            for (int rm : rowMask)
-                if ((rm & complement) == 0) ++covered;
-            best = max(best, covered);
+private:
+    vector<vector<int>> mat;
+    int m, n, target;
+
+    int dfs(int idx, int cnt, int mask) {
+        if (cnt == target)          // already selected enough columns
+            return countCovered(mask);
+        if (idx == n) return 0;     // ran out of columns
+
+        int remaining = n - idx;
+        if (remaining + cnt < target)   // cannot reach target
+            return 0;
+
+        // Pick current column
+        int pick = dfs(idx + 1, cnt + 1, mask | (1 << idx));
+
+        // Skip current column
+        int skip = dfs(idx + 1, cnt, mask);
+
+        return max(pick, skip);
+    }
+
+    int countCovered(int mask) {
+        int covered = 0;
+        for (int i = 0; i < m; ++i) {
+            bool ok = true;
+            for (int j = 0; j < n; ++j) {
+                if (mat[i][j] == 1 && !(mask & (1 << j))) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) covered++;
         }
-        return best;
+        return covered;
     }
 };
 ```
 
-> *`__builtin_popcount` and `__builtin_ctz` are GCC/Clang intrinsics that run in a single machine cycle.*  
+---
+
+## “What to Talk About in an Interview”
+
+1. **State the constraints** (`n ≤ 12`) → allows exponential algorithms.  
+2. **Explain the bitmask representation** – this instantly shows you can encode column sets in `O(1)` space.  
+3. **Show the DFS recursion tree** – “pick or skip” – and why pruning is safe.  
+4. **Complexity** – highlight that the algorithm is *optimal for the given constraints*.  
+5. **Mention alternatives** – a simple loop over combinations or a `next_permutation` solution – just to show you know the trade‑offs.  
+6. **Why it’s a good interview problem** – tests recursion, bit manipulation, and careful counting.
 
 ---
 
-## 4️⃣  How to Talk to an Interviewer (SEO‑Ready)
+## SEO Keywords (for job‑search pages)
 
-1. **Start with the insight**:  
-   > “Because the number of columns is at most 12, we can treat a column subset as a 12‑bit mask. Enumerating all masks is just 4096 – far below a 1‑second time limit.”
+- LeetCode 2397  
+- Maximum Rows Covered by Columns  
+- Backtracking algorithm  
+- Bitmask solution  
+- Java 17 LeetCode solution  
+- Python 3 LeetCode solution  
+- C++ LeetCode solution  
+- Software engineer interview questions  
+- Algorithm interview preparation  
+- Data structure interview  
 
-2. **Explain the mask for rows**:  
-   > “For each row we build a bitmask `rowMask[i]` where a `1` indicates a column that has a `1` in that row. This lets us check coverage with a single bitwise AND.”
-
-3. **Show the pruning**:  
-   > “We skip any mask that doesn’t contain exactly `numSelect` columns – that’s `C(n, numSelect)` masks to test, which is at most 924 when `k = n/2`.”
-
-4. **Complexity**:  
-   > *Time*: `O(2ⁿ · m)`  
-   > *Memory*: `O(m)` for the row masks.  
-
-5. **Mention a backtracking alternative**:  
-   > “If you want a recursive approach, you can also do a pick‑/not‑pick DFS over columns. It’s essentially the same number of states but with a small overhead due to function calls.”
-
-6. **Wrap up**:  
-   > “The bit‑mask solution is clean, runs in milliseconds, and demonstrates to interviewers that you know how to harness the constraints of a problem.”
+Include these tags on your LinkedIn post or personal blog to attract recruiters looking for candidates who can solve LeetCode problems efficiently.
 
 ---
 
-## 📚  Blog Article – “The Good, The Bad, and the Ugly of 2397: Maximum Rows Covered by Columns”
+## Final Words
 
-### Title  
-**“Cracking LeetCode 2397 – Maximum Rows Covered by Columns: A Job‑Ready Guide”**
+- The **backtracking + bitmask** approach gives you clean, maintainable code that is easy to explain.  
+- The time complexity is well within the problem limits – you’ll finish in milliseconds.  
+- Highlight the algorithm in your next interview: “We treat columns as bits, walk the decision tree, and count covered rows only once per leaf.”
 
-### Keywords  
-`LeetCode 2397`, `Maximum Rows Covered by Columns`, `Java solution`, `Python solution`, `C++ solution`, `bitmask`, `backtracking`, `coding interview`, `job interview coding`, `data structures`, `algorithms`
-
----
-
-### Introduction
-
-In every **coding interview** you’ll find a puzzle that looks easy at first glance but hides a subtle twist.  
-LeetCode problem **2397 – Maximum Rows Covered by Columns** is one such puzzle.  
-It forces you to think about *how to pick a limited number of columns to maximize row coverage* while keeping the solution *fast enough for a real interview*.
-
-This post walks through the **problem**, **naïve approaches**, the **optimal solution** using bit‑mask tricks, and finally how to explain everything to a hiring manager in a way that will *shine in your next interview*.
-
----
-
-### 1. The Problem in Plain English
-
-You’re handed a binary matrix (`m × n`, `m,n ≤ 12`).  
-You must pick **exactly `k` columns** (`numSelect`).  
-A row is “covered” when **every `1` in that row is within the columns you picked**.  
-Rows with no `1` are automatically covered.
-
-Your goal: **maximize the number of covered rows**.
-
----
-
-### 2. The Naïve Way (and why it’s a red‑flag)
-
-The first thing that comes to mind is:  
-> *Enumerate every possible combination of `k` columns, then count how many rows each combo covers.*
-
-- There are `C(n, k)` combinations.  
-- For each combo, you need to scan `m` rows, each with `n` entries.  
-- In the worst case (`n = 12`, `k = 6`) you’re looking at `924 × 12 × 12 ≈ 133k` operations – still acceptable, but the overhead of repeated loops and checks can bite.
-
-Interviewers expect you to spot **the hidden hint**: `n ≤ 12`.  
-When a dimension is ≤ 12, *bit‑masking* is your friend.
-
----
-
-### 3. The “Good” Strategy: Bit‑Mask Subset Enumeration
-
-#### 3.1 Why Bit‑Mask?
-
-- 12 bits fit comfortably inside a 32‑bit integer.  
-- A 12‑bit mask gives you **a compact, constant‑time representation** of a set of columns.  
-- Operations like *union*, *intersection*, and *checking size* (`popcount`) become single CPU instructions.
-
-#### 3.2 Pre‑Computing Row Masks
-
-For each row `i` build `rowMask[i]`:
-```
-rowMask[i] = sum( 1 << j  for j in 0..n-1 if matrix[i][j] == 1 )
-```
-
-This mask encodes *which columns in row `i` are `1`*.  
-Now, *coverage* for a chosen column set `mask` is simply:
-```
-(rowMask[i] & ~mask) == 0
-```
-If the result is `0`, all `1`s in that row are inside `mask`.
-
-#### 3.3 Enumerating All Masks
-
-- `totalMasks = 1 << n` → at most 4096 masks.  
-- For each mask:
-  - Skip if `popcount(mask) != k`.  
-  - Compute `complement = ~mask`.  
-  - Count rows where `(rowMask[i] & complement) == 0`.  
-
-#### 3.4 Complexity
-
-- **Time**: `O(2ⁿ · m)` – at most `4096 × 12 = 49k` bitwise ops.  
-- **Memory**: `O(m)` for the row masks.  
-- **Constant factors**: `Integer.bitCount` (Java), `__builtin_popcount` (C++), and Python’s `itertools.combinations` are all highly optimized.
-
-#### 3.5 Code Snapshots
-
-Provide the Java, Python, and C++ snippets above (you can paste them in your GitHub README or blog “Playground” section).
-
----
-
-### 4. The “Bad” Alternative: Recursive Pick/Not‑Pick
-
-Sometimes recruiters want to see recursion:
-
-```
-dfs(colIndex, selectedCount):
-    if colIndex == n or selectedCount == k:
-        evaluate current combination
-    else:
-        dfs(colIndex+1, selectedCount+1)  // pick
-        dfs(colIndex+1, selectedCount)    // skip
-```
-
-While this shows you can write DFS, the overhead of *creating new lists, stack frames* makes it **slower** than the bit‑mask.  
-It’s still correct but less *concise* – keep it as a backup plan.
-
----
-
-### 5. “Ugly” Mistakes to Avoid
-
-- **Heavy allocation**: avoid creating new lists or arrays inside deep recursion.  
-- **Redundant scans**: never recompute coverage from scratch for every recursion branch.  
-- **Lack of pruning**: if the best possible rows is `m`, break early.
-
-When you spot these pitfalls in your own code, you’re demonstrating a *real world understanding* of algorithmic efficiency.
-
----
-
-### 6. Interview‑Ready Pitch
-
-1. **Open with the constraint trick**:  
-   > “Since we only have 12 columns, I’ll treat each subset as a 12‑bit mask. That means at most 4096 states to consider.”
-
-2. **Show the pre‑computation**:  
-   > “Each row becomes a mask where a bit is set if the cell is `1`. That lets me check coverage in a single `AND` operation.”
-
-3. **Explain pruning**:  
-   > “I only keep masks that contain exactly `k` columns – that reduces the number of candidates to `C(12, k)` which is tiny.”
-
-4. **State the complexity**:  
-   > *Time*: `O(2ⁿ · m)` – roughly 50k ops.  
-   > *Space*: `O(m)` for row masks.  
-
-5. **Optional DFS**:  
-   > “If you prefer recursion, a pick‑/not‑pick DFS achieves the same state space but has a small overhead.”
-
-6. **End on a high note**:  
-   > “This solution runs in milliseconds and clearly shows I can leverage problem constraints. It’s perfect for a coding interview.”
-
----
-
-### 7. Takeaway for Your Next Coding Interview
-
-- **Spot the hint** (`n ≤ 12`) immediately.  
-- **Leverage bit‑masking** to convert a combinatorial problem into a *simple loop over integers*.  
-- **Keep the code lean**: pre‑compute row masks, avoid dynamic list allocation, and use built‑in bit operations.  
-- **Explain it concisely**: highlight the insight, the algorithm, and the complexity.  
-
-With this mindset and this code snippet in your toolbox, you’re ready to *own* problem 2397 and any similar challenge that comes your way.
-
----
-
-### Final Thought
-
-Whether you’re solving it in Java, Python, or C++, the key is the **same**: turn the columns into a 12‑bit mask and evaluate all possibilities with bitwise ops.  
-The result? A solution that’s not only *correct* but also *fast* enough to impress your hiring manager.
-
-Happy coding – and good luck on your next interview!
-
----
-
-### Closing
-
-If you found this guide helpful, share it on **LinkedIn** or **Twitter** using the hashtag `#LeetCode2397`.  
-Your peers will thank you, and you’ll earn a point of bragging for mastering a tricky interview problem.
-
---- 
-
-### About the Author  
-*Your Name* – Software Engineer, Algorithm Enthusiast, LeetCode Fan.  
-Follow me for more interview prep guides and algorithm tutorials.
-
---- 
-
-*End of blog post.*  
-
---- 
-
-### 🎯 Wrap-up
-
-With the code, the detailed explanation, and the interview talking points, you’ve got everything you need to **solve LeetCode 2397** and *present it confidently* in a hiring scenario.  
-
-Happy coding, and may the *bit‑mask* be ever in your favor!
+Good luck with the interview, and happy coding!

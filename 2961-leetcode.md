@@ -7,211 +7,332 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 2961. Double Modular Exponentiation  
-**Difficulty**: Medium | **Tags**: `Math`, `Modular Arithmetic`, `Fast Exponentiation`  
+        ## 📘 Double Modular Exponentiation – LeetCode 2961  
+### (Java | Python | C++ – Solutions + A Blog‑Style Deep‑Dive)
 
-> **Problem**  
-> You’re given a 0‑indexed 2‑D array `variables`, where `variables[i] = [ai, bi, ci, mi]`, and an integer `target`.  
-> An index `i` is *good* if  
-
-> \[
-> ((a_i^{\,b_i} \bmod 10)^{\,c_i}) \bmod m_i \;=\; \text{target}
-> \]
-
-> Return a list of all good indices (order does not matter).
-
-| **Constraints** | |
-|-----------------|----------------------------------------------------|
-| `1 ≤ variables.length ≤ 100` | `1 ≤ ai, bi, ci, mi ≤ 10³` |
-| `0 ≤ target ≤ 10³` | |
-
-The goal is to solve the problem in **Java**, **Python** and **C++** (GNU‑C++17).  
-After the code you’ll find a short SEO‑optimized blog article that explains the *good, the bad, and the ugly* of the approach.
+> **Problem ID:** 2961  
+> **Difficulty:** Medium  
+> **Keywords:** `modular exponentiation`, `LeetCode`, `Java`, `Python`, `C++`, `coding interview`, `algorithm design`, `O(n)`.
 
 ---
 
-## 1.  High‑Level Idea
+## 1️⃣ Problem Recap
 
-1. For every sub‑array `[a, b, c, m]` compute  
-   *`n1 = (a^b) % 10`*  – the first modular exponentiation.  
-   *`n2 = (n1^c) % m`*  – the second modular exponentiation.
-2. If `n2 == target` append the index to the answer.
+You are given an array `variables`, where each element is a quadruple  
+`[a, b, c, m]`.  
+An index `i` is **good** if
 
-The naive way would multiply `a` by itself `b` times – that is `O(b)` per test case.  
-Since `b` can be as large as 1000, a faster **binary exponentiation** (also called “fast power”) is perfect.  
-The same trick is used for the second exponentiation.  
-With binary exponentiation each power takes `O(log exponent)` time, so the whole solution is `O(n log 1000)` – well within limits.
+```
+((a^b % 10) ^ c) % m  ==  target
+```
+
+Return a list of all good indices (any order).
+
+| Example | Input | Output |
+|---------|-------|--------|
+| 1 | `variables = [[2,3,3,10],[3,3,3,1],[6,1,1,4]]`, `target = 2` | `[0, 2]` |
+| 2 | `variables = [[39,3,1000,1000]]`, `target = 17` | `[]` |
+
+Constraints  
+- `1 ≤ variables.length ≤ 100`  
+- `1 ≤ a, b, c, m ≤ 10^3`  
+- `0 ≤ target ≤ 10^3`
 
 ---
 
-## 2.  Reference Implementations
+## 2️⃣ Why is this a “Good” Problem?
 
-### 2.1 Java
+| ✅  | Explanation |
+|----|-------------|
+| **Simplicity + Depth** | The statement is easy to read but hides subtle issues with overflow and modular arithmetic. |
+| **Common Interview Topic** | Modular exponentiation is a staple in many coding interviews (RSA, hash functions, etc.). |
+| **Multiple Languages** | Demonstrates how the same logic is implemented in Java, Python, and C++. |
+| **Scalable Approach** | Even though the constraints are small, the solution scales to very large exponents if needed. |
+
+---
+
+## 3️⃣ The “Bad” – Potential Pitfalls
+
+| ❌  | Pitfall | How to avoid it |
+|----|----------|-----------------|
+| **Overflow** | `a^b` can explode (e.g., `1000^1000`). | Compute `pow(a, b, 10)` directly with modular exponentiation – never let the intermediate value grow. |
+| **Modulo Order** | Mis‑ordering the `%` operations can change the result. | Follow the formula exactly: first `% 10`, then power `c`, then `% m`. |
+| **Edge Case `m = 1`** | Anything `% 1` is `0`. | Treat it explicitly or rely on modular arithmetic – `pow(x, y, 1)` will always return `0`. |
+| **Using Built‑In `pow` incorrectly** | In Python, `pow(a, b)` returns the exact power, not the modular result. | Use `pow(a, b, mod)` (three‑argument form) or implement fast‑pow. |
+
+---
+
+## 4️⃣ The “Ugly” – Why It Can Look Messy
+
+- Repeated loops for each exponent can make the code lengthy.  
+- The naive implementation can look like nested loops, obscuring the modular logic.  
+- Using different data types (`int`, `long`, `BigInteger`) across languages can be confusing.
+
+The key to a **clean** solution is *abstracting* the modular exponentiation into a helper function.
+
+---
+
+## 5️⃣ The Cleanest Solution – One‑Liner Core
+
+```text
+value = pow(pow(a, b, 10), c, m)
+```
+
+In Python this is literally one line.  
+In Java and C++ we wrap it in a `modPow` helper.
+
+---
+
+## 6️⃣ Code – Three Languages
+
+### 6.1 📜 Java
 
 ```java
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Solution {
+    // Fast modular exponentiation: (base^exp) % mod
+    private long modPow(long base, long exp, long mod) {
+        long result = 1 % mod;
+        base %= mod;
+        while (exp > 0) {
+            if ((exp & 1) == 1) result = (result * base) % mod;
+            base = (base * base) % mod;
+            exp >>= 1;
+        }
+        return result;
+    }
+
     public List<Integer> getGoodIndices(int[][] variables, int target) {
-        List<Integer> ans = new ArrayList<>();
+        List<Integer> good = new ArrayList<>();
         for (int i = 0; i < variables.length; i++) {
             int a = variables[i][0];
             int b = variables[i][1];
             int c = variables[i][2];
             int m = variables[i][3];
 
-            int n1 = modPow(a, b, 10);       // (a^b) % 10
-            int n2 = modPow(n1, c, m);       // (n1^c) % m
+            long first  = modPow(a, b, 10);   // (a^b) % 10
+            long second = modPow(first, c, m); // (first^c) % m
 
-            if (n2 == target) ans.add(i);
+            if (second == target) {
+                good.add(i);
+            }
         }
-        return ans;
-    }
-
-    // Fast exponentiation: (base^exp) % mod
-    private int modPow(int base, int exp, int mod) {
-        long res = 1, b = base % mod;
-        while (exp > 0) {
-            if ((exp & 1) == 1) res = (res * b) % mod;
-            b = (b * b) % mod;
-            exp >>= 1;
-        }
-        return (int) res;
+        return good;
     }
 }
 ```
 
+> **Why it’s fast** – `modPow` runs in *O(log exp)*, so the whole algorithm is *O(n log max(b,c))*.
+
 ---
 
-### 2.2 Python 3
+### 6.2 📜 Python
 
 ```python
 from typing import List
 
 class Solution:
     def getGoodIndices(self, variables: List[List[int]], target: int) -> List[int]:
-        ans = []
-        for idx, (a, b, c, m) in enumerate(variables):
-            n1 = self.mod_pow(a, b, 10)   # (a^b) % 10
-            n2 = self.mod_pow(n1, c, m)   # (n1^c) % m
-            if n2 == target:
-                ans.append(idx)
-        return ans
-
-    @staticmethod
-    def mod_pow(base: int, exp: int, mod: int) -> int:
-        result = 1
-        base %= mod
-        while exp:
-            if exp & 1:
-                result = (result * base) % mod
-            base = (base * base) % mod
-            exp >>= 1
-        return result
+        good = []
+        for i, (a, b, c, m) in enumerate(variables):
+            first = pow(a, b, 10)   # (a^b) % 10
+            second = pow(first, c, m)  # (first^c) % m
+            if second == target:
+                good.append(i)
+        return good
 ```
+
+> Python’s built‑in `pow(base, exp, mod)` is both concise and highly optimized.
 
 ---
 
-### 2.3 C++17
+### 6.3 📜 C++
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
-public:
-    vector<int> getGoodIndices(vector<vector<int>>& variables, int target) {
-        vector<int> ans;
-        for (int i = 0; i < (int)variables.size(); ++i) {
-            int a = variables[i][0];
-            int b = variables[i][1];
-            int c = variables[i][2];
-            int m = variables[i][3];
-
-            int n1 = modPow(a, b, 10);   // (a^b) % 10
-            int n2 = modPow(n1, c, m);   // (n1^c) % m
-
-            if (n2 == target) ans.push_back(i);
-        }
-        return ans;
-    }
-
-private:
     long long modPow(long long base, long long exp, long long mod) {
-        long long res = 1;
+        long long result = 1 % mod;
         base %= mod;
-        while (exp) {
-            if (exp & 1) res = (res * base) % mod;
+        while (exp > 0) {
+            if (exp & 1) result = (result * base) % mod;
             base = (base * base) % mod;
             exp >>= 1;
         }
-        return res;
+        return result;
+    }
+
+public:
+    vector<int> getGoodIndices(vector<vector<int>>& variables, int target) {
+        vector<int> good;
+        for (int i = 0; i < variables.size(); ++i) {
+            long long a = variables[i][0];
+            long long b = variables[i][1];
+            long long c = variables[i][2];
+            long long m = variables[i][3];
+
+            long long first  = modPow(a, b, 10);   // (a^b) % 10
+            long long second = modPow(first, c, m); // (first^c) % m
+
+            if (second == target) good.push_back(i);
+        }
+        return good;
     }
 };
 ```
 
+> Uses the same `modPow` helper for clarity and speed.
+
 ---
 
-## 3.  Blog Article – “Double Modular Exponentiation: The Good, the Bad, and the Ugly”
+## 7️⃣ Complexity Analysis
 
-> **Title**: *Double Modular Exponentiation – The Good, the Bad, and the Ugly*  
-> **Meta Description**: Master LeetCode 2961 in Java, Python, and C++. Learn fast power, common pitfalls, and interview‑ready tricks for double modular exponentiation.  
+| Aspect | Java | Python | C++ |
+|--------|------|--------|-----|
+| **Time** | `O(n · (log b + log c))` | `O(n · (log b + log c))` | `O(n · (log b + log c))` |
+| **Space** | `O(1)` auxiliary (besides result list) | `O(1)` auxiliary | `O(1)` auxiliary |
+| **Worst‑case** | 100 × (10 + 10) operations | Same | Same |
 
-### 3.1 Why Does This Problem Matter in Interviews?
+Even for the maximum input size (100 rows), this runs in milliseconds.
 
-- **Math + Coding**: It checks if you can translate a mathematical expression into efficient code.
-- **Modular Arithmetic**: Many real‑world problems (cryptography, hashing) rely on modular exponentiation.
-- **Algorithmic Thinking**: The “double” step tests whether you know that you can reuse a small result for a second exponentiation.
+---
 
-### 3.2 The Good – What We Got Right
+## 8️⃣ SEO‑Optimized Blog Article
 
-| Aspect | Why It’s Good |
-|--------|---------------|
-| **Fast Power (Binary Exponentiation)** | Runs in `O(log exp)` time, far faster than naive multiplication. |
-| **Modular Reduction at Every Step** | Prevents overflow and keeps numbers small – vital when `ai`, `bi` can be 1000. |
-| **Clear Separation of Concerns** | Two helper functions (`modPow`) keep the main loop readable. |
-| **Language‑agnostic** | The same idea works in Java, Python, C++ – demonstrates solid algorithmic understanding. |
+---
 
-### 3.3 The Bad – Common Mistakes to Avoid
+# Double Modular Exponentiation – LeetCode 2961  
+### Your Complete Guide: Java, Python, C++ Solutions & Interview‑Ready Insights
 
-| Mistake | Consequence |
-|---------|-------------|
-| Using `int` for intermediate products in Java or C++ | Integer overflow → wrong result. |
-| Computing `a^b` first, then applying `% 10` only once | Even if `a^b` fits in a 64‑bit integer, the next step can overflow again. |
-| Forgetting that the modulus of the second power is *m*, not `10` | Misinterprets the formula, giving all answers wrong. |
-| Not handling `m = 1` case | Division by zero or modulo by one → always 0, must be handled correctly. |
+> **Are you preparing for a coding interview?**  
+> This article explains how to crack LeetCode’s *Double Modular Exponentiation* problem (2961) in **Java**, **Python**, and **C++**. We’ll walk through the algorithm, highlight common pitfalls, and give you production‑ready code you can drop into your portfolio or your next interview.
 
-### 3.4 The Ugly – Edge Cases & Tricky Situations
+---
 
-1. **Zero Modulus (`m = 1`)**  
-   Any number modulo 1 is 0, so `n2` will always be 0. The correct check is still `n2 == target`.  
-2. **Large Exponents with Small Modulus**  
-   For example, `a = 999`, `b = 1000`, `mod = 10`. Using naive multiplication would overflow even 64‑bit. Binary exponentiation avoids this by squaring modulo at each step.  
-3. **Negative Numbers (not in constraints but worth noting)**  
-   If the problem were extended, you’d need to normalize the base before taking modulo (`base % mod + mod) % mod`).  
-4. **Performance on 100 Inputs**  
-   Even though the constraints are tiny, a poorly written Python solution that uses exponentiation by multiplication could time out on an online judge that has a higher hidden limit.  
+## Why This Problem Matters
 
-### 3.5 Interview Tips
+- **Modular exponentiation** is one of the *most frequently asked questions* in technical interviews.  
+- LeetCode 2961 tests your ability to combine **modular arithmetic** with **power operations**—skills essential for roles involving cryptography, security, or data science.  
+- Solving it in multiple languages shows *language‑agnostic thinking*, a key trait interviewers look for.
 
-- **Explain Binary Exponentiation** – Show the bit‑wise exponent reduction (`exp >>= 1`).  
-- **Show Modulo Property** – Highlight `(x*y) % m = ((x % m) * (y % m)) % m`.  
-- **Discuss Overflow** – Mention using `long long` (C++), `long` (Java) or Python’s arbitrary‑precision ints.  
-- **Time Complexity** – State `O(n log 1000)` ≈ `O(n * 10)` – practically linear for `n ≤ 100`.  
+---
 
-### 3.6 Final Thought
+## The Problem Statement in Plain English
 
-LeetCode 2961 is a *mini‑quiz* on modular arithmetic combined with efficient exponentiation. By mastering it, you’re proving to interviewers that you can:
+Given an array of quadruples `[a, b, c, m]`, find all indices where
 
-1. Translate a formula into clean, efficient code.  
-2. Spot potential overflow traps.  
-3. Apply classic algorithmic patterns (binary exponentiation).  
+```
+((a^b % 10) ^ c) % m  ==  target
+```
 
-> **Ready to ace the interview?**  
-> Save the three snippets above, practice explaining the algorithm out loud, and you’ll be job‑ready in no time.  
+returns true.
 
----  
+---
 
-> **SEO Keywords**: *Double Modular Exponentiation, LeetCode 2961, modular arithmetic, binary exponentiation, interview algorithm, Java solution, Python solution, C++ solution, job interview tips, competitive programming*  
+## Why It’s a “Good” Interview Problem
 
-Happy coding and good luck with your next interview!
+| ✅ | Benefit |
+|---|---------|
+| **Clear specification** | Easy to read but subtle enough to require careful thinking. |
+| **Demonstrates core CS knowledge** | Modular arithmetic is foundational to cryptography and hashing. |
+| **Multiple‑language solution** | Shows you can solve it in **Java**, **Python**, **C++** (and more). |
+| **Scales** | The same algorithm works for astronomically large exponents if you replace the built‑in `pow` with an efficient modular exponentiation routine. |
+
+---
+
+## Common Mistakes (The “Bad”)
+
+- *Overflow*: `a^b` can explode; never compute the full power.  
+- *Modulo order*: Doing `% m` first or swapping `% 10` can change the answer.  
+- *Edge case `m = 1`*: `% 1` is always `0`.  
+- *Python misuse*: `pow(a, b)` returns the full power, not the modular result.
+
+> Avoid these by using *fast modular exponentiation* (`pow(a, b, mod)` in Python, a helper in Java/C++).
+
+---
+
+## Keeping the Code Clean (The “Ugly” to “Good” Transition)
+
+The core calculation is
+
+```text
+value = pow(pow(a, b, 10), c, m)
+```
+
+Encapsulate this into a helper (`modPow`) and the rest of the code becomes a concise `for‑loop`.  
+No nested loops, no manual `while`‑loops for each exponent.
+
+---
+
+## Solution in Java
+
+```java
+private long modPow(long base, long exp, long mod) { … }
+public List<Integer> getGoodIndices(int[][] variables, int target) { … }
+```
+
+---
+
+## Solution in Python
+
+```python
+def getGoodIndices(self, variables: List[List[int]], target: int) -> List[int]:
+    good = []
+    for i, (a, b, c, m) in enumerate(variables):
+        first  = pow(a, b, 10)
+        second = pow(first, c, m)
+        if second == target:
+            good.append(i)
+    return good
+```
+
+---
+
+## Solution in C++
+
+```cpp
+long long modPow(long long base, long long exp, long long mod) { … }
+vector<int> getGoodIndices(vector<vector<int>>& variables, int target) { … }
+```
+
+---
+
+## Complexity
+
+- **Time**: `O(n · (log b + log c))` – negligible for the given constraints.  
+- **Space**: `O(1)` auxiliary.  
+
+---
+
+## Takeaway
+
+- Modular exponentiation is a *must‑know* topic for interviews.  
+- Implement a small helper (`modPow`) to keep the code readable across Java, Python, and C++.  
+- Test edge cases (`m == 1`, `target == 0`, large exponents).  
+
+With the code snippets above, you’re ready to submit your solution or impress hiring managers who ask: **“How would you solve Double Modular Exponentiation?”**
+
+Good luck, and happy coding! 🚀
+
+---
+
+### 🔑 Keywords & Meta‑Tags
+
+- Double Modular Exponentiation  
+- LeetCode 2961  
+- Coding Interview Algorithms  
+- Java Modular Exponentiation  
+- Python `pow` with Mod  
+- C++ Fast Modular Power  
+- Interview Preparation  
+- Technical Interview Questions  
+- Secure Coding  
+- Job Interview Success  
+
+--- 
+
+**Happy coding and may your next interview be a “Good” one!**
