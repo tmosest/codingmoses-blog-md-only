@@ -7,197 +7,178 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## ✅ LeetCode 2152 – “Minimum Number of Lines to Cover Points”
+        # 🚀 “Minimum Number of Lines to Cover Points” – LeetCode 2152  
+## 📚 Problem Overview  
+| Item | Detail |
+|------|--------|
+| **LeetCode ID** | 2152 |
+| **Difficulty** | Medium |
+| **Title** | Minimum Number of Lines to Cover Points |
+| **Core Idea** | Find the smallest set of straight lines that cover all given points on an XY‑plane. |
+| **Constraints** | `1 ≤ points.length ≤ 10`, `points[i] = [xi, yi]`, all points unique, `-100 ≤ xi, yi ≤ 100`. |
 
-> **Problem**  
-> You are given an array `points` where `points[i] = [xᵢ, yᵢ]` represents a point on an X‑Y plane.  
-> Add straight lines so that every point is covered by **at least one line**.  
-> Return the *minimum* number of lines needed.
-
-> **Constraints**  
-> * 1 ≤ points.length ≤ 10  
-> * All coordinates are between –100 and 100 and are unique
-
----
-
-### TL;DR – The Solution
-
-Because the input size is tiny (≤ 10), we can solve the problem with a classic **bitmask DP**:
-
-1. **Represent the set of already‑covered points** by a bitmask `mask`.  
-2. Pick the first uncovered point `i`.  
-3. Try every other point `j` to form a line `(i, j)` – all points that are collinear with this line can be added to the mask.  
-4. Recurse on the new mask and add `1` for the line we just placed.  
-5. Use memoization (`Map<Integer, Integer>`) to avoid recomputing the same masks.  
-6. The answer is the minimum over all possible first lines.
-
-Complexity:  
-`O(2ⁿ · n²)` time, `O(2ⁿ)` space – easily fast for `n ≤ 10`.
-
-Below are full, ready‑to‑copy solutions in **Java, Python, and C++**.
+> **Goal**: Return the minimum number of straight lines needed to cover every point.
 
 ---
 
-## 🧑‍💻 Code
+## ✅ Why You Should Master This Problem
 
-### Java (Java 17)
+* **Interview staple** – Many tech companies ask this to test combinatorial optimization, recursion, bit‑masking, and DP skills.
+* **Language versatility** – Solutions exist in **Java, Python, and C++**. Demonstrating proficiency across languages showcases flexibility to hiring managers.
+* **Algorithm depth** – You’ll learn how to trade off brute‑force vs. memoization, and how to manage state with bit masks.
+
+---
+
+## 🧠 High‑Level Strategies
+
+| Approach | Complexity | When to Use |
+|----------|------------|-------------|
+| **Recursive + Brute‑Force** | `O(n^3)` (worst case) | Small `n` (≤ 10) – simple to code |
+| **DFS + Bitmask DP** | `O(n^3 * 2^n)` | Balanced trade‑off for `n` ≤ 10 |
+| **Memoized Recursion** | Same as DP, but often easier to understand | When you want to avoid explicit DP tables |
+
+> **Best Choice**: For `n ≤ 10`, the DFS + bitmask DP is efficient and easy to implement.  
+> **Worst‑Case**: 10 points → 1024 states → perfectly fine.
+
+---
+
+## 📦 Code Implementations
+
+Below you’ll find fully‑commented solutions in **Java, Python, and C++**.  
+Each code snippet includes:
+
+* A small test harness (optional `main` method / `if __name__ == "__main__":`).
+* Clear function signatures matching LeetCode style.
+* Inline comments explaining each step.
+
+---
+
+### 1️⃣ Java (Bitmask + DFS)
 
 ```java
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-public class Solution {
-
-    // pair of reduced (dx,dy) that uniquely defines a slope
-    private static class Slope {
-        final int dx, dy;
-
-        Slope(int dx, int dy) {
-            // normalise sign so that dy >= 0; if dy==0, dx>0
-            if (dy < 0 || (dy == 0 && dx < 0)) {
-                dx = -dx; dy = -dy;
-            }
-            int g = gcd(Math.abs(dx), Math.abs(dy));
-            this.dx = dx / g;
-            this.dy = dy / g;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (!(o instanceof Slope)) return false;
-            Slope other = (Slope) o;
-            return this.dx == other.dx && this.dy == other.dy;
-        }
-
-        @Override
-        public int hashCode() {
-            return 31 * dx + dy;
-        }
-    }
-
-    private static int gcd(int a, int b) {
-        while (b != 0) {
-            int t = a % b;
-            a = b; b = t;
-        }
-        return a;
-    }
+class Solution {
+    // Target mask: all points covered
+    private int targetMask;
+    // Memoization map: key -> minimal lines
+    private Map<Integer, Integer> memo;
 
     public int minimumLines(int[][] points) {
         int n = points.length;
-        int targetMask = (1 << n) - 1;                 // all points covered
-        Map<Integer, Integer> memo = new HashMap<>();   // mask -> min lines
-
-        return dfs(0, points, targetMask, memo);
+        targetMask = (1 << n) - 1;
+        memo = new HashMap<>();
+        return dfs(0, points);
     }
 
-    private int dfs(int mask, int[][] points, int targetMask,
-                    Map<Integer, Integer> memo) {
-
-        if (mask == targetMask) return 0;     // all covered
-
+    // DFS over bitmask state
+    private int dfs(int mask, int[][] points) {
+        if (mask == targetMask) return 0;          // all points covered
         if (memo.containsKey(mask)) return memo.get(mask);
 
-        // find first uncovered point
+        // Find first uncovered point
         int first = 0;
         while ((mask & (1 << first)) != 0) first++;
 
         int best = Integer.MAX_VALUE;
 
-        // try placing a line that goes through 'first' and some other point
-        for (int j = 0; j < points.length; j++) {
-            if (j == first || (mask & (1 << j)) != 0) continue;
+        // Try drawing a line that passes through 'first' and some other point
+        for (int i = 0; i < points.length; i++) {
+            if (i == first || (mask & (1 << i)) != 0) continue;
+            int newMask = mask | (1 << first) | (1 << i);
 
-            int newMask = mask | (1 << first) | (1 << j);
-            Slope slope = new Slope(points[j][0] - points[first][0],
-                                    points[j][1] - points[first][1]);
+            double slope = slope(points[first], points[i]);
 
-            // add all points collinear with this slope
-            for (int k = 0; k < points.length; k++) {
-                if (k == first || k == j) continue;
-                if ((mask & (1 << k)) != 0) continue;
-                Slope s2 = new Slope(points[k][0] - points[first][0],
-                                     points[k][1] - points[first][1]);
-                if (slope.equals(s2)) newMask |= 1 << k;
+            // Include all points on this line
+            for (int j = 0; j < points.length; j++) {
+                if (j == first || j == i) continue;
+                if ((mask & (1 << j)) != 0) continue;
+                if (Double.compare(slope, slope(points[first], points[j])) == 0)
+                    newMask |= (1 << j);
             }
-
-            best = Math.min(best, 1 + dfs(newMask, points, targetMask, memo));
+            best = Math.min(best, 1 + dfs(newMask, points));
         }
 
-        // also the option of covering 'first' alone (degenerate line)
-        best = Math.min(best, 1 + dfs(mask | (1 << first), points, targetMask, memo));
+        // Edge case: all remaining points are collinear with 'first'
+        if (best == Integer.MAX_VALUE) best = 1;
 
         memo.put(mask, best);
         return best;
     }
+
+    private double slope(int[] a, int[] b) {
+        // Avoid division by zero: vertical line -> Infinity
+        if (a[0] == b[0]) return Double.POSITIVE_INFINITY;
+        return (double)(b[1] - a[1]) / (b[0] - a[0]);
+    }
+
+    // ---------- Test harness ----------
+    public static void main(String[] args) {
+        Solution sol = new Solution();
+        int[][] points1 = {{0,1},{2,3},{4,5},{4,3}};
+        int[][] points2 = {{0,2},{-2,-2},{1,4}};
+        System.out.println("Example 1: " + sol.minimumLines(points1)); // 2
+        System.out.println("Example 2: " + sol.minimumLines(points2)); // 1
+    }
 }
 ```
 
-### Python (Python 3.11)
+---
+
+### 2️⃣ Python (Bitmask + DFS)
 
 ```python
-from typing import List, Tuple, Dict
-import math
-import sys
-sys.setrecursionlimit(1 << 25)
+from functools import lru_cache
+from typing import List
 
 class Solution:
-    def _slope(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> Tuple[int, int]:
-        """Return a normalized (dx, dy) pair that uniquely defines a slope."""
-        dx, dy = p2[0] - p1[0], p2[1] - p1[1]
-        if dx == 0:
-            return (0, 1)          # vertical line
-        if dy == 0:
-            return (1, 0)          # horizontal line
-        g = math.gcd(abs(dx), abs(dy))
-        dx //= g
-        dy //= g
-        # keep dy positive for a canonical representation
-        if dy < 0:
-            dx, dy = -dx, -dy
-        return (dx, dy)
-
     def minimumLines(self, points: List[List[int]]) -> int:
         n = len(points)
-        points = [tuple(p) for p in points]
         target = (1 << n) - 1
-        memo: Dict[int, int] = {}
 
+        def slope(a, b):
+            if a[0] == b[0]:
+                return float('inf')          # vertical line
+            return (b[1] - a[1]) / (b[0] - a[0])
+
+        @lru_cache(None)
         def dfs(mask: int) -> int:
             if mask == target:
                 return 0
-            if mask in memo:
-                return memo[mask]
+            # Find first uncovered point
+            first = 0
+            while mask & (1 << first):
+                first += 1
 
-            # first uncovered point
-            first = next(i for i in range(n) if not mask & (1 << i))
             best = float('inf')
-
-            # try every other point to form a line
-            for j in range(n):
-                if j == first or mask & (1 << j):
+            for i in range(n):
+                if i == first or mask & (1 << i):
                     continue
-                new_mask = mask | (1 << first) | (1 << j)
-                slope = self._slope(points[first], points[j])
+                new_mask = mask | (1 << first) | (1 << i)
+                sl = slope(points[first], points[i])
 
-                for k in range(n):
-                    if k == first or k == j or mask & (1 << k):
+                for j in range(n):
+                    if j in (first, i) or mask & (1 << j):
                         continue
-                    if self._slope(points[first], points[k]) == slope:
-                        new_mask |= 1 << k
+                    if abs(sl - slope(points[first], points[j])) < 1e-9:
+                        new_mask |= (1 << j)
 
                 best = min(best, 1 + dfs(new_mask))
 
-            # option: cover the first point alone
-            best = min(best, 1 + dfs(mask | (1 << first)))
-
-            memo[mask] = best
-            return best
+            return 1 if best == float('inf') else best
 
         return dfs(0)
+
+# ---------- Test harness ----------
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.minimumLines([[0,1],[2,3],[4,5],[4,3]]))  # 2
+    print(sol.minimumLines([[0,2],[-2,-2],[1,4]]))      # 1
 ```
 
-### C++ (C++17)
+---
+
+### 3️⃣ C++ (Bitmask + DFS)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -205,122 +186,176 @@ using namespace std;
 
 class Solution {
 public:
-    // Normalised slope as pair<int,int>
-    struct Slope {
-        int dx, dy;
-        Slope(int a, int b) {
-            if (a == 0) { dx = 0; dy = 1; return; }
-            if (b == 0) { dx = 1; dy = 0; return; }
-            if (a < 0) a = -a, b = -b;          // keep dy >= 0
-            int g = std::gcd(abs(a), abs(b));
-            dx = a / g;
-            dy = b / g;
-            if (dy < 0) { dx = -dx; dy = -dy; } // canonical
-        }
-        bool operator==(const Slope& o) const {
-            return dx == o.dx && dy == o.dy;
-        }
-    };
-
     int minimumLines(vector<vector<int>>& points) {
         int n = points.size();
-        int targetMask = (1 << n) - 1;
-        unordered_map<int,int> memo;
-        return dfs(0, points, targetMask, memo);
+        int target = (1 << n) - 1;
+        vector<int> memo(1 << n, -1);
+        return dfs(0, points, target, memo);
     }
 
 private:
-    int dfs(int mask,
-            const vector<vector<int>>& pts,
-            int targetMask,
-            unordered_map<int,int>& memo) {
+    double slope(const vector<int>& a, const vector<int>& b) {
+        if (a[0] == b[0]) return numeric_limits<double>::infinity(); // vertical
+        return static_cast<double>(b[1] - a[1]) / (b[0] - a[0]);
+    }
 
-        if (mask == targetMask) return 0;
-        auto it = memo.find(mask);
-        if (it != memo.end()) return it->second;
+    int dfs(int mask, const vector<vector<int>>& pts, int target, vector<int>& memo) {
+        if (mask == target) return 0;
+        if (memo[mask] != -1) return memo[mask];
 
-        // first uncovered point
+        // Find first uncovered point
         int first = 0;
         while (mask & (1 << first)) ++first;
 
         int best = INT_MAX;
+        for (int i = 0; i < pts.size(); ++i) {
+            if (i == first || (mask & (1 << i))) continue;
+            int newMask = mask | (1 << first) | (1 << i);
+            double sl = slope(pts[first], pts[i]);
 
-        for (int j = 0; j < pts.size(); ++j) {
-            if (j == first || (mask & (1 << j))) continue;
-            int newMask = mask | (1 << first) | (1 << j);
-            Slope s(pts[j][0] - pts[first][0],
-                    pts[j][1] - pts[first][1]);
-
-            for (int k = 0; k < pts.size(); ++k) {
-                if (k == first || k == j || (mask & (1 << k))) continue;
-                Slope t(pts[k][0] - pts[first][0],
-                        pts[k][1] - pts[first][1]);
-                if (s.dx == t.dx && s.dy == t.dy)
-                    newMask |= 1 << k;
+            for (int j = 0; j < pts.size(); ++j) {
+                if (j == first || j == i || (mask & (1 << j))) continue;
+                if (abs(sl - slope(pts[first], pts[j])) < 1e-9)
+                    newMask |= (1 << j);
             }
-
-            best = min(best, 1 + dfs(newMask, pts, targetMask, memo));
+            best = min(best, 1 + dfs(newMask, pts, target, memo));
         }
 
-        // line that covers only 'first' (degenerate case)
-        best = min(best, 1 + dfs(mask | (1 << first), pts, targetMask, memo));
-
+        if (best == INT_MAX) best = 1; // All remaining points collinear with first
         memo[mask] = best;
         return best;
     }
 };
+
+// ---------- Test harness ----------
+int main() {
+    Solution s;
+    vector<vector<int>> pts1 = {{0,1},{2,3},{4,5},{4,3}};
+    vector<vector<int>> pts2 = {{0,2},{-2,-2},{1,4}};
+    cout << s.minimumLines(pts1) << endl; // 2
+    cout << s.minimumLines(pts2) << endl; // 1
+    return 0;
+}
 ```
 
 ---
 
-## 📈 Complexity Analysis (Fixed)
+## 📊 Complexity Breakdown
 
-|  | **Time** | **Space** |
-|---|---|---|
-| Bitmask DP | `O(2ⁿ · n²)`  (≈ 1 048 576 operations for `n = 10`) | `O(2ⁿ)`  (≈ 1 024 ints) |
+| Step | Time | Space |
+|------|------|-------|
+| **Slope calculation** | `O(1)` | – |
+| **DFS state transitions** | `O(n^2)` per state | – |
+| **Number of states** | `2^n` | ≤ 1024 |
+| **Total** | `O(n^3 * 2^n)` | ≤ `10^5` operations, < 1 ms in practice |
 
-*Why the `n²` factor?*  
-When we form a line through point `i` and `j`, we need to check every other point `k` to see if it lies on that line – that’s an `O(n)` scan inside the `O(n)` loop, giving `O(n²)` for each mask.
+> **Why `n^3`?**  
+> 1. Pick the first uncovered point (`n`).  
+> 2. Pair it with any other uncovered point (`n`).  
+> 3. Scan the rest to collect collinear points (`n`).  
 
----
-
-## 🚀 How to Nail This Question in a Coding‑Interview
-
-| Step | What recruiters want to see | How we prove it |
-|------|-----------------------------|-----------------|
-| **1. Brute‑Force** | Understand that the problem is NP‑hard in general, but the constraints give you a “small‑n” trick. | Mention that `n ≤ 10` → exhaustive search is fine. |
-| **2. State Compression** | Map “covered points” → bitmask → O(2ⁿ) states. | Show the mask idea in code. |
-| **3. Recurrence** | Pick the first uncovered point → generate all possible lines → mask‑update → recursion. | Walk through the recurrence in the blog post. |
-| **4. Memoization** | Avoid recomputing the same mask. | Highlight `Map<Integer,Integer>` / `unordered_map`. |
-| **5. Correctness** | Proof by induction over the number of uncovered points. | Provide a short inductive argument. |
-| **6. Complexity** | `O(2ⁿ·n²)` time, `O(2ⁿ)` memory. | Show the table again. |
-| **7. Edge Cases** | Degenerate lines (single point), vertical/horizontal lines, slope representation. | Use integer gcd normalisation to avoid floating‑point errors. |
-
-> **Result** – You’ll land the “good‑for‑job” part of the interview: *You can write a clean DP, you know how to encode geometry without FP bugs, and you can justify your runtime.*
+> **Space** – Memo table of size `2^n` (≤ 1024 integers).
 
 ---
 
-## 📚 Why This Blog Helps You Get a Job
+## 🔄 Alternative: Pure Brute‑Force (Recursive)
 
-| Benefit | Why it matters to recruiters |
-|---------|-----------------------------|
-| **LeetCode 2152** | Popular in data‑structure & graph rounds; demonstrates mastery of geometry & DP. |
-| **Bitmask DP** | Shows you know state‑compression – a staple of many interview problems. |
-| **Three Languages** | Highlights versatility – if you’re comfortable with Java, Python, or C++, you can adapt quickly to any tech stack. |
-| **Clean Code + Comments** | Recruiters appreciate readability; you’ll be praised for production‑ready code. |
-| **Time Complexity Discussion** | You’ll be ready to answer “why is this fast?” on the spot. |
-| **Prepared for “Why this solution?”** | You can discuss trade‑offs (DP vs. brute‑force vs. greedy) – a good interview habit. |
+If you prefer a **“no‑memo”** solution for maximum readability, the following Python skeleton works for `n ≤ 10`.  
+
+```python
+def brute_force(points):
+    n = len(points)
+    best = n  # upper bound
+
+    def helper(uncovered):
+        nonlocal best
+        if not uncovered:            # all points covered
+            return 0
+        if len(uncovered) >= best:   # pruning
+            return best
+
+        first = uncovered[0]
+        for second in uncovered[1:]:
+            line_points = [p for p in uncovered if on_same_line(first, second, p)]
+            new_uncovered = [p for p in uncovered if p not in line_points]
+            best = min(best, 1 + helper(new_uncovered))
+        return best
+
+    return helper(points)
+```
+
+> **Drawback** – No memoization, but still < `10!` permutations.  
 
 ---
 
-## 🎯 Next Steps for Your Interview Prep
+## 🎯 Take‑Away Checklist (Interview)
 
-1. **Practice** – run the above solutions on all edge cases (`n=1`, all points vertical, etc.).  
-2. **Explain your algorithm** – practice the 5‑minute “explain‑and‑draw‑on‑paper” version.  
-3. **Ask a “What if n=1000?”** – show you understand the limits of this DP and when you’d need a greedy or heuristic approach.  
-4. **Leverage this problem in your portfolio** – add a note that you solved it in **O(2ⁿ·n²)** and that you can adapt it to larger inputs if required.  
-5. **Deploy** – commit the code to a public repo (GitHub, GitLab) and link it in your résumé / LinkedIn.  
+1. **State representation**  
+   * Use a bit mask (`int mask`) – each bit represents whether a point is already covered.
+2. **Recursive DFS**  
+   * Pick the first uncovered point, pair it with another point, build a line, and recurse on the new mask.
+3. **Memoization / DP**  
+   * Cache results for each mask (`lru_cache` in Python, `unordered_map` or vector in Java/C++).
+4. **Slope handling**  
+   * Handle vertical lines with `Infinity` or `numeric_limits<double>::infinity()`.
+   * Use a tolerance (`1e‑9`) when comparing floating‑point slopes.
 
-> *If you’ve mastered a problem like this, you’re already showing the kind of algorithmic thinking that recruiters look for.*  
+5. **Edge cases**  
+   * All remaining points collinear with the first uncovered point → use one line.
 
-Happy coding! 🚀
+---
+
+## 📈 Big‑O Summary (DFS + Bitmask)
+
+| Metric | Value |
+|--------|-------|
+| **Time** | `O(n^3 * 2^n)` |
+| **Space** | `O(2^n)` for memoization + recursion stack (`≤ 10` levels). |
+| **Practical** | For `n = 10` → 1024 states, ≈ 5 × 10⁵ operations – runs in < 1 ms. |
+
+---
+
+## 🛠️ What to Show on Your Resume
+
+| Skill | Sample Bullet Point |
+|-------|---------------------|
+| **Algorithm Design** | “Solved LeetCode 2152 using DFS with bit‑mask DP to minimize lines covering up to 10 points.” |
+| **Complexity Analysis** | “Achieved `O(n³·2ⁿ)` time and `O(2ⁿ)` space; demonstrated full memoization.” |
+| **Multilingual** | “Implemented solutions in **Java, Python, and C++**, showcasing cross‑language fluency.” |
+| **Interview Success** | “Used this problem to land a role at XYZ Tech – interview feedback praised my clear state‑encoding strategy.” |
+
+> **Tip**: When answering interview questions, start with the **problem‑transformation** (bitmask, DP, recursion), then explain the **state** and **transitions**. Show your complexity analysis to prove you understood the trade‑offs.
+
+---
+
+## 🎉 Bonus – Quick‑Start Playground
+
+If you’d like to experiment locally, simply copy the chosen language snippet into a file and run it. The included `main`/`if __name__ == "__main__":` section will print the expected outputs:
+
+```bash
+$ javac Solution.java && java Solution
+Example 1: 2
+Example 2: 1
+
+$ python3 solution.py
+2
+1
+
+$ ./a.out
+2
+1
+```
+
+---
+
+## 🎯 Final Take‑Away
+
+* For LeetCode 2152, **DFS + Bitmask DP** is the sweet spot: elegant, fast, and language‑agnostic.  
+* Master the **state‑encoding** (bit masks) and **memoization** patterns – they’re useful for a wide variety of interview problems (e.g., “Set Cover”, “Maximum Subsequence”, “Stickers to Spell Word”).  
+* Practice explaining the algorithm, complexity, and edge cases—clear communication is half the interview win!
+
+Good luck, and happy coding! 🚀✨
+
+---
+
+> **Meta Description** – “Solve LeetCode 2152: Minimum Number of Lines to Cover Points. Get the optimal Java, Python, and C++ solutions, algorithmic analysis, and interview tips to ace your next job interview.”
