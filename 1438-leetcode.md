@@ -7,67 +7,96 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 1438 – “Longest Continuous Subarray With Absolute Diff ≤ Limit”
+        ## 1438. Longest Continuous Subarray With Absolute Diff ≤ Limit  
+### LeetCode – Medium
 
-Below you’ll find **ready‑to‑copy** solutions in **Java**, **Python** and **C++** that solve the problem in *O(n)* time and *O(n)* extra space using a **sliding‑window + two monotonic deques** approach.  
-After the code snippets, read the SEO‑optimized blog article that explains the intuition, the “good / bad / ugly” parts of the problem and how mastering it can boost your interview game.
+**Problem statement**
 
-> **Problem link**: <https://leetcode.com/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit/>
+> Given an integer array `nums` and an integer `limit`, return the size of the longest *non‑empty* subarray such that the absolute difference between any two elements in that subarray is at most `limit`.
+
+```
+Input  : nums = [8,2,4,7] , limit = 4
+Output : 2
+```
+
+**Why is this interesting?**  
+The naive solution (checking every possible subarray) is \(O(n^2)\) and will time‑out on the maximum input size \(n = 10^5\).  
+A linear‑time sliding‑window solution using two deques (or a balanced BST/priority queue) runs in \(O(n)\) and is the canonical “greedy + data structure” pattern that interviewers love.
 
 ---
 
-### 🧑‍💻 1️⃣ Java Implementation
+## 1. Algorithm – Two‑Deque Sliding Window
+
+1. Keep two deques:
+   * `maxDeque` – stores indices of elements in **decreasing** order (front is the current maximum).
+   * `minDeque` – stores indices of elements in **increasing** order (front is the current minimum).
+2. Expand the right end (`right`) of the window one step at a time.
+   * While the new element is smaller than the back of `maxDeque`, pop the back – we keep only useful candidates for the maximum.
+   * While the new element is larger than the back of `minDeque`, pop the back – we keep only useful candidates for the minimum.
+   * Push the new index onto both deques.
+3. After adding the element, check whether the window is **valid**:
+   \[
+   nums[maxDeque.front] - nums[minDeque.front] \le limit
+   \]
+   If it’s **invalid**, shrink the window from the left (`left`) until it becomes valid again, removing indices that leave the window from the front of each deque.
+4. Update the answer with the current window size (`right - left + 1`).
+
+**Why does this work?**  
+Because the deques always hold the current window’s maximum and minimum, the difference can be obtained in \(O(1)\).  
+When the window becomes invalid, we know the element that caused the violation must be at the left side – moving `left` forward removes it. This guarantees each index is inserted and removed at most once → linear time.
+
+---
+
+## 2. Complexity
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Main loop | \(O(n)\) | \(O(n)\) (deques, but each index stored only once) |
+| Final answer | \(O(1)\) | \(O(1)\) |
+
+---
+
+## 3. Reference Implementations
+
+### Java
 
 ```java
-import java.util.*;
+import java.util.ArrayDeque;
 
 public class Solution {
     public int longestSubarray(int[] nums, int limit) {
-        // Deques to keep the increasing (min) and decreasing (max) values
-        Deque<Integer> minDeque = new ArrayDeque<>();
-        Deque<Integer> maxDeque = new ArrayDeque<>();
-
-        int left = 0;           // left boundary of the sliding window
-        int best = 0;           // longest valid window seen so far
+        ArrayDeque<Integer> maxQ = new ArrayDeque<>(); // decreasing
+        ArrayDeque<Integer> minQ = new ArrayDeque<>(); // increasing
+        int left = 0, ans = 0;
 
         for (int right = 0; right < nums.length; right++) {
-            int cur = nums[right];
+            // maintain max deque
+            while (!maxQ.isEmpty() && nums[maxQ.peekLast()] < nums[right]) {
+                maxQ.pollLast();
+            }
+            maxQ.offerLast(right);
 
-            // Maintain minDeque: remove all values larger than cur
-            while (!minDeque.isEmpty() && cur < minDeque.peekLast())
-                minDeque.pollLast();
-            minDeque.offerLast(cur);
+            // maintain min deque
+            while (!minQ.isEmpty() && nums[minQ.peekLast()] > nums[right]) {
+                minQ.pollLast();
+            }
+            minQ.offerLast(right);
 
-            // Maintain maxDeque: remove all values smaller than cur
-            while (!maxDeque.isEmpty() && cur > maxDeque.peekLast())
-                maxDeque.pollLast();
-            maxDeque.offerLast(cur);
-
-            // Shrink window until difference is within limit
-            while (maxDeque.peekFirst() - minDeque.peekFirst() > limit) {
-                if (nums[left] == minDeque.peekFirst())
-                    minDeque.pollFirst();
-                if (nums[left] == maxDeque.peekFirst())
-                    maxDeque.pollFirst();
+            // shrink window if needed
+            while (nums[maxQ.peekFirst()] - nums[minQ.peekFirst()] > limit) {
+                if (maxQ.peekFirst() == left) maxQ.pollFirst();
+                if (minQ.peekFirst() == left) minQ.pollFirst();
                 left++;
             }
 
-            best = Math.max(best, right - left + 1);
+            ans = Math.max(ans, right - left + 1);
         }
-        return best;
+        return ans;
     }
 }
 ```
 
-> **Why it works**  
-> - `minDeque` always holds the elements of the current window in *increasing* order, so its front is the minimum.  
-> - `maxDeque` holds them in *decreasing* order, so its front is the maximum.  
-> - The window is expanded one element at a time (`right`).  
-> - If `max - min` exceeds `limit`, the left pointer moves forward, discarding the element that leaves the window.  
-
----
-
-### 🐍 2️⃣ Python Implementation
+### Python
 
 ```python
 from collections import deque
@@ -75,309 +104,151 @@ from typing import List
 
 class Solution:
     def longestSubarray(self, nums: List[int], limit: int) -> int:
-        min_q, max_q = deque(), deque()
-        left = best = 0
+        max_q = deque()   # decreasing
+        min_q = deque()   # increasing
+        left = 0
+        ans = 0
 
-        for right, val in enumerate(nums):
-            # Keep min_q increasing
-            while min_q and val < min_q[-1]:
-                min_q.pop()
-            min_q.append(val)
-
-            # Keep max_q decreasing
-            while max_q and val > max_q[-1]:
+        for right, num in enumerate(nums):
+            while max_q and nums[max_q[-1]] < num:
                 max_q.pop()
-            max_q.append(val)
+            max_q.append(right)
 
-            # Shrink until valid
-            while max_q[0] - min_q[0] > limit:
-                if nums[left] == min_q[0]:
-                    min_q.popleft()
-                if nums[left] == max_q[0]:
+            while min_q and nums[min_q[-1]] > num:
+                min_q.pop()
+            min_q.append(right)
+
+            while nums[max_q[0]] - nums[min_q[0]] > limit:
+                if max_q[0] == left:
                     max_q.popleft()
+                if min_q[0] == left:
+                    min_q.popleft()
                 left += 1
 
-            best = max(best, right - left + 1)
-        return best
+            ans = max(ans, right - left + 1)
+        return ans
 ```
 
-> **Fast & Pythonic** – Uses `deque` (double‑ended queue) for O(1) pops/pushes at both ends.
-
----
-
-### 🧱 3️⃣ C++ Implementation
+### C++
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
+#include <vector>
+#include <deque>
+#include <algorithm>
 
 class Solution {
 public:
-    int longestSubarray(vector<int>& nums, int limit) {
-        deque<int> minD, maxD;          // monotonic deques
-        int left = 0, best = 0;
+    int longestSubarray(std::vector<int>& nums, int limit) {
+        std::deque<int> maxQ; // decreasing
+        std::deque<int> minQ; // increasing
+        int left = 0, ans = 0;
 
         for (int right = 0; right < (int)nums.size(); ++right) {
-            int cur = nums[right];
+            while (!maxQ.empty() && nums[maxQ.back()] < nums[right])
+                maxQ.pop_back();
+            maxQ.push_back(right);
 
-            // Build min deque (increasing)
-            while (!minD.empty() && cur < minD.back())
-                minD.pop_back();
-            minD.push_back(cur);
+            while (!minQ.empty() && nums[minQ.back()] > nums[right])
+                minQ.pop_back();
+            minQ.push_back(right);
 
-            // Build max deque (decreasing)
-            while (!maxD.empty() && cur > maxD.back())
-                maxD.pop_back();
-            maxD.push_back(cur);
-
-            // Window shrink
-            while (maxD.front() - minD.front() > limit) {
-                if (nums[left] == minD.front())
-                    minD.pop_front();
-                if (nums[left] == maxD.front())
-                    maxD.pop_front();
+            while (nums[maxQ.front()] - nums[minQ.front()] > limit) {
+                if (maxQ.front() == left) maxQ.pop_front();
+                if (minQ.front() == left) minQ.pop_front();
                 ++left;
             }
-
-            best = max(best, right - left + 1);
+            ans = std::max(ans, right - left + 1);
         }
-        return best;
+        return ans;
     }
 };
 ```
 
-> **Note**  
-> - `deque` from `<deque>` gives amortised *O(1)* insert/delete from either end.  
-> - `vector<int>&` is used for LeetCode’s C++ signature.
+---
+
+## 4. Blog Article – *The Good, The Bad, and The Ugly of Sliding Window Solutions*
+
+### Introduction
+
+When you see a LeetCode problem titled “Longest Continuous Subarray …”, your mind immediately runs to *sliding window*. Sliding windows are the bread‑and‑butter of interview prep: they are fast, intuitive, and often the only acceptable solution for large input constraints.  
+
+In this post we’ll walk through the **good**, **bad**, and **ugly** aspects of sliding‑window solutions for LeetCode 1438, *Longest Continuous Subarray With Absolute Diff ≤ Limit*. I’ll break down the algorithm, show clean Java/Python/C++ code, and give SEO‑friendly tips that’ll help you shine in a technical interview or a job‑search blog.
+
+> **SEO headline**: “Master LeetCode 1438: Sliding‑Window Deques to Pass in O(n) – Java, Python & C++”
 
 ---
 
-## 📚 3️⃣ SEO‑Optimized Blog Article
+### The Good
 
-> **Title:**  
-> *LeetCode 1438 – Master the “Longest Continuous Subarray” Problem with Sliding Window & Monotonic Deques (Java, Python, C++)*  
+| ✅ | Feature | Why it matters |
+|----|---------|----------------|
+| **Linear time** | \(O(n)\) | Scales to \(n = 10^5\) in < 1 ms. |
+| **O(1) amortized window updates** | Deques maintain max/min | Avoids sorting or heap ops. |
+| **Readability** | Two deques + pointers | Easy to explain in an interview. |
+| **Memory friendly** | Each index stored once | Extra \(O(n)\) worst‑case, but deques are tiny. |
 
-> **Meta description:**  
-> Learn the O(n) solution to LeetCode 1438. Understand sliding‑window with two deques, debug edge cases, and see how this problem can sharpen your interview skills.  
-
-> **Keywords:**  
-> LeetCode 1438, Longest Continuous Subarray, Absolute Difference, Sliding Window, Monotonic Deque, Java solution, Python solution, C++ solution, Interview prep, Data Structures, Algorithms, O(n) time, O(n) space, Array problems, job interview tips.
-
----
-
-### 🎯 Problem Overview
-
-> **Goal**: Find the length of the longest contiguous subarray such that the difference between its maximum and minimum elements is ≤ `limit`.
-
-| Input | Output |
-|-------|--------|
-| `nums = [8,2,4,7]`, `limit = 4` | `2` (subarray `[2,4]`) |
-| `nums = [10,1,2,4,7,2]`, `limit = 5` | `4` (subarray `[2,4,7,2]`) |
+The *good* is obvious: the algorithm is optimal for the problem’s constraints and uses a clean data‑structure pattern that interviewers love.
 
 ---
 
-### 🔍 Good / Bad / Ugly – What Makes This Problem Challenging?
+### The Bad
 
-| **Good** | **Bad** | **Ugly** |
-|----------|---------|----------|
-| **Clear constraints** – O(n) expected. | **Large value range** – `nums[i]` up to 10⁹, so you cannot rely on bucket/counting sort. | **Subtle window shrink** – need to correctly remove elements that leave the window, not just slide the pointer. |
-| **Nice DP / two‑pointer potential** – classic interview theme. | **Requires careful use of data structures** – you need two priority queues or deques, not one. | **Many failing tests** – off‑by‑one bugs, wrong front/back logic, or forgetting to pop deques when window shrinks. |
-| **Opportunity to show mastery of monotonic queues** – highly valuable skill. | **Hard to debug** – difference can exceed limit in many ways, making it hard to reason about the window size. | **Time‑complexity traps** – using heaps gives O(n log n) and will TLE on LeetCode. |
+| ⚠️ | Issue | Mitigation |
+|----|-------|------------|
+| **Edge‑case complexity** | Handling empty deques when shrinking | Carefully check `front()` before popping. |
+| **Language quirks** | Java’s `ArrayDeque` vs. `LinkedList` | Use `ArrayDeque` for O(1) ops. |
+| **Large integer values** | `int` vs. `long` | In Java, use `int` because problem limits fit, but watch out if you extend the logic. |
+| **Readability pitfalls** | Over‑commenting vs. over‑abstracting | Keep a balance: comment only the non‑obvious parts. |
 
----
-
-### 🧠 Intuition
-
-The absolute difference of a subarray equals `max(subarray) - min(subarray)`.  
-Thus we need to keep track of the **maximum** and **minimum** values in the current window while sliding it over the array.
-
-A **monotonic deque** keeps the window’s elements sorted in either increasing or decreasing order.  
-The front of the deque is always the current min (or max).  
-With two deques we can get both extremes in *O(1)* time.
+These are minor annoyances that appear if you copy‑paste a template without understanding the nuance of each language’s deque implementation.
 
 ---
 
-### 📈 Algorithm (Sliding Window + Two Monotonic Deques)
+### The Ugly
 
-1. **Initialize**  
-   * `minDeque` – increasing order (front = min).  
-   * `maxDeque` – decreasing order (front = max).  
-   * `left = 0`, `best = 0`.
+| 👹 | Pitfall | Fix |
+|----|---------|-----|
+| **Off‑by‑one bugs** | Shrinking loop may leave window invalid | Verify after loop with an assert or unit test. |
+| **O(n²) in bad cases** | Incorrect deques that do not pop back | Ensure `while (maxQ.back < new)` logic is correct. |
+| **Stack overflow on recursion** | None in this problem | But be mindful of stack usage in recursive solutions. |
+| **Time limit exceed on large input** | Extra `Math.max` inside loop | Move it out if you can, but here it’s cheap. |
 
-2. **For each element `right` (0 … n‑1)**  
-   * **Insert** `nums[right]` into both deques, removing all elements that violate monotonicity (back of each deque).  
-   * **While** `maxDeque.front() - minDeque.front() > limit`:  
-     * Move `left` forward.  
-     * If the element leaving the window equals the front of a deque, pop it from that deque.  
-   * **Update** `best = max(best, right - left + 1)`.
-
-3. **Return** `best`.
+The *ugly* part reminds us that sliding window is powerful **only** if implemented correctly. A single typo in the deque logic can turn an optimal \(O(n)\) solution into a slow one.
 
 ---
 
-### 🏗️ Implementation Highlights
+## 5. How to Showcase This on Your Blog or Resume
 
-| Language | Key Features |
-|----------|--------------|
-| **Java** | `Deque<Integer>` via `ArrayDeque`, `peekFirst()`, `peekLast()`, `pollFirst()`, `pollLast()`. |
-| **Python** | `collections.deque`, `append()`, `pop()`, `popleft()`. |
-| **C++** | `std::deque<int>`, `push_back()`, `pop_back()`, `front()`, `back()`. |
+1. **Title** – Make it keyword‑rich: “Longest Continuous Subarray (LeetCode 1438) – Sliding Window Deques in Java, Python, C++”.
+2. **Intro** – Briefly state the problem and the challenge of large input.
+3. **Algorithm section** – Use pseudo‑code and diagram your deques.
+4. **Complexity analysis** – Big‑O notation with explanations.
+5. **Code snippets** – Include all three language implementations. Mention that deques are the linchpin.
+6. **Discussion** – Good, bad, ugly – shows you’re not just copying; you understand trade‑offs.
+7. **Link** – Provide the LeetCode URL and a link to a GitHub repo with the full solution.
+8. **SEO tags** – “LeetCode 1438”, “Sliding Window”, “Java Deque”, “Python Deque”, “C++ Deque”, “O(n) solution”, “Technical interview”.
 
-All three solutions run in **O(n)** time because each element is inserted and removed from each deque at most once.  
-Space usage is **O(n)** in the worst case (e.g., strictly increasing array for `minDeque`).
-
----
-
-### 📊 Complexity Analysis
-
-| Metric | Java | Python | C++ |
-|--------|------|--------|-----|
-| **Time** | *O(n)* | *O(n)* | *O(n)* |
-| **Space** | *O(n)* | *O(n)* | *O(n)* |
-| **Worst‑case window** | `limit` never satisfied, window shrinks to 1 | Same | Same |
+Adding a small unit‑test section or a performance benchmark (e.g., `timeit` in Python) gives the reader extra confidence.
 
 ---
 
-### 🛠️ Edge‑Case Checklist
+## 6. Take‑away Checklist
 
-| Edge Case | Why it matters | Solution’s handling |
-|-----------|----------------|---------------------|
-| Empty array | Should return 0 | Loop never runs → `best` remains 0 |
-| `limit` = 0 | Need equal values only | Deques hold identical fronts → difference 0 |
-| Single element | Window size 1 | Works naturally |
-| All elements equal | Max diff 0 | Deques keep single value → window never shrinks |
-| Very large numbers (10⁹) | Potential overflow? | Use `int` in Java/Python, `long long` not required; subtraction stays within 32‑bit signed range |
+- ✅ Use **two deques**: one for max, one for min.
+- ✅ Maintain deques in **monotonic** order.
+- ✅ Shrink the window until the difference ≤ limit.
+- ✅ Update answer after every expansion.
+- ✅ Avoid off‑by‑one errors by testing with edge cases.
 
 ---
 
-### 🧪 Sample Unit Tests (Python)
+### TL;DR
 
-```python
-if __name__ == "__main__":
-    s = Solution()
-    assert s.longestSubarray([8,2,4,7], 4) == 2
-    assert s.longestSubarray([10,1,2,4,7,2], 5) == 4
-    assert s.longestSubarray([4,2,2,2,4,4,2,2], 0) == 3
-    assert s.longestSubarray([], 10) == 0
-    print("All tests passed!")
-```
+- Problem: Longest subarray with |max‑min| ≤ limit.
+- Solution: Sliding window + two deques (monotonic queues).
+- Complexity: \(O(n)\) time, \(O(n)\) space.
+- Code ready for Java, Python, C++.
 
----
+> **Pro tip**: When you explain this to an interviewer, start with “I keep the maximum and minimum of the current window in deques so I can know the difference in O(1). Then I slide the window until the difference is ≤ limit.” That’s a 10‑second “elevator pitch” that instantly shows you know the pattern.
 
-## 📚 4️⃣ SEO‑Optimized Blog Article
-
----
-
-### **Title**  
-*Master LeetCode 1438: Longest Continuous Subarray with Absolute Diff ≤ Limit – Java, Python & C++ Solutions + Interview Insights*
-
----
-
-### **Meta Description**  
-Discover the fastest O(n) solution to LeetCode 1438. Learn how sliding windows and monotonic deques solve the “Longest Continuous Subarray” problem in Java, Python, and C++. Perfect for software‑engineering interview prep and boosting your résumé.
-
----
-
-### **Keywords**  
-LeetCode 1438, Longest Continuous Subarray, Absolute Difference, Sliding Window, Monotonic Deque, Java solution, Python solution, C++ solution, Data Structures, Algorithms, Interview Prep, Software Engineer Interview, Coding Interview Tips
-
----
-
-### 📖 Introduction
-
-If you’re preparing for a software‑engineering interview, you’ve likely seen array problems that sound simple but require a nuanced understanding of data structures. LeetCode 1438 – “Longest Continuous Subarray” – is a prime example. It asks you to find the maximum length of a contiguous slice of an array such that the difference between the slice’s largest and smallest element is bounded by a given limit.
-
-This problem is deceptively tricky: it blends classic two‑pointer logic with the subtlety of maintaining two extremes efficiently. In this article, we’ll walk through:
-
-1. The core idea behind the optimal solution.  
-2. How two monotonic deques maintain the min and max.  
-3. A step‑by‑step guide to implementing the algorithm in Java, Python, and C++.  
-4. Common pitfalls and debugging strategies.  
-5. Why this problem is a golden ticket for interview success.
-
----
-
-### 1️⃣ The Big Picture
-
-At its heart, LeetCode 1438 is a question of **balance**.  
-We want a subarray that stays within a “tolerance band” defined by `limit`.  
-The key insight:  
-> *The absolute difference of any subarray equals its maximum minus its minimum.*
-
-Hence, if we can track both extremes while sliding a window over the array, we can decide in constant time whether the window is valid.
-
----
-
-### 2️⃣ Why Monotonic Deques are the Secret Sauce
-
-A **deque** (double‑ended queue) allows insertion/removal at both ends in constant time.  
-By enforcing a **monotonic** order:
-
-- **Increasing deque**: The front holds the minimum; all other values are larger.  
-- **Decreasing deque**: The front holds the maximum; all other values are smaller.
-
-When we push a new element to the back, we pop from the back until the deque stays monotonic.  
-When we slide the window forward, we pop from the front if the outgoing element equals the front of a deque.
-
-This guarantees we always have the correct `min` and `max` for the current window **without any expensive look‑ups**.
-
----
-
-### 3️⃣ Step‑by‑Step Walkthrough
-
-Consider `nums = [10, 1, 2, 4, 7, 2]` and `limit = 5`.
-
-| Step | `right` | `nums[right]` | Deques after insert | Check | Shrink? |
-|------|---------|----------------|---------------------|-------|---------|
-| 1 | 0 | 10 | `minD=[10]`, `maxD=[10]` | 0 ≤ 5 → OK | No |
-| 2 | 1 | 1 | `minD=[1]`, `maxD=[10]` | 9 > 5 → shrink | Yes (move left) |
-| 3 | 2 | 2 | `minD=[1,2]`, `maxD=[10]` | 9 > 5 → shrink | Yes |
-| 4 | 3 | 4 | `minD=[1,2,4]`, `maxD=[10]` | 9 > 5 → shrink | Yes |
-| 5 | 4 | 7 | `minD=[1,2,4,7]`, `maxD=[10]` | 9 > 5 → shrink | Yes |
-| 6 | 5 | 2 | `minD=[2,2,4,7]`, `maxD=[7]` | 5 ≤ 5 → OK | No |
-
-The longest valid window ends up with length 4: `[2,4,7,2]`.
-
----
-
-### 🔍 Debugging Common Pitfalls
-
-1. **Off‑by‑one errors** – Remember that `right - left + 1` gives the window length.  
-2. **Deque pop logic** – Only pop from the front if the outgoing element matches the front.  
-3. **Large values** – Avoid `int` overflow; however, with 10⁹ difference stays within 32‑bit signed range.  
-4. **Empty array** – Ensure your loop handles `n == 0` gracefully.  
-5. **Non‑monotonic insert** – Use `while (deque back > newVal)` for `minD` and `while (deque back < newVal)` for `maxD`.
-
----
-
-### 🌟 Interview Take‑aways
-
-- **Show Data‑Structure Fluency** – Explaining why two deques beat two heaps demonstrates deep understanding.  
-- **Explain Amortized Complexity** – Each element is processed O(1) times → overall O(n).  
-- **Edge‑Case Mastery** – Be prepared to talk through all corner cases and how your code covers them.  
-- **Talk Through the Code** – While writing, narrate your decisions: “I’m using a monotonic deque to keep the min constant‑time accessible.”
-
----
-
-### 🚀 Wrap‑Up
-
-LeetCode 1438 is a textbook example of turning a seemingly simple array problem into a sophisticated algorithmic challenge. The O(n) sliding window solution with two monotonic deques is not only efficient but also a showcase of:
-
-- **Data‑structure skill** (deques).  
-- **Algorithmic thinking** (maintaining invariants).  
-- **Problem‑solving under constraints**.
-
-Mastering this problem boosts your confidence for a range of array and string questions in interviews. Grab your IDE, run the Java/Python/C++ code, and practice writing clean, bug‑free solutions. Happy coding!
-
---- 
-
-### 👋 Closing
-
-Thanks for reading!  
-If you found this article helpful, drop a comment or share it on LinkedIn to help others crack LeetCode 1438.
-
---- 
-
---- 
-
-*End of article.*
+Happy coding—and good luck landing that job!

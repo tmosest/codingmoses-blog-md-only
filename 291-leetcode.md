@@ -7,64 +7,50 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
-
-# Mastering LeetCode 291 – *Word Pattern II*  
-**Backtracking Solutions in Java, Python, & C++ – A Job‑Interview Power‑Move**
-
-> **Why this post matters for you**  
-> * Word Pattern II is a classic LeetCode problem that every software‑engineering interview covers.  
-> * Demonstrating a clean, well‑commented solution in three major languages shows breadth and depth to recruiters.  
-> * The “good, the bad, the ugly” analysis gives you talking points for the “Tell me about a challenging bug” question.  
-> * The article is SEO‑optimized with keywords like *LeetCode, Word Pattern II, Backtracking, Java, Python, C++, Interview*, so your profile shows up when hiring managers search for solutions.
+        ## ✅  Word Pattern II – Leetcode 291  
+**Java | Python | C++** – Backtracking + Bijection  
+**SEO‑optimized guide** to help you nail this interview problem and land your dream job  
 
 ---
 
-## 1. Problem Recap
+### 🚀 Blog Outline (SEO Keywords)
 
-```
-Given a pattern (e.g. "abab") and a string s (e.g. "redblueredblue"),
-return true iff s can be formed by mapping each distinct character of
-the pattern to a non‑empty, unique substring of s.
-```
+- **Leetcode 291 Word Pattern II** – classic string‑mapping challenge  
+- **Java backtracking solution** – clean, production‑ready code  
+- **Python Word Pattern II** – readable recursion with sets/dicts  
+- **C++ implementation** – STL unordered_map / unordered_set  
+- **Pattern matching bijection** – why uniqueness matters  
+- **Job interview strategy** – how to talk about this problem in a technical interview  
+- **Time & space complexity** – O(n^m) worst‑case, but *practically* fast  
+- **Common pitfalls** – “duplicate mapping”, “off‑by‑one”, “stack overflow”  
 
-* **Bijective mapping** –  
-  * No two pattern chars map to the same substring.  
-  * A pattern char can’t map to two different substrings.
-
-**Examples**
-
-| pattern | s                     | result |
-|---------|-----------------------|--------|
-| "abab"  | "redblueredblue"      | true   |
-| "aaaa"  | "asdasdasdasd"        | true   |
-| "aabb"  | "xyzabcxzyabc"        | false  |
-
-**Constraints**
-
-```
-1 ≤ pattern.length, s.length ≤ 20
-All characters are lowercase English letters
-```
+> *Meta Description:*  
+> Master Leetcode 291 – Word Pattern II. Get ready with Java, Python and C++ backtracking solutions, complexity analysis, edge‑case tricks, and interview‑ready talking points. Perfect your algorithm skills and impress hiring managers.
 
 ---
 
-## 2. High‑Level Strategy – Backtracking
+## 📄 Problem Recap
 
-1. **Recursively walk through both strings** simultaneously.  
-2. At each step, decide what substring of `s` the current pattern character should consume.  
-3. **Prune** impossible paths quickly:
-   * If a pattern character already has a mapping, the next part of `s` must match it.
-   * If a new mapping is chosen, it must be unique – maintain a `Set` of already‑used substrings.
-4. **Backtrack** if a path fails: undo the last mapping and try another substring length.
-
-Because the maximum input length is 20, the exponential search space is acceptable for an interview answer.
+> **Word Pattern II**  
+> Given a pattern string `pattern` and a string `s`, determine if `s` can be segmented into a sequence of non‑empty substrings such that each character of `pattern` maps **bijectively** (one‑to‑one) to a substring.  
+> Constraints: `1 <= pattern.length, s.length <= 20`, only lowercase letters.
 
 ---
 
-## 3. Implementation Details
+## 🧠 High‑Level Idea
 
-### 3.1 Java (Backtracking + HashMap/HashSet)
+1. **Backtracking** – try every possible substring for each pattern character.  
+2. **Mapping (`HashMap / dict / unordered_map`)** – store the chosen substring for each character.  
+3. **Used set (`HashSet / set / unordered_set`)** – ensure **bijectivity**: no two pattern characters share the same substring.  
+4. **Pruning** – if the current mapping fails to match the prefix of `s`, backtrack immediately.
+
+The algorithm explores a tree of possibilities; because the input size is tiny (≤ 20), the exponential worst‑case is acceptable.
+
+---
+
+## 📦 Code Implementations
+
+### 1️⃣ Java (Backtracking + Sets)
 
 ```java
 import java.util.HashMap;
@@ -73,227 +59,206 @@ import java.util.Map;
 import java.util.Set;
 
 public class Solution {
-    public boolean wordPatternMatch(String pattern, String str) {
-        return backtrack(pattern, 0, str, 0, new HashMap<>(), new HashSet<>());
+    public boolean wordPatternMatch(String pattern, String s) {
+        return backtrack(s, 0, pattern, 0, new HashMap<>(), new HashSet<>());
     }
 
-    private boolean backtrack(String pattern, int pIdx,
-                              String str, int sIdx,
-                              Map<Character, String> map,
-                              Set<String> used) {
-        // Base case: both strings consumed
-        if (pIdx == pattern.length() && sIdx == str.length()) return true;
-        // One finished, the other hasn't
-        if (pIdx == pattern.length() || sIdx == str.length()) return false;
+    private boolean backtrack(String s, int i, String pattern, int j,
+                              Map<Character, String> map, Set<String> used) {
+        // Base: both strings fully consumed
+        if (i == s.length() && j == pattern.length()) return true;
+        // Mismatch: one consumed, the other not
+        if (i == s.length() || j == pattern.length()) return false;
 
-        char patChar = pattern.charAt(pIdx);
+        char c = pattern.charAt(j);
 
-        // Existing mapping
-        if (map.containsKey(patChar)) {
-            String mapped = map.get(patChar);
-            if (!str.startsWith(mapped, sIdx)) return false;
-            return backtrack(pattern, pIdx + 1, str, sIdx + mapped.length(), map, used);
+        // Existing mapping → must match exactly
+        if (map.containsKey(c)) {
+            String val = map.get(c);
+            if (!s.startsWith(val, i)) return false;
+            return backtrack(s, i + val.length(), pattern, j + 1, map, used);
         }
 
-        // Try every possible substring for new mapping
-        for (int end = sIdx; end < str.length(); end++) {
-            String candidate = str.substring(sIdx, end + 1);
-            if (used.contains(candidate)) continue; // bijection
+        // Try every possible substring for this character
+        for (int k = i; k < s.length(); k++) {
+            String candidate = s.substring(i, k + 1);
+            if (used.contains(candidate)) continue;      // bijection check
 
-            // Choose
-            map.put(patChar, candidate);
+            map.put(c, candidate);
             used.add(candidate);
 
-            if (backtrack(pattern, pIdx + 1, str, end + 1, map, used))
-                return true;              // success path found
+            if (backtrack(s, k + 1, pattern, j + 1, map, used)) return true;
 
             // Backtrack
-            map.remove(patChar);
+            map.remove(c);
             used.remove(candidate);
         }
-
-        return false;   // no valid mapping
+        return false;
     }
 }
 ```
 
-> **Key points**  
-> * `str.startsWith(mapped, sIdx)` is an O(m) check (m = mapped length).  
-> * The `used` set guarantees bijection.  
-> * Recursion depth ≤ 20 – safe in Java.
+> **Why it works** – The recursion depth equals `pattern.length()` (≤ 20). Each call attempts all possible substrings; the `used` set guarantees no two pattern characters map to the same substring.
 
 ---
 
-### 3.2 Python (Recursion + Dict + Set)
+### 2️⃣ Python (Elegant Recursion)
 
 ```python
-class Solution:
-    def wordPatternMatch(self, pattern: str, s: str) -> bool:
-        return self._backtrack(pattern, 0, s, 0, {}, set())
-
-    def _backtrack(self, pattern, p_idx, s, s_idx, mapping, used):
-        # Both strings fully consumed
-        if p_idx == len(pattern) and s_idx == len(s):
+def wordPatternMatch(pattern: str, s: str) -> bool:
+    def dfs(i: int, j: int, mapping: dict, used: set) -> bool:
+        # End conditions
+        if i == len(s) and j == len(pattern):
             return True
-        # One finished prematurely
-        if p_idx == len(pattern) or s_idx == len(s):
+        if i == len(s) or j == len(pattern):
             return False
 
-        pat_char = pattern[p_idx]
+        c = pattern[j]
 
-        # Existing mapping
-        if pat_char in mapping:
-            mapped = mapping[pat_char]
-            if not s.startswith(mapped, s_idx):
+        # Already mapped
+        if c in mapping:
+            val = mapping[c]
+            if not s.startswith(val, i):
                 return False
-            return self._backtrack(pattern, p_idx + 1,
-                                   s, s_idx + len(mapped),
-                                   mapping, used)
+            return dfs(i + len(val), j + 1, mapping, used)
 
         # Try every possible substring
-        for end in range(s_idx, len(s)):
-            candidate = s[s_idx:end + 1]
-            if candidate in used:
+        for k in range(i, len(s)):
+            cand = s[i:k + 1]
+            if cand in used:
                 continue
-            mapping[pat_char] = candidate
-            used.add(candidate)
-
-            if self._backtrack(pattern, p_idx + 1, s, end + 1, mapping, used):
+            mapping[c] = cand
+            used.add(cand)
+            if dfs(k + 1, j + 1, mapping, used):
                 return True
-
-            # backtrack
-            del mapping[pat_char]
-            used.remove(candidate)
-
+            del mapping[c]
+            used.remove(cand)
         return False
+
+    return dfs(0, 0, {}, set())
 ```
 
-> **Why Python?**  
-> * The slice `s[s_idx:end + 1]` is O(k) where k is substring length, but input is tiny.  
-> * Recursion is straightforward and readable.
+> **Pythonic Highlights** – `s.startswith(val, i)` is a fast prefix check; `set` ensures bijectivity in O(1).  
 
 ---
 
-### 3.3 C++ (Recursive + unordered_map / unordered_set)
+### 3️⃣ C++ (STL, Recursive)
 
 ```cpp
-#include <unordered_map>
-#include <unordered_set>
-#include <string>
-
 class Solution {
 public:
-    bool wordPatternMatch(const std::string& pattern, const std::string& s) {
-        return backtrack(pattern, 0, s, 0, {}, {});
+    bool wordPatternMatch(string pattern, string s) {
+        unordered_map<char, string> mp;
+        unordered_set<string> used;
+        return backtrack(s, 0, pattern, 0, mp, used);
     }
 
 private:
-    bool backtrack(const std::string& pattern, int pIdx,
-                   const std::string& s, int sIdx,
-                   std::unordered_map<char, std::string>& mp,
-                   std::unordered_set<std::string>& used) {
-        if (pIdx == pattern.size() && sIdx == s.size()) return true;
-        if (pIdx == pattern.size() || sIdx == s.size()) return false;
+    bool backtrack(const string& s, int i, const string& pattern, int j,
+                   unordered_map<char, string>& mp, unordered_set<string>& used) {
+        if (i == s.size() && j == pattern.size()) return true;
+        if (i == s.size() || j == pattern.size()) return false;
 
-        char patChar = pattern[pIdx];
+        char c = pattern[j];
+        auto it = mp.find(c);
 
-        if (mp.count(patChar)) {
-            const std::string& mapped = mp[patChar];
-            if (s.compare(sIdx, mapped.size(), mapped) != 0) return false;
-            return backtrack(pattern, pIdx + 1, s, sIdx + mapped.size(), mp, used);
+        // Existing mapping
+        if (it != mp.end()) {
+            const string& val = it->second;
+            if (s.compare(i, val.size(), val) != 0) return false;
+            return backtrack(s, i + val.size(), pattern, j + 1, mp, used);
         }
 
-        for (int end = sIdx; end < s.size(); ++end) {
-            std::string cand = s.substr(sIdx, end - sIdx + 1);
+        // New mapping: try all substrings
+        for (int k = i; k < s.size(); ++k) {
+            string cand = s.substr(i, k - i + 1);
             if (used.count(cand)) continue;
 
-            mp[patChar] = cand;
+            mp[c] = cand;
             used.insert(cand);
 
-            if (backtrack(pattern, pIdx + 1, s, end + 1, mp, used))
-                return true;
+            if (backtrack(s, k + 1, pattern, j + 1, mp, used)) return true;
 
-            mp.erase(patChar);
+            mp.erase(c);
             used.erase(cand);
         }
-
         return false;
     }
 };
 ```
 
-> **C++ nuances**  
-> * `s.compare(pos, len, str)` is equivalent to `s.substr(...).compare(str)`.  
-> * `unordered_map` & `unordered_set` provide expected O(1) ops.  
-> * Avoiding recursion depth issues – still safe (≤ 20).
+> **C++ Efficiency** – `s.compare(i, len, val)` does a quick substring comparison; `unordered_map / unordered_set` give O(1) average lookup.
 
 ---
 
-## 4. Complexity Analysis
+## ⏱️ Time & Space Complexity
 
-| Language | Time | Space |
-|----------|------|-------|
-| Java     | O(kⁿ) – worst‑case exponential, practically ≤ O(2ⁿ) with pruning | O(n) recursion stack + O(n) map/set |
-| Python   | Same as Java | Same |
-| C++      | Same | Same |
-
-*For `n = 20`, the algorithm runs comfortably in < 1 ms on modern hardware.*
-
----
-
-## 5. Edge‑Case Handling
-
-| Edge Case | What We Do |
-|-----------|------------|
-| `pattern` longer than `s` | Immediate `false` (base case). |
-| Empty string or pattern | Not allowed by constraints, but base case handles it. |
-| Multiple characters mapping to same substring | Prevented by `used` set (bijection). |
-| Substring overlaps | Recursion ensures correct boundaries. |
+- **Worst‑Case**:  
+  - Every pattern character can map to any of the remaining substrings.  
+  - The search space ≈ `O(n^m)` where `n = s.length()` and `m = pattern.length()`.  
+  - With `n, m ≤ 20`, this is practically fast (most branches are pruned early).  
+- **Space**:  
+  - `O(m)` recursion stack + `O(m)` for the mapping + `O(m)` for the used set.  
+  - Total: **O(m)** extra space, negligible for the constraints.
 
 ---
 
-## 6. The Good, the Bad, the Ugly
+## 🔍 Edge‑Case Tricks (Interview Tips)
 
-| Aspect | What Works | What Could Trip You Up | How to Fix It |
-|--------|------------|------------------------|---------------|
-| **Good** | • Clear recursive logic.<br>• Uses standard data structures.<br>• Works for all LeetCode test cases. | | |
-| **Bad** | • Exponential worst‑case time. | • For a very long pattern you’d hit stack overflow or timeout in a real interview. | • Introduce memoization (`dp[pIdx][sIdx]`) to reduce redundant work. |
-| **Ugly** | • None of the code is *readable*? | • Forgetting to backtrack properly can lead to subtle bugs. | • Keep mapping/used changes in separate “choose”/“undo” blocks, as shown. |
-
-> **Take‑away for the interview**  
-> *Explain that the exponential bound is acceptable for the given constraints, but in a production setting you’d refactor using dynamic programming or iterative DFS with an explicit stack.*
-
----
-
-## 7. Talking Points for Recruiters
-
-1. **Why bijection matters** – talk about the `used` set.  
-2. **Pruning** – show that checking `str.startsWith(mapped)` is essential for early exit.  
-3. **Backtracking** – illustrate undoing the last decision with a small snippet.  
-4. **Language choice** – highlight the same algorithm expressed cleanly in Java, Python, and C++.
+| Issue | Fix |
+|-------|-----|
+| **Duplicate mapping** (`"abba"` → `"xyz"` for `a` and `b`) | Use a *used* set to block reuse. |
+| **Off‑by‑one substring** (`s.substr(i, k-i+1)`) | Remember inclusive end index `k`. |
+| **Empty substring** | The loop starts at `i` and stops at `len(s)-1`; `k-i+1 >= 1`. |
+| **Stack overflow** | Depth ≤ 20 → safe in Java/Python/C++; if you run into deeper patterns, convert to an explicit stack. |
+| **Early pruning** | If the mapping doesn’t match the next part of `s`, skip the rest of the loop. |
 
 ---
 
-## 7. SEO Checklist
+## 🎯 Interview‑Ready Talking Points
 
-* **Title** – Contains *LeetCode 291, Word Pattern II, Backtracking, Java, Python, C++*.  
-* **Meta description** – Summarizes problem, languages, and interview relevance.  
-* **Keywords** – `LeetCode Word Pattern II`, `Backtracking solution`, `Java interview`, `Python interview`, `C++ interview`, `bijective mapping`.  
-* **Internal linking** – Link to your GitHub repo or portfolio.  
-* **External linking** – Reference LeetCode problem page and the constraints page.  
+1. **Clarify the bijection requirement**  
+   *“Each letter must map to a unique substring; no two letters can share the same block.”*
+
+2. **Explain your backtracking strategy**  
+   *“I recursively assign substrings to characters, storing the assignment in a dictionary, and immediately backtrack if the prefix of the input string doesn’t match.”*
+
+3. **Show how you handle pruning**  
+   *“Using `startsWith`/`s.compare`, I can detect a mismatch in constant time, cutting off entire branches.”*
+
+4. **Complexity discussion**  
+   *“Worst‑case is exponential, but the length constraints make it tractable. In practice, the algorithm runs in milliseconds.”*
+
+5. **Optional optimisations**  
+   - Memoising `(i, j)` pairs (dynamic programming over state).  
+   - Pre‑computing prefix sums to cut branches faster.
 
 ---
 
-## 8. Final Verdict
+## 📌 Quick Reference Summary
 
-> *You’ve just learned how to solve Word Pattern II in three top languages and how to discuss your solution in a way that impresses hiring managers.*
+| Language | Key Data Structures | Recursion Depth | Bijectivity Check |
+|----------|---------------------|-----------------|-------------------|
+| **Java** | `HashMap<Character,String>` + `HashSet<String>` | ≤ 20 | `used.contains(candidate)` |
+| **Python** | `dict` + `set` | ≤ 20 | `cand in used` |
+| **C++** | `unordered_map<char,string>` + `unordered_set<string>` | ≤ 20 | `used.count(cand)` |
 
-*Next step:*  
-*Upload the code to your GitHub, tag the repo “WordPatternII‑Backtracking”, and add a brief description.  
-*Use this article as a portfolio README when you submit your solution on LeetCode or during your interview prep.  
+---
 
-Happy coding, and may your next interview be a job offer!
+## 🎉 Final Verdict
 
---- 
+- **Correctness:** ✔️ Each algorithm guarantees a one‑to‑one mapping and covers all partition possibilities.  
+- **Efficiency:** For the given constraints, runs comfortably within time limits.  
+- **Readability:** Java code is production‑ready; Python code is concise; C++ code is STL‑friendly.  
+- **Interviewability:** The problem is a great showcase of recursion, backtracking, and careful state management—perfect for a top‑tier interview.
 
-*Feel free to comment below if you’d like a deeper dive into memoization, iterative DFS, or handling larger input sizes.*
+---
+
+### 🎯 Next Steps for Your Interview Prep
+
+1. **Implement each version yourself** – copy‑paste won’t earn points.  
+2. **Run the provided test cases** plus *your own* edge cases (e.g., `pattern="a"`, `s="abcd"`).  
+3. **Explain the bijection constraint** – a key part of the problem statement.  
+4. **Practice a walk‑through** – narrate the recursion tree, how you prune branches, and when you backtrack.  
+
+Happy coding and best of luck on your next technical interview! 🚀

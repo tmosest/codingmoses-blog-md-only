@@ -7,66 +7,129 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Code Solutions  
+        ---
 
-Below you’ll find three complete, self‑contained implementations of the **LeetCode 2386 – Find the K‑Sum of an Array** problem.  
-All solutions use the same **heap + sorted‑abs trick** and run in  
-`O((n + k) log k)` time and `O(k)` extra memory – perfectly suitable for the given limits (`n ≤ 10⁵`, `k ≤ 2000`).
+## 1.  Problem Recap  
+**LeetCode 2386 – Find the K‑Sum of an Array**  
 
-> **Tip:**  
-> The trick is to treat the array as a set of *absolute* values, sort them, and then generate the *k smallest* subset sums.  
-> Once you have the `k`‑th smallest sum, the answer is simply  
-> `sum_of_positive_numbers – k_smallest_sum`.
+> *Given an integer array `nums` and a positive integer `k`, you can choose any subsequence of the array and sum all of its elements.  
+>  The **K‑Sum** is the **k‑th largest subsequence sum** (subsequence sums are **not** required to be distinct).  
+>  Return the K‑Sum of the array.*
+
+*Subsequence* = keep the original order, delete zero or more elements.  
+The empty subsequence counts and has a sum of `0`.  
+`1 ≤ n ≤ 10⁵`, `-10⁹ ≤ nums[i] ≤ 10⁹`, `1 ≤ k ≤ min(2000, 2ⁿ)`.
 
 ---
 
-### Java 17
+## 2.  Key Insight
+
+Let  
+
+```
+P = sum of all positive elements in nums
+```
+
+If we **flip** every element to its absolute value, the array becomes non‑negative.  
+For a non‑negative array the **k‑th smallest** subsequence sum is easy to generate with a min‑heap (the classic “k‑th smallest subset sum” problem).  
+
+Why does this help?
+
+* The largest subsequence sum of the original array is `P` – just take every positive element.
+* Every subsequence of the original array can be represented as  
+  `P – (sum of elements that we *exclude* from P)`.  
+  Excluding elements is equivalent to *adding* the corresponding absolute values to a non‑negative array.
+* Therefore the **k‑th largest** sum of the original array is  
+  `P – (k‑th smallest subsequence sum of the absolute‑value array)`.
+
+So the problem reduces to: **find the k‑th smallest subsequence sum of a non‑negative array**.
+
+---
+
+## 3.  Algorithm (Heap + Two‑Pointer Trick)
+
+1. **Pre‑process**  
+   * `P` ← sum of positive numbers.  
+   * `abs[i] = |nums[i]|`.  
+   * Sort `abs` increasingly.
+
+2. **Min‑heap**  
+   Each heap element stores  
+   * `sum` – the current subsequence sum.  
+   * `idx` – the index of the last element included in this sum.  
+   The heap is ordered by `sum` (ascending).
+
+   *Start* with `(abs[0], 0)` – the smallest possible non‑empty sum.
+
+3. **Generate k‑th smallest**  
+   Repeat `k-1` times:  
+   * Pop the smallest pair `(sum, idx)` → `cur`.  
+   * The next two candidates that can be derived from `cur` are:  
+
+     * **Exclude** the last element: `cur.sum - abs[idx]` (this is already represented by `cur` after the first pop, so we just keep it for the next step).  
+     * **Include** the next element: `cur.sum - abs[idx] + abs[idx+1]`.  
+   * Push both back into the heap (if `idx+1 < n`).  
+   * Keep the last popped `cur.sum` – this will be the k‑th smallest sum after the loop ends.
+
+4. **Answer**  
+   `ans = P - cur.sum`.
+
+---
+
+### Complexity Analysis
+
+| Step | Time | Space |
+|------|------|-------|
+| Sorting | `O(n log n)` | `O(1)` |
+| Heap operations | `O(k log k)` | `O(k)` |
+
+With `k ≤ 2000`, the algorithm easily meets the limits even for `n = 10⁵`.
+
+---
+
+## 4.  Code Implementations  
+
+### 4.1 Java
 
 ```java
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
-class Solution {
+public class Solution {
     public long kSum(int[] nums, int k) {
-        long posSum = 0;                     // sum of all positive values
+        long posSum = 0;
         int n = nums.length;
-        long[] abs = new long[n];
-
-        // 1. Compute posSum and transform to absolute values
+        int[] abs = new int[n];
         for (int i = 0; i < n; i++) {
-            long v = nums[i];
-            if (v > 0) posSum += v;
-            abs[i] = Math.abs(v);
+            if (nums[i] > 0) posSum += nums[i];
+            abs[i] = Math.abs(nums[i]);
         }
+        Arrays.sort(abs);                     // O(n log n)
 
-        // 2. Sort the absolute values
-        Arrays.sort(abs);
-
-        // 3. Min‑heap for the k smallest subset sums
+        // Heap element: [current sum, last index]
         PriorityQueue<long[]> pq = new PriorityQueue<>(Comparator.comparingLong(o -> o[0]));
-        pq.offer(new long[]{0L, 0});          // (currentSum, nextIndex)
+        pq.offer(new long[]{abs[0], 0});
 
-        long smallest = 0;
-        for (int cnt = 0; cnt < k; cnt++) {
-            long[] cur = pq.poll();
-            smallest = cur[0];
+        long curSum = 0;
+        for (int t = 0; t < k; t++) {
+            long[] cur = pq.poll();            // O(log k)
+            curSum = cur[0];
             int idx = (int) cur[1];
-            if (idx < n) {
-                // Include abs[idx]
-                pq.offer(new long[]{cur[0] + abs[idx], idx + 1});
-                // Exclude abs[idx]
-                pq.offer(new long[]{cur[0], idx + 1});
+            if (idx + 1 < n) {
+                // include next element
+                long include = curSum - abs[idx] + abs[idx + 1];
+                // exclude current element (just keep cur)
+                pq.offer(new long[]{include, idx + 1});
+                pq.offer(cur);
             }
         }
-
-        // 4. kth largest sum
-        return posSum - smallest;
+        return posSum - curSum;               // final answer
     }
 }
 ```
 
----
-
-### Python 3
+### 4.2 Python
 
 ```python
 import heapq
@@ -77,22 +140,21 @@ class Solution:
         pos_sum = sum(x for x in nums if x > 0)
         abs_vals = sorted(abs(x) for x in nums)
 
-        pq = [(0, 0)]          # (current_sum, next_index)
-        smallest = 0
+        # heap element: (current_sum, last_index)
+        heap = [(abs_vals[0], 0)]
+        cur_sum = 0
 
         for _ in range(k):
-            cur_sum, idx = heapq.heappop(pq)
-            smallest = cur_sum
-            if idx < len(abs_vals):
-                heapq.heappush(pq, (cur_sum + abs_vals[idx], idx + 1))
-                heapq.heappush(pq, (cur_sum, idx + 1))
+            cur_sum, idx = heapq.heappop(heap)
+            if idx + 1 < len(abs_vals):
+                include = cur_sum - abs_vals[idx] + abs_vals[idx + 1]
+                heapq.heappush(heap, (include, idx + 1))
+                heapq.heappush(heap, (cur_sum, idx))
 
-        return pos_sum - smallest
+        return pos_sum - cur_sum
 ```
 
----
-
-### C++17
+### 4.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -104,162 +166,168 @@ public:
         long long posSum = 0;
         int n = nums.size();
         vector<long long> absVals(n);
-
         for (int i = 0; i < n; ++i) {
-            long long v = nums[i];
-            if (v > 0) posSum += v;
-            absVals[i] = llabs(v);
+            if (nums[i] > 0) posSum += nums[i];
+            absVals[i] = llabs(nums[i]);
         }
+        sort(absVals.begin(), absVals.end());          // O(n log n)
 
-        sort(absVals.begin(), absVals.end());
+        // min-heap of pairs {current_sum, last_index}
+        using P = pair<long long, int>;
+        priority_queue<P, vector<P>, greater<P>> pq;
+        pq.emplace(absVals[0], 0);
 
-        using Node = pair<long long, int>;                     // (sum, nextIndex)
-        priority_queue<Node, vector<Node>, greater<Node>> pq;   // min‑heap
-        pq.emplace(0LL, 0);
-
-        long long smallest = 0;
-        for (int cnt = 0; cnt < k; ++cnt) {
-            Node cur = pq.top(); pq.pop();
-            smallest = cur.first;
-            int idx = cur.second;
-            if (idx < n) {
-                pq.emplace(cur.first + absVals[idx], idx + 1);  // include
-                pq.emplace(cur.first, idx + 1);                // exclude
+        long long curSum = 0;
+        for (int step = 0; step < k; ++step) {
+            auto [sum, idx] = pq.top(); pq.pop();
+            curSum = sum;
+            if (idx + 1 < n) {
+                long long include = sum - absVals[idx] + absVals[idx + 1];
+                pq.emplace(include, idx + 1);
+                pq.emplace(sum, idx);
             }
         }
-
-        return posSum - smallest;
+        return posSum - curSum;
     }
 };
 ```
 
-> **Both the Java and C++ code compile with any standard compiler that supports C++17 or later.**  
+---
+
+## 5.  Blog Article (SEO‑Optimized)
+
+> **Title**  
+>  _LeetCode 2386 – Find the K‑Sum of an Array: Java / Python / C++ Solutions & Insightful Guide_
+
+> **Meta Description**  
+>  Master LeetCode 2386 with clear Java, Python, and C++ solutions. Learn the heap‑based algorithm, time‑space analysis, and practical tips to ace this hard problem in interviews.
+
+> **Keywords**  
+>  LeetCode 2386, K‑Sum, subsequence sum, heap algorithm, Java solution, Python solution, C++ solution, interview preparation, algorithm analysis
 
 ---
 
-## 2.  Blog Post – “The Good, the Bad, and the Ugly of Finding the K‑Sum of an Array”
+### Introduction  
 
-> **SEO Keywords:**  
-> *k‑sum problem*, *LeetCode 2386*, *k‑sum algorithm*, *Java Python C++ solution*, *heap approach*, *job interview prep*, *data structures*, *subset sum*, *job interview data structures*.
+LeetCode’s **2386 – Find the K‑Sum of an Array** is a *hard* problem that tests your understanding of subsequences, heaps, and clever reduction tricks. If you’re preparing for technical interviews, solving this problem will showcase your ability to manipulate sums, use priority queues, and think outside the box.
 
----
+In this article, we walk through:
 
-### 🚀 Introduction  
+1. The mathematical insight that turns a “k‑th largest” question into a “k‑th smallest” one.
+2. A heap‑based algorithm that runs in **O(n log n + k log k)** time.
+3. Clean, production‑ready code in **Java, Python, and C++**.
+4. The good, the bad, and the ugly of the solution – what to love, what to watch out for, and how to improve.
 
-The **k‑sum** problem is one of the *most beautiful* little gems in competitive programming and software‑engineering interviews.  
-The challenge?  
-
-> Given an integer array `nums` (size up to `10⁵`) and an integer `k` (≤ 2000), find the **k‑th largest subsequence sum**.  
-
-Subsequences may contain duplicate sums – we treat each subsequence separately, **even if its value is identical to another**.
-
-> 💡 *Why is this a great interview question?*  
-> It forces you to think about **subset sums**, **optimization tricks**, **heap data structures**, and **how to handle negative numbers** without blowing up memory.
+Let’s dive in.
 
 ---
 
-### 📖 Problem Statement (in your own words)
+## 6.  The Core Insight – Positive vs. Non‑Negative
 
-*Return the k‑th largest sum that can be obtained by adding any subset of the input array.  
-The empty subset is allowed (sum = 0).  
-Subsequence sums that are equal are considered distinct.*
+### Why flip to non‑negative?
 
----
+- The **maximum** subsequence sum of any array is simply the sum of all positive numbers.  
+  *If you add any negative number, you only reduce the sum.*
 
-### 🔑 Key Insight – The “Absolute Values + Heap” Trick
+- For a **non‑negative** array, the smallest subsequence sums are easy to enumerate with a min‑heap.  
+  Each subsequence can be represented as a path in a binary tree where the left child excludes the next element and the right child includes it.
 
-1. **Separate positives and negatives**  
-   * `sum_of_positives` is a *fixed* amount we’ll never lose.  
-   * Any negative element can be turned into a positive “penalty” (its absolute value) – because subtracting a negative is equivalent to adding a positive penalty.
+Thus, the **k‑th largest** sum of the *original* array equals:
 
-2. **Sort absolute values**  
-   * After taking the absolute value of every element, sort the array.  
-   * Small absolute values cause small penalties; large absolute values cause large penalties.
-
-3. **Generate the k smallest subset sums**  
-   * Think of each subset sum as a “penalty” we subtract from `sum_of_positives`.  
-   * Use a *min‑heap* to generate the smallest penalties in order.
-
-4. **Answer**  
-   * The k‑th smallest penalty → `k_smallest_sum`.  
-   * `k‑th largest sum = sum_of_positives – k_smallest_sum`.
+```
+(max positive sum) – (k‑th smallest sum of abs(nums))
+```
 
 ---
 
-### 🧮 The Heap Algorithm in Detail
+## 7.  Heap‑Based Generation of k‑th Smallest Sum
 
-| Step | Description | Pseudocode |
-|------|-------------|------------|
-| **0** | `penalties = sorted(|nums[i]|)` | |
-| **1** | Init min‑heap: push `(0, 0)` – (current penalty, next index to consider) | |
-| **2** | Repeat `k` times: |
-| | • Pop the smallest penalty `curSum` with index `idx` | `curSum, idx = heap.pop()` |
-| | • If `idx < n`: push two new states | 1. include `penalties[idx]` → `(curSum + penalties[idx], idx+1)`  <br>2. exclude `penalties[idx]` → `(curSum, idx+1)` |
-| | • The popped `curSum` is the current smallest penalty | |
-| **3** | After `k` pops, the last popped `curSum` is the `k`‑th smallest penalty | |
-| **4** | Answer: `sum_of_positive_elements – k_smallest_penalty` | |
+The classic “k‑th smallest subset sum” problem can be solved in **O(k log k)** using a min‑heap.
 
-> **Why does this work?**  
-> Every state in the heap corresponds to a partial subset of the sorted penalties.  
-> By always incrementing `idx`, we traverse every possible combination *in non‑decreasing order of their penalties*.  
-> Because `k` is tiny (`≤ 2000`), we only ever generate `O(k)` states – far fewer than the `2ⁿ` subsets.
+### Steps
 
----
+1. **Pre‑process**  
+   * Compute `P = sum of positives`.  
+   * Replace every element by its absolute value and sort.
 
-### 📊 Complexity Analysis
+2. **Initialize heap**  
+   Push `(abs[0], 0)` – the smallest possible non‑empty sum.
 
-|   | Java / Python / C++ |
-|---|---------------------|
-| **Time** | `O((n + k) log k)` – sorting takes `O(n log n)` (but we sort *only once*), heap operations are `O(log k)` |
-| **Memory** | `O(k)` – the heap holds at most `2k` elements (worst case), plus the array of `abs` values (size `n`, reused). |
+3. **Iterate** `k-1` times  
+   Pop the smallest pair `(sum, idx)`.  
+   Generate two children:
+   * Include next element → `(sum - abs[idx] + abs[idx+1], idx+1)`.  
+   * Keep the same sum → `(sum, idx)` (for the next iteration).
 
-With the constraints (`n = 100,000`, `k = 2,000`), the runtime is well below 1 second in all languages.
+4. After the loop, the last popped `sum` is the **k‑th smallest**.  
+   Subtract it from `P` to get the answer.
 
 ---
 
-### ⚠️ Common Pitfalls & Edge Cases
+## 8.  Full Code Samples
 
-| Issue | Fix |
-|-------|-----|
-| **Overflow** | Use 64‑bit integers (`long`/`long long`/`int64`) for all sums. |
-| **Zeros in the array** | `|0| = 0`, the algorithm still works; duplicates are acceptable because subsequence sums can be equal. |
-| **All negatives** | `posSum = 0`. The answer becomes `0 – smallest`, which correctly handles the case where every subsequence sum is ≤ 0. |
-| **All positives** | `abs` will be sorted positives. The k‑th smallest penalty is the sum of the *k smallest* subset of positives. |
-| **Large `k` relative to `n`** | Even if `k` exceeds the number of *distinct* penalties, the heap still pops the same penalty multiple times – the problem statement allows duplicate sums. |
+*(see the code sections above – Java, Python, C++)*
+
+> **Tip** – In Java, use `long` for all sums to avoid overflow.  
+> In C++, `long long` is your friend.  
+> Python’s `int` is unbounded, so you’re safe.
 
 ---
 
-### 📚 Sample Test Cases
+## 9.  Good, Bad, and Ugly
 
-| `nums` | `k` | Expected | Reasoning |
-|--------|-----|----------|-----------|
-| `[1, 3, 5]` | `2` | `5` | `sum_pos = 9`. The 2nd smallest penalty is `4` (subset `{5}`), so `9-4=5`. |
-| `[-1, 2, -3, 4]` | `3` | `5` | `sum_pos = 6`. The 3rd smallest penalty is `1` (`{1,3}`), so `6-1=5`. |
-| `[0, 0, 0]` | `1` | `0` | `sum_pos = 0`. Smallest penalty = `0`. |
+### The Good  
 
-> Run the code snippets above with these test cases – you’ll see the exact output.
+- **Intuition‑driven** – Reduces a hard “largest” question to a well‑known heap problem.  
+- **Fast** – `k ≤ 2000` ensures the heap operations are trivial even for huge `n`.  
+- **Memory‑light** – Only `O(k)` auxiliary space.
+
+### The Bad  
+
+- **Pre‑processing** requires sorting the entire array – `O(n log n)`.  
+  If the array is already sorted, you can skip this step.
+
+- **Edge cases** – If all numbers are negative, `P = 0`.  
+  The algorithm still works because we’re subtracting the *smallest* sum from `0`.
+
+### The Ugly  
+
+- **Duplicate sums** – The heap might generate the same sum multiple times (e.g., excluding the same element).  
+  In our simple implementation we ignore duplicates; a more optimal solution uses a hash set to deduplicate before pushing.
+
+- **Large k** – If an interview question pushes `k` close to `n` (say `k = 10⁵`), the current algorithm would become infeasible.  
+  For such scenarios, you’d need a divide‑and‑conquer or DP approach.
 
 ---
 
-### 🛠️ Optimization Tips
+## 9.  Takeaways for Interviews
 
-| Technique | Why it matters |
-|-----------|----------------|
-| **Reuse the `abs` array** | Avoid allocating new arrays inside loops. |
-| **Early exit for `k == 0`** | Not needed by the problem spec, but a safe guard. |
-| **Avoid `visited` set** | The algorithm is correct without it, keeping the heap small. |
-| **Use `greater<...>` comparator** | C++ priority queue defaults to max‑heap; we need a min‑heap. |
-| **Iterate with a simple for‑loop** | `cnt < k` is clearer than decrementing a counter in the node itself. |
+1. **Explain the reduction**: interviewers love hearing the “why” behind your algorithm.
+2. **Discuss time‑space**: show you can analyze complexity in the context of constraints (`k ≤ 2000`).
+3. **Highlight edge handling**: mention how you avoid overflow and ensure the heap never runs out of candidates.
+4. **Offer an optimization**: if time permits, show how to skip duplicates or use a two‑pointer trick to avoid re‑pushing the same element.
 
 ---
 
-### 🏁 Wrap‑up & What to Take Away
+## 10.  Final Thoughts
 
-* **The core idea is simple** – separate positives, convert to absolutes, sort, and use a min‑heap to grab the `k` smallest penalties.  
-* **The code is short, readable, and highly portable** – ideal for interview whiteboards or on‑the‑fly coding challenges.  
-* **You’ll impress interviewers** because you’re showing mastery of heaps, array manipulation, and careful handling of 64‑bit arithmetic.
+LeetCode 2386 is a beautiful example of how a clever reduction turns an intimidating problem into a manageable one. The heap trick is clean, efficient, and portable across major languages.
 
-> 👉 **Ready to tackle more LeetCode hard problems?**  
-> Subscribe to our newsletter, get **weekly interview prep videos**, and never miss a “golden” solution again!  
+Now it’s time to practice. Run the code, tweak the input, and feel the intuition solidify. Good luck on your interview journey! 🚀
 
-Happy coding, and may your k‑sum always be on the right side of the heap!
+--- 
+
+### Call to Action  
+
+- **Like** & **Share** if you found this helpful.  
+- **Subscribe** for more LeetCode hard problem walkthroughs.  
+- **Comment** your own optimizations or questions – let’s keep the discussion going.
+
+--- 
+
+> **Happy coding!**  
+> *— Your friendly algorithm mentor*  
+
+--- 
+
+That completes the full solution: the algorithm, the code, and an interview‑ready blog post. Happy interviewing!

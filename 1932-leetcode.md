@@ -7,70 +7,80 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 1932 – Merge BSTs to Create a Single BST  
-### Java • Python • C++ – Full, production‑ready solutions + a deep‑dive blog article  
+        # 1932 – Merge BSTs to Create a Single BST  
+**Hard | Hash‑Map | DFS | In‑Order Validation**
 
 ---
 
-### 1.  The Code
+## TL;DR  
+- Find the “true” root – the tree whose root value never appears as a child in any other tree.  
+- Store all trees in a hash‑map (`rootValue → TreeNode`).  
+- Recursively walk from the true root and replace any leaf whose value matches a key in the map with the corresponding whole subtree.  
+- After the walk, if more than one tree remains in the map → **impossible**.  
+- Validate the merged tree with an in‑order traversal – the values must be strictly increasing.  
+- If valid, return the merged root; otherwise return `null`.
 
-Below you’ll find three **stand‑alone** implementations that solve the LeetCode problem in O(n) time and O(n) space.  
-Each solution follows the same logical flow:
-
-1. **Map** every tree’s root value → `TreeNode`.  
-2. **Find the true root** – the only root that never appears as a child.  
-3. **DFS‑merge**: whenever a leaf value equals a root value in the map, replace the leaf with that whole tree.  
-4. **Validate** that the final tree is a BST (strictly increasing in‑order).  
-5. Return the merged root or `null` if impossible.
+The algorithm runs in **O(n)** time (n = number of trees) and uses **O(n)** extra space for the map and recursion stack.
 
 ---
 
-#### Java 17
+## Full Code (Java, Python, C++)
+
+> **Tip:** The `TreeNode` definition is the same across all three languages – only the syntax changes.
+
+### Java
 
 ```java
-import java.util.*;
-
-class TreeNode {
-    int val;
-    TreeNode left, right;
-    TreeNode(int v) { val = v; }
-    TreeNode(int v, TreeNode l, TreeNode r) { val = v; left = l; right = r; }
-}
-
-public class Solution {
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode() {}
+ *     TreeNode(int val) { this.val = val; }
+ *     TreeNode(int val, TreeNode left, TreeNode right) {
+ *         this.val = val;
+ *         this.left = left;
+ *         this.right = right;
+ *     }
+ * }
+ */
+class Solution {
     public TreeNode canMerge(List<TreeNode> trees) {
         if (trees.size() == 1) return trees.get(0);
 
-        // 1. Build maps
-        Map<Integer, TreeNode> rootMap = new HashMap<>();
-        Set<Integer> childSet = new HashSet<>();
+        // 1. Build hash‑map: root value -> TreeNode
+        Map<Integer, TreeNode> map = new HashMap<>();
+        for (TreeNode t : trees) map.put(t.val, t);
+
+        // 2. Find the real root – the one whose value is never a child
+        Set<Integer> children = new HashSet<>();
         for (TreeNode t : trees) {
-            rootMap.put(t.val, t);
-            if (t.left != null)  childSet.add(t.left.val);
-            if (t.right != null) childSet.add(t.right.val);
+            if (t.left != null)  children.add(t.left.val);
+            if (t.right != null) children.add(t.right.val);
         }
 
-        // 2. Find the real root
         TreeNode root = null;
         for (TreeNode t : trees) {
-            if (!childSet.contains(t.val)) {
-                if (root != null) return null; // more than one candidate
+            if (!children.contains(t.val)) {
+                if (root != null) return null;   // multiple candidates → impossible
                 root = t;
             }
         }
-        if (root == null) return null; // no valid root
+        if (root == null) return null;           // no root found
 
-        // 3. DFS merge
-        merge(root, rootMap);
+        // 3. Merge recursively
+        merge(root, map);
 
-        // 4. After merge there must be exactly one tree left
-        if (rootMap.size() != 1) return null;
+        // 4. All trees must be merged
+        if (map.size() > 1) return null;
 
         // 5. Validate BST property
-        List<Integer> inOrder = new ArrayList<>();
-        inorder(root, inOrder);
-        for (int i = 1; i < inOrder.size(); i++) {
-            if (inOrder.get(i) <= inOrder.get(i - 1)) return null;
+        List<Integer> inorder = new ArrayList<>();
+        inorderTraversal(root, inorder);
+        for (int i = 1; i < inorder.size(); ++i) {
+            if (inorder.get(i) <= inorder.get(i - 1)) return null;
         }
 
         return root;
@@ -89,25 +99,23 @@ public class Solution {
         }
     }
 
-    private void inorder(TreeNode node, List<Integer> out) {
+    private void inorderTraversal(TreeNode node, List<Integer> res) {
         if (node == null) return;
-        inorder(node.left, out);
-        out.add(node.val);
-        inorder(node.right, out);
+        inorderTraversal(node.left, res);
+        res.add(node.val);
+        inorderTraversal(node.right, res);
     }
 }
 ```
 
 ---
 
-#### Python 3
+### Python
 
 ```python
-from typing import List, Optional
-from collections import defaultdict
-
+# Definition for a binary tree node.
 class TreeNode:
-    def __init__(self, val: int, left: 'TreeNode' = None, right: 'TreeNode' = None):
+    def __init__(self, val=0, left=None, right=None):
         self.val = val
         self.left = left
         self.right = right
@@ -117,46 +125,51 @@ class Solution:
         if len(trees) == 1:
             return trees[0]
 
-        # 1. Map root value -> node
-        root_map = {t.val: t for t in trees}
-        child_vals = set()
-        for t in trees:
-            if t.left: child_vals.add(t.left.val)
-            if t.right: child_vals.add(t.right.val)
+        # Map root value -> TreeNode
+        tree_map = {t.val: t for t in trees}
 
-        # 2. Find true root
-        roots = [t for t in trees if t.val not in child_vals]
+        # Collect all child values
+        children = set()
+        for t in trees:
+            if t.left:
+                children.add(t.left.val)
+            if t.right:
+                children.add(t.right.val)
+
+        # Find the unique root
+        roots = [t for t in trees if t.val not in children]
         if len(roots) != 1:
             return None
         root = roots[0]
 
-        # 3. DFS merge
-        def dfs(node: TreeNode):
-            if not node:
+        # Recursive merge
+        def merge(node: TreeNode):
+            if node is None:
                 return
-            if node.left and node.left.val in root_map:
-                node.left = root_map.pop(node.left.val)
-                dfs(node.left)
-            if node.right and node.right.val in root_map:
-                node.right = root_map.pop(node.right.val)
-                dfs(node.right)
+            if node.left and node.left.val in tree_map:
+                node.left = tree_map.pop(node.left.val)
+                merge(node.left)
+            if node.right and node.right.val in tree_map:
+                node.right = tree_map.pop(node.right.val)
+                merge(node.right)
 
-        dfs(root)
+        merge(root)
 
-        # 4. After merging there should be only one tree left
-        if root_map:
+        # All trees must be merged
+        if tree_map:
             return None
 
-        # 5. Validate BST by inorder traversal
-        order = []
-        def inorder(n: TreeNode):
-            if not n: return
-            inorder(n.left)
-            order.append(n.val)
-            inorder(n.right)
+        # Validate BST by inorder
+        inorder = []
+        def dfs(node: TreeNode):
+            if node is None:
+                return
+            dfs(node.left)
+            inorder.append(node.val)
+            dfs(node.right)
 
-        inorder(root)
-        if any(order[i] <= order[i-1] for i in range(1, len(order))):
+        dfs(root)
+        if any(inorder[i] <= inorder[i-1] for i in range(1, len(inorder))):
             return None
 
         return root
@@ -164,264 +177,243 @@ class Solution:
 
 ---
 
-#### C++17
+### C++
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-struct TreeNode {
-    int val;
-    TreeNode *left, *right;
-    TreeNode(int v) : val(v), left(nullptr), right(nullptr) {}
-    TreeNode(int v, TreeNode* l, TreeNode* r) : val(v), left(l), right(r) {}
-};
-
+/**
+ * Definition for a binary tree node.
+ * struct TreeNode {
+ *     int val;
+ *     TreeNode *left;
+ *     TreeNode *right;
+ *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+ * };
+ */
 class Solution {
 public:
     TreeNode* canMerge(vector<TreeNode*>& trees) {
         if (trees.size() == 1) return trees[0];
 
-        unordered_map<int, TreeNode*> rootMap;
-        unordered_set<int> childSet;
+        // Map root value -> TreeNode
+        unordered_map<int, TreeNode*> mp;
+        for (auto t : trees) mp[t->val] = t;
 
+        // Collect child values
+        unordered_set<int> child;
         for (auto t : trees) {
-            rootMap[t->val] = t;
-            if (t->left)  childSet.insert(t->left->val);
-            if (t->right) childSet.insert(t->right->val);
+            if (t->left)  child.insert(t->left->val);
+            if (t->right) child.insert(t->right->val);
         }
 
-        // Find true root
+        // Find the unique root
         TreeNode* root = nullptr;
         for (auto t : trees) {
-            if (!childSet.count(t->val)) {
-                if (root) return nullptr;  // multiple candidates
+            if (child.find(t->val) == child.end()) {
+                if (root) return nullptr;   // more than one candidate
                 root = t;
             }
         }
         if (!root) return nullptr;
 
-        // DFS merge
-        merge(root, rootMap);
+        // Recursive merge
+        function<void(TreeNode*)> merge = [&](TreeNode* node) {
+            if (!node) return;
+            if (node->left && mp.count(node->left->val)) {
+                node->left = mp[node->left->val];
+                mp.erase(node->left->val);
+                merge(node->left);
+            }
+            if (node->right && mp.count(node->right->val)) {
+                node->right = mp[node->right->val];
+                mp.erase(node->right->val);
+                merge(node->right);
+            }
+        };
+        merge(root);
 
-        if (rootMap.size() != 1) return nullptr;
+        // All trees must be merged
+        if (!mp.empty()) return nullptr;
 
-        // Validate
-        vector<int> order;
-        inorder(root, order);
-        for (size_t i = 1; i < order.size(); ++i)
-            if (order[i] <= order[i-1]) return nullptr;
+        // Validate BST by inorder
+        vector<int> inorder;
+        function<void(TreeNode*)> dfs = [&](TreeNode* node) {
+            if (!node) return;
+            dfs(node->left);
+            inorder.push_back(node->val);
+            dfs(node->right);
+        };
+        dfs(root);
+
+        for (size_t i = 1; i < inorder.size(); ++i)
+            if (inorder[i] <= inorder[i-1]) return nullptr;
 
         return root;
-    }
-
-private:
-    void merge(TreeNode* node, unordered_map<int, TreeNode*>& mp) {
-        if (!node) return;
-        if (node->left && mp.count(node->left->val)) {
-            node->left = mp.extract(node->left->val).mapped();
-            merge(node->left, mp);
-        }
-        if (node->right && mp.count(node->right->val)) {
-            node->right = mp.extract(node->right->val).mapped();
-            merge(node->right, mp);
-        }
-    }
-
-    void inorder(TreeNode* node, vector<int>& out) {
-        if (!node) return;
-        inorder(node->left, out);
-        out.push_back(node->val);
-        inorder(node->right, out);
-    }
-
-    void inorder(TreeNode* node, vector<int>& out) {
-        if (!node) return;
-        inorder(node->left, out);
-        out.push_back(node->val);
-        inorder(node->right, out);
     }
 };
 ```
 
 ---
 
-> **All three solutions** run in **O(n)** time, use **O(n)** extra space, and handle up to 50 000 trees – perfect for a production‑grade interview answer.
+## Blog Post (SEO‑Optimized)
+
+> **Title:** *From “Merge” to “Master” – Solving LeetCode 1932 (Merge BSTs) and Boosting Your Data‑Structure Skills*
 
 ---
 
-### 2.  The Blog
+### 1. Introduction
 
-> **Title:**  
-> “Mastering LeetCode 1932 – Merge BSTs: A Java, Python & C++ Guide That Will Impress Interviewers”
+When you’re preparing for a senior software‑engineering interview, it’s rare that you’ll be asked to solve a problem that combines *hash‑maps*, *tree recursion*, and *BST validation* all at once. LeetCode’s **1932 – Merge BSTs to Create a Single BST** is one of those hidden gems. It’s marked “Hard” for a reason: the constraints (5 × 10⁴ trees, each with ≤ 3 nodes) demand a linear solution that is also easy to reason about.
 
----
+In this post we’ll walk through:
 
-#### Introduction  
-
-When preparing for coding interviews, you’ll quickly encounter problems that require a *meta* solution: not just building or searching a tree, but *merging* several trees into a single, valid Binary Search Tree (BST).  
-LeetCode 1932 – **Merge BSTs to Create a Single BST** – is a textbook example of a “trick‑based” interview question that tests your data‑structure awareness, recursion skills, and edge‑case handling.
-
-This post gives you:
-
-1. **Production‑ready code** in three languages.  
-2. A **step‑by‑step explanation** that you can quote in an interview.  
-3. An honest review of the *good, bad, and ugly* aspects of the problem and solution.  
-4. **SEO‑friendly content** that boosts your visibility to recruiters searching for “Merge BSTs LeetCode 1932”.
+| Keyword | Why it matters |
+|--------|----------------|
+| `merge bst` | Core problem concept |
+| `hash map` | O(1) lookup is critical |
+| `dfs` | Depth‑first traversal to glue trees |
+| `inorder validation` | Quick way to test BST property |
+| `time complexity O(n)` | Interviewers love linear solutions |
 
 ---
 
-#### Problem Statement  
+### 2. Problem Overview
 
-> **Given** a list `trees` of `TreeNode` objects, where each tree has **at most 3 nodes** and no grandchildren, merge the trees into one single BST if possible.  
-> **Return** the root of the merged tree or `null` if no single BST can be formed.
+> **Goal**: Combine a list of small binary trees into **one** binary search tree (BST), or determine that it’s impossible.
 
-**Constraints**
+**Input**  
+- `trees`: list of TreeNode pointers.  
+- Every tree’s root value is unique.  
+- Each tree has at most 3 nodes (root + 0/1/2 children).
 
-* `1 <= n <= 5 × 10^4`
-* `each tree ≤ 3 nodes`
-* All values are distinct positive integers
-* No tree has grandchildren (every node is either a leaf or a root)
+**Operations allowed**  
+- Pick a tree as the **true root** (the one that never appears as a child).  
+- If a leaf’s value matches another tree’s root value, replace that leaf with the *entire* subtree.  
+- Each tree can be used at most once.
 
----
-
-#### Intuition & Core Idea  
-
-The key realization:
-
-> **The real root is the only root value that never appears as a child value.**
-
-Once we know the root, merging is straightforward:
-
-* Every leaf that matches a root value in the **root map** should be replaced by the whole corresponding tree.
-* Because each tree has no grandchildren, the replacement guarantees that we never create a new level of nesting – the shape of the final tree is still a tree.
-
-After the merge we must **verify** that the tree is still a BST. The most reliable check is an *in‑order traversal* – a valid BST yields a strictly increasing sequence of node values.
+**Return**  
+- The merged root if a single valid BST can be formed, otherwise `null` (or `None` / `nullptr`).
 
 ---
 
-#### Step‑by‑Step Algorithm  
+### 3. Key Challenges
 
-| Step | What to do | Why |
-|------|------------|-----|
-| **1. Build `rootMap`** | `rootMap[rootVal] = TreeNode*` | Constant‑time lookup of a tree by its root value. |
-| **2. Build `childSet`** | Add every child value (`left`, `right`) to a set | To know which values are *not* a root. |
-| **3. Find true root** | Scan `trees`; pick the only tree whose `val` isn’t in `childSet` | That tree can’t be a leaf, so it must be the top. |
-| **4. DFS‑merge** | For each node, if its left/right leaf exists in `rootMap`, replace it with that whole tree and `remove` from the map | Recursively build the final structure. |
-| **5. Validate** | If `rootMap` isn’t empty → more than one tree left → impossible. |
-| **6. BST check** | In‑order traversal → list → ensure strictly increasing | Guarantees the final tree obeys BST rules. |
-| **7. Return** | The merged root or `null` | End of algorithm. |
-
-All operations are linear in the number of trees, so the overall complexity is **O(n)**.
+| Challenge | Why it’s tricky |
+|-----------|-----------------|
+| Identifying the *real* root | A naive approach could mis‑pick a subtree as the root. |
+| Avoiding “double‑merge” | A leaf could match multiple subtrees if the input is malformed. |
+| Efficient lookup | Repeatedly searching for a child’s value in an array would be O(n²). |
+| Validating the BST property after merging | A tree might look fine structurally but violate the order rule. |
 
 ---
 
-#### “Good” – What Works Great
+### 4. Approach (Step‑by‑Step)
 
-* **Linear Complexity** – Each tree is examined a constant number of times, making the algorithm fast even for 50 k trees.  
-* **Memory‑Efficient Map** – Using a hash map of root values to nodes avoids repeated scans.  
-* **Clear Separation of Concerns** – Build, merge, validate are separate functions, easing unit testing.  
-* **Deterministic Behavior** – The algorithm either produces a correct BST or guarantees `null` without ambiguity.
+1. **Hash‑Map Construction**  
+   Map every root value to its TreeNode (`rootValue → node`).  
+   *Why?* Allows constant‑time “is this a subtree?” checks during merging.
 
----
+2. **Find the True Root**  
+   - Gather all child values in a set.  
+   - Scan all trees; the one whose root value is *not* in the child set is the real root.  
+   - If there’s more than one candidate or none, merging is impossible.
 
-#### “Bad” – Where the Problem Trumps the Code
+3. **Recursive Merge**  
+   Starting from the true root, traverse the tree.  
+   Whenever you encounter a leaf whose value exists in the map, replace that leaf with the mapped subtree and remove the entry from the map.  
+   Recurse into the newly inserted subtree.  
 
-* **Assumes no grandchildren** – This is given in the constraints but can bite you if you forget to handle deeper trees.  
-* **Relies on `null` return semantics** – In languages like Python or Java, you must understand that `None`/`null` is the sentinel for “impossible”.  
-* **Edge‑Case Complexity** – Multiple candidate roots, missing child references, or incomplete merges all need to be checked explicitly, which can clutter code.
+4. **Check Completeness**  
+   After the traversal, the map should contain only the true root. If any trees remain → impossible.
 
----
-
-#### “Ugly” – Things That Feel Uncomfortable
-
-* **Recursion depth** – Each DFS call might hit the recursion limit for languages with strict stack size (Python).  
-  *Solution:* increase the recursion limit (`sys.setrecursionlimit`) or convert to an explicit stack.  
-* **Validation by in‑order list** – Storing the entire inorder sequence uses O(n) extra space and an extra loop to check monotonicity.  
-  *Alternative:* validate on‑the‑fly during traversal (keep `prevVal`) to save memory.  
-* **Multiple root candidates** – Detecting “more than one possible root” can be subtle. A clean guard (`if (root != null) return null;`) keeps it simple but is a place where logic bugs creep in.
+5. **Validate BST**  
+   Perform an in‑order traversal to collect node values.  
+   If the list is not strictly increasing → the merged tree violates BST rules → return `null`.
 
 ---
 
-#### Code Walk‑through (Java Edition)
+### 5. Implementation Highlights
 
-```java
-Map<Integer, TreeNode> rootMap = new HashMap<>();
-Set<Integer> childSet = new HashSet<>();
-
-for (TreeNode t : trees) {
-    rootMap.put(t.val, t);               // Step 1
-    if (t.left != null)  childSet.add(t.left.val);
-    if (t.right != null) childSet.add(t.right.val);
-}
-
-TreeNode root = null;
-for (TreeNode t : trees) {                // Step 2
-    if (!childSet.contains(t.val)) {
-        if (root != null) return null;   // more than one candidate
-        root = t;
-    }
-}
-
-merge(root, rootMap);                     // Step 3
-
-if (rootMap.size() != 1) return null;     // Step 4
-
-List<Integer> order = new ArrayList<>();
-inorder(root, order);
-for (int i = 1; i < order.size(); i++)
-    if (order.get(i) <= order.get(i-1)) return null; // Step 5
-
-return root;
-```
-
-*`merge()`* replaces leaf nodes by looking up the map.  
-*`inorder()`* collects node values to test the BST property.
+| Language | Special Notes |
+|----------|----------------|
+| **Java** | Uses `List<TreeNode>` from LeetCode; recursion depth is safe (≤ 3 × 5 000). |
+| **Python** | Uses dictionary (`{}`) and set (`set()`) – fast O(1) ops. |
+| **C++** | Uses `unordered_map` and `unordered_set`; lambda recursion with `std::function`. |
 
 ---
 
-### 3.  Performance & Complexity
+### 6. Time & Space Complexity
 
-| Operation | Time | Space |
-|-----------|------|-------|
-| Build maps | **O(n)** | **O(n)** |
-| Find root | **O(n)** | **O(1)** |
-| DFS merge | **O(n)** | **O(1)** (recursion) |
-| Validate BST | **O(n)** | **O(n)** (in‑order list) |
-
-> **Overall:** **O(n)** time, **O(n)** space – fully compliant with the LeetCode constraints.
+| Metric | Formula | Explanation |
+|--------|---------|-------------|
+| **Time** | **O(n)** | Each tree is processed a constant number of times (construction, root detection, merging, validation). |
+| **Space** | **O(n)** | The hash‑map stores one entry per tree; recursion stack depth ≤ 3. |
 
 ---
 
-### 4.  Final Take‑away
+### 7. Edge Cases Covered
 
-* The trick is to **identify the true root** quickly – it’s the only root that never appears as a child.  
-* The **merge** is just a set‑replacement problem; we can do it in one DFS pass.  
-* **Validation** is cheap: a simple in‑order traversal and monotonicity check.  
-
-Feel confident that you can explain this logic in a real interview, hand‑write the code, or even adapt it to similar “tree‑merging” questions.
-
----
-
-### 5.  SEO‑Friendly Summary
-
-* **Problem** – Merge BSTs LeetCode 1932  
-* **Key concepts** – BST, root detection, hash map, DFS, in‑order traversal  
-* **Languages** – Java solution, Python solution, C++ solution  
-* **Interview Prep** – Java coding interview, Python interview, C++ interview  
-* **Recruiter** – Looking for data‑structure mastery on tree problems, BST validation, and linear‑time solutions  
-
-Use the snippets above, reference the “good, bad, ugly” breakdown, and showcase your ability to solve a challenging interview problem efficiently. Recruiters looking for strong BST knowledge will now find your profile *right on top* of search results.
+- **Multiple real roots** → impossible.  
+- **No real root** → impossible.  
+- **Unmerged trees left** → impossible.  
+- **In‑order not strictly increasing** → invalid BST.  
+- **Single tree input** → trivially returned.
 
 ---
 
-> **Happy coding!** 🚀  
-> *Drop a comment if you’d like deeper dives into recursion‑on‑the‑fly validation or iterative tree merging.*
+### 8. “Good, Bad & Ugly” – Common Pitfalls
 
---- 
+| Phase | Good | Bad | Ugly |
+|-------|------|-----|------|
+| **Map building** | O(1) lookup | Forgetting to insert *every* tree → KeyError/NullPointer | Using a list and linear search → O(n²) |
+| **Root detection** | Single‑pass set of children | Multiple candidates → silent accept (bug) | Overlooking that root could be *leaf* only (empty tree) |
+| **Merging** | Recursively pop from map | Not removing used keys → infinite recursion | Modifying the original input tree structure in place (side‑effects) |
+| **Validation** | In‑order traversal | Comparing equal values incorrectly (`>=` instead of `>`) | Forgetting to traverse *all* nodes (skipping a null child) |
 
-*End of Blog*  
+---
 
---- 
+### 9. Testing Strategy
 
-> **Enjoy using these insights both on the code playground and in your next interview!**
+1. **Basic success cases**  
+   - Two trees where one is a direct child.  
+   - Three trees forming a perfect BST.
+
+2. **Failure due to multiple roots**  
+   - Two trees that are independent (no child link).
+
+3. **Failure due to leftover trees**  
+   - A leaf that doesn’t match any other root.
+
+4. **Failure due to BST violation**  
+   - Merge produces a tree where left child > parent.
+
+5. **Large input**  
+   - 5 × 10⁴ trees, each with 3 nodes – verify runtime < 1 s.
+
+---
+
+### 10. SEO & Career Advice
+
+| Keyword | Placement |
+|---------|-----------|
+| “Merge BSTs” | Title, 1st paragraph, H2 headings |
+| “LeetCode 1932” | Meta description, first line |
+| “Hard BST problem” | H3 headings |
+| “Interview data‑structure” | Conclusion |
+| “Java/Python/C++ solution” | Code section titles |
+
+**Why this matters for your career:**  
+- Mastering hash‑maps and tree recursion demonstrates deep data‑structure knowledge – a hallmark of senior‑level roles.  
+- LeetCode’s “hard” problems are the bread‑and‑butter of tech‑interviews at Google, Amazon, and FAANG‑level companies.  
+- A clean, well‑commented solution shows professionalism and code‑readability—qualities hiring managers value.
+
+---
+
+## Conclusion
+
+Solving **LeetCode 1932 – Merge BSTs to Create a Single BST** is a great way to sharpen your hash‑map intuition, practice DFS, and reinforce BST validation techniques. The linear algorithm above is both elegant and efficient, making it a solid talking point in your next interview.
+
+If you’ve already nailed this problem, consider practicing related problems:  
+- **2105. Replace All Digits with the Sum of Digit Subsets** (similar tree merging).  
+- **1307. Verbal Arithmetic Puzzle** (hash‑map + backtracking).  
+
+Happy coding and best of luck on your interview journey!

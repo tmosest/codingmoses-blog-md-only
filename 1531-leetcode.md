@@ -7,246 +7,221 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. Problem Recap – “String Compression II” (LeetCode 1531)
+        # 🎯 1531 – String Compression II  
+**LeetCode Hard – DP, Run‑Length Encoding, Delete k Chars**
 
-**Goal**  
-Given a string `s` (only lowercase letters, `1 ≤ |s| ≤ 100`) and an integer `k` (`0 ≤ k ≤ |s|`), delete *at most* `k` characters from `s` so that the run‑length encoded (RLE) version of the resulting string has **minimum length**.  
-RLE rules:
-* Consecutive identical characters are replaced by the character followed by the count of that run **only if** the count is ≥ 2.  
-* Single characters are left as they are (no trailing `1`).  
+---
 
-**Examples**
+## 1️⃣  What the Problem is About
 
-| Input | Output | Explanation |
-|-------|--------|-------------|
-| `s = "aaabcccd"`, `k = 2` | `4` | Delete `b` and `d`. Result: `"aaaccc"` → RLE `"a3c3"` |
-| `s = "aabbaa"`, `k = 2` | `2` | Delete the two `b`s. Result: `"aaaa"` → RLE `"a4"` |
-| `s = "aaaaaaaaaaa"`, `k = 0` | `3` | RLE `"a11"` |
+You’re given a lowercase string `s` (`1 ≤ |s| ≤ 100`) and an integer `k` (`0 ≤ k ≤ |s|`).  
+You may delete *at most* `k` characters from `s`.  
+After the deletions you run **run‑length encoding (RLE)**:
 
-**Constraints**
+* Replace any run of the same character that appears **2 or more times** with  
+  `char + count`.  
+* Single characters stay as they are – no “1” is added.
 
-* `1 ≤ s.length ≤ 100`
-* `0 ≤ k ≤ s.length`
+Goal: **Minimize the length of the encoded string**.
 
-The challenge is to decide *which* characters to delete so that the total compressed length is as small as possible.
+> Example  
+> `s = "aaabcccd", k = 2`  
+> Delete `b` and `d` → `aaaccc` → RLE → `"a3c3"` → length `4`.
 
+The problem is hard because you have to decide *which* `k` characters to delete and *where* to split the string into runs.
 
+---
 
---------------------------------------------------------------------
+## 2️⃣  Why DP is the Right Tool
 
-## 2. Why a “Suffix‑Based” DP Works
+If we look at the string from left to right, the decision at position `i` only depends on
 
-The core idea is to treat the problem **as a 2‑dimensional DP**:
+* how many deletions we still have,
+* where the **next same character** after `i` is.
 
-```
-dp[i][rem] = minimal compressed length of the suffix s[i … n-1] 
-             after removing at most rem characters from that suffix
-```
+Hence the state can be represented by  
+`(index i, remaining‑k)` → *minimum encoded length for the suffix `s[i:]`*.
 
-* `i` – current position in the string  
-* `rem` – number of deletions that still may be used
+This is a classic 2‑dimensional DP problem that we can solve by
 
-For each state we have two possibilities:
+* **Top‑Down (memoization)** – recursion with caching.
+* **Bottom‑Up (tabulation)** – iterative DP.
 
-| Option | Action | Effect on the state |
-|--------|--------|---------------------|
-| **Delete** | Remove `s[i]`. | Move to state `(i+1, rem‑1)` |
-| **Keep** | Start a new run with `s[i]` and optionally delete some later same‑character letters to grow the run. | We iterate over the next occurrences of the same letter. For each possible end of the run we know:  |
-| | | * `occ` – how many letters of this letter we actually keep in the run |
-| | | * `deletionsInRun` – how many letters we skip to reach this run length |
-| | | New state: `(nextIndexAfterRun, rem – deletionsInRun)` |
+Both solutions run in `O(k · n²)` time (worst case `n = 100`) and `O(k · n)` memory, which is easily fast enough for the constraints.
 
-The RLE cost contributed by a run of length `occ` is:
+---
+
+## 3️⃣  Key Insight – “Next Same Character” Pre‑computation
+
+During the DP we need to know, for every position `i`, the next index `j > i` where `s[j] == s[i]`.  
+Instead of scanning forward each time (which would make the DP `O(n³)`), we build an array `next`:
 
 ```
-1                                 // the character itself
-+ [occ in {2,10,100}] ? 1 : 0    // an extra digit appears when occ reaches 2, 10 or 100
+next[i] = index of the next occurrence of s[i] after i   (or -1 if none)
 ```
 
-This cost depends **only** on `occ`, not on the exact positions of the kept letters.  
-Because the string length is ≤ 100, a straightforward O(n²·k) DP is fast enough.
+We build it in **O(n)** by scanning the string from right to left and keeping the latest position for each letter.
 
+With `next` we can efficiently enumerate all possible “runs” that start at `i`.
 
+---
 
---------------------------------------------------------------------
-
-## 3. Implementation Details
-
-### 3.1 Pre‑computing next occurrences (`next[]`)
-
-For each position `i` we store the index of the next occurrence of the same character (or `-1` if none).  
-This allows us to jump from one occurrence to the next in **O(1)** time.
-
-```text
-next[i] = index of the next same letter after i   (or -1)
-```
-
-The array is built by scanning the string from right to left and keeping the last seen index of each character.
-
-
-
-### 3.2 Bottom‑Up DP (Java/C++)
-
-We use a 2‑dimensional table `dp[rem][i]` (rem first for better cache locality).  
-The base case: when `rem` is big enough to delete the entire remaining suffix, the compressed length is 0.
-
-Transition:
+## 4️⃣  How the DP Works
 
 ```
-res = INF
-if rem > 0:                    // delete current char
-    res = dp[rem-1][i+1]
-
-occ = 0
-len = 1                           // character itself
-for cur = i; cur != -1; cur = next[cur]:
-    occ++
-    deletions = (cur - i + 1) - occ     // letters skipped inside the run
-    if deletions > rem: break
-
-    if occ==2 or occ==10 or occ==100:
-        len++
-
-    res = min(res, len + dp[rem-deletions][cur+1])
-
-dp[rem][i] = res
+dp[i][rem]  =  minimal encoded length of s[i:] using at most rem deletions
 ```
 
-Complexities  
-* Time: `O(n² · k)` – at most 100·100·100 ≈ 1 000 000 operations.  
-* Memory: `O(n · k)` – about 10 000 integers.
+### Transitions
 
+1. **Delete `s[i]`**  
+   `dp[i][rem]  →  dp[i+1][rem-1]`  (if rem > 0)
 
+2. **Keep a run starting at `i`**  
+   Walk through all later occurrences of the same character (`cur = i, next[i], next[next[i]], …`).  
+   For each possible run endpoint `cur`:
 
-### 3.3 Memoized Recursion (Python/C++)
+   * `lenWindow   = cur - i + 1`  (characters considered)
+   * `occurrences = number of kept characters in this run`  
+     (`occurrences` increments by 1 each time we visit a same‑letter index)
+   * `removals = lenWindow - occurrences`  (characters we delete inside the window)
+   * If `removals > rem` → break (no more deletions left)
+   * `cost = 1`  (for the letter itself)  
+     plus `+1` each time `occurrences` reaches 2, 10, 100 (digits grow)
+   * `dp[i][rem] = min(dp[i][rem], cost + dp[cur+1][rem-removals])`
 
-The same logic can be expressed recursively with memoization (`@lru_cache` in Python or a 2‑D vector in C++).  
-The top‑down approach often feels cleaner and naturally handles the “delete current character” branch first.
+The base case: `dp[n][*] = 0` (empty suffix).  
+If the suffix length ≤ `rem`, we can delete everything → length `0`.
 
+The answer is `dp[0][k]`.
 
+---
 
---------------------------------------------------------------------
+## 5️⃣  Implementation Details
 
-## 4. Code
+Below are **ready‑to‑copy** solutions in **Java, Python, and C++**.  
+All three use the same algorithm and the same `next` array pre‑computation.
 
-### 4.1 Java
+> **Tip:**  
+> - For Java and C++ use an array of `int` initialized to `-1` for memoization.  
+> - For Python use `functools.lru_cache` or an explicit dictionary.
+
+---
+
+### 📄 Java – Top‑Down Memoization
 
 ```java
 import java.util.Arrays;
 
 public class Solution {
-    public int getLengthOfOptimalCompression(String s, int k) {
-        if (k >= s.length()) return 0;           // delete everything
-
-        int n = s.length();
-        int[] next = buildNextIndices(s.toCharArray());   // suffix pre‑computation
-
-        int[][] dp = new int[k + 1][n + 1];
-        for (int[] row : dp) Arrays.fill(row, Integer.MAX_VALUE / 2);
-
-        // Base case: empty suffix → 0 length
-        for (int rem = 0; rem <= k; rem++) dp[rem][n] = 0;
-
-        // Bottom‑up from right to left
-        for (int i = n - 1; i >= 0; i--) {
-            for (int rem = 0; rem <= k; rem++) {
-                int best = Integer.MAX_VALUE / 2;
-
-                // 1. delete current char
-                if (rem > 0) best = dp[rem - 1][i + 1];
-
-                // 2. keep current char and form a run
-                int occ = 0;
-                int len = 1;                     // the character itself
-                for (int cur = i; cur != -1; cur = next[cur]) {
-                    occ++;
-                    int deletions = (cur - i + 1) - occ;
-                    if (deletions > rem) break; // no more deletions allowed
-
-                    if (occ == 2 || occ == 10 || occ == 100) len++;
-
-                    best = Math.min(best, len + dp[rem - deletions][cur + 1]);
-                }
-                dp[rem][i] = best;
-            }
-        }
-        return dp[k][0];
-    }
-
-    /** Build next[i] = index of next same char after i, or -1 if none */
-    private int[] buildNextIndices(char[] a) {
-        int n = a.length;
+    // helper to build the "next same character" array
+    private int[] buildNext(char[] s) {
+        int n = s.length;
         int[] next = new int[n];
-        int[] pos = new int[26];
-        Arrays.fill(pos, -1);
-
+        int[] last = new int[26];
+        Arrays.fill(last, -1);
         for (int i = n - 1; i >= 0; i--) {
-            int ch = a[i] - 'a';
-            next[i] = pos[ch];
-            pos[ch] = i;
+            int idx = s[i] - 'a';
+            next[i] = last[idx];
+            last[idx] = i;
         }
         return next;
+    }
+
+    public int getLengthOfOptimalCompression(String s, int k) {
+        if (k >= s.length()) return 0;
+        int[] next = buildNext(s.toCharArray());
+        int n = s.length();
+        int[][] memo = new int[k + 1][n + 1];
+        for (int[] row : memo) Arrays.fill(row, -1);
+        return dfs(0, k, next, memo);
+    }
+
+    private int dfs(int i, int rem, int[] next, int[][] memo) {
+        if (memo[rem][i] != -1) return memo[rem][i];
+        int n = next.length;
+        if (n - i <= rem) return memo[rem][i] = 0;   // delete the rest
+
+        int best = Integer.MAX_VALUE;
+
+        // Option 1: delete current char
+        if (rem > 0) best = Math.min(best, dfs(i + 1, rem - 1, next, memo));
+
+        // Option 2: keep a run starting at i
+        int occ = 0;
+        int cost = 1;          // for the letter itself
+        for (int cur = i; cur != -1; cur = next[cur]) {
+            occ++;
+            int deletions = (cur - i + 1) - occ;  // inside the window
+            if (deletions > rem) break;          // cannot afford more deletions
+
+            // increase cost when digits grow
+            if (occ == 2 || occ == 10 || occ == 100) cost++;
+
+            best = Math.min(best, cost + dfs(cur + 1, rem - deletions, next, memo));
+        }
+
+        return memo[rem][i] = best;
     }
 }
 ```
 
-### 4.2 Python
+---
+
+### 📄 Python – Recursive DP with `lru_cache`
 
 ```python
 from functools import lru_cache
-import sys
+from typing import List
 
 class Solution:
+    def build_next(self, s: str) -> List[int]:
+        n = len(s)
+        nxt = [-1] * n
+        last = [-1] * 26
+        for i in range(n - 1, -1, -1):
+            idx = ord(s[i]) - 97
+            nxt[i] = last[idx]
+            last[idx] = i
+        return nxt
+
     def getLengthOfOptimalCompression(self, s: str, k: int) -> int:
         if k >= len(s):
             return 0
-
+        nxt = self.build_next(s)
         n = len(s)
-        next_occ = self.build_next_indices(s)
 
         @lru_cache(None)
         def dfs(i: int, rem: int) -> int:
-            if i == n:
+            if n - i <= rem:                 # delete the rest
                 return 0
-            if n - i <= rem:
-                return 0
-
-            best = sys.maxsize
+            best = float('inf')
 
             # delete current character
             if rem:
-                best = dfs(i + 1, rem - 1)
+                best = min(best, dfs(i + 1, rem - 1))
 
-            # keep current character and build a run
+            # keep a run starting at i
             occ = 0
+            cost = 1                           # the letter itself
             cur = i
-            length = 1
             while cur != -1:
                 occ += 1
                 deletions = (cur - i + 1) - occ
                 if deletions > rem:
                     break
-                if occ in {2, 10, 100}:
-                    length += 1
-                best = min(best, length + dfs(cur + 1, rem - deletions))
-                cur = next_occ[cur]
+                if occ in (2, 10, 100):
+                    cost += 1
+                best = min(best, cost + dfs(cur + 1, rem - deletions))
+                cur = nxt[cur]
             return best
 
         return dfs(0, k)
-
-    @staticmethod
-    def build_next_indices(s: str):
-        n = len(s)
-        nxt = [-1] * n
-        last = [-1] * 26
-        for i in range(n - 1, -1, -1):
-            ch = ord(s[i]) - 97
-            nxt[i] = last[ch]
-            last[ch] = i
-        return nxt
 ```
 
-### 4.3 C++
+---
+
+### 📄 C++ – Bottom‑Up Tabulation (for fun)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -254,132 +229,113 @@ using namespace std;
 
 class Solution {
 public:
+    vector<int> buildNext(const string& s) {
+        int n = s.size();
+        vector<int> next(n, -1), last(26, -1);
+        for (int i = n - 1; i >= 0; --i) {
+            int c = s[i] - 'a';
+            next[i] = last[c];
+            last[c] = i;
+        }
+        return next;
+    }
+
     int getLengthOfOptimalCompression(string s, int k) {
         int n = s.size();
         if (k >= n) return 0;
+        vector<int> nxt = buildNext(s);
+        vector<vector<int>> dp(k + 1, vector<int>(n + 1, -1));
 
-        vector<int> next = buildNextIndices(s);
+        function<int(int,int)> dfs = [&](int i, int rem) {
+            if (dp[rem][i] != -1) return dp[rem][i];
+            if (n - i <= rem) return dp[rem][i] = 0;      // delete all remaining
+            int best = INT_MAX;
 
-        const int INF = 1e9;
-        vector<vector<int>> dp(k + 1, vector<int>(n + 1, INF));
+            if (rem) best = min(best, dfs(i + 1, rem - 1));
 
-        for (int rem = 0; rem <= k; ++rem) dp[rem][n] = 0;   // empty suffix
-
-        for (int i = n - 1; i >= 0; --i) {
-            for (int rem = 0; rem <= k; ++rem) {
-                int best = INF;
-
-                // 1. delete current char
-                if (rem) best = dp[rem - 1][i + 1];
-
-                // 2. keep current char
-                int occ = 0;
-                int len = 1;                   // character itself
-                for (int cur = i; cur != -1; cur = next[cur]) {
-                    ++occ;
-                    int deletions = (cur - i + 1) - occ;
-                    if (deletions > rem) break;
-
-                    if (occ == 2 || occ == 10 || occ == 100) ++len;
-
-                    best = min(best, len + dp[rem - deletions][cur + 1]);
-                }
-                dp[rem][i] = best;
+            int occ = 0;
+            int cost = 1;
+            for (int cur = i; cur != -1; cur = nxt[cur]) {
+                ++occ;
+                int del = (cur - i + 1) - occ;
+                if (del > rem) break;
+                if (occ == 2 || occ == 10 || occ == 100) cost++;
+                best = min(best, cost + dfs(cur + 1, rem - del));
             }
-        }
-        return dp[k][0];
-    }
+            return dp[rem][i] = best;
+        };
 
-private:
-    vector<int> buildNextIndices(const string &s) {
-        int n = s.size();
-        vector<int> next(n), pos(26, -1);
-        for (int i = n - 1; i >= 0; --i) {
-            int ch = s[i] - 'a';
-            next[i] = pos[ch];
-            pos[ch] = i;
-        }
-        return next;
+        return dfs(0, k);
     }
 };
 ```
 
-> **Tip:** For the Python solution set `sys.setrecursionlimit(10000)` if you prefer recursion over a bottom‑up loop.
+---
 
-
-
---------------------------------------------------------------------
-
-## 5. Blog‑Style Walk‑through
-
-> **Title**  
-> *String Compression II – The Good, The Bad, The Ugly, and How to Nail It (LeetCode 1531)*
-
-> **Meta Description**  
-> Dive deep into LeetCode 1531 “String Compression II”. Learn the DP trick, why suffix jumps help, handle RLE cost changes, and read full solutions in Java, Python, and C++.
+> All three programs output the **minimum encoded length** for any valid input and run in a fraction of a second.
 
 ---
 
-### 5.1 The “Good” – Why the Problem Is Exciting
+## 6️⃣  Time & Space Complexity
 
-| What’s Good | Why It Matters |
-|-------------|----------------|
-| **Clear Objective** – minimize RLE length. | Gives a single, objective function. |
-| **Limited String Size** – `|s| ≤ 100`. | Lets us use an `O(n²·k)` DP comfortably. |
-| **Intuitive RLE Rules** – only counts ≥ 2, single characters stay. | Avoids hidden corner cases that plague some compression problems. |
-| **Real‑World Analogy** – removing noisy data to get a cleaner representation. | Makes the problem relatable. |
+| Approach | Time | Memory |
+|----------|------|--------|
+| Top‑Down | `O(k · n²)` (≈ 1 M operations for `n = 100`, `k = 100`) | `O(k · n)` |
+| Bottom‑Up | same | same |
 
-These aspects let you focus on the *algorithmic heart* rather than wrestling with data‑structure noise.
+With `n ≤ 100` this is far below the 1‑second time limit on LeetCode.
 
+---
 
+## 7️⃣  Common Pitfalls & “What if” Scenarios
 
-### 5.2 The “Bad” – What Can Go Wrong
+| Pitfall | Fix |
+|---------|-----|
+| **Mis‑counting digit changes** – forget that the first digit is *not* counted for length 1 runs. | Add cost only when `occurrences` becomes `2`, `10`, or `100`. |
+| **Omitting the “delete the rest” base case** – DP never reaches `0` length for fully deletable suffixes. | Add `if (n-i <= rem) return 0;` early. |
+| **Building `next` incorrectly** – using `s[i]` instead of `s[cur]` in the loop. | Build `next` from right to left; use `last[26]`. |
+| **Using recursion depth > 100** – Python recursion may hit limit. | Increase recursion limit (`sys.setrecursionlimit(2000)`) or use `@lru_cache`. |
+| **Wrong cost updates** – adding digits for `1`‑length runs. | Only update when `occurrences` is in `{2, 10, 100}`. |
 
-| Potential Pitfall | How It Pops Up |
-|-------------------|----------------|
-| **Mis‑counting RLE digits** – forgetting that digits appear at 2, 10, 100. | Leads to over‑optimistic or over‑pessimistic lengths. |
-| **Assuming a linear deletion cost** – deleting inside a run vs. across runs. | Over‑simplifies the DP transition. |
-| **Using a naive O(n·k) loop** – iterating over all characters for each state. | Turns out to be `O(n³·k)` which is too slow for 100. |
-| **Index mis‑management** – off‑by‑one when computing deletions inside a run. | Small bugs that make the whole DP wrong. |
+---
 
-A careful reading of the problem statement and a clear DP state diagram help you sidestep these.
+## 8️⃣  What This Means for Your Next Interview
 
+* **Showcase DP state design** – explain the two dimensions clearly.
+* **Highlight pre‑processing** – building the `next` array saves you from a cubic solution.
+* **Discuss complexity** – `O(k·n²)` is acceptable here; if you get a “time limit exceeded” check whether you’re scanning forward inside the DP loop.
+* **Edge cases** – `k ≥ n` → answer is `0`.  
+  `k = 0` → simply encode the original string.
 
+This problem is a *must‑know* for anyone targeting a senior software‑engineering role or a data‑science interview where LeetCode Hard problems are common.
 
-### 5.3 The “Ugly” – Subtle Implementation Details
+---
 
-| Ugly Element | How to Tame It |
-|--------------|----------------|
-| **Suffix pre‑computation** (`next[]`) | Build it once in `O(n)` and store in an array. |
-| **Cost of a run** – the jump from length 1 → 2 (1 digit), 9 → 10 (another digit), 99 → 100 (another digit) | Check only three thresholds; no need to compute logarithms. |
-| **Handling “delete current char” vs. “keep current char”** | In the transition loop, the delete branch is handled first (if `rem > 0`), then we iterate over the next same‑letter positions. |
-| **Avoid integer overflow** | Use `INF = INT_MAX/2` or `sys.maxsize/2` to keep sums safe. |
+## 9️⃣  Final Thoughts
 
-These details, though small, are the glue that makes the algorithm robust across languages.
+*String Compression II* is more than just “delete k characters”; it’s about *optimal run segmentation*.  
+A clean DP that respects the “next same character” relationship is the heart of the solution.  
 
+If you can explain the state, transition, and complexity, you’ll impress interviewers and get the “Yes” answer on your résumé.
 
+Good luck – you’ve got this! 🚀
 
---------------------------------------------------------------------
+---
 
-## 6. Final Thoughts
+## 🔑  SEO Keywords
 
-* **Simplicity + Power** – The suffix‑based DP turns a seemingly complicated “delete‑and‑compress” problem into a classic 2‑D DP.  
-* **Fast Enough** – With the pre‑computed `next[]` array, each transition is linear in the number of same‑letter occurrences, giving `O(n²·k)` runtime.  
-* **Language‑Agility** – The same logic applies in Java, Python, and C++ with almost identical code; the only differences are language‑specific idioms (e.g. `@lru_cache` vs. a 2‑D vector).  
+- **String Compression II**  
+- **LeetCode Hard**  
+- **Dynamic Programming**  
+- **Run‑Length Encoding**  
+- **Delete k Characters**  
+- **Java DP Solution**  
+- **Python DP Solution**  
+- **C++ DP Solution**  
+- **Coding Interview**  
+- **Interview Question**  
+- **Job Interview Prep**  
+- **Algorithm Explanation**  
+- **Coding Challenge**  
 
-Happy coding! 🚀
-
-
-
---------------------------------------------------------------------
-
-## 7. SEO Checklist for the Blog Post
-
-1. **Primary Keywords** – *String Compression II, LeetCode 1531, RLE, run‑length encoding, delete k characters, dynamic programming solution*  
-2. **Secondary Keywords** – *Java solution, Python solution, C++ solution, suffix array, DP optimisation, compressed string length*  
-3. **Meta Tags** – Add `<meta name="description" content="Solve LeetCode 1531 – String Compression II in Java, Python, and C++ with a suffix‑based DP. Learn the algorithm, code, and pitfalls.">`  
-4. **Header Hierarchy** – Use `<h1>` for the title, `<h2>` for sections, `<h3>` for sub‑sections, and `<pre><code>` blocks for code.  
-5. **Internal Linking** – Reference other LeetCode DP problems (e.g., “Word Break II”, “Minimum Deletions to Make a String Palindrome”) to improve dwell time.  
-6. **Call‑to‑Action** – End with “Try this on LeetCode and share your solution!” to encourage comments.  
-
-With this structure, the post should rank well for both novices and seasoned interviewees looking for a clean, production‑ready solution to String Compression II.
+Feel free to share this post on LinkedIn, Medium, or your personal blog – it’s packed with all the keywords recruiters and hiring managers love!
