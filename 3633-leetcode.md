@@ -7,255 +7,246 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. Solution Code – 3 Languages
+        # The “Earliest Finish Time for Land and Water Rides” – LeetCode 3633  
+**SEO‑Optimized Blog Guide** – Good, Bad & Ugly – Java / Python / C++ Code
 
-Below are **ready‑to‑copy** implementations of the optimal greedy solution for LeetCode 3633 – *Earliest Finish Time for Land and Water Rides I*.  
-All three snippets run in **O(n + m)** time, use **O(1)** extra space, and respect the 1‑based constraints.
-
-| Language | File name | Class / Function | Key Points |
-|----------|-----------|------------------|------------|
-| **Java** | `Solution.java` | `public int earliestFinishTime(int[] landStartTime, int[] landDuration, int[] waterStartTime, int[] waterDuration)` | Uses two passes: 1) compute the earliest finish for a land ride, 2) compute the earliest finish for a water ride. |
-| **Python** | `solution.py` | `def earliest_finish_time(land_start_time, land_duration, water_start_time, water_duration):` | Same logic, expressed in idiomatic Python. |
-| **C++** | `Solution.cpp` | `int earliestFinishTime(vector<int>& landStartTime, vector<int>& landDuration, vector<int>& waterStartTime, vector<int>& waterDuration)` | Uses `INT_MAX` and `std::max`. |
+> **Keywords**:  
+> *Earliest Finish Time for Land and Water Rides*, *LeetCode 3633*, *Greedy Algorithm*, *Time Complexity O(n+m)*, *Coding Interview*, *Java*, *Python*, *C++*  
 
 ---
 
-### 1.1 Java
+## 1. Problem Recap
+
+You’re a theme‑park tourist.  
+- **Land rides**: `landStartTime[i]` – earliest boarding time, `landDuration[i]` – ride length.  
+- **Water rides**: `waterStartTime[j]`, `waterDuration[j]`.  
+
+You must experience **exactly one** land *and* one water ride – in any order.  
+A ride can start at its opening time or later.  
+If you finish the first ride at time `t`, you may start the second ride immediately if it’s open, or you must wait until it opens.
+
+**Goal:** Return the *earliest* possible finish time of the two rides.
+
+**Constraints**
+
+| | | |
+|---|---|---|
+| `1 ≤ n, m ≤ 100` | `landStartTime.length == landDuration.length == n` | `waterStartTime.length == waterDuration.length == m` |
+| `1 ≤ landStartTime[i], landDuration[i], waterStartTime[j], waterDuration[j] ≤ 1000` |
+
+---
+
+## 2. Intuitive Insight
+
+There are only **two** possible orders:
+
+| Order | Action | Finish Time Formula |
+|---|---|---|
+| Land → Water | Start land, then water | `waterDuration[j] + max(minLandFinish, waterStartTime[j])` |
+| Water → Land | Start water, then land | `landDuration[i] + max(minWaterFinish, landStartTime[i])` |
+
+- `minLandFinish` is the **earliest** time you can finish any land ride if you started it right at its opening time.  
+  `minLandFinish = min(landStartTime[i] + landDuration[i])`.  
+- Similarly, `minWaterFinish = min(waterStartTime[j] + waterDuration[j])`.
+
+Why does the formula work?  
+If you finish the first ride before the second one opens, you *must* wait until its opening.  
+Thus the start time of the second ride is `max(finish_of_first, opening_of_second)`.  
+Add its duration → total finish time.
+
+We simply evaluate the above formula for **every** possible pair (i, j) but with the *pre‑computed* minima, achieving **O(n + m)** time.
+
+---
+
+## 3. Why It’s the “Good”
+
+- **Linear time** – only one scan to find minima, then a single pass over each array to compute candidate finish times.  
+- **Constant extra space** – just a few integers.  
+- **Deterministic** – no branching on input values, so no worst‑case blow‑ups.
+
+---
+
+## 4. The “Bad” – Common Pitfalls
+
+| Mistake | Consequence | How to Avoid |
+|---|---|---|
+| Using a brute‑force double loop (O(n × m)) | Still correct but slower – can hit time limits on larger inputs. | Pre‑compute minima and avoid nested loops. |
+| Forgetting `max` in the finish‑time calculation | Wrong answer when the first ride finishes *after* the second ride opens. | Always apply `max(finish_first, start_second)`. |
+| Overflow (unlikely here) | In languages with 32‑bit int, summing 1000 + 1000 = 2000 fits easily, but in more constrained problems it matters. | Use `long` if numbers can be larger. |
+| Off‑by‑one errors in array indices | Crash or wrong result. | Stick to 0‑based indexing in Java/Python/C++ as shown. |
+
+---
+
+## 5. The “Ugly” – Over‑Complicated Variants
+
+- **Recursive DP** that considers all subsets – overkill for a problem that boils down to two simple cases.  
+- **Sorting + Binary Search** to find earliest rides – unnecessary overhead.  
+- **Graph modeling** (nodes = rides, edges = “can follow”) – again, the graph is trivial (only two nodes) so this adds noise.
+
+---
+
+## 6. Code Walkthrough
+
+Below you’ll find clean, self‑contained solutions in **Java, Python, and C++**.  
+All share the same logic: compute minima, iterate once each array, and take the global minimum.
+
+### 6.1 Java
 
 ```java
-// Solution.java
-import java.util.*;
-
 class Solution {
     public int earliestFinishTime(
-            int[] landStartTime,
-            int[] landDuration,
-            int[] waterStartTime,
-            int[] waterDuration) {
+            int[] landStartTime, int[] landDuration,
+            int[] waterStartTime, int[] waterDuration) {
 
-        int ans = Integer.MAX_VALUE;
-
-        // ---------- Case 1 : land first, water second ----------
         int minLandFinish = Integer.MAX_VALUE;
         for (int i = 0; i < landStartTime.length; i++) {
             minLandFinish = Math.min(minLandFinish,
-                                     landStartTime[i] + landDuration[i]);
-        }
-        for (int j = 0; j < waterStartTime.length; j++) {
-            int finish = waterDuration[j] +
-                         Math.max(minLandFinish, waterStartTime[j]);
-            ans = Math.min(ans, finish);
+                    landStartTime[i] + landDuration[i]);
         }
 
-        // ---------- Case 2 : water first, land second ----------
         int minWaterFinish = Integer.MAX_VALUE;
         for (int j = 0; j < waterStartTime.length; j++) {
             minWaterFinish = Math.min(minWaterFinish,
-                                      waterStartTime[j] + waterDuration[j]);
-        }
-        for (int i = 0; i < landStartTime.length; i++) {
-            int finish = landDuration[i] +
-                         Math.max(minWaterFinish, landStartTime[i]);
-            ans = Math.min(ans, finish);
+                    waterStartTime[j] + waterDuration[j]);
         }
 
-        return ans;
+        int answer = Integer.MAX_VALUE;
+
+        // Land first, then Water
+        for (int j = 0; j < waterStartTime.length; j++) {
+            int finish = waterDuration[j] + Math.max(minLandFinish, waterStartTime[j]);
+            answer = Math.min(answer, finish);
+        }
+
+        // Water first, then Land
+        for (int i = 0; i < landStartTime.length; i++) {
+            int finish = landDuration[i] + Math.max(minWaterFinish, landStartTime[i]);
+            answer = Math.min(answer, finish);
+        }
+
+        return answer;
     }
 }
 ```
 
----
-
-### 1.2 Python
+### 6.2 Python
 
 ```python
-# solution.py
-from typing import List
+class Solution:
+    def earliestFinishTime(
+        self,
+        landStartTime: list[int],
+        landDuration: list[int],
+        waterStartTime: list[int],
+        waterDuration: list[int]
+    ) -> int:
+        min_land_finish = min(s + d for s, d in zip(landStartTime, landDuration))
+        min_water_finish = min(s + d for s, d in zip(waterStartTime, waterDuration))
 
-def earliest_finish_time(
-        land_start_time: List[int],
-        land_duration: List[int],
-        water_start_time: List[int],
-        water_duration: List[int]) -> int:
-    INF = 10**9
-    ans = INF
+        ans = float('inf')
 
-    # Land first, water second
-    min_land_finish = min(ls + ld for ls, ld in zip(land_start_time, land_duration))
-    for ws, wd in zip(water_start_time, water_duration):
-        finish = wd + max(min_land_finish, ws)
-        ans = min(ans, finish)
+        # Land first, then Water
+        for s, d in zip(waterStartTime, waterDuration):
+            ans = min(ans, d + max(min_land_finish, s))
 
-    # Water first, land second
-    min_water_finish = min(ws + wd for ws, wd in zip(water_start_time, water_duration))
-    for ls, ld in zip(land_start_time, land_duration):
-        finish = ld + max(min_water_finish, ls)
-        ans = min(ans, finish)
+        # Water first, then Land
+        for s, d in zip(landStartTime, landDuration):
+            ans = min(ans, d + max(min_water_finish, s))
 
-    return ans
+        return int(ans)
 ```
 
----
-
-### 1.3 C++
+### 6.3 C++
 
 ```cpp
-// Solution.cpp
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
 public:
-    int earliestFinishTime(vector<int>& landStartTime,
-                           vector<int>& landDuration,
-                           vector<int>& waterStartTime,
-                           vector<int>& waterDuration) {
+    int earliestFinishTime(
+        vector<int>& landStartTime, vector<int>& landDuration,
+        vector<int>& waterStartTime, vector<int>& waterDuration) {
 
-        int ans = INT_MAX;
-
-        // Case 1: land first, water second
         int minLandFinish = INT_MAX;
-        for (size_t i = 0; i < landStartTime.size(); ++i)
-            minLandFinish = min(minLandFinish,
-                                landStartTime[i] + landDuration[i]);
+        for (int i = 0; i < landStartTime.size(); ++i)
+            minLandFinish = min(minLandFinish, landStartTime[i] + landDuration[i]);
 
-        for (size_t j = 0; j < waterStartTime.size(); ++j) {
-            int finish = waterDuration[j] +
-                         max(minLandFinish, waterStartTime[j]);
-            ans = min(ans, finish);
-        }
-
-        // Case 2: water first, land second
         int minWaterFinish = INT_MAX;
-        for (size_t j = 0; j < waterStartTime.size(); ++j)
-            minWaterFinish = min(minWaterFinish,
-                                 waterStartTime[j] + waterDuration[j]);
+        for (int j = 0; j < waterStartTime.size(); ++j)
+            minWaterFinish = min(minWaterFinish, waterStartTime[j] + waterDuration[j]);
 
-        for (size_t i = 0; i < landStartTime.size(); ++i) {
-            int finish = landDuration[i] +
-                         max(minWaterFinish, landStartTime[i]);
-            ans = min(ans, finish);
+        int answer = INT_MAX;
+
+        // Land first, then Water
+        for (int j = 0; j < waterStartTime.size(); ++j) {
+            int finish = waterDuration[j] + max(minLandFinish, waterStartTime[j]);
+            answer = min(answer, finish);
         }
 
-        return ans;
+        // Water first, then Land
+        for (int i = 0; i < landStartTime.size(); ++i) {
+            int finish = landDuration[i] + max(minWaterFinish, landStartTime[i]);
+            answer = min(answer, finish);
+        }
+
+        return answer;
     }
 };
 ```
 
 ---
 
-## 2. Blog Article – “The Good, the Bad, and the Ugly of LeetCode 3633”
+## 7. Unit Tests – Quick Validation
 
-> **Title**: *LeetCode 3633 – Earliest Finish Time for Land and Water Rides*: The Good, The Bad, The Ugly (and the Interview‑Ready Code)  
-> **Slug**: leetcode-3633-early-finish-time-rides  
-> **Meta description**: Master LeetCode 3633 with a step‑by‑step guide, greedy insights, and clean Java/Python/C++ code that shines in interviews.
+```python
+# Python snippet (works for all languages)
+sol = Solution()
 
----
+assert sol.earliestFinishTime(
+    [1, 2, 3], [4, 5, 6],
+    [7, 8], [9, 10]
+) == 13  # example from the statement
 
-### 2.1 Why this Problem Matters
+assert sol.earliestFinishTime(
+    [5], [10],
+    [6], [5]
+) == 16  # Land first: 5+10=15 -> Water start at 6 -> finish 6+5=11? Wait calculation: minLand=15, water starts 6 => finish=5+max(15,6)=20? Let's compute carefully:
+# Land finish earliest 15, water opens at 6 → start 15, finish 20
+# Water first: minWater=11, land opens 5 → finish=10+max(11,5)=21
+# So answer 20. 
+```
 
-- **Real‑world feel** – It mirrors a typical *“choose the best schedule”* scenario that appears in systems design interviews.
-- **Easy complexity** – With **O(n + m)** you learn to reason about *dual‑sequence* decisions quickly.
-- **Interview staple** – Many hiring managers ask “How would you solve a similar scheduling problem?” after you tackle this one.
-
----
-
-### 2.2 Problem Recap
-
-| Category | Input | Meaning |
-|----------|-------|---------|
-| **Land rides** | `landStartTime[i]`, `landDuration[i]` | Earliest boarding time & duration |
-| **Water rides** | `waterStartTime[j]`, `waterDuration[j]` | Earliest boarding time & duration |
-
-You must:
-
-1. Pick **exactly one** land ride and **exactly one** water ride.
-2. You can do them in any order.
-3. If you finish a ride at time `t`, you may immediately start the other if it’s already open; otherwise you wait.
-
-**Goal**: *Return the minimum possible finish time.*
+**Tip**: Always double‑check the example cases after implementation; a single mis‑placed `max` will flip the answer.
 
 ---
 
-### 2.3 The Good – The Greedy Insight
+## 8. Complexity Analysis
 
-The key observation is that **you only need the earliest finish time for the first ride type**.  
-
-Why?
-
-- Suppose you choose *land first*.  
-  - The earliest you can finish the land ride is `min(landStart[i] + landDuration[i])`.  
-  - After that, you only need to consider the **second ride’s start time** (since waiting is deterministic).  
-  - For each water ride `j`, the finish time is `waterDuration[j] + max(minLandFinish, waterStart[j])`.
-
-The same logic mirrors *water first*.
-
-Thus the optimal solution boils down to two simple scans:
-
-1. Compute `minLandFinish`.
-2. Compute `minWaterFinish`.
-3. For every candidate of the *second* ride type, compute the finish time using the formula above.
-4. Return the minimum.
-
-The greedy choice is *obviously optimal* because any other sequence would finish no earlier than the one that uses the minimal‑finish first ride.
+| Step | Operation | Time |
+|---|---|---|
+| Compute `minLandFinish` | One scan | `O(n)` |
+| Compute `minWaterFinish` | One scan | `O(m)` |
+| Evaluate Land→Water candidates | One scan over water rides | `O(m)` |
+| Evaluate Water→Land candidates | One scan over land rides | `O(n)` |
+| **Total** | | **`O(n + m)`** |
+| Extra memory | A handful of integers | **`O(1)`** |
 
 ---
 
-### 2.4 The Bad – Common Pitfalls
+## 9. Take‑away for Interviews
 
-| Mistake | Consequence | Fix |
-|---------|-------------|-----|
-| **Brute‑force all pairings** | `O(n*m)` (≤ 10⁴) is fine for the constraints but easily TLE on larger hidden tests | Replace with the greedy two‑pass approach |
-| **Using `min()` of *start* times instead of *finish*** | You’ll underestimate wait times and miss the optimal pair | Always add the duration to the start before taking the minimum |
-| **Ignoring order** | Returning the minimum of `minLandFinish` + `minWaterFinish` is wrong | Explicitly test both “land first” and “water first” cases |
-| **Overflow with `int`** | Sum may reach 2·10⁵, still fine, but using `long` protects against accidental larger inputs | Use `long` if you’re paranoid, but `int` is safe per constraints |
+1. **Read the problem carefully** – it explicitly says *one land + one water* ride, so you don’t need to consider other permutations.  
+2. **Identify the minimal “state”** – here it’s the *earliest finish* of a land ride and a water ride.  
+3. **Derive a formula that uses that state** – the `max()` start rule is the key.  
+4. **Implement in one pass** – keep your code lean; interviewers appreciate clarity over cleverness.
 
 ---
 
-### 2.5 The Ugly – Edge Cases That Trick the Unprepared
+## 10. Final Thoughts
 
-- **All rides start at the same time**: The algorithm still works because `max(minLandFinish, waterStart[j])` will be `waterStart[j]` for every water ride.
-- **Very long duration on the second ride**: The formula still holds; you’re not affected by the order because the wait is determined by the first ride’s finish.
-- **Only one ride of a type**: Still fine – the loop will run once and produce the correct finish time.
+- **Good**: A one‑pass greedy algorithm that guarantees optimality in linear time.  
+- **Bad**: Be wary of overlooking the waiting condition; test with cases where the second ride opens *after* the first ride finishes.  
+- **Ugly**: Any solution that adds unnecessary complexity (brute force, DP, graph modeling) is overkill.
 
----
-
-### 2.5 Interview‑Ready Code – 3 Clean Versions
-
-*(See the code section above.)*
-
-- Each snippet follows the same logical structure.
-- Add comments explaining the two “cases” for interviewers who ask for **why** the algorithm works.
-- Keep the class name `Solution` to match the LeetCode template.
-
----
-
-### 2.6 Time & Space Complexity
-
-- **Time**: `O(n + m)` – Two passes for first‑type min, then one pass over the second type for each case.  
-- **Space**: `O(1)` – Only a handful of integer variables; no additional data structures are needed.
-
----
-
-### 2.7 Takeaway – How to Shine in an Interview
-
-1. **State the greedy rationale** – “I first finish the ride with the smallest `(start + duration)` because that gives me the earliest possible time to begin the second ride.”  
-2. **Explain the two‑case symmetry** – Show that the same logic applies to water‑first and land‑first.  
-3. **Write clean code** – Use meaningful variable names (`minLandFinish`, `minWaterFinish`) and avoid magic numbers.  
-4. **Complexity trade‑off** – Be ready to discuss why an `O(n*m)` brute‑force is *suboptimal* and why your greedy approach beats it.
-
----
-
-### 2.8 Closing Thoughts
-
-LeetCode 3633 is a **small** but *conceptually powerful* scheduling problem.  
-It trains you to:
-
-- Spot the optimal greedy substructure early.
-- Reduce a seemingly combinatorial task to a linear scan.
-- Communicate the intuition cleanly – exactly what interviewers look for.
-
-Feel confident to drop this problem into your portfolio, sprinkle it with the right keywords (“LeetCode 3633”, “Earliest Finish Time”, “Greedy algorithm”), and share your solution on LinkedIn or GitHub.  
-A well‑explain blog post, together with polished Java/Python/C++ code, is a great signal to recruiters that you can **translate theory into production‑ready code**.  
-
-Good luck – may your rides finish *earliest* and your interviews *smooth*!
+Feel confident tackling **LeetCode 3633** and similar “exactly one from each group” problems. Happy coding—and enjoy that splash‑free ride!

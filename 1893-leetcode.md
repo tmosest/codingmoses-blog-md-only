@@ -7,110 +7,99 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
+        ## 🚀 LeetCode 1893 – “Check if All the Integers in a Range Are Covered”
 
-# Check If All the Integers in a Range Are Covered  
-*LeetCode 1893 – Java, Python & C++ Solutions + SEO‑Optimised Interview Guide*
+| Language | Time | Space |
+|----------|------|-------|
+| **Java** | O(n + m) | O(m) |
+| **Python** | O(n + m) | O(m) |
+| **C++** | O(n + m) | O(m) |
 
----
+> *n = number of ranges, m = size of the integer universe (≤ 50)*
 
-## TL;DR  
-
-- **Problem** – Determine whether every integer in `[left, right]` is covered by at least one of the given inclusive intervals.
-- **Optimal Solution** – A *difference array* (prefix‑sum line sweep) that runs in **O(n + 50)** time and **O(1)** extra space.
-- **Why It Rocks** – Simplicity, linear time, constant‑space, and a perfect interview demo of *range counting* techniques.
-
-> **Want to land that software‑engineering job?** Master this pattern and showcase it on your portfolio or GitHub. The same idea powers interval‑covering, segment trees, and sweep‑line problems that recruiters love.
+> **Why this matters** – This “cover‑check” problem is a *classic* for coding‑interviews, especially for roles that focus on **array manipulation, prefix sums, and difference arrays**. Mastering it demonstrates a clean O(1) domain solution that scales to large inputs.
 
 ---
 
-## 1. Problem Statement (LeetCode 1893)
+## 1️⃣ Problem Summary
 
-> You’re given a 2‑D integer array `ranges` and two integers `left` and `right`.  
-> `ranges[i] = [start_i, end_i]` represents an **inclusive** interval.  
-> Return `true` if **every** integer in `[left, right]` is covered by at least one interval in `ranges`. Otherwise return `false`.
+You’re given:
 
-**Constraints**
+- `ranges`: a list of inclusive integer intervals `[[start1,end1], …]`.
+- Two bounds `left` and `right`.
 
-| Variable | Range |
-|----------|-------|
-| `ranges.length` | 1 – 50 |
-| `start_i` | 1 – 50 |
-| `end_i` | `start_i` – 50 |
-| `left`, `right` | 1 – 50 |
-
-> *Because the universe is tiny (1‑50), even an O(2500) brute force works. But we’ll build an O(n) solution that scales.*
+**Goal:** Return `true` iff every integer `x` with `left ≤ x ≤ right` lies inside at least one of the provided intervals. Otherwise return `false`.
 
 ---
 
-## 2. Intuition & Key Observation
+## 2️⃣ Brute‑Force Solution (Naïve)
 
-1. **Covering a single point** – A point `x` is covered iff there exists an interval with `start ≤ x ≤ end`.
-2. **From intervals to an array** – We can translate the set of intervals into an array `cover[1…50]` where `cover[x] > 0` means *x is covered*.
-3. **Incremental updates** – Updating every point inside each interval would be *O(n · m)*.  
-   Instead, use a **difference array** (also called a *lazy‑update* or *delta array*).  
-   * Increment `diff[start]` by 1.  
-   * Decrement `diff[end+1]` by 1.  
-   * The running prefix sum of `diff` gives the active coverage count at each position.
+Check each integer in `[left,right]` against all intervals.
 
-Because the domain is fixed (1‑50), the array size is only 52 (index 0 unused, 51 handles `end+1` when `end==50`).
-
----
-
-## 3. Algorithm (Line‑Sweep / Difference Array)
-
-```text
-1. Create diff[0 … 51] = {0}
-2. For each [l, r] in ranges
-       diff[l]   += 1
-       diff[r+1] -= 1            // r+1 ≤ 51 always
-3. cover = 0
-   For i = 1 to 50
-       cover += diff[i]           // prefix sum – how many intervals cover i
-       If left ≤ i ≤ right AND cover == 0
-           return false           // a gap found
-4. return true
+```python
+def is_covered_bruteforce(ranges, left, right):
+    for x in range(left, right+1):
+        if not any(start <= x <= end for start, end in ranges):
+            return False
+    return True
 ```
 
-**Why it works**
-
-- After step 2, `diff` stores “start” and “end+1” markers.
-- The prefix sum `cover` is exactly the number of intervals covering index `i`.
-- If any integer in `[left, right]` has `cover == 0`, it is uncovered → return `false`.
-- If we finish the loop, every integer in `[left, right]` was covered → return `true`.
+- **Time:** `O((right-left+1) * n)` – worst‑case 2500×50 = 125k operations (acceptable for LeetCode but not elegant).
+- **Space:** `O(1)`.
 
 ---
 
-## 4. Complexity Analysis
+## 3️⃣ Optimal Solution – Difference Array (Line Sweep)
 
-| Metric | Calculation | Result |
-|--------|-------------|--------|
-| **Time** | `O(#ranges)` updates + `O(50)` scan | `O(n)` (≤ O(100)) – effectively constant |
-| **Space** | `diff[52]` | `O(1)` (constant) |
+Because the universe is bounded (`1..50`), we can maintain a *difference array* that records when a coverage starts and stops.
 
-> *The solution scales to 10⁵ intervals if the domain grows to 10⁵. The same pattern is used in sweep‑line and segment‑tree algorithms.*
+### 3.1 Intuition
 
----
+1. For every interval `[l, r]`, increment `diff[l]` by `1`.
+2. Decrement `diff[r+1]` by `1` (since `r` is inclusive).
+3. Prefix‑sum `diff` gives the number of active intervals at each integer.
+4. While scanning, if we hit a number in `[left,right]` with 0 active intervals, the answer is `false`.
 
-## 5. Code Implementations
+### 3.2 Code
 
-### 5.1 Java
+#### Python
+
+```python
+def is_covered(ranges: list[list[int]], left: int, right: int) -> bool:
+    """
+    O(n + m) time, O(m) space
+    m == 51 because 1 <= start,end <= 50
+    """
+    diff = [0] * 52  # indices 1..50; 51 used for r+1 when r==50
+
+    for l, r in ranges:
+        diff[l] += 1
+        diff[r + 1] -= 1
+
+    active = 0
+    for i in range(1, 51):
+        active += diff[i]
+        if left <= i <= right and active == 0:
+            return False
+    return True
+```
+
+#### Java
 
 ```java
 public class Solution {
     public boolean isCovered(int[][] ranges, int left, int right) {
-        // 1‑based indices up to 50; index 51 is the guard for r+1
-        int[] diff = new int[52];
+        int[] diff = new int[52];          // indices 1..50, 51 for r+1
         for (int[] r : ranges) {
-            diff[r[0]]++;          // start
-            diff[r[1] + 1]--;      // end + 1
+            diff[r[0]]++;                  // start of coverage
+            diff[r[1] + 1]--;              // end of coverage
         }
 
-        int cover = 0;
+        int active = 0;
         for (int i = 1; i <= 50; i++) {
-            cover += diff[i];
-            if (i >= left && i <= right && cover == 0) {
-                return false;      // uncovered point found
+            active += diff[i];
+            if (i >= left && i <= right && active == 0) {
+                return false;
             }
         }
         return true;
@@ -118,158 +107,224 @@ public class Solution {
 }
 ```
 
-> *Java 17+, compile with `javac`, run on LeetCode.*
-
-### 5.2 Python
-
-```python
-class Solution:
-    def isCovered(self, ranges: List[List[int]], left: int, right: int) -> bool:
-        diff = [0] * 52
-        for l, r in ranges:
-            diff[l] += 1
-            diff[r + 1] -= 1
-
-        cover = 0
-        for i in range(1, 51):
-            cover += diff[i]
-            if left <= i <= right and cover == 0:
-                return False
-        return True
-```
-
-> *Python 3.9+, run locally or on LeetCode.*
-
-### 5.3 C++
+#### C++
 
 ```cpp
 class Solution {
 public:
     bool isCovered(vector<vector<int>>& ranges, int left, int right) {
-        int diff[52] = {};          // zero‑initialized
-        for (const auto &r : ranges) {
-            diff[r[0]]++;           // start
-            diff[r[1] + 1]--;       // end + 1
+        int diff[52] = {};                // 1..50, 51 for r+1
+
+        for (auto &r : ranges) {
+            diff[r[0]]++;                  // start
+            diff[r[1] + 1]--;              // end+1
         }
 
-        int cover = 0;
+        int active = 0;
         for (int i = 1; i <= 50; ++i) {
-            cover += diff[i];
-            if (i >= left && i <= right && cover == 0) return false;
+            active += diff[i];
+            if (i >= left && i <= right && active == 0) {
+                return false;
+            }
         }
         return true;
     }
 };
 ```
 
-> *C++17, compile with `g++ -std=c++17`.*
+### 3.3 Complexity
+
+- **Time:** `O(n + 50)` ≈ `O(n)` (linear in the number of ranges).
+- **Space:** `O(52)` ≈ `O(1)` – constant extra memory.
 
 ---
 
-## 6. Edge Cases & Why They Pass
-
-| Edge Case | Reasoning |
-|-----------|-----------|
-| **`left == right`** | The loop checks that single integer. |
-| **Intervals touching at boundaries** (`[1,10]`, `[10,20]`) | `diff[10]` is incremented twice and decremented once at 11, so `cover[10]` remains >0. |
-| **No intervals cover a point** | `cover` stays 0, immediate `false`. |
-| **All intervals cover entire domain** | `cover` never 0 in `[left,right]`. |
-| **Intervals outside 1‑50** | Not allowed by constraints. |
-
----
-
-## 7. Alternative Approaches
-
-| Approach | Complexity | When to Use |
-|----------|------------|-------------|
-| **Brute force** – Check each `x` against all intervals | `O(n · (right-left+1))` | Very small ranges (≤ 10) |
-| **Sorting & Merging** – Sort intervals, merge, then sweep | `O(n log n)` | When domain size is huge but intervals are few |
-| **Segment Tree / BIT** – Range add, point query | `O(log M)` per operation | Dynamic queries, updates |
-| **Bitset** – Mark bits for each covered integer | `O(n · size)` but space‑heavy | When 64‑bit mask covers full range |
-
-The difference‑array method is the sweet spot for this problem’s constraints.
-
----
-
-## 8. The Good, the Bad, and the Ugly
+## 4️⃣ Discussion – Good, Bad & Ugly
 
 | Aspect | Good | Bad | Ugly |
 |--------|------|-----|------|
-| **Conceptual Simplicity** | One-pass prefix sum; easy to explain | Requires thinking about “end+1” trick | Forgetting to handle the guard (index 51) → off‑by‑one bugs |
-| **Space Efficiency** | Constant extra memory | None | None |
-| **Scalability** | Linear in number of intervals | Not adaptive to *updates* (static problem) | Using a large array when domain is huge → wasteful |
-| **Interview Presence** | Demonstrates knowledge of sweep‑line and delta updates | Might be seen as too “lazy” if interviewer wants a data‑structure | Over‑engineering with a segment tree for a 50‑size problem |
-| **Testing** | One test case fails → fail fast | None | None |
+| **Concept** | Uses a *difference array* – a classic linear‑time trick | Requires knowledge of line‑sweep / prefix sum (may be unfamiliar) | Over‑engineering for a tiny domain (≤ 50) – could just mark a boolean array |
+| **Implementation** | Extremely concise; only two loops | Index `r+1` may look odd; off‑by‑one bugs common | Hard‑to‑debug when universe changes; need to resize array |
+| **Performance** | O(1) space, O(n) time – optimal | Brute force is O((right-left+1)*n) – slow for large ranges | For `m` huge (e.g., 10^9) this approach fails; need a sweep line over events |
+| **Readability** | Easy for seasoned engineers | Might be intimidating for beginners | If the interviewer expects a “sort‑intervals” solution, this diff‑array might be seen as overkill |
 
-> **Tip** – In an interview, show the “difference array” idea first, then discuss how it generalises to larger domains or dynamic scenarios.
-
----
-
-## 9. Interview Tips
-
-1. **Show the Pattern**  
-   > “I’m using a difference array. Think of it like a *lazy‑update* on a 1‑D array.”  
-   > This instantly signals you understand *interval add & prefix query* patterns.
-
-2. **Mention Sweep‑Line**  
-   > “Conceptually it’s a sweep‑line: I mark where coverage starts and ends.”  
-   > Recruiters love sweep‑line because it’s a general tool.
-
-3. **Discuss Edge Cases**  
-   > “We add a guard at 51 to handle `end+1` when `end==50`. This prevents array overrun.”  
-   > Shows attention to detail.
-
-4. **Compare Complexity**  
-   > “My solution runs in O(n) time and O(1) space, far better than a brute‑force O(n · m).”  
-   > Demonstrates analytical thinking.
-
-5. **Portfolio**  
-   - Push the Java/Python/C++ code to a public repo.  
-   - Add a README explaining the algorithm (copy this guide).  
-   - Tag it with `LeetCode`, `interval-covering`, `algorithm`.
-
-6. **Practice Variants**  
-   - Try the same pattern on “Maximum Overlap of Intervals” (LeetCode 435).  
-   - Write a dynamic version (range add, point query) using Fenwick Tree.
+> **Takeaway** – Master the *difference array* trick; it’s a go‑to pattern for range‑update/count problems. In interviews, you can start with a clear explanation of the idea, then implement the constant‑size array version. If the interviewer pushes for a generic solution (unbounded universe), you can switch to an event‑based sweep line.
 
 ---
 
-## 9. How to Make This Post Job‑Ready
+## 5️⃣ Test Cases
 
-1. **Add to GitHub** – `leetcodes/1893-Check-If-All-Intervals-Are-Covered`.  
-2. **CI/CD** – Add unit tests for the edge cases above.  
-3. **Docs** – Markdown file with this explanation + code.  
-4. **Blog** – Publish on dev.to / Medium with the title *“Check if All the Integers in a Range Are Covered – LeetCode 1893”*.  
-5. **LinkedIn** – Post the article, tag recruiters, and share your solution.
+```python
+# Example 1
+assert is_covered([[1,2],[3,4],[5,6]], 2, 5) == True
+
+# Example 2
+assert is_covered([[1,10],[10,20]], 21, 21) == False
+
+# Edge: overlapping intervals
+assert is_covered([[1,3],[2,5],[4,6]], 1, 6) == True
+
+# Edge: single number not covered
+assert is_covered([[1,5]], 6, 6) == False
+
+# Full coverage
+assert is_covered([[1,50]], 1, 50) == True
+```
 
 ---
 
-## 9. Conclusion
+## 6️⃣ SEO‑Optimized Blog Article
 
-- The **difference array** is a *one‑liner* algorithm for *range covering* problems.  
-- It runs in linear time, uses constant space, and is trivial to implement in Java, Python, and C++ – all three languages are in high demand for software‑engineering interviews.  
-- Mastering this pattern will let you ace LeetCode 1893 *and* impress interviewers who ask similar interval or sweep‑line questions.
+> ### “How to Crack LeetCode 1893 in 5 Minutes – A Java/Python/C++ Guide for Job Interviews”
 
-> **Next steps**  
-> 1. Implement the solution in your preferred language.  
-> 2. Add unit tests for all edge cases.  
-> 3. Publish a blog post (this one) and the code on GitHub.  
-> 4. Practice the pattern on other interval problems (e.g., LeetCode 435, 452).  
+---
 
-Happy coding, and may your next interview start with a *true*!
+#### 🔎 Keywords
 
----  
+- LeetCode 1893
+- Check if All the Integers in a Range Are Covered
+- coding interview
+- difference array
+- prefix sum
+- line sweep
+- algorithm interview question
+- Java solution LeetCode
+- Python LeetCode
+- C++ coding interview
 
-**SEO Metadata**  
+---
 
-- **Title**: Check If All the Integers in a Range Are Covered – LeetCode 1893 Java, Python & C++ Solutions  
-- **Meta Description**: Master LeetCode 1893 with a constant‑space line‑sweep algorithm. See Java, Python, and C++ code, complexity analysis, edge cases, and interview tips.  
-- **Keywords**: LeetCode, Java, Python, C++, interval covering, difference array, prefix sum, sweep line, coding interview, job interview, software engineering, algorithm, interview preparation.  
+#### 📄 Article
 
----  
+---
 
-**Author** – *Your Name* | *Software Engineer* | *Open Source Enthusiast*  
+### 1. Introduction
 
----  
+In software‑engineering interviews, you’ll often see questions that ask whether *every integer in a range is covered by a set of intervals*. LeetCode 1893 is the canonical example. Though the constraints look tiny (`1 ≤ start ≤ end ≤ 50`), the problem is a **gateway** to core algorithm concepts: prefix sums, difference arrays, and line‑sweep. Mastering it not only boosts your LeetCode rating but also signals to recruiters that you understand efficient array manipulation.
 
-Happy interviewing! 🚀
+---
+
+### 2. Problem Recap
+
+You receive an array of inclusive intervals and two bounds `left` and `right`. Return `true` iff each integer `x` with `left ≤ x ≤ right` lies inside at least one interval. This is a *coverage* test: `[[1,2],[3,4],[5,6]]` covers `[2,5]` → `true`; `[[1,10],[10,20]]` does **not** cover `21` → `false`.
+
+---
+
+### 3. Why a Naïve Approach is Bad
+
+A double loop that tests each integer against every interval is simple, but it’s **O((right‑left+1) × n)**. On LeetCode you might still pass (125 k operations), but in an interview you’ll spend precious seconds on a *slightly un‑optimal* solution. Recruiters want to see that you’ll think **line‑sweep** before “just brute‑forcing”.
+
+---
+
+### 3.1 Optimal Strategy: Difference Array
+
+| Step | Action | Rationale |
+|------|--------|-----------|
+| 1 | **Increment** `diff[l]` by `1` for every interval `[l,r]`. | Marks the *start* of coverage. |
+| 2 | **Decrement** `diff[r+1]` by `1`. | Since the interval is inclusive, coverage ends *after* `r`. |
+| 3 | Compute a prefix sum over `diff`. | Gives the count of active intervals at each integer. |
+| 4 | While scanning, if an integer in `[left,right]` has 0 active intervals → `false`. | Immediate detection of a gap. |
+
+> **Why it’s O(n + m) vs O((right-left+1)*n)** – We *pre‑aggregate* all starts/ends in a single pass, then a single linear pass over the 51‑slot array (constant). No repeated checks against each interval.
+
+---
+
+### 4. Implementation Highlights
+
+#### Java
+
+```java
+public boolean isCovered(int[][] ranges, int left, int right) { … }
+```
+
+> • `int[] diff = new int[52];` – constant memory.  
+> • Two loops: one to fill `diff`, another to scan and early‑exit.
+
+#### Python
+
+```python
+def is_covered(ranges, left, right): … 
+```
+
+> • `diff = [0] * 52` – Python list is memory‑efficient for small domains.  
+> • Use `any(start <= x <= end for start, end in ranges)` in the naive version to see the difference.
+
+#### C++
+
+```cpp
+bool isCovered(vector<vector<int>>& ranges, int left, int right) { … }
+```
+
+> • Static array `int diff[52]` – zero‑initialization in C++ is trivial.  
+> • Fastest compile‑time due to stack allocation.
+
+---
+
+### 5. What Interviewers Really Look For
+
+| Hint | Why |
+|------|-----|
+| Explain the *difference array* in plain English before coding. | Shows you understand the “prefix‑sum trick” and can articulate it. |
+| Mention that `r+1` is safe because the universe is bounded. | Avoids “off‑by‑one” surprises. |
+| Offer an alternate “sort‑intervals” solution if asked. | Flexibility: you can pivot to a sweep line over events for larger universes. |
+
+> **Pro tip:** If the interviewee’s first solution is *naïve*, quickly pivot to the difference array. Recruiters love a candidate who can **recognize an opportunity for optimization**.
+
+---
+
+### 6. Complexity Cheat Sheet
+
+| Language | Time | Space |
+|----------|------|-------|
+| Java | **O(n + m)** → **O(n)** | **O(m)** → **O(1)** |
+| Python | **O(n + m)** | **O(m)** |
+| C++ | **O(n + m)** | **O(m)** |
+
+> *n = # of ranges (≤ 50), m = size of universe (≤ 51).*
+
+---
+
+### 7. Final Thoughts
+
+- **LeetCode 1893** is not just a range‑check – it’s a *signal* that you grasp core data‑structure tricks.
+- The difference‑array pattern is **portable**: use it for “range addition”, “range sum queries”, and many other interview staples.
+- In a coding‑interview, present the idea first, then deliver the constant‑size array implementation. If the recruiter asks about scalability, explain how the same concept can be extended to a *sweep‑line* over event points.
+
+---
+
+### 8. Ready to Nail Your Next Job Interview?
+
+- Write the solution in **Java** (static typing + OOP style).
+- Test it in **Python** (concise, readable).
+- Validate with **C++** (performance‑oriented).
+
+Add these solutions to your portfolio, push them to GitHub, and when recruiters search “LeetCode 1893 Java”, your code will pop up at the top. Good luck with your interview prep! 🚀
+
+---
+
+### 📌 TL;DR
+
+- **Use a difference array** – 2 loops, constant memory, linear time.
+- **Explain the logic** clearly; recruiters love a well‑structured answer.
+- **Include edge‑case tests** – it shows you’ve thought through “bad” and “ugly” scenarios.
+
+--- 
+
+#### 📥 Download All Code
+
+```bash
+# Java
+curl -o Solution.java https://pastebin.com/raw/xxxxxxxx
+
+# Python
+curl -o solution.py https://pastebin.com/raw/xxxxxxxx
+
+# C++
+curl -o solution.cpp https://pastebin.com/raw/xxxxxxxx
+```
+
+(Replace `xxxxxxxx` with the real Pastebin hash or your own hosted copy.)
+
+--- 
+
+✅ *Now you’re ready to answer LeetCode 1893 like a pro, impress recruiters, and land that software‑engineering job.*

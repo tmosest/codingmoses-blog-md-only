@@ -7,52 +7,98 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. Code Solutions
+        ## 1. Problem – LeetCode 960: *Delete Columns to Make Sorted III*
 
-Below are clean, production‑ready implementations of the **LeetCode 960 – Delete Columns to Make Sorted III** solution in **Java**, **Python**, and **C++**.  
-All three use the same algorithmic idea (Longest Increasing Subsequence on columns) but are written in idiomatic style for their respective languages.
+**Goal**  
+Given an array of `n` strings of equal length `m`, delete the minimum number of columns so that **every** remaining string is in non‑decreasing lexicographic order (i.e. its characters are sorted from left to right).
+
+| Sample | Input | Output | Reasoning |
+|--------|-------|--------|-----------|
+| 1 | `["babca","bbazb"]` | `3` | Delete columns `0,1,4` → `["bc","az"]`. |
+| 2 | `["edcba"]` | `4` | Any column left would break the order. |
+| 3 | `["ghi","def","abc"]` | `0` | All rows already sorted. |
+
+Constraints  
+```
+1 ≤ n ≤ 100
+1 ≤ m ≤ 100
+strs[i] consists of lowercase English letters
+```
 
 ---
 
-### 1.1 Java (Java 17)
+## 2. Intuition – Longest Valid Column Subsequence
+
+If we keep a subset of columns, they must respect the ordering rule **for all rows**.  
+Think of each column as a “character” and we want the longest subsequence of columns that is **compatible**:
+
+```
+Column j can precede column i
+⇔ for every row r: strs[r][j] ≤ strs[r][i]
+```
+
+If we find the longest such subsequence (call it L), then the minimal deletions are `m – L`.
+
+The problem is essentially the **Longest Increasing Subsequence (LIS)** on the set of columns with a custom comparison.  
+Because `m ≤ 100`, a simple `O(m² · n)` dynamic‑programming solution is fast enough.
+
+---
+
+## 3. Algorithm (Dynamic Programming)
+
+```
+dp[i] = length of the longest valid subsequence that ends at column i
+answer = 0
+
+for i = 0 … m-1
+    dp[i] = 1                // subsequence of length 1 (just column i)
+    for j = 0 … i-1
+        if column j can precede column i   // check all rows
+            dp[i] = max(dp[i], dp[j] + 1)
+    answer = max(answer, dp[i])
+
+return m - answer
+```
+
+*Checking “column j can precede column i”*  
+Loop over all rows `r`.  
+If any `strs[r][j] > strs[r][i]`, the pair is invalid → break.  
+If all rows pass, the pair is valid.
+
+Time complexity: `O(m² · n)`  
+Space complexity: `O(m)`
+
+---
+
+## 4. Reference Implementations
+
+### 4.1 Java
 
 ```java
 import java.util.*;
 
 public class Solution {
-    /**
-     *  LeetCode 960. Delete Columns to Make Sorted III
-     *  Returns the minimum number of columns that must be deleted
-     *  so that every string (row) in the given array is lexicographically sorted.
-     *
-     *  @param strs array of equal‑length lowercase strings
-     *  @return minimal deletions required
-     */
     public int minDeletionSize(String[] strs) {
         int n = strs.length;          // number of rows
         int m = strs[0].length();     // number of columns
 
-        // dp[i] = length of longest valid subsequence that ends at column i
         int[] dp = new int[m];
-        Arrays.fill(dp, 1);           // every single column is valid on its own
-        int best = 1;                 // best LIS length found so far
+        int best = 0;
 
         for (int i = 0; i < m; i++) {
+            dp[i] = 1;                // at least this column alone
             for (int j = 0; j < i; j++) {
-                if (isNonDecreasing(strs, j, i)) {   // column j <= column i in all rows
+                if (canPrecede(strs, j, i)) {
                     dp[i] = Math.max(dp[i], dp[j] + 1);
                 }
             }
             best = Math.max(best, dp[i]);
         }
-        // columns that are not part of the LIS must be deleted
-        return m - best;
+        return m - best;               // columns to delete
     }
 
-    /**
-     *  Checks whether every row satisfies strs[row][j] <= strs[row][i].
-     */
-    private boolean isNonDecreasing(String[] strs, int j, int i) {
+    /** Return true if column j can precede column i for all rows */
+    private boolean canPrecede(String[] strs, int j, int i) {
         for (String s : strs) {
             if (s.charAt(j) > s.charAt(i)) {
                 return false;
@@ -65,209 +111,250 @@ public class Solution {
 
 ---
 
-### 1.2 Python (Python 3.11)
-
-```python
-class Solution:
-    def minDeletionSize(self, strs: List[str]) -> int:
-        """Return the minimum number of columns to delete so that
-        each string (row) is lexicographically sorted."""
-        n, m = len(strs), len(strs[0])
-        dp = [1] * m          # longest subsequence ending at column i
-        best = 1
-
-        for i in range(m):
-            for j in range(i):
-                if all(strs[row][j] <= strs[row][i] for row in range(n)):
-                    dp[i] = max(dp[i], dp[j] + 1)
-            best = max(best, dp[i])
-
-        return m - best
-```
-
----
-
-### 1.3 C++ (C++17)
-
-```cpp
-#include <vector>
-#include <string>
-#include <algorithm>
-
-class Solution {
-public:
-    int minDeletionSize(std::vector<std::string>& strs) {
-        int n = strs.size();          // rows
-        int m = strs[0].size();       // columns
-
-        std::vector<int> dp(m, 1);    // LIS length ending at column i
-        int best = 1;
-
-        for (int i = 0; i < m; ++i) {
-            for (int j = 0; j < i; ++j) {
-                if (isNonDecreasing(strs, j, i)) {          // column j <= column i
-                    dp[i] = std::max(dp[i], dp[j] + 1);
-                }
-            }
-            best = std::max(best, dp[i]);
-        }
-        return m - best;
-    }
-
-private:
-    // True iff for all rows strs[row][j] <= strs[row][i]
-    bool isNonDecreasing(const std::vector<std::string>& strs, int j, int i) {
-        for (const auto& s : strs) {
-            if (s[j] > s[i]) return false;
-        }
-        return true;
-    }
-};
-```
-
----
-
-## 2. Blog Article – “Delete Columns to Make Sorted III: The Good, The Bad, and the Ugly”
-
-### 2.1 Meta‑Description  
-> Master LeetCode 960 – Delete Columns to Make Sorted III. Read the full guide with Java, Python, and C++ solutions, a deep‑dive algorithmic explanation, time‑space complexity, edge‑case pitfalls, and interview‑ready notes. Get your next coding interview job with this ultimate reference!
-
----
-
-### 2.2 Introduction  
-
-When preparing for a **software engineering interview**, one often encounters the *“delete columns”* family of problems on LeetCode. Among them, **LeetCode 960 – Delete Columns to Make Sorted III** is the hardest variant, and mastering it can significantly boost your algorithmic confidence.
-
-This post walks through **the good, the bad, and the ugly** of the problem, explains why a simple greedy approach fails, shows a clean dynamic‑programming solution, and offers practical interview‑tips. Bonus: we’ll give you full working code in **Java**, **Python**, and **C++** so you can copy‑paste, run, and learn.
-
----
-
-### 2.3 Problem Recap  
-
-You’re given an array `strs` of `n` equal‑length lowercase strings.  
-You may delete any subset of column indices. After deletion, **every remaining string must be lexicographically sorted** (i.e., each row’s characters are non‑decreasing from left to right).  
-Return the **minimum** number of columns that must be deleted.
-
-> Example  
-> `strs = ["babca","bbazb"]` → Delete columns `{0,1,4}` → Result: `["bc","az"]` (both rows sorted). Minimum deletions = **3**.
-
----
-
-### 2.4 The Good – Why the Problem Is Worth Solving  
-
-1. **Real‑world relevance**: The core idea is about *finding a longest non‑decreasing subsequence across multiple sequences*—a concept that appears in database column selection, bio‑informatics, and data compression.
-2. **Interview‑heavy**: It’s a *hard* LeetCode question, often used in tech‑company interview pipelines. Demonstrating a clear solution shows deep understanding of DP and LIS concepts.
-3. **Learning cross‑language transfer**: Solving the problem in Java, Python, and C++ showcases your ability to adapt algorithms across languages, a valuable interview skill.
-
----
-
-### 2.5 The Bad – Common Pitfalls and Misconceptions  
-
-| Pitfall | Why It Happens | Fix |
-|---------|----------------|-----|
-| **Greedy deletion** (delete every column where any row is decreasing) | Assumes local decisions are globally optimal. | Recognize that columns can “compensate” each other. |
-| **Treating the problem like LeetCode 944** (making entire array sorted) | The objective differs: we care about each row, not relative row order. | Restate the goal: *row‑wise* sortedness. |
-| **O(n·m²) DP with early break** | Misinterpreting the break condition leads to missing valid columns. | Verify the comparison for **all** rows before breaking. |
-| **Ignoring edge cases** (single string, all equal, strictly decreasing) | These test the boundaries of LIS logic. | Include unit tests covering `n==1`, `m==1`, and fully decreasing sequences. |
-
----
-
-### 2.6 The Ugly – Why a Simple O(n·m) Greedy Fails  
-
-A natural approach is to scan columns left‑to‑right, keep a column if it maintains non‑decreasing order for every row *given the previously kept columns*, else delete it.  
-This greedy works for LeetCode 944 (entire array sorted) but **fails for 960**.  
-
-**Counterexample**  
-```
-strs = ["cba", "abc"]
-```
-Greedy deletes column 0 (`'c'` vs `'a'` decreases), keeps column 1 (`'b'` vs `'b'` equal), deletes column 2 (`'a'` vs `'c'` decreases).  
-Resulting strings: `["b", "b"]` – still sorted, but we performed **2 deletions**.  
-Optimal solution keeps columns 0 and 2 (delete column 1), yielding `"ca"` and `"ac"` – both sorted with only **1 deletion**.  
-Thus, decisions in earlier columns can unlock better outcomes later.
-
----
-
-### 2.7 The Elegant Solution – LIS on Columns  
-
-**Idea**:  
-- View each column as a *vector* of characters, one per row.  
-- Find the **longest subsequence of columns** such that for every row, the characters are non‑decreasing.  
-- Minimum deletions = `total_columns - LIS_length`.
-
-**Dynamic Programming**  
-Let `dp[i]` be the length of the longest valid subsequence ending at column `i`.  
-Transition:
-```
-dp[i] = 1 (base case)
-for each j < i:
-    if column j <= column i in every row:
-        dp[i] = max(dp[i], dp[j] + 1)
-```
-Finally, `answer = m - max(dp)`.
-
-**Complexity**  
-- Time: `O(n · m²)` (n ≤ 100, m ≤ 100 → 1e6 operations, fine).  
-- Space: `O(m)` for the DP array.
-
----
-
-### 2.8 Code Walk‑through (Python)  
+### 4.2 Python
 
 ```python
 class Solution:
     def minDeletionSize(self, strs: List[str]) -> int:
         n, m = len(strs), len(strs[0])
         dp = [1] * m
-        best = 1
+        best = 0
 
         for i in range(m):
             for j in range(i):
-                if all(strs[row][j] <= strs[row][i] for row in range(n)):
+                if all(s[j] <= s[i] for s in strs):
                     dp[i] = max(dp[i], dp[j] + 1)
             best = max(best, dp[i])
 
         return m - best
 ```
 
-*Explanation*  
-- `all(...)` checks that the column at index `j` is **not greater** than column `i` for **every** row.  
-- `dp[i]` stores the length of the best subsequence that ends at column `i`.  
-- We update the global `best` to keep track of the overall longest subsequence.  
-- The answer is the number of columns that **cannot** be part of this subsequence.
+---
 
-The same logic applies verbatim to Java and C++—just adjust syntax and string access.
+### 4.3 C++
+
+```cpp
+class Solution {
+public:
+    int minDeletionSize(vector<string>& strs) {
+        int n = strs.size();
+        int m = strs[0].size();
+        vector<int> dp(m, 1);
+        int best = 0;
+
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < i; ++j) {
+                bool ok = true;
+                for (int r = 0; r < n; ++r) {
+                    if (strs[r][j] > strs[r][i]) { ok = false; break; }
+                }
+                if (ok) dp[i] = max(dp[i], dp[j] + 1);
+            }
+            best = max(best, dp[i]);
+        }
+        return m - best;
+    }
+};
+```
 
 ---
 
-### 2.9 Interview‑Ready Checklist  
+## 5. The Good, The Bad, The Ugly
 
-| ✅ | Item |
-|---|------|
-| ✅ | Understand the *row‑wise* sortedness requirement. |
-| ✅ | Explain why greedy fails with a concrete counterexample. |
-| ✅ | Derive the LIS‑on‑columns DP formulation. |
-| ✅ | State time/space complexity (`O(n·m²)` / `O(m)`). |
-| ✅ | Show how to implement in the language of the interview (Java, Python, C++). |
-| ✅ | Run edge‑case tests: single string, fully decreasing, all equal, mixed patterns. |
-| ✅ | Discuss possible optimizations (e.g., early break when a row breaks the condition). |
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Problem Understanding** | Clear: find minimal deletions → longest valid column subsequence | Mis‑reading “row” vs “column” ordering → wrong solution | Over‑optimizing with fancy data structures when `m ≤ 100` |
+| **Algorithm Choice** | Simple DP (`O(m²·n)`) is fast and easy to reason | More complex LIS with segment tree is unnecessary | Trying to use bitmasks or bitset DP → overkill |
+| **Edge Cases** | Handles `m = 1`, all rows already sorted | Forgetting to subtract from `m` → wrong answer | Not checking all rows for each pair → silent bugs |
+| **Coding Style** | Clean helper `canPrecede` improves readability | Inline loops become hard to debug | Mixing 0‑based and 1‑based indices → off‑by‑one errors |
+| **Testing** | Unit tests for samples, random cases | No tests → confidence low | Stress‑testing on 100x100 random data |
+| **Complexity** | Linearithmic in practice (tiny constants) | O(m³) DP would TLE | Memory blow‑up with `m²` matrix when not needed |
+
+**Takeaway:** Keep the solution simple, test thoroughly, and remember that the problem’s constraints allow a clean DP solution.
 
 ---
 
-### 2.10 Takeaway  
+## 6. SEO‑Optimized Blog Article
 
-- **LeetCode 960** is a *hard* question that forces you to think beyond greedy.  
-- The clean dynamic‑programming solution uses a classic **longest non‑decreasing subsequence** idea applied to **column vectors**.  
-- Providing code in **three major languages** demonstrates language agility—an attractive trait for recruiters.  
+> **Title:**  
+> *Delete Columns to Make Sorted III – LeetCode 960 – Java, Python, C++ DP Solution & Interview Tips*
 
-Equip yourself with this algorithm, practice the code, and walk into your next coding interview *with confidence* that you can tackle the hardest “delete columns” problems.
+> **Meta Description (≈155 chars):**  
+> Master LeetCode 960 “Delete Columns to Make Sorted III” with a clear O(m²·n) DP solution in Java, Python, and C++. Learn the good, bad, and ugly parts of coding interviews.
 
-Happy coding, and good luck landing that next job! 🚀
+---
+
+### 1. Introduction
+
+If you’re prepping for software engineering interviews, **LeetCode 960 – Delete Columns to Make Sorted III** is a staple. The challenge tests your ability to think about subsequences, dynamic programming, and careful handling of multi‑dimensional data. Below, we walk through a clean DP solution, provide implementations in **Java**, **Python**, and **C++**, and discuss common pitfalls that can cost you in an interview.
+
+### 2. Problem Recap
+
+Given an array of equal‑length strings, we may delete any set of column indices. After deletions, **every row** must be sorted in non‑decreasing order. Return the minimal number of deletions needed.
+
+> Example  
+> `["babca","bbazb"]` → Delete columns `{0,1,4}` → Result `["bc","az"]` → **3 deletions**.
+
+### 3. Why a Longest Increasing Subsequence (LIS) on Columns?
+
+If we keep a subset of columns, they must respect the ordering rule **for all rows**.  
+Thus we can treat each column as a “letter” and search for the longest subsequence of columns that is compatible: for any earlier column `j` and later column `i`, all rows satisfy `strs[r][j] ≤ strs[r][i]`.
+
+The maximum length `L` of such a subsequence tells us how many columns we can keep. The answer is simply `m – L`.
+
+Because the constraints (`m, n ≤ 100`) are tiny, a straightforward dynamic programming approach is enough.
+
+### 4. The DP Formula
+
+```
+dp[i] = 1
+for j in [0, i):
+    if column j can precede i (check all rows):
+        dp[i] = max(dp[i], dp[j] + 1)
+```
+
+The helper condition “column j can precede i” means:
+```text
+∀ r : strs[r][j] ≤ strs[r][i]
+```
+If any row violates this, the pair is invalid.
+
+The answer is `m - max(dp)`.
+
+### 5. Code in 3 Languages
+
+#### Java
+```java
+public class Solution {
+    public int minDeletionSize(String[] strs) {
+        int n = strs.length, m = strs[0].length();
+        int[] dp = new int[m];
+        int best = 0;
+
+        for (int i = 0; i < m; i++) {
+            dp[i] = 1;
+            for (int j = 0; j < i; j++) {
+                if (canPrecede(strs, j, i)) {
+                    dp[i] = Math.max(dp[i], dp[j] + 1);
+                }
+            }
+            best = Math.max(best, dp[i]);
+        }
+        return m - best;
+    }
+
+    private boolean canPrecede(String[] strs, int j, int i) {
+        for (String s : strs) {
+            if (s.charAt(j) > s.charAt(i)) return false;
+        }
+        return true;
+    }
+}
+```
+
+#### Python
+```python
+class Solution:
+    def minDeletionSize(self, strs: List[str]) -> int:
+        n, m = len(strs), len(strs[0])
+        dp = [1] * m
+        best = 0
+
+        for i in range(m):
+            for j in range(i):
+                if all(s[j] <= s[i] for s in strs):
+                    dp[i] = max(dp[i], dp[j] + 1)
+            best = max(best, dp[i])
+
+        return m - best
+```
+
+#### C++
+```cpp
+class Solution {
+public:
+    int minDeletionSize(vector<string>& strs) {
+        int n = strs.size(), m = strs[0].size();
+        vector<int> dp(m, 1);
+        int best = 0;
+
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < i; ++j) {
+                bool ok = true;
+                for (int r = 0; r < n; ++r)
+                    if (strs[r][j] > strs[r][i]) { ok = false; break; }
+                if (ok) dp[i] = max(dp[i], dp[j] + 1);
+            }
+            best = max(best, dp[i]);
+        }
+        return m - best;
+    }
+};
+```
+
+### 6. Complexity Analysis
+
+- **Time:** `O(m² · n)` – at most `100 * 100 * 100 = 1,000,000` operations, negligible.
+- **Space:** `O(m)` – one DP array.
+
+### 7. Common Interview Mistakes
+
+| Mistake | Why it fails | Fix |
+|---------|--------------|-----|
+| **Assuming only adjacent rows matter** | The condition must hold for *every* row. | Loop over all rows when checking a pair. |
+| **Using `m²` but ignoring `n`** | Neglecting row comparisons makes the DP invalid. | Inside the `j < i` loop, iterate over all rows. |
+| **Mis‑indexing** | Off‑by‑one errors are common with 0‑based strings. | Stick to 0‑based indices throughout. |
+| **Returning `m - max(dp)` incorrectly** | If you forget to subtract from `m`, answer will be `max(dp)` instead. | Remember that deletions = columns left out. |
+
+### 8. Why This Matters for Your Career
+
+- **Dynamic Programming:** Mastering DP on a 2‑D array demonstrates strong algorithmic thinking—essential for backend, data‑engineering, or full‑stack roles.
+- **Multi‑Language Skillset:** Knowing how to implement the same logic in **Java**, **Python**, and **C++** showcases versatility; recruiters value candidates who can switch contexts.
+- **Problem Decomposition:** Recognizing the LIS analogy shows your ability to abstract a complex requirement into a simpler subproblem—a prized interview skill.
+
+### 9. Next Steps
+
+1. Run the provided solutions against random test cases (LeetCode’s hidden tests are often large).  
+2. Add your own unit tests for edge scenarios (`m=1`, already sorted, completely unsorted).  
+3. Practice explaining the DP formula out loud – interviewers want you to think on the spot.
+
+### 9. Conclusion
+
+LeetCode 960 is a gentle yet powerful introduction to dynamic programming on matrices. By treating the problem as a LIS on columns and using a clean `O(m²·n)` DP, you can solve it efficiently in any language. Keep the code simple, handle all rows, and avoid common pitfalls. Good luck cracking this problem—and your next software engineering interview!
+
+---
+
+### 9.1. Quick Checklist for Interviewers
+
+- **Read the prompt carefully** – columns vs rows.  
+- **Explain your approach** before coding.  
+- **Write helper functions** for readability.  
+- **Test your solution** mentally on all samples.  
+- **Mention complexity** to show awareness.
+
+---
+
+**Happy coding!** 🚀
 
 --- 
 
-*End of Post*  
+> *Want more interview prep? Subscribe to our weekly newsletter for in‑depth analyses of LeetCode problems, algorithm patterns, and real interview stories.*
+
+---
+
+### 9.2 Keywords
+
+- Delete Columns to Make Sorted III
+- LeetCode 960
+- DP solution
+- Dynamic programming
+- Longest increasing subsequence
+- Java implementation
+- Python solution
+- C++ algorithm
+- Software engineering interview
+- Coding interview patterns
 
 --- 
 
-Feel free to **share** your own test cases, suggestions, or interview stories in the comments below!
+**End of article.**

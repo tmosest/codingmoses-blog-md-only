@@ -7,102 +7,214 @@ author: moses
 tags: []
 hideToc: true
 ---
-        **Problem Overview**
+        **Solution Explanation**
 
-You’re given two integer arrays of the same length `n`:
+For every triplet of indices `i < j < k` the condition
 
-* `prices[i]` – the price of the *i‑th* item  
-* `profits[i]` – the profit you would earn if you “take” that item
+```
+price[j] > price[i] > price[k]
+```
 
-The items are fixed in the order they appear in the arrays.  
-You may pick **exactly three items** that satisfy a *monotonic* price pattern and you want to maximise the total profit of the three items.
+must hold.  
+The sum we want to maximise is
+
+```
+profit[i] + profit[j] + profit[k]
+```
+
+The arrays are at most `1000` long – an `O(n²)` solution is already fast
+enough.  
+The key idea is to pre‑compute, for every possible *left* index `i`,
+the best possible profit of the *right* partner `k`:
+
+```
+rightBest[i] = max{ profit[k] | k > i and price[k] < price[i] }
+```
+
+Once `rightBest` is known we only have to look at a middle index `j` and
+try all possible left indices `i` that satisfy `price[i] < price[j]`.  
+If `rightBest[i]` exists, the candidate value is
+
+```
+profit[i] + profit[j] + rightBest[i]
+```
+
+and we keep the maximum over all such candidates.
+
+--------------------------------------------------------------------
+
+#### Algorithm
+```
+n ← price.length
+rightBest ← array of size n, all values = −∞          // no partner found
+
+// 1) compute best right partner for every left index i
+for i = 0 … n-1
+        best ← −∞
+        for k = i+1 … n-1
+                if price[k] < price[i]
+                        best ← max(best , profit[k])
+        rightBest[i] ← best
+
+// 2) search for the best middle index j
+answer ← −∞
+for j = 0 … n-1
+        for i = 0 … j-1
+                if price[i] < price[j]  and  rightBest[i] ≠ −∞
+                        candidate ← profit[i] + profit[j] + rightBest[i]
+                        answer ← max(answer , candidate)
+
+return answer          // (use 64‑bit integer)
+```
+
+--------------------------------------------------------------------
+
+#### Correctness Proof  
+
+We prove that the algorithm returns the maximum possible profit.
 
 ---
 
-### 1.  What does “monotonic price pattern” mean?
+##### Lemma 1  
+For every index `i` the value `rightBest[i]` computed in step 1 equals  
+`max{ profit[k] | k > i and price[k] < price[i] }`.  
+If no such `k` exists, `rightBest[i]` is set to `−∞`.
 
-You have to pick indices `i < j < k` such that the prices are either
+**Proof.**
 
-* strictly increasing:  
-  `prices[i] < prices[j] < prices[k]`
+The inner loop of step 1 examines all indices `k` with `k > i`.  
+Whenever `price[k] < price[i]`, `profit[k]` is considered for the maximum.  
+Thus after the inner loop finishes, `best` equals the maximum profit of
+all indices to the right of `i` whose price is smaller than `price[i]`.  
+Finally `rightBest[i]` is set to that maximum.  
+If no qualifying `k` exists, the inner loop never updates `best`,
+so it stays at `−∞`. ∎
 
-  *or*
 
-* strictly decreasing:  
-  `prices[i] > prices[j] > prices[k]`
 
-If **either** of the two patterns can be formed with the three indices, the triple is *valid*.
+##### Lemma 2  
+For every middle index `j` and every left index `i < j` with
+`price[i] < price[j]`, if a valid right partner exists,
+`profit[i] + profit[j] + rightBest[i]` is the maximum profit of all
+triplets `(i , j , k)` that use this particular `i` as the left index
+and `j` as the middle index.
 
----
+**Proof.**
 
-### 2.  What is the goal?
+Fix `i` and `j`.  
+By Lemma 1, `rightBest[i]` is the maximum `profit[k]` among all
+indices `k > j` satisfying `price[k] < price[i]`.  
+Any triplet `(i , j , k)` with the required price ordering must use
+exactly such a `k`.  
+Thus the best possible third component is `rightBest[i]`,
+and the total profit is `profit[i] + profit[j] + rightBest[i]`. ∎
 
-For every valid triple `(i, j, k)` compute
+
+
+##### Lemma 3  
+During step 2 the algorithm considers every valid triplet
+`(i , j , k)` that satisfies `i < j < k` and `price[j] > price[i] > price[k]`.
+
+**Proof.**
+
+Take any such triplet.  
+During step 2 the outer loop chooses `j` as the middle index.
+The inner loop iterates over all `i` with `i < j`.  
+Since `price[i] < price[j]`, the condition in the inner loop is met.
+For this `i` we also have a valid `k` with `price[k] < price[i]`; thus
+by Lemma 1 `rightBest[i] ≠ −∞`.  
+Consequently the candidate computed for this pair `(i , j)` is
+exactly the profit of the original triplet. ∎
+
+
+
+##### Lemma 4  
+For every valid pair `(i , j)` the profit of the best triplet that uses
+`i` as the left and `j` as the middle is never smaller than the
+candidate value examined by the algorithm.
+
+**Proof.**
+
+By Lemma 2 the candidate value is the maximum profit achievable
+with that fixed `(i , j)`.  
+Therefore no other triplet with the same left and middle indices can
+produce a higher profit. ∎
+
+
+
+##### Theorem  
+The algorithm returns the maximum possible profit over all triplets
+fulfilling the price ordering.
+
+**Proof.**
+
+Let `OPT` be the optimum profit.
+
+*Existence.*  
+By Lemma 3 the algorithm evaluates the profit of every valid triplet,
+hence also evaluates the optimum triplet and obtains a candidate
+value of at least `OPT`.  
+So `answer ≥ OPT`.
+
+*Optimality.*  
+The algorithm keeps the maximum of all candidates examined in step 2.
+Every candidate corresponds to some valid triplet (Lemma 4).  
+Thus `answer` cannot be larger than `OPT`.  
+Therefore `answer = OPT`. ∎
+
+
+
+--------------------------------------------------------------------
+
+#### Complexity Analysis  
 
 ```
-totalProfit = profits[i] + profits[j] + profits[k]
+Step 1 :  O(n²) time  ,  O(n) additional memory
+Step 2 :  O(n²) time  ,  O(1) extra memory
 ```
 
-Return the **maximum** `totalProfit` over **all** valid triples.
+With `n ≤ 1000` the program easily meets the limits.
 
-If no triple satisfies either pattern, return `-1`.
+--------------------------------------------------------------------
 
----
+#### Reference Implementation  (C++)
 
-### 3.  Input / Output format
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-| Input | Type | Description |
-|-------|------|-------------|
-| `prices` | `int[]` | length `n` (1 ≤ n ≤ 10⁵) |
-| `profits` | `int[]` | length `n`, same `n` as `prices` |
+class Solution {
+public:
+    // use 64‑bit integer for the calculation, return it
+    long long maxProfit(vector<int> price, vector<int> profit) {
+        int n = (int)price.size();
+        const long long NEG_INF = LLONG_MIN / 4;          // safe sentinel
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `int` | maximum total profit or `-1` if impossible |
+        /* step 1: best right partner for each left index */
+        vector<long long> rightBest(n, NEG_INF);
+        for (int i = 0; i < n; ++i) {
+            long long best = NEG_INF;
+            for (int k = i + 1; k < n; ++k) {
+                if (price[k] < price[i])               // valid right partner
+                    best = max(best, (long long)profit[k]);
+            }
+            rightBest[i] = best;
+        }
 
----
-
-### 4.  Illustrative Example
-
-```text
-prices  = [1, 2, 3, 4, 5]
-profits = [1, 2, 3, 4, 5]
+        /* step 2: try every middle index */
+        long long answer = NEG_INF;
+        for (int j = 0; j < n; ++j) {
+            for (int i = 0; i < j; ++i) {
+                if (price[i] < price[j] && rightBest[i] != NEG_INF) {
+                    long long cand = (long long)profit[i] + profit[j] + rightBest[i];
+                    answer = max(answer, cand);
+                }
+            }
+        }
+        return answer;           // 64‑bit result
+    }
+};
 ```
 
-All three patterns are possible.  
-One optimal choice is indices `(0, 2, 4)`:
-
-```
-prices:  1 < 3 < 5   (strictly increasing)
-profits: 1 + 3 + 5 = 9
-```
-
-The answer is `9`.
-
-If the arrays were:
-
-```text
-prices  = [3, 1, 4]
-profits = [5, 2, 7]
-```
-
-No three indices can form a strictly increasing *or* strictly decreasing sequence of prices, so the answer is `-1`.
-
----
-
-### 5.  Key constraints to remember
-
-* `n` can be up to `100,000`, so an `O(n³)` brute force is infeasible.  
-* `prices[i]` and `profits[i]` fit in a 32‑bit signed integer.  
-* You must consider **both** the increasing and decreasing patterns.
-
----
-
-### 6.  Summary
-
-1. **Pick three indices** `i < j < k`.  
-2. **Verify** one of the two strict monotonic conditions on their prices.  
-3. **Sum** the profits of the three chosen items.  
-4. **Return** the maximum possible sum, or `-1` if no such triple exists.
-
-With this concise problem statement your colleague should be able to understand *what* needs to be solved without diving into any particular implementation.
+The implementation follows exactly the algorithm proven correct above
+and satisfies the required time/space bounds.

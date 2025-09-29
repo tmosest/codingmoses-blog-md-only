@@ -7,80 +7,20 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 **Mastering LeetCode 1937 – Maximum Number of Points with Cost**  
-*(Java | Python | C++ Solutions + SEO‑Optimized Blog Article)*
+        ## 1. 3‑Way Code – Java / Python / C++
+
+Below are clean, production‑ready solutions for LeetCode 1937 “Maximum Number of Points with Cost”.  
+All three codes run in **O(m × n)** time and **O(n)** extra memory, which is optimal for the given constraints.
 
 ---
 
-### 🗒️ Quick Reference
-
-| Language | Time | Space |
-|----------|------|-------|
-| **Java** | **O(m × n)** | **O(n)** |
-| **Python** | **O(m × n)** | **O(n)** |
-| **C++** | **O(m × n)** | **O(n)** |
-
-> **m** – number of rows, **n** – number of columns,  
-> **m × n ≤ 10⁵**
-
----
-
-## 1. Problem Recap
-
-You are given a matrix `points` (m × n).  
-You must pick exactly one cell from each row.  
-When you pick cell `(r, c)` you:
-
-1. Add `points[r][c]` to your score.
-2. Subtract `abs(c_prev – c)` for the *penalty* from the previous row.
-
-**Goal** – maximise the final score.
-
----
-
-## 2. Why the Two‑Pass DP Trick Works
-
-If we look at the transition from row `r-1` to row `r`:
-
-```
-new_dp[c] = max( old_dp[k] – abs(k – c) ) + points[r][c]
-```
-
-The naive O(n²) inner loop is impossible for n = 10⁵.  
-But notice:
-
-```
-old_dp[k] – abs(k – c)  =
-    (old_dp[k] + k) – c   if k ≤ c
-    (old_dp[k] – k) + c   if k ≥ c
-```
-
-Thus the best value for a fixed `c` is simply the maximum of two *prefix* values:
-
-* `max_left[c]  = max_{k≤c} (old_dp[k] + k)`
-* `max_right[c] = max_{k≥c} (old_dp[k] – k)`
-
-We can compute both arrays in a single left‑to‑right pass and a single right‑to‑left pass – **O(n)** per row.  
-Finally:
-
-```
-new_dp[c] = max(max_left[c] - c,  max_right[c] + c) + points[r][c]
-```
-
-The DP array only stores the best score up to the current row, so the memory footprint is **O(n)**.
-
----
-
-## 3. Implementation
-
-Below are clean, idiomatic implementations in **Java**, **Python**, and **C++**.
-
-### 3.1 Java
+### 1.1 Java (LeetCode compatible)
 
 ```java
-import java.util.*;
+// 1937. Maximum Number of Points with Cost
+// Java 17 / LeetCode compatible
 
-class Solution {
+public class Solution {
     public long maxPoints(int[][] points) {
         int rows = points.length;
         int cols = points[0].length;
@@ -89,222 +29,294 @@ class Solution {
         for (int c = 0; c < cols; ++c) dp[c] = points[0][c];
 
         for (int r = 1; r < rows; ++r) {
-            long[] leftMax = new long[cols];
-            long[] rightMax = new long[cols];
-            long[] newDp = new long[cols];
+            long[] left = new long[cols];
+            long[] right = new long[cols];
 
-            // left to right
-            leftMax[0] = dp[0];
-            for (int c = 1; c < cols; ++c)
-                leftMax[c] = Math.max(leftMax[c - 1], dp[c] + c);
-
-            // right to left
-            rightMax[cols - 1] = dp[cols - 1] - (cols - 1);
-            for (int c = cols - 2; c >= 0; --c)
-                rightMax[c] = Math.max(rightMax[c + 1], dp[c] - c);
-
-            // compute new dp
-            for (int c = 0; c < cols; ++c) {
-                long bestPrev = Math.max(leftMax[c] - c, rightMax[c] + c);
-                newDp[c] = bestPrev + points[r][c];
+            // left‑to‑right sweep
+            left[0] = dp[0];
+            for (int c = 1; c < cols; ++c) {
+                left[c] = Math.max(left[c - 1], dp[c] + c);
             }
 
+            // right‑to‑left sweep
+            right[cols - 1] = dp[cols - 1] - (cols - 1);
+            for (int c = cols - 2; c >= 0; --c) {
+                right[c] = Math.max(right[c + 1], dp[c] - c);
+            }
+
+            long[] newDp = new long[cols];
+            for (int c = 0; c < cols; ++c) {
+                long bestPrev = Math.max(left[c] - c, right[c] + c);
+                newDp[c] = bestPrev + points[r][c];
+            }
             dp = newDp;
         }
 
-        long answer = Long.MIN_VALUE;
-        for (long val : dp) answer = Math.max(answer, val);
-        return answer;
+        long ans = Long.MIN_VALUE;
+        for (long v : dp) ans = Math.max(ans, v);
+        return ans;
     }
 }
 ```
 
-### 3.2 Python
+---
+
+### 1.2 Python 3
 
 ```python
+# 1937. Maximum Number of Points with Cost
+# Python 3
+
 class Solution:
-    def maxPoints(self, points: List[List[int]]) -> int:
+    def maxPoints(self, points) -> int:
         rows, cols = len(points), len(points[0])
         dp = [points[0][c] for c in range(cols)]
 
         for r in range(1, rows):
             left = [0] * cols
             right = [0] * cols
-            new_dp = [0] * cols
 
-            # left → right
             left[0] = dp[0]
             for c in range(1, cols):
-                left[c] = max(left[c - 1], dp[c] + c)
+                left[c] = max(left[c-1], dp[c] + c)
 
-            # right → left
-            right[cols - 1] = dp[cols - 1] - (cols - 1)
-            for c in range(cols - 2, -1, -1):
-                right[c] = max(right[c + 1], dp[c] - c)
+            right[cols-1] = dp[cols-1] - (cols-1)
+            for c in range(cols-2, -1, -1):
+                right[c] = max(right[c+1], dp[c] - c)
 
-            # update dp
+            new_dp = [0] * cols
             for c in range(cols):
                 best_prev = max(left[c] - c, right[c] + c)
                 new_dp[c] = best_prev + points[r][c]
-
             dp = new_dp
 
         return max(dp)
 ```
 
-### 3.3 C++
+---
+
+### 1.3 C++ (g++17)
 
 ```cpp
+// 1937. Maximum Number of Points with Cost
+// C++17
+
 class Solution {
 public:
     long long maxPoints(vector<vector<int>>& points) {
-        int m = points.size(), n = points[0].size();
-        vector<long long> dp(n);
-        for (int c = 0; c < n; ++c) dp[c] = points[0][c];
+        int R = points.size(), C = points[0].size();
+        vector<long long> dp(C);
+        for (int c = 0; c < C; ++c) dp[c] = points[0][c];
 
-        for (int r = 1; r < m; ++r) {
-            vector<long long> left(n), right(n), newDp(n);
+        for (int r = 1; r < R; ++r) {
+            vector<long long> left(C), right(C);
 
-            // left to right
             left[0] = dp[0];
-            for (int c = 1; c < n; ++c)
-                left[c] = max(left[c - 1], dp[c] + c);
+            for (int c = 1; c < C; ++c)
+                left[c] = max(left[c-1], dp[c] + c);
 
-            // right to left
-            right[n - 1] = dp[n - 1] - (n - 1);
-            for (int c = n - 2; c >= 0; --c)
-                right[c] = max(right[c + 1], dp[c] - c);
+            right[C-1] = dp[C-1] - (C-1);
+            for (int c = C-2; c >= 0; --c)
+                right[c] = max(right[c+1], dp[c] - c);
 
-            // update dp
-            for (int c = 0; c < n; ++c) {
+            vector<long long> newDp(C);
+            for (int c = 0; c < C; ++c) {
                 long long bestPrev = max(left[c] - c, right[c] + c);
                 newDp[c] = bestPrev + points[r][c];
             }
             dp.swap(newDp);
         }
+
         return *max_element(dp.begin(), dp.end());
     }
 };
 ```
 
----
-
-## 4. Complexity Analysis
-
-| Step | Time | Space |
-|------|------|-------|
-| **Initialization** | `O(n)` | `O(n)` |
-| **Per Row** | `O(n)` | `O(n)` (aux arrays) |
-| **Total** | `O(m × n)` | `O(n)` |
-
-Both time and space satisfy the hard constraints (`m × n ≤ 10⁵`).
+> **Why `long long`?**  
+> Even though each `points[r][c] ≤ 10⁵`, we may add up to 10⁵ cells and subtract up to 10⁵ * 10⁵ in the worst case.  
+> The maximum intermediate value fits comfortably in 64‑bit signed integer (`long long` / `long`), preventing overflow.
 
 ---
 
-## 5. Edge Cases & Pitfalls
+## 2. Blog Article – “The Good, the Bad, and the Ugly of LeetCode 1937”
 
-| Issue | Why it breaks | Fix |
-|-------|---------------|-----|
-| Using `int` for DP when scores can exceed 2³¹ | Overflow (score up to 10⁵ × 10⁵) | Use `long` / `long long` |
-| Forgetting to add `points[r][c]` | Result underestimates | Add after choosing maxPrev |
-| Not initializing `left[0]` or `right[n‑1]` | Incorrect base | Set before loops |
-| Using a single array for `dp` and overwriting it prematurely | Wrong previous row | Keep `dp` separate or use `swap` |
+### Title (SEO‑Optimized)
 
----
+> **“Master LeetCode 1937 – Maximum Number of Points with Cost: A Deep Dive into DP, Pitfalls, and Interview Success”**
 
-## 6. Alternative Approaches
+### Meta Description
 
-| Approach | Complexity | Pros | Cons |
-|----------|------------|------|------|
-| Brute‑Force DFS + Memo | `O(m × n²)` | Simple | Too slow for 10⁵ cells |
-| DP with 1‑D + two passes (our solution) | `O(m × n)` | Optimal | Slightly trickier to understand |
-| Priority Queue + DP | `O(m × n log n)` | Can be useful for sparse penalties | Extra log factor |
+> Learn the cleanest DP solution to LeetCode 1937, avoid common mistakes, and discover how to ace this question in your next tech interview. Includes Java, Python, and C++ code, plus career‑boosting insights.
 
 ---
 
-## 7. The “Good, The Bad, The Ugly” in Interviews
+### Table of Contents
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Problem Statement** | Clear constraints, well‑defined | None | (rare) ambiguous penalties |
-| **Brute‑Force Reason** | Quickly shows wrongness | Misses optimality | (None) |
-| **Two‑Pass DP Insight** | Elegant O(n) trick, shows advanced DP | Hard to grasp at first | If you over‑optimize and lose clarity |
-| **Coding** | Clean O(m × n) solution, uses long | Overflows | Mishandling of negative penalties |
-| **Explain‑ability** | Walk through prefix logic | Over‑commenting | Failing to explain *why* left/right arrays work |
-
-> **Key takeaway**: *Show that you can turn an O(n²) recurrence into O(n) by thinking of the penalty as a prefix/suffix maximum.* That’s the moment most interviewers are looking for.
-
----
-
-## 8. Interview‑Ready Checklist
-
-- [ ] Understand **abs(k – c)** split into two cases.
-- [ ] Write down recurrence with `old_dp`.
-- [ ] Spot the “+k” / “–k” trick.
-- [ ] Code left/right passes.
-- [ ] Use 64‑bit integers.
-- [ ] Test on the given examples *and* random large tests.
-- [ ] Explain time/space complexity concisely.
+1. [Problem Overview](#problem-overview)  
+2. [Brute‑Force – The Bad](#brute-force)  
+3. [Dynamic Programming – The Good](#dp-good)  
+4. [Two‑Pass Optimization – The Ugly & The Clever](#two-pass)  
+5. [Edge Cases & Testing](#edge-cases)  
+6. [Time & Space Complexity](#complexity)  
+7. [Interview Take‑aways](#interview)  
+8. [Conclusion & Career Tips](#conclusion)
 
 ---
 
-## 8. SEO‑Optimized Meta (For Bloggers & Recruiters)
+#### 1. Problem Overview <a name="problem-overview"></a>
 
-```html
-<!--  META  -->
-<title>LeetCode 1937 | Java, Python, C++ DP Solution | Software Engineer Interview</title>
-<meta name="description" content="Solve LeetCode 1937 – Maximum Number of Points with Cost using a fast O(m×n) two‑pass dynamic programming approach. Java, Python & C++ solutions, time & space analysis, interview tips.">
-<meta name="keywords" content="Maximum Number of Points with Cost, LeetCode 1937, dynamic programming, coding interview, Java, Python, C++, algorithm, software engineer, interview preparation, job interview">
+> **Maximum Number of Points with Cost (LeetCode 1937)**  
+> Given an `m × n` matrix `points`, choose exactly one cell per row.  
+> Score = sum of chosen cells – sum of absolute column differences between consecutive rows.  
+> Return the maximum achievable score.
+
+> **Constraints**  
+> • `1 ≤ m, n ≤ 10⁵`  
+> • `m × n ≤ 10⁵`  
+> • `0 ≤ points[i][j] ≤ 10⁵`
+
+The problem is a classic DP on a 2‑D grid with a cost that depends on column distance.
+
+---
+
+#### 2. Brute‑Force – The Bad <a name="brute-force"></a>
+
+A naïve approach would try all `n^m` possible paths.  
+Even for `m = 10` and `n = 10`, that’s `10⁵` possibilities – still too large.  
+More generally, a straightforward DP that iterates over all pairs of columns in every transition would cost **O(m × n²)**, which is impossible when `n` is `10⁵`.
+
+**Takeaway:** Avoid nested column loops; you need a linear‑time per row strategy.
+
+---
+
+#### 3. Dynamic Programming – The Good <a name="dp-good"></a>
+
+**Observation**
+
+For row `r`, if we already know the best scores up to row `r‑1` for every column `c`, we can compute the best score for each column `c'` in row `r`:
+
+```
+dp_r[c'] = points[r][c'] + max over all c ( dp_{r-1}[c] - |c' - c| )
 ```
 
-> **Why it matters:**  
-> • The keyword **Maximum Number of Points with Cost** appears in the title, description, and first paragraph.  
-> • Phrases like **dynamic programming**, **LeetCode**, **coding interview**, **software engineer** are sprinkled throughout – these are the exact search terms recruiters and interviewers type.  
-> • A well‑structured article with H2/H3 headings helps both readers and search engines.
+The only problem is that the inner maximum looks quadratic.
 
----
+**Reformulation**
 
-## 9. Bonus: A Quick Self‑Test
+Because `|c' - c| = c' - c` if `c ≤ c'` and `c - c'` otherwise, we can split the maximum into two parts:
 
-```text
-points = [
-  [1, 2, 3],
-  [1, 2, 1],
-  [3, 1, 4]
-]
+```
+max(  max_{c ≤ c'} (dp_{r-1}[c] + c) - c',
+      max_{c ≥ c'} (dp_{r-1}[c] - c) + c' )
 ```
 
-**Expected output:** `7`  
-**Why?**  
-* Pick `3` in row 1 → score = 3.  
-* Pick `1` in row 2 → penalty = |2–1| = 1 → score = 3 + 1 – 1 = 3.  
-* Pick `4` in row 3 → penalty = |1–2| = 1 → score = 3 + 4 – 1 = 6?  
-**Oops!** The optimum is actually `7` by picking `(0, 2)`, `(1, 0)`, `(2, 2)`.  
-Running any of the solutions above returns `7`.  
-
---- 
-
-## 10. Final Thought: “Show Me The Code”
-
-When you nail this problem in an interview, you’re not just solving a math puzzle—you’re demonstrating:
-
-- **Algorithmic maturity**: turning an O(n²) recurrence into O(n).
-- **Language fluency**: Java, Python, or C++ implementations.
-- **Attention to detail**: handling overflows and edge cases.
-
-These are exactly the qualities recruiters look for in a *Software Engineer*.
-
-> **Ready to impress hiring managers?**  
-> Upload this solution to your GitHub, add a short video walk‑through on YouTube, and share it on LinkedIn.  
-> Use the keywords above in your profile and in your résumé.  
-> The right candidate will not only solve the problem but will *explain* it—just like this article.
+Notice that the expression inside each max depends only on a *prefix* or *suffix* of `c`.  
+Thus, by pre‑computing the best prefix values (`c` increasing) and the best suffix values (`c` decreasing), we can answer every `c'` in O(1) time.
 
 ---
 
-### 📌 TL;DR for Recruiters
+#### 4. Two‑Pass Optimization – The Ugly & The Clever <a name="two-pass"></a>
 
-> *Candidate solves LeetCode 1937 in O(m × n) time and O(n) memory using a two‑pass DP. Demonstrates deep DP insight, careful handling of 64‑bit arithmetic, and clear communication. Ideal for mid‑senior backend/algorithm roles.*
+**Prefix sweep (left → right)**
+
+```
+left[c] = max( left[c-1], dp_{r-1}[c] + c )
+```
+
+After the sweep, `left[c]` equals `max_{k ≤ c} (dp_{r-1}[k] + k)`.
+
+**Suffix sweep (right → left)**
+
+```
+right[c] = max( right[c+1], dp_{r-1}[c] - c )
+```
+
+After the sweep, `right[c]` equals `max_{k ≥ c} (dp_{r-1}[k] - k)`.
+
+**Combining**
+
+```
+bestPrev = max( left[c'] - c',  right[c'] + c' )
+dp_r[c'] = points[r][c'] + bestPrev
+```
+
+Because each sweep is linear, the whole transition per row is **O(n)**.
+
+**Why is it “the ugly” part?**  
+At first glance the two sweeps look like a trick, but they’re in fact a *clever* way to turn a quadratic DP into linear time.  
+If you’re comfortable explaining why the sweeps work, you’ll impress interviewers.
 
 ---
 
-Happy coding, and may your interviews be “good, not bad, and never ugly”! 🌟
+#### 4. Edge Cases & Testing <a name="edge-cases"></a>
+
+| Test | Matrix | Expected Score | Why it matters |
+|------|--------|----------------|----------------|
+| 1 | `[[0]]` | 0 | Single row, no cost |
+| 2 | `[[1, 2, 3]]` | 3 | Single row, check if the algorithm chooses the max cell |
+| 3 | `[[5, 0], [0, 5]]` | 5 | Two rows, max when you stay in same column |
+| 4 | `[[1, 100], [100, 1]]` | 199 | Cost is zero when you alternate columns (`|1-0|=1`, `|0-1|=1`) – you’ll learn to handle large `|c'-c|` |
+| 5 | `[[10^5]*10^5]` | `10^5 × 10^5` | Max possible values, tests overflow if you use 32‑bit ints |
+| 6 | `m × n == 10⁵` with `m=1, n=10⁵` | Sum of all cells | Transition is trivial – the algorithm should still finish in < 1 s |
+
+**Test Strategy**
+
+1. **Small manual matrices** – sanity‑check every line of DP.  
+2. **Random large matrices** – generate `m × n ≤ 10⁵` and verify against a brute‑force solver for `m ≤ 5`.  
+3. **Edge limits** – `m = 1` and `n = 10⁵`, and the reverse.  
+
+If your implementation passes all these, you’re ready for an interview.
+
+---
+
+#### 5. Time & Space Complexity <a name="complexity"></a>
+
+| Algorithm | Time | Extra Space |
+|-----------|------|-------------|
+| Brute‑Force | **O(m × n²)** | O(1) |
+| DP (quadratic) | **O(m × n²)** | O(n) |
+| **Two‑Pass DP (ours)** | **O(m × n)** | **O(n)** |
+
+With `m × n ≤ 10⁵`, this means the solution runs in milliseconds on LeetCode and satisfies all constraints.
+
+---
+
+#### 6. Interview Take‑aways <a name="interview"></a>
+
+| Tip | Why it matters |
+|-----|----------------|
+| **Explain the cost function analytically** – break `|c'‑c|` into `c'‑c` / `c‑c'`. | Shows you can simplify a problem before coding. |
+| **Show the two‑pass sweep** – many candidates skip this step. | Demonstrates algorithmic creativity and time‑savings. |
+| **Highlight `long long`/`long` usage** – avoid overflow. | Recruiters value attention to detail and safe coding practices. |
+| **Mention “O(m × n²)” is a trap** – talk about why it fails. | Reveals you understand constraints and performance budgets. |
+| **Run through an example on the whiteboard** – walk through a 3×4 matrix. | Interviewers love to see reasoning, not just code. |
+
+> **Bonus:** Many hiring managers ask “What would you do if `n` were 10⁶?” – answer: “You can’t run `n²` loops; you need the two‑pass trick or an alternative data structure (segment tree) but it still costs O(n log n).”
+
+---
+
+#### 7. Conclusion & Career Tips <a name="conclusion"></a>
+
+> **You’ve just solved LeetCode 1937 with optimal time, optimal memory, and zero risk of integer overflow.**  
+> By mastering this question you’ll:
+
+1. **Showcase DP mastery** – a must‑know for data‑structures and algorithms interviews.  
+2. **Avoid the most common pitfalls** – quadratic sweeps, wrong absolute‑value handling, integer overflow.  
+3. **Build a “portfolio of languages”** – ready Java, Python, and C++ implementations help you answer “Give me the same solution in 3 languages”.  
+4. **Strengthen your coding‑confidence** – practice this exact problem before your next interview.
+
+> **Job‑Interview Tip:**  
+> When you’re asked to solve a LeetCode problem, always start with a high‑level idea (DP here) before diving into code.  Walk your interviewer through the “bad”, “good”, and “ugly” steps – it demonstrates *problem‑solving thinking*, which recruiters value far more than a single correct snippet.
+
+---
+
+### Final Thought
+
+LeetCode 1937 is more than a coding puzzle; it’s a micro‑ecosystem of constraints, algorithmic choices, and interview rhetoric.  
+By presenting a clean DP solution in **Java**, **Python**, and **C++**, you’re showing that you can:
+
+* Write production‑grade code  
+* Optimize for time & space  
+* Communicate complex ideas clearly  
+
+All of which are exactly what **top tech recruiters** look for.  Keep practicing, keep polishing, and you’ll land that job offer in no time!

@@ -7,148 +7,161 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🎯 LeetCode 2506 – *Count Pairs Of Similar Strings*  
-> **Java, Python & C++ solutions + a full‑blown interview‑ready blog post**
+        # 📌 2506 – Count Pairs Of Similar Strings  
+> **A complete guide with Java, Python & C++ solutions + an SEO‑friendly blog article that will help you land your next tech job**
 
 ---
 
-## Table of Contents
+## 🚀 TL;DR
+- **Problem**: Count pairs of words that consist of the same set of characters (ignoring frequency & order).  
+- **Key Insight**: Every word can be represented by a 26‑bit mask – one bit per alphabet letter.  
+- **Optimal Solution**: Build the mask, store the frequency of each mask in a hash map, and for every new word add the current frequency to the answer.  
+- **Complexity**:  
+  - **Time** O(n · m) (where *n* = number of words, *m* = max word length)  
+  - **Space** O(n) (hash map for masks)
 
-| Section | Description |
-|---------|-------------|
-| 1️⃣ Problem Statement | What we’re asked to do |
-| 2️⃣ Intuition | The “aha!” moment |
-| 3️⃣ Algorithm | Step‑by‑step |
-| 4️⃣ Implementation | Code in Java, Python and C++ |
-| 5️⃣ Complexity Analysis | How fast & how much memory |
-| 6️⃣ Edge Cases & Testing | Avoid pitfalls |
-| 7️⃣ Alternatives | Brute‑force, set‑based, sorting |
-| 8️⃣ Good / Bad / Ugly | Trade‑offs in real interviews |
-| 9️⃣ Blog Article | SEO‑friendly write‑up |
-| 🔗 Links & Resources | Further reading |
-
----
-
-## 1️⃣ Problem Statement
-
-> **LeetCode 2506 – Count Pairs Of Similar Strings**  
-> `public int similarPairs(String[] words)`
-
-You’re given an array `words` of lowercase English words.  
-Two words are **similar** *iff* they contain exactly the same set of characters (order & frequency don’t matter).
-
-Return the number of index pairs `(i, j)` with `0 ≤ i < j < words.length` such that `words[i]` and `words[j]` are similar.
-
-**Constraints**
-
-* `1 ≤ words.length ≤ 100`
-* `1 ≤ words[i].length ≤ 100`
-* `words[i]` consists of only lowercase letters.
-
----
-
-## 2️⃣ Intuition
-
-The key observation: *the exact characters that appear in a word matters, not how many times they appear*.  
-So we can compress each word into a **signature** that records “does this word contain `'a'`? “, “does it contain `'b'`?“, …,“does it contain `'z'`?”.
-
-The natural way in programming contests is a **bitmask**:
-
+```java
+int similarPairs(String[] words) // Java
 ```
-bit 0  -> 'a'
-bit 1  -> 'b'
+
+```python
+def similarPairs(words: List[str]) -> int   # Python
+```
+
+```cpp
+int similarPairs(vector<string>& words) // C++
+```
+
+> **Why this matters** – The bitmask + hash‑map pattern is a *stand‑out* trick that appears frequently in interview prep, especially for senior roles.  
+
+---
+
+## 📄 Blog Article (SEO‑Optimized)
+
+> **Title**  
+> **Count Pairs of Similar Strings (LeetCode 2506) – A Full Guide, Code, and Interview Tips**
+
+> **Meta Description**  
+> Master LeetCode 2506: Count Pairs of Similar Strings. Get a step‑by‑step solution, Java/Python/C++ code, time‑space analysis, and interview tricks to impress hiring managers.  
+
+> **Keywords**  
+> LeetCode 2506, Count Pairs of Similar Strings, Bitmask, HashMap, Java, Python, C++, Algorithm, Data Structures, Coding Interview, Technical Interview, Job Interview, Senior Software Engineer
+
+---
+
+### 1️⃣ Problem Recap
+
+> **Input**: `words[0 … n-1]` – a list of lowercase strings.  
+> **Goal**: Count the number of index pairs `(i, j)` with `i < j` such that the *set* of characters in `words[i]` equals the set in `words[j]`.
+
+> **Example**  
+> ```
+> words = ["aba", "aabb", "abcd", "bac", "aabc"]
+> → 2 pairs (0,1) and (3,4)
+> ```
+
+---
+
+### 2️⃣ The Good: Why Bitmask Works
+
+| ✅ | Reason |
+|---|--------|
+| **Fast** | Checking if two strings are similar is *O(1)* once we have the mask. |
+| **Memory‑efficient** | 26 bits → a single `int`. |
+| **Simple to implement** | No need to sort, use sets, or hash all characters. |
+| **Scales** | Works for up to 10^5 words, 100 characters each – well within limits. |
+
+#### Mask Construction
+
+```text
+bit 0 → 'a'
+bit 1 → 'b'
 ...
-bit 25 -> 'z'
+bit 25 → 'z'
 ```
 
-For a word, we set a bit when the letter appears.  
-Two words are similar **iff** their bitmasks are equal.
-
-Once we can generate a unique integer for each word, we only need to count how many words share the same mask.  
-If a mask has `k` words, it contributes `k*(k-1)/2` pairs.
+For each character `c` in a word, set `mask |= 1 << (c - 'a')`.  
+Because we only care about the *presence* of a character, duplicates are ignored automatically.
 
 ---
 
-## 3️⃣ Algorithm (Linear‑time “mask + hashmap”)
+### 3️⃣ The Bad: Edge Cases & Pitfalls
 
-1. Initialise an empty hash map `freq` → *mask* → *occurrence count*.
-2. For every word in `words`
-   * Build its bitmask `mask`.
-   * Add `freq[mask]` to the answer (all previous words with the same mask form a new pair).
-   * Increment `freq[mask]`.
-3. Return the accumulated answer.
-
-**Why it works**
-
-*Each time we encounter a word, every previous word that had the same mask is a valid pair.*  
-Thus we never double‑count and we never need to compare the word with every other word again.
+| ⚠️ | Issue | Fix |
+|---|-------|-----|
+| Duplicate words | Treat each instance separately – each pair counts. | Use a frequency map, not a set. |
+| Empty strings (not in constraints) | Would create mask = 0; still valid. | No special handling needed. |
+| Very long words | Still O(m) per word, fine for ≤100. | Keep loops tight; avoid unnecessary allocations. |
 
 ---
 
-## 4️⃣ Implementation
+### 4️⃣ The Ugly: A Brute‑Force Approach
 
-Below are clean, production‑ready solutions in **Java**, **Python**, and **C++**.
+> **What not to do**  
+> ```python
+> ans = 0
+> for i in range(n):
+>     for j in range(i+1, n):
+>         if set(words[i]) == set(words[j]):
+>             ans += 1
+> ```
+> This O(n²·m) solution will TLE for large `n`. It also uses `set()` for every pair, doubling memory churn.
 
-> ⚠️ All three codes are *O(n × m)* time (n = number of words, m = max word length) and *O(n)* extra space.
+> **Takeaway** – Always look for a *signature* (bitmask, hash) to reduce pairwise comparisons.
 
 ---
 
-### Java
+### 5️⃣ Full Code – Three Languages
+
+#### Java (LeetCode 2506)
 
 ```java
 import java.util.HashMap;
+import java.util.Map;
 
 class Solution {
     public int similarPairs(String[] words) {
-        int answer = 0;
-        HashMap<Integer, Integer> freq = new HashMap<>();
+        int ans = 0;
+        Map<Integer, Integer> freq = new HashMap<>();
 
         for (String word : words) {
             int mask = 0;
-            for (char c : word.toCharArray()) {
-                mask |= 1 << (c - 'a');          // set bit for this letter
+            for (char ch : word.toCharArray()) {
+                mask |= 1 << (ch - 'a');
             }
-            answer += freq.getOrDefault(mask, 0); // pairs with earlier same‑mask words
-            freq.merge(mask, 1, Integer::sum);   // increment frequency
+            ans += freq.getOrDefault(mask, 0);
+            freq.merge(mask, 1, Integer::sum);
         }
-        return answer;
+        return ans;
     }
 }
 ```
 
----
-
-### Python 3
+#### Python 3
 
 ```python
-from typing import List
 from collections import defaultdict
+from typing import List
 
 class Solution:
     def similarPairs(self, words: List[str]) -> int:
-        answer = 0
+        ans = 0
         freq = defaultdict(int)
 
         for word in words:
             mask = 0
-            for ch in set(word):              # `set` avoids re‑setting the same bit
-                mask |= 1 << (ord(ch) - ord('a'))
-            answer += freq[mask]
+            for ch in word:        # duplicates auto‑ignored
+                mask |= 1 << (ord(ch) - 97)
+            ans += freq[mask]
             freq[mask] += 1
 
-        return answer
+        return ans
 ```
 
-> *Tip:* `set(word)` removes duplicate characters and makes the inner loop at most 26 iterations, even if the word is long.
-
----
-
-### C++
+#### C++ (GNU‑C++17)
 
 ```cpp
-#include <vector>
-#include <string>
-#include <unordered_map>
+#include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
@@ -157,13 +170,13 @@ public:
         int ans = 0;
         unordered_map<int, int> freq;
 
-        for (const string &word : words) {
+        for (auto& w : words) {
             int mask = 0;
-            for (char c : word) {
+            for (char c : w) {
                 mask |= 1 << (c - 'a');
             }
             ans += freq[mask];
-            ++freq[mask];
+            freq[mask]++;           // store new occurrence
         }
         return ans;
     }
@@ -172,182 +185,42 @@ public:
 
 ---
 
-## 5️⃣ Complexity Analysis
+### 6️⃣ Complexity Analysis
 
-| Metric | Value |
-|--------|-------|
-| **Time** | `O(n · m)` – one pass over all characters |
-| **Space** | `O(n)` – hash map of masks (at most `n` distinct masks) |
-| **Auxiliary** | `O(1)` – bitmask uses a single `int` |
-
-With `n ≤ 100` and `m ≤ 100`, this solution is trivial for modern machines, but the pattern scales to larger inputs too.
+| Metric | Explanation |
+|--------|-------------|
+| **Time** | `O(n * m)` – each word scans its characters once; `m ≤ 100`. |
+| **Space** | `O(n)` – the frequency map can contain up to `n` different masks. |
 
 ---
 
-## 6️⃣ Edge Cases & Testing
+### 7️⃣ Interview‑Ready Tips
 
-| Test | Description | Expected Result |
-|------|-------------|-----------------|
-| `["a"]` | Single word | `0` |
-| `["a","a"]` | Two identical words | `1` |
-| `["ab","ba"]` | Same letters, different order | `1` |
-| `["abc","def"]` | No common characters | `0` |
-| `["ab","abc","bac","cba"]` | 3 words share same mask | `3` (C(3,2)) |
-| `["aaa","aa","aaaa"]` | All have same mask `'a'` | `3` |
-
-Run the provided code on these cases; all return the correct number of similar pairs.
+1. **Mention the bitmask idea immediately** – interviewers love low‑level tricks.  
+2. **Explain why duplicates don’t matter** – the mask only captures *presence*.  
+3. **Talk about the hash map’s role** – constant‑time accumulation of pairs.  
+4. **Show edge‑case handling** – empty string, very long words, repeated letters.  
+5. **Compare with a naive O(n²) solution** – why it would fail.
 
 ---
 
-## 7️⃣ Alternatives
+### 8️⃣ TL;DR Cheat Sheet
 
-| Approach | Complexity | Comments |
-|----------|------------|----------|
-| **Brute‑force** (compare every pair) | `O(n² · m)` | Simple, but unnecessary for `n ≤ 100`. |
-| **Set‑based signature** (convert each word to `set(word)` and use it as key) | `O(n · m)` | Works but hashable sets can be expensive; bitmask is faster and uses only integers. |
-| **Sorting** (sort each word and compare sorted strings) | `O(n · (m log m + m))` | Good for very long words; bitmask stays linear. |
-| **Frequency table** (26‑int array per word) | `O(n · 26)` | Same as bitmask; memory heavier. |
-
----
-
-## 8️⃣ Good / Bad / Ugly
-
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Time** | Linear with bitmask; fast on large inputs | Brute‑force is `O(n²)` | No major pitfalls in the linear solution |
-| **Space** | Only a few integers per word | Brute‑force needs O(1) but `O(n²)` comparisons | Unnecessary arrays or strings increase memory |
-| **Readability** | Short, clear code | Brute‑force code is easy to understand but slow | Using bit operations may look opaque to newcomers |
-| **Extensibility** | Works for any alphabet size (just change bit count) | Brute‑force doesn't scale | Harder to debug if bit logic is wrong |
-| **Interview Score** | ★★★★ (efficient + clean) | ★★ (inefficient) | ★ (over‑engineering or bugs) |
-
-**Bottom line:** In an interview, the bitmask + hashmap solution is the sweet spot—compact, fast, and shows familiarity with bit tricks.
+| Step | Code Snippet (Java) |
+|------|---------------------|
+| Build mask | `mask |= 1 << (ch - 'a');` |
+| Count pairs | `ans += freq.getOrDefault(mask, 0);` |
+| Store mask | `freq.merge(mask, 1, Integer::sum);` |
 
 ---
 
-## 9️⃣ Blog Article – SEO‑Optimized
+## 🎯 Why This Blog Helps You Land a Job
 
-> **Title**  
-> “Master LeetCode 2506: Count Pairs Of Similar Strings – Java, Python, C++ & Interview Tips”
+1. **SEO‑Friendly** – The article is structured for search engines (headings, keywords).  
+2. **Hands‑On Code** – Real, tested solutions in three languages.  
+3. **Interview‑Centric** – Walks through “good, bad, ugly” scenarios.  
+4. **Showcases Best Practices** – Bitmask + hash map pattern is a coveted interview tool.  
 
-> **Meta‑Description**  
-> “Solve LeetCode 2506 in 3 lines! Get Java, Python, and C++ solutions using bitmask & hashmap. Learn the algorithm, test cases, and interview‑ready discussion.”
+> **Next Step**: Copy the code, run it against the LeetCode platform, and add the article to your GitHub portfolio. LinkedIn readers will see the problem statement, your solution, and the insights—exactly what recruiters look for.
 
-> **Keywords**  
-> LeetCode 2506, Count Pairs Of Similar Strings, interview coding, bitmask, hashmap, Java, Python, C++, algorithm, time complexity, space complexity, coding interview, job interview tips.
-
----
-
-### Full Article
-
-> #### 🎓 How to Ace LeetCode 2506 – Count Pairs Of Similar Strings  
-> 
-> Are you prepping for a *software engineer* interview?  
-> One of the classic LeetCode problems that trip people up is **2506 – Count Pairs Of Similar Strings**.  
-> This post shows you how to solve it in **Java, Python, and C++**—all in linear time—plus a ready‑to‑copy code snippet for every language.  
-> We also dive into the algorithmic intuition, complexity analysis, edge‑case testing, and *why* this solution is a perfect interview answer.
-
----
-
-### 🚀 Problem Summary
-
-> Given an array of words, count how many pairs contain exactly the same set of letters.  
-> Example: `["ab", "ba", "xyz"]` → 1 pair (`"ab"` & `"ba"`).
-
----
-
-### 🧠 Why Bitmask?
-
-* Only 26 letters → a 32‑bit integer is enough.  
-* “Does the word contain `'c'`?” → set bit 2.  
-* Two words are similar ↔ their integer masks are equal.
-
----
-
-### 📈 Efficient Algorithm
-
-1. **Mask each word** (`mask |= 1 << (c - 'a')`).  
-2. **Hash it**: `freq[mask]` → how many earlier words had that mask.  
-3. **Accumulate answer** while iterating.  
-4. **Return**.
-
-This is **O(n·m)** time, **O(n)** space.
-
----
-
-### 🧪 Ready‑to‑Run Code
-
-*Java* | *Python* | *C++*
---- | --- | ---
-```java
-// Java solution (mask + hashmap)
-class Solution {
-    public int similarPairs(String[] words) { /* ... */ }
-}
-``` | ```python
-# Python solution
-class Solution:
-    def similarPairs(self, words: List[str]) -> int: /* ... */
-``` | ```cpp
-// C++ solution
-class Solution {
-public:
-    int similarPairs(vector<string>& words) { /* ... */ }
-};
-```
-
----
-
-### 🔍 Complexity
-
-* **Time**: Linear – `O(n·m)` (fast even for huge inputs).  
-* **Space**: `O(n)` – small hashmap of masks.
-
----
-
-### 🎯 Edge Cases
-
-| Case | Why it matters | ✔️ Pass |
-|------|----------------|--------|
-| Only one word | 0 pairs | ✅ |
-| All words identical | All share the same mask | ✅ |
-| No common letters | 0 pairs | ✅ |
-| Repeated letters inside a word | mask only cares about presence | ✅ |
-
----
-
-### 🛠️ What Interviewers Look For
-
-1. **Efficiency** – linear vs quadratic.  
-2. **Clean code** – single `int` mask, concise hashmap usage.  
-3. **Explanations** – be ready to talk about “why a bitmask works” and “why we add `freq[mask]` to the answer”.  
-4. **Testing** – mention a few corner cases.  
-
----
-
-### 📚 Final Thoughts
-
-LeetCode 2506 is *simple yet subtle*.  
-A linear mask‑hashmap solution proves you can:
-
-* compress data efficiently (bit operations)  
-* use a hashmap to avoid repeated work  
-* think in terms of *unique signatures*  
-
-All three language implementations are essentially the same logic, just expressed in idiomatic syntax.  
-
-Good luck on your next interview, and remember: **speed + clarity = interview win!**
-
----
-
-## 🔗 Links & Resources
-
-| Resource | What it’s for |
-|----------|---------------|
-| Official LeetCode 2506 page | [https://leetcode.com/problems/count-pairs-of-similar-strings/](https://leetcode.com/problems/count-pairs-of-similar-strings/) |
-| Bit manipulation tutorial | [GeeksforGeeks – Bit Manipulation](https://www.geeksforgeeks.org/bit-manipulation/) |
-| Interview prep – coding challenges | [InterviewBit, HackerRank, CodeSignal] |
-| YouTube walkthrough (Java + Python) | 🎥 *search “LeetCode 2506 Java solution”* |
-
----
-
-> **Feel free to copy/paste any of the code blocks above into your editor and run the sample tests.** Happy coding!
+Happy coding, and good luck on the interview! 🚀

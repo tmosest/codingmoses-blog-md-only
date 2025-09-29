@@ -9,255 +9,162 @@ hideToc: true
 ---
         **Solution Explanation**
 
-For every distance `x ( 0 ≤ x ≤ 50 000 )` we can build an obstacle at that
-integer distance from the origin.
-The obstacles are built one after another – all commands have to be processed
-in the given order.
+For the staircase we know the limits
 
 ```
-type 1  x   →  build an obstacle at distance x
-type 2  sz  x  →  is there a block of length sz (consecutive integers)
-                    that covers only distances ≤ x ?
+1 , 2 , … , MAX
 ```
 
-For every command we have to output
-
-```
-true  –  the command can be executed
-false –  the command cannot be executed
-```
-
-The task is a classical *dynamic set of points on a line* problem.
-
-
+During the game some of those positions become *obstacles*.
+If you are standing on a step `a` you may walk only to the right.
+As soon as you would step on an obstacle the walk stops.
+The query `P a` asks for the maximal number of steps that can be taken
+starting from step `a`.
 
 --------------------------------------------------------------------
 
-#### 1.   Observations
+#### 1.   Observation
 
-*All distances are integers.*  
-If an obstacle exists at distance `d`, no part of a block may contain `d`.
-
-For a block of length `sz` to exist inside the interval `[0 , x]`
-the block has to end somewhere `≤ x`.  
-Let
+An obstacle never disappears – it only gets added.
+All obstacles together divide the whole range into disjoint
+intervals
 
 ```
-prev(x) – the closest obstacle that is ≤ x
+(-∞ , firstObstacle] ,
+(firstObstacle , secondObstacle] ,
+(secondObstacle , thirdObstacle] , … ,
+(lastObstacle , +∞)
 ```
 
-(there is always an obstacle at distance `0`; we will keep it in the set)
-All distances `prev(x)+1 … x` are obstacle‑free,
-therefore a block can end at `x` **iff**
+The walk starting at `a` can use only the interval that contains `a`
+and it must stop **before** the next obstacle on the right.
+Therefore the answer for a query `P a` is
 
 ```
-x – prev(x)  ≥  sz            (the free stretch on the right side)
+nextObstacleOnRight – a – 1
 ```
 
-Otherwise the block must end before `x`.  
-The longest stretch that ends before `x` is the maximum length of an
-interval that ends at any obstacle `≤ prev(x)`.  
-If that maximum length is at least `sz` the block can be placed,
-otherwise it cannot.
-
-So we need
-
-```
-for a given obstacle position x:
-    1. find its predecessor and successor in the current obstacle set
-    2. store for every obstacle the length of the free stretch to its left
-```
+`nextObstacleOnRight` is the first obstacle whose position is larger
+than `a`.  
+If `a` itself is an obstacle the walk is already blocked – the answer
+is `0`.
 
 --------------------------------------------------------------------
 
-#### 2.   Data structures
+#### 2.   Data structure
 
-* `TreeSet<Integer> obstacles` – all built obstacles, sorted.
-  We insert two sentinels:
-  * `0`  – the origin is always free at the beginning
-  * `50 001` – a dummy obstacle that lies beyond the maximum possible query
-    distance.  
-    It guarantees that every obstacle has a successor.
+The set of obstacle positions must support
 
-* `SegmentTree` over the indices `0 … 50 001`.  
-  For every obstacle `p` the tree stores
+* insert a new obstacle,
+* ask whether a position is an obstacle,
+* find the first obstacle larger than a given position.
 
-  ```
-  leftGap[p] = p – predecessor_of(p)
-  ```
+All operations are needed in logarithmic time.
+A balanced binary search tree (`TreeSet` in Java) is perfect for that.
+Two fictitious obstacles are inserted once per test case:
 
-  This is the length of the free interval that ends exactly at `p`.
+```
+-1        – just before the first real step
+MAX + 1   – just after the last real step
+```
 
-  The segment tree supports
-
-  * point update – set `leftGap[p]` to a new value
-  * range maximum query – maximum value on an interval of indices
-
-  Both operations work in `O(log N)` time (`N = 50 002`).
+With those two sentinels `higher(a)` (the first element larger than
+`a`) is always defined for every `a` between `1` and `MAX`.
 
 --------------------------------------------------------------------
 
 #### 3.   Algorithm
 
+For every test case
+
 ```
-initialise:
-    obstacles = { 0 , 50001 }
-    segTree   = new SegmentTree(50002)
-    segTree.update(0,       0)        // leftGap[0]  = 0
-    segTree.update(50001, 50001)      // leftGap[50001] = 50001
+read MAX and Q
+obs ← TreeSet containing -1 and MAX+1
 
-for every command:
-    if command is type 1  x:
-        prev  = obstacles.lower(x)     // closest obstacle ≤ x
-        next  = obstacles.higher(x)    // closest obstacle  > x
-        obstacles.add(x)
-        segTree.update(x,        x - prev)     // leftGap for new obstacle
-        segTree.update(next,     next - x)     // free part after new obstacle
-        answer = true
-
-    else (type 2 sz x):
-        prev   = obstacles.lower(x)  // closest obstacle ≤ x
-        leftGap = x - prev
-        if leftGap >= sz:
-            answer = true
-        else:
-            maxGap = segTree.queryMax(0, prev)   // longest free stretch that ends before or at prev
-            answer = (maxGap >= sz)
-
-    store answer in output list
+repeat Q times
+        read type (C or P) and value v
+        if type = 'C'          // create an obstacle
+                obs.add(v)
+        else                    // type = 'P', query
+                if obs.contains(v)
+                        output 0
+                else
+                        next ← obs.higher(v)
+                        output (next - v - 1)
 ```
 
 --------------------------------------------------------------------
 
 #### 4.   Correctness Proof  
 
-We prove that the algorithm outputs the correct answer for every command.
+We prove that the algorithm prints the correct answer for every query.
 
 ---
 
 ##### Lemma 1  
-For any obstacle position `p` the value stored in the segment tree
-at index `p` equals the length of the free interval that ends exactly at `p`,
-i.e. `leftGap[p] = p – predecessor_of(p)`.
+Let `O` be the first obstacle strictly larger than `a`.  
+Any walk that starts at step `a` and does not step on an obstacle
+contains exactly `O - a - 1` steps.
 
 **Proof.**
 
-*Initialization.*  
-`obstacles = {0, 50001}`.  
-`leftGap[0]` is set to `0` – the free interval that ends at `0` has length `0`.  
-`leftGap[50001]` is set to `50001 – 0 = 50001` – the free interval `[0,50001)`.
-
-*Induction step.*  
-Assume the statement holds after all previous commands.
-When a new obstacle `x` is inserted:
+All steps between `a` and `O-1` are free of obstacles, because
+`O` is the first obstacle on the right.  
+The walk can move to `O-1`, which is the last free step.
+After that the next step would be on `O`, an obstacle, which is
+not allowed.  
+Thus the walk consists of the steps  
 
 ```
-prev = obstacles.lower(x)   // predecessor of x
-next = obstacles.higher(x)  // successor of x
+a , a+1 , … , O-1
 ```
 
-`x` becomes a new obstacle.  
-The free interval that ends at `x` has length `x – prev`; we store this value
-at index `x`.  
-The free interval that ends at the old successor `next`
-now has length `next – x`; we update this value at index `next`.  
-All other indices are unchanged.  
-Therefore the invariant holds after this command. ∎
+whose length is `O-1 - a + 1 = O - a - 1`. ∎
 
 
 
 ##### Lemma 2  
-For a query `type 2 sz x` let `p = obstacles.lower(x)`  
-(`p` is the closest obstacle `≤ x`).  
-`leftGap = x – p`.
-
-If `leftGap ≥ sz` then a block of length `sz` can be placed covering only
-distances `≤ x`.
+If step `a` itself is an obstacle, the maximum number of steps that
+can be taken from `a` equals `0`.
 
 **Proof.**
 
-All distances between `p+1` and `x` are free, because `p` is the
-nearest obstacle to the left of `x`.  
-If `x` itself is not an obstacle (`x` ≠ `p`), the stretch
-`[p+1 , x]` has length `leftGap`.  
-Placing a block that ends at distance `x` is therefore possible
-iff `leftGap ≥ sz`. ∎
+You start on an obstacle, therefore you are already blocked and
+cannot make any step. ∎
 
 
 
 ##### Lemma 3  
-For a query `type 2 sz x` let `p = obstacles.lower(x)`  
-and `maxGap = segTree.queryMax(0, p)`  
-(the maximum free stretch that ends at any obstacle `≤ p`).
-
-If `maxGap ≥ sz` then a block of length `sz` can be placed covering only
-distances `≤ x`.
+For every step `a` between `1` and `MAX` the algorithm returns  
+`0` if `a` is an obstacle and otherwise returns `O - a - 1`,
+where `O` is the first obstacle on the right of `a`.
 
 **Proof.**
 
-All free stretches that end before or at `p` are exactly the intervals
-`[prev(q)+1 , q]` for obstacles `q ≤ p`.  
-By Lemma&nbsp;1 the segment tree stores their lengths at the indices `q`.  
-The maximum of these lengths is `maxGap`.  
-If `maxGap ≥ sz`, choose the corresponding interval `[a , b]`
-(`b ≤ p < x`) and place the block inside it; all its covered distances
-are `< b ≤ x`. ∎
+The set `obs` always contains all current obstacles.
+If `a` is in `obs` the algorithm outputs `0` – by Lemma&nbsp;2
+this is the correct answer.
 
-
-
-##### Lemma 4  
-If both conditions of Lemma&nbsp;2 and Lemma&nbsp;3 fail,
-no block of length `sz` can be placed covering only distances `≤ x`.
-
-**Proof.**
-
-Assume the contrary: a block of length `sz` exists.
-
-*Case 1 – the block ends at distance `x`.*  
-Then all distances from the left end of the block up to `x`
-are free.  
-By definition of `p = obstacles.lower(x)` the leftmost obstacle in that
-range is `p`.  
-Hence `x – p ≥ sz`.  
-But this contradicts the assumption that the first condition failed.
-
-*Case 2 – the block ends before `x`.*  
-Let it end at some distance `y < x`.  
-`y` is not an obstacle, therefore the block is completely inside the
-interval that ends at some obstacle `q ≤ y`.  
-The length of that interval is `q – predecessor_of(q)`  
-(and stored in the segment tree at index `q`).
-Since `q ≤ y < x`, `q ≤ p`.  
-Thus the length of that interval is at most `maxGap`.  
-The block’s length `sz` would therefore be `≤ maxGap`.  
-But the second condition failed, so `maxGap < sz`.  
-Contradiction again. ∎
+Otherwise the algorithm obtains `next = obs.higher(a)`.
+Because the set also contains the sentinels `-1` and `MAX+1`,
+`next` is precisely the first obstacle strictly larger than `a`.
+The algorithm outputs `next - a - 1`.  
+By Lemma&nbsp;1 this equals the length of the longest admissible walk
+starting from `a`. ∎
 
 
 
 ##### Theorem  
-For every command the algorithm outputs
-
-* `true`   iff the command can be executed,
-* `false`  otherwise.
+For every query of type `P a` the algorithm prints the maximum
+possible number of steps that can be walked from step `a`.
 
 **Proof.**
 
-*Type&nbsp;1.*  
-The algorithm only inserts the new obstacle, no answer is required.
-This obviously satisfies the specification.
-
-*Type&nbsp;2.*  
-Let `p = obstacles.lower(x)`.  
-The algorithm first checks `x – p ≥ sz`.  
-By Lemma&nbsp;2 this is equivalent to the existence of a suitable block
-ending at `x`.  
-If that fails, it queries the maximum free stretch that ends at an obstacle
-`≤ p`.  
-By Lemma&nbsp;3 the existence of a block that ends before `x` is equivalent
-to this maximum being at least `sz`.  
-If both checks fail, Lemma&nbsp;4 proves that no block can exist.
-Thus the answer returned by the algorithm is correct. ∎
+By Lemma&nbsp;3 the value printed by the algorithm equals the length
+of the longest walk that does not cross an obstacle.
+Any admissible walk must end before the first obstacle on the right,
+hence no longer walk exists.
+Therefore the printed value is exactly the required maximum. ∎
 
 
 
@@ -265,126 +172,34 @@ Thus the answer returned by the algorithm is correct. ∎
 
 #### 5.   Complexity Analysis
 
-Let `N = 50 002` – number of indices in the segment tree (`0 … 50 001`).
+Let `N` be the number of obstacles that have been added
+(including the two sentinels).
 
-* Each `type 1` command  
-  * `TreeSet.lower` / `higher` – `O(log N)`  
-  * two point updates in the segment tree – `O(log N)`  
-  * insertion into the set – `O(log N)`  
-
-  → **`O(log N)`**
-
-* Each `type 2` command  
-  * `TreeSet.lower` – `O(log N)`  
-  * one range maximum query on the segment tree – `O(log N)`  
-
-  → **`O(log N)`**
-
-Memory consumption
-
-* `TreeSet` – at most `N` integers – `O(N)`  
-* Segment tree – 4 × `N` integers (classic implementation) – `O(N)`  
-
-Total memory: **`O(N)`** (≈ 0.5 MB).
+*Each insertion* or *lookup* in `TreeSet` costs `O(log N)` time.  
+All `Q` queries are processed in  
+`O(Q · log N)` time.  
+The set stores at most `N` values, so the memory consumption is
+`O(N)`.
 
 --------------------------------------------------------------------
 
-#### 6.   Reference Implementation  (Java 17)
+#### 6.   Reference Implementation (Java 17)
 
 ```java
 import java.io.*;
 import java.util.*;
 
-/** Dynamic obstacles and range maximum query via segment tree. */
 public class Main {
 
-    /* -----------  Segment Tree for range maximum  ------------- */
-    private static class SegmentTree {
-        private final int n;          // size of the tree (next power of two)
-        private final int[] tree;     // max values
-
-        SegmentTree(int size) {
-            n = 1;
-            while (n < size) n <<= 1;
-            tree = new int[2 * n];
-        }
-
-        // set value at position idx to val
-        void update(int idx, int val) {
-            int p = idx + n;
-            tree[p] = val;
-            while (p > 1) {
-                p >>= 1;
-                tree[p] = Math.max(tree[p << 1], tree[(p << 1) | 1]);
-            }
-        }
-
-        // maximum value on indices [l, r] inclusive
-        int queryMax(int l, int r) {
-            if (l > r) return Integer.MIN_VALUE;
-            l += n; r += n;
-            int res = Integer.MIN_VALUE;
-            while (l <= r) {
-                if ((l & 1) == 1) res = Math.max(res, tree[l++]);
-                if ((r & 1) == 0) res = Math.max(res, tree[r--]);
-                l >>= 1; r >>= 1;
-            }
-            return res;
-        }
-    }
-
-    /* --------------------  Main  ---------------------------- */
-    public static void main(String[] args) throws IOException {
-        FastScanner fs = new FastScanner(System.in);
-        int m = fs.nextInt();                  // number of commands
-
-        final int MAX = 50001;                 // sentinel beyond queries
-        TreeSet<Integer> obstacles = new TreeSet<>();
-        obstacles.add(0);
-        obstacles.add(MAX + 1);                // 50001
-
-        SegmentTree seg = new SegmentTree(MAX + 2); // indices 0 … 50001
-        seg.update(0, 0);
-        seg.update(MAX + 1, MAX + 1);          // leftGap[50001] = 50001
-
-        StringBuilder out = new StringBuilder();
-
-        for (int i = 0; i < m; i++) {
-            int type = fs.nextInt();
-            if (type == 1) {                    // add obstacle
-                int x = fs.nextInt();
-                Integer prev = obstacles.lower(x);
-                Integer next = obstacles.higher(x);
-                obstacles.add(x);
-                seg.update(x, x - prev);
-                seg.update(next, next - x);
-                out.append("true\n");
-            } else {                            // query
-                int sz = fs.nextInt();
-                int x  = fs.nextInt();
-                Integer p = obstacles.lower(x);   // nearest obstacle ≤ x
-                int leftGap = x - p;
-                boolean ans;
-                if (leftGap >= sz) {
-                    ans = true;
-                } else {
-                    int maxGap = seg.queryMax(0, p);
-                    ans = (maxGap >= sz);
-                }
-                out.append(ans ? "true\n" : "false\n");
-            }
-        }
-        System.out.print(out.toString());
-    }
-
-    /* ----------  Fast scanner for integers  ---------- */
+    /* ---------- fast scanner ---------- */
     private static class FastScanner {
-        private final InputStream in;
+        private final BufferedInputStream in;
         private final byte[] buffer = new byte[1 << 16];
         private int ptr = 0, len = 0;
-        FastScanner(InputStream in) { this.in = in; }
 
-        private int read() throws IOException {
+        FastScanner(InputStream is) { in = new BufferedInputStream(is); }
+
+        private int readByte() throws IOException {
             if (ptr >= len) {
                 len = in.read(buffer);
                 ptr = 0;
@@ -393,19 +208,64 @@ public class Main {
             return buffer[ptr++];
         }
 
-        int nextInt() throws IOException {
-            int c, sgn = 1, res = 0;
-            do { c = read(); } while (c <= ' ');
-            if (c == '-') { sgn = -1; c = read(); }
-            while (c > ' ') {
-                res = res * 10 + c - '0';
-                c = read();
-            }
-            return res * sgn;
+        private String next() throws IOException {
+            StringBuilder sb = new StringBuilder();
+            int c;
+            do {
+                c = readByte();
+                if (c == -1) return null;
+            } while (Character.isWhitespace(c));
+
+            do {
+                sb.append((char) c);
+                c = readByte();
+            } while (c != -1 && !Character.isWhitespace(c));
+
+            return sb.toString();
         }
+
+        long nextLong() throws IOException {
+            String s = next();
+            if (s == null) throw new IOException("EOF");
+            return Long.parseLong(s);
+        }
+    }
+    /* ---------------------------------- */
+
+    public static void main(String[] args) throws Exception {
+        FastScanner fs = new FastScanner(System.in);
+        StringBuilder out = new StringBuilder();
+
+        String token;
+        while ((token = fs.next()) != null) {          // read MAX
+            long MAX = Long.parseLong(token);
+            long Q = fs.nextLong();                    // number of queries
+
+            TreeSet<Long> obs = new TreeSet<>();
+            obs.add(-1L);                 // sentinel before the staircase
+            obs.add(MAX + 1);             // sentinel after the staircase
+
+            for (long i = 0; i < Q; i++) {
+                String type = fs.next();  // "C" or "P"
+                long v = fs.nextLong();
+
+                if (type.charAt(0) == 'C') {          // add obstacle
+                    obs.add(v);
+                } else {                              // query
+                    if (obs.contains(v)) {
+                        out.append('0').append('\n');
+                    } else {
+                        long next = obs.higher(v);     // first obstacle > v
+                        out.append(next - v - 1).append('\n');
+                    }
+                }
+            }
+        }
+
+        System.out.print(out.toString());
     }
 }
 ```
 
 The program follows exactly the algorithm proven correct above and
-conforms to the Java 17 language standard.
+conforms to the Java 17 standard.

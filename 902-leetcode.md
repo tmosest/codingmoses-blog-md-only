@@ -7,261 +7,279 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # LeetCode 902 – *Numbers At Most N Given Digit Set*  
-**The Good, the Bad, and the Ugly** – A SEO‑friendly guide that will help you land your next software‑engineering role
+        # LeetCode 902 – Numbers At Most N Given Digit Set  
+**Java / Python / C++ – Full solutions + a “Good / Bad / Ugly” interview blog**  
 
 ---
 
-## 1. What is the problem?
+## 🎯 Problem Summary
 
-> **LeetCode 902 – Numbers At Most N Given Digit Set**  
-> Given a sorted array of distinct digits (`'1'`‑`'9'`) and an integer `n`, count how many **positive integers** can be written using those digits (repeated any number of times) that are **≤ n**.
+> **Given** a sorted array `digits` (each element is a single digit `'1'…'9'`) and an integer `n`,  
+> **Return** how many positive integers that can be written using only the digits in `digits` are **≤ n**.
 
-```text
-digits = ["1","3","5","7"],  n = 100
-output = 20   // 1,3,5,7,11,13,15,...,77
-```
+*Example*  
+`digits = ["1","3","5","7"]`, `n = 100` → **20** numbers: 1, 3, 5, 7, 11, 13, …, 77.
 
-The challenge lies in doing this efficiently for `n` up to `10^9` (9 digits) while keeping the code clean.
+**Constraints**
 
----
+| Item | Value |
+|------|-------|
+| `1 ≤ digits.length ≤ 9` |  |
+| each `digits[i]` is a character `'1'…'9'` |  |
+| `1 ≤ n ≤ 10⁹` |  |
 
-## 2. Why is this problem useful for interviews?
-
-| Why it matters | Why it matters |
-|----------------|----------------|
-| **Digit DP** – a classic interview pattern | **Counting & combinatorics** – tests your ability to think in terms of *“how many”* |
-| Handles **boundary cases** (leading zeros, equal‑length numbers) | Demonstrates *“break the problem into smaller sub‑problems”* |
-| Can be solved in **O(log n)** time, **O(1)** space – a nice trade‑off | You’ll show you can write clean, production‑ready code in Java/Python/C++ |
+The problem is a classic **digit‑DP / counting** problem that can be solved in *O(log n)* time and *O(1)* space with a simple combinatorial approach.
 
 ---
 
-## 3. The Good – A clean O(log n) counting solution
+## 🧠 Solution Overview (the “Good” part)
 
-1. **All numbers with fewer digits than `n`**  
-   For every length `l` (1 … k‑1) there are `|digits|^l` possibilities.
+1. **Count all numbers with fewer digits than `n`**  
+   If `n` has `k` digits, any number with `1 … k‑1` digits can be formed from `digits.length` choices for each place.  
+   ```
+   total = Σ_{i=1}^{k-1} (digits.length)^i
+   ```
 
-2. **Numbers with the same length**  
-   Scan the digits of `n` from most‑significant to least‑significant.  
-   For each position:
+2. **Handle numbers with the same number of digits**  
+   Scan the digits of `n` from most significant to least significant.  
+   For the current position `i` (0‑based from left):
+   * Count how many digits from `digits` are **strictly less** than `n[i]`.  
+     Each such digit can be followed by any combination of the remaining `k-i-1` positions → add  
+     `(countLess) * (digits.length)^{k-i-1}` to the answer.
+   * If **no digit equals** `n[i]`, we are finished – the current prefix already exceeds `n`.
+   * If there **is a digit equal** to `n[i]`, continue to the next position.
 
-   * Count how many digits from `digits` are **smaller** than the current digit of `n`.  
-     Each such choice locks the remaining positions → `|digits|^(k-i-1)` numbers.
+3. **Add 1 for `n` itself if it can be formed**  
+   If we never broke out early, all prefixes matched `n`; thus `n` itself is a valid number → add `1`.
 
-   * If a digit in `digits` equals the current digit of `n`, we **must** continue to the next position.  
-     If no digit matches, we are done – no number with the same prefix can equal `n`.
-
-3. **If we finish the loop** – `n` itself can be formed → add 1.
-
-### Complexity
-
-| Metric | Value |
-|--------|-------|
-| **Time** | O(k) where k = number of digits in `n` (≤ 9) |
-| **Space** | O(1) |
-
-This is the “one‑pass counting” method that many top solutions use.
+The algorithm runs in linear time in the number of digits of `n` (≤ 10) and uses constant extra space.
 
 ---
 
-## 4. The Bad – Common pitfalls
-
-| Pitfall | Why it happens | Fix |
-|---------|----------------|-----|
-| **Using `Math.pow` with integers** | Returns a `double`, causing precision errors for large exponents. | Pre‑compute powers with `long` or use a simple loop. |
-| **Assuming `n` is always reachable** | If the smallest digit > first digit of `n`, you’ll incorrectly count some numbers. | Check if any digit in `digits` equals the current digit before moving on. |
-| **Overflow** | `int` may overflow for `|digits|^9` (e.g., 9^9 > 2^31). | Use `long` or `long long` and cast the final result back to `int` (LeetCode guarantees the answer fits in `int`). |
-
----
-
-## 5. The Ugly – Over‑engineering and confusing DP variants
-
-Some solutions over‑complicate the problem:
-
-* **Recursive DFS** that explores every combination until it exceeds `n`.  
-  *Takes too long and uses stack space unnecessarily.*
-
-* **Digit DP with memoization** that builds a table for each prefix length.  
-  *Hard to explain in an interview and can be overkill for 9 digits.*
-
-* **Unnecessary use of `String` conversion inside loops** – slows down the solution.
-
-While these approaches are **correct**, they distract from the clean counting logic and make it harder to present your idea succinctly.
-
----
-
-## 6. Full Code – Java, Python, C++
-
-Below are three clean implementations that follow the one‑pass counting logic.
-
-### Java
+## 📚 Code – Java
 
 ```java
 class Solution {
     public int atMostNGivenDigitSet(String[] digits, int n) {
         String N = String.valueOf(n);
-        int k = N.length();
-        int dLen = digits.length;
-        int count = 0;
+        int k = N.length();          // number of digits in n
+        int dlen = digits.length;    // number of allowed digits
 
-        // 1) All numbers with fewer digits than n
-        for (int len = 1; len < k; ++len) {
-            count += powInt(dLen, len);
+        long total = 0;
+
+        // 1) all numbers with fewer digits than n
+        for (int len = 1; len < k; len++) {
+            total += pow(dlen, len);
         }
 
-        // 2) Numbers with the same length
-        for (int i = 0; i < k; ++i) {
+        // 2) numbers with the same length
+        for (int i = 0; i < k; i++) {
             int cur = N.charAt(i) - '0';
             boolean equal = false;
-            for (String d : digits) {
-                int dig = d.charAt(0) - '0';
-                if (dig < cur) {
-                    count += powInt(dLen, k - i - 1);
-                } else if (dig == cur) {
+
+            for (int j = 0; j < dlen; j++) {
+                int d = digits[j].charAt(0) - '0';
+                if (d < cur) {
+                    total += pow(dlen, k - i - 1);
+                } else if (d == cur) {
                     equal = true;
                 }
             }
-            if (!equal) return count;   // no matching prefix
+
+            if (!equal) {          // prefix already exceeds n
+                return (int) total;
+            }
         }
 
-        return count + 1; // n itself
+        // 3) n itself is valid
+        return (int) (total + 1);
     }
 
-    // Integer power – avoids double precision issues
-    private int powInt(int base, int exp) {
-        int res = 1;
-        for (int i = 0; i < exp; ++i) res *= base;
-        return res;
+    // fast integer power for small exponents
+    private long pow(int base, int exp) {
+        long r = 1;
+        while (exp-- > 0) r *= base;
+        return r;
     }
 }
 ```
 
-### Python
+**Complexities**  
+- Time: `O(log n)` (≤ 10 iterations)  
+- Space: `O(1)`
+
+---
+
+## 📚 Code – Python
 
 ```python
 class Solution:
-    def atMostNGivenDigitSet(self, digits: list[str], n: int) -> int:
-        s = str(n)
-        k = len(s)
+    def atMostNGivenDigitSet(self, digits: List[str], n: int) -> int:
+        N = str(n)
+        k = len(N)
         dlen = len(digits)
-        count = 0
 
-        # 1) Shorter numbers
+        # helper: integer power
+        def pow_int(b, e):
+            return b ** e
+
+        total = 0
+
+        # 1) all numbers with fewer digits
         for length in range(1, k):
-            count += dlen ** length
+            total += pow_int(dlen, length)
 
-        # 2) Same‑length numbers
-        for i, ch in enumerate(s):
+        # 2) same length
+        for i, ch in enumerate(N):
             cur = int(ch)
             equal = False
             for d in digits:
-                dig = int(d)
-                if dig < cur:
-                    count += dlen ** (k - i - 1)
-                elif dig == cur:
+                val = int(d)
+                if val < cur:
+                    total += pow_int(dlen, k - i - 1)
+                elif val == cur:
                     equal = True
             if not equal:
-                return count
+                return total
 
-        return count + 1
+        # 3) n itself
+        return total + 1
 ```
 
-### C++
+---
+
+## 📚 Code – C++
 
 ```cpp
 class Solution {
 public:
     int atMostNGivenDigitSet(vector<string>& digits, int n) {
-        string S = to_string(n);
-        int k = S.size();
-        int dLen = digits.size();
-        long long count = 0;
+        string N = to_string(n);
+        int k = N.size();          // digits in n
+        int dlen = digits.size();  // allowed digits
 
-        // 1) Numbers with fewer digits
+        long long total = 0;
+
+        // 1) fewer digits
         for (int len = 1; len < k; ++len)
-            count += powerInt(dLen, len);
+            total += pow_int(dlen, len);
 
-        // 2) Numbers with the same length
+        // 2) same length
         for (int i = 0; i < k; ++i) {
-            int cur = S[i] - '0';
+            int cur = N[i] - '0';
             bool equal = false;
-            for (const auto& d : digits) {
-                int dig = d[0] - '0';
-                if (dig < cur) count += powerInt(dLen, k - i - 1);
-                else if (dig == cur) equal = true;
+            for (const string &d : digits) {
+                int val = d[0] - '0';
+                if (val < cur)
+                    total += pow_int(dlen, k - i - 1);
+                else if (val == cur)
+                    equal = true;
             }
-            if (!equal) return static_cast<int>(count);
+            if (!equal) return static_cast<int>(total);
         }
 
-        return static_cast<int>(count + 1);
+        // 3) n itself
+        return static_cast<int>(total + 1);
     }
 
 private:
-    int powerInt(int base, int exp) {
-        int res = 1;
-        for (int i = 0; i < exp; ++i) res *= base;
-        return res;
+    long long pow_int(int base, int exp) {
+        long long r = 1;
+        while (exp--) r *= base;
+        return r;
     }
 };
 ```
 
-> **Tip** – In C++ you may pre‑compute the powers of `|digits|` once in an array to avoid repeated multiplications.
+---
+
+## 🤕 The “Bad” & “Ugly” – Common Pitfalls
+
+| Mistake | Why it fails | Fix |
+|---------|--------------|-----|
+| Using `Math.pow` (Java) / `pow` (C++) which returns **double** | Precision loss for large exponents; rounding errors | Use integer multiplication (fast exponentiation) |
+| Forgetting to handle the case where `n` itself is **not** constructible | Wrong final answer (missing `+1`) | After the loop, add `1` **only** if the loop never broke early |
+| Assuming `n` has the same number of digits as the longest possible number | Incorrect count of shorter numbers | Explicitly pre‑add all numbers with fewer digits |
+| Recursion with memoization but forgetting to use `long long` | Overflow when `digits.length` = 9 and length = 10 | Use `long long` (64‑bit) for intermediate sums |
+| Off‑by‑one errors in the exponent `(k-i-1)` | Wrong power value | Verify indices carefully; unit‑test on samples |
 
 ---
 
-## 7. Step‑by‑Step Walk‑through (Java version)
+## 🔄 Alternative: Digit‑DP (the “Uglier” but more general)
 
-| Step | Action | Why it matters |
-|------|--------|----------------|
-| `count += powInt(dLen, len)` | Count all `len`‑digit numbers that are *shorter* than `n`. | Combines *combinatorics* (`|digits|^len`) with the *length of `n`*. |
-| `if (dig < cur) count += powInt(dLen, k-i-1)` | For every smaller choice at position `i`, lock the rest. | Handles the *“≤ n”* condition in a single pass. |
-| `if (!equal) return count` | No digit matches current position → impossible to reach `n`. | Stops early and keeps time constant. |
-| `return count + 1` | `n` itself is constructible. | Handles the *edge case* where `n` is exactly one of the formed numbers. |
+If you need to support *different* digit sets per position or more constraints (e.g., sum of digits, no leading zeros), the classic digit‑DP with memoization becomes handy.
 
----
+```java
+// Java skeleton
+class Solution {
+    int[] dp;            // memo table
+    boolean[][] vis;
+    String[] digits;
+    int nDigits;
 
-## 8. Alternative Approaches
+    public int atMostNGivenDigitSet(String[] digits, int n) {
+        this.digits = digits;
+        String s = String.valueOf(n);
+        nDigits = s.length();
+        dp = new int[nDigits + 1];
+        vis = new boolean[nDigits + 1][1];
+        Arrays.fill(dp, -1);
+        return dfs(0, true);
+    }
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Recursive DFS** | Intuitive to think about “try all combinations”. | Too slow (`9^9` calls) and uses stack space. |
-| **Digit DP (top‑down with memo)** | Works for larger `n` (many digits). | Hard to explain; not needed for 9 digits. |
-| **Breadth‑First Search (BFS)** | Generates numbers in increasing order. | Needs a queue → O(|digits|^k) memory in worst case. |
+    int dfs(int pos, boolean tight) {
+        if (pos == nDigits) return 1;
+        if (!tight && vis[pos][0]) return dp[pos];
+        int limit = tight ? (String.valueOf(n)).charAt(pos) - '0' : 9;
+        int ans = 0;
+        for (String d : digits) {
+            int val = d.charAt(0) - '0';
+            if (val > limit) break;
+            ans += dfs(pos + 1, tight && val == limit);
+        }
+        if (!tight) { vis[pos][0] = true; dp[pos] = ans; }
+        return ans;
+    }
+}
+```
 
-> **Bottom line** – For a 9‑digit `n` the counting method is the fastest and easiest to communicate.
-
----
-
-## 9. Interview‑ready Tips
-
-1. **Clarify the problem** – ask for examples of edge cases (`n` smaller than the smallest digit, `n` exactly equals a constructible number, etc.).
-2. **State the plan** – “We’ll first count all shorter numbers, then process same‑length numbers in a single pass.”
-3. **Show the math** – explain why `|digits|^l` possibilities exist for length `l` and why `|digits|^(k-i-1)` is added for a smaller choice at position `i`.
-4. **Walk through a sample** – e.g. `digits = ["1","3","5"], n = 235` – demonstrate how the loop works.
-5. **Discuss pitfalls** – mention the `Math.pow` issue and overflow.
-6. **Code** – keep it clean, use a helper for integer powers, and write short, self‑contained methods.
-
----
-
-## 10. Resources & Further Reading
-
-| Link | What it covers |
-|------|----------------|
-| [LeetCode 902 – Official Problem](https://leetcode.com/problems/numbers-at-most-n-given-digit-set/) | Problem statement + examples |
-| [Top 100 LeetCode Solutions – 902](https://leetcode.com/articles/top-100-leetcode-solutions/) | Clean Java/Python/C++ solutions |
-| [Digit DP – GeeksforGeeks](https://www.geeksforgeeks.org/digit-dp/) | In‑depth theory and variations |
-| [Counting Combinations – HackerRank “Count the Numbers”](https://www.hackerrank.com/challenges/count-the-numbers) | Similar combinatorial counting logic |
+This version is more verbose but shows how the same logic generalises.
 
 ---
 
-## 11. Final Thoughts
+## 📈 SEO & Interview Take‑aways
 
-- **Practice the counting trick** until you can explain it in under a minute.
-- **Run your code on the edge cases**:  
-  * `n = 1`, `digits = ["1","2"]` → answer = 1  
-  * `n = 1000000000`, `digits = ["1","2","3","4","5","6","7","8","9"]` → answer = 999,999,999
-- **During the interview**, start with “I’ll count all numbers with fewer digits, then deal with the same length. It takes just one pass.” This shows you know the core insight.
+- **Keywords**: *LeetCode 902*, *Numbers at most N given digit set*, *Java solution*, *Python solution*, *C++ solution*, *coding interview*, *digit DP*, *job interview help*.
+- **Meta Description** (for a blog post):  
+  “Master LeetCode 902 – Numbers At Most N Given Digit Set. See Java, Python, and C++ solutions, detailed explanations, and common pitfalls to avoid. Boost your coding interview performance!”
+- **Call‑to‑Action**: “Like, share, and subscribe for more interview‑ready tutorials.”
 
-> **Remember**: LeetCode 902 is not just a *math puzzle* – it’s a gateway to mastering **digit‑based DP** and **combinatorial counting**—skills that hiring managers love to see.
+**Interview Tip**:  
+- Start with the high‑level idea (counting with fewer digits).  
+- Clarify assumptions about the input (`n`’s length).  
+- Show the combinatorial counting before coding.  
+- Discuss edge cases (“does `n` itself count?”).  
+- Mention the *O(log n)* solution as a clean, production‑ready answer.
 
-Happy coding, and good luck on your next interview! 🚀
+---
+
+## 🎉 Final Checklist
+
+- [ ] Implement combinatorial counting with integer powers.  
+- [ ] Pre‑add all shorter‑length numbers.  
+- [ ] Handle prefix mismatch correctly.  
+- [ ] Add `+1` only when `n` itself is constructible.  
+- [ ] Use 64‑bit integers to avoid overflow.  
+- [ ] Run unit tests on sample inputs (`[1,3,5,7]`, `100`) and edge cases (`["1","2","3"]`, `1234`).
+
+Happy coding and good luck in your next interview! 🚀
+
+--- 
+
+**Reference**:  
+- LeetCode problem statement: https://leetcode.com/problems/numbers-at-most-n-given-digit-set/  
+- Classic digit‑DP resource: https://cp-algorithms.com/algebra/digit-dp.html
+
+--- 
+
+*Prepared by: ChatGPT – Your AI coding interview coach.*

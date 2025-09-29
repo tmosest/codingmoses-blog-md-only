@@ -7,149 +7,186 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  LeetCode 2664 – **The Knight’s Tour**  
-### Code in Java, Python, & C++  
-Below are clean, production‑ready solutions that work for the tiny 1 – 5 × 5 boards LeetCode uses.  
-All three implementations use a classic depth‑first search (DFS) with backtracking and an optional *Warnsdorff* heuristic (the most visited‑next‑cell rule). Because the board is tiny the plain DFS is fast enough, but the heuristic can help you win on the very worst test cases.
+        ## The Knight’s Tour on LeetCode #2664  
+**Good, Bad, and Ugly – A Job‑Seeking Guide**
 
 ---
 
-### Common Parts – 8 Knight Moves
-```text
-dx = {  2,  1, -1, -2, -2, -1,  1,  2}
-dy = {  1,  2,  2,  1, -1, -2, -2, -1}
-```
+### TL;DR
+
+| Language | Complexity | Notes |
+|----------|------------|-------|
+| **Java** | O(m·n) backtracking (worst‑case ≈ 120 000 paths) | Uses 0‑based board, recursion depth ≤ 25 |
+| **Python** | Same as Java | Uses tuples for positions, `itertools` not needed |
+| **C++** | Same | Uses `vector<vector<int>>` and a global `moves` array |
+
+The board is at most 5 × 5, so an exhaustive depth‑first search (DFS) is fast enough.  
+The key is to store the visitation order in `board[r][c]` and backtrack when a dead‑end is hit.  
 
 ---
 
-## 2. Java
+## 1. Problem Recap
+
+You’re given a board of size `m × n` (1 ≤ m, n ≤ 5) and a starting position `(r, c)`.  
+A knight moves like in chess: `(dr, dc)` is a pair where one component is 2 and the other is 1.  
+Your task is to return a matrix where each cell contains the step number at which the knight visited that square, starting at `0` for the initial cell.  
+It is guaranteed that a full tour exists for the supplied test cases.
+
+---
+
+## 2. Why Backtracking Works Here
+
+- **State Space:** `m · n` cells, each visited exactly once → at most 25! possible paths (tiny for m,n ≤ 5).  
+- **Feasibility:** The problem guarantees a solution, so we can stop when we find the first tour.  
+- **Determinism:** The output is deterministic once we decide on the order in which we try moves.
+
+Because the board is small, we can ignore more advanced heuristics (Warnsdorff’s rule) and still finish well under 1 ms.  
+However, adding a simple move ordering (Warnsdorff) speeds up the search and demonstrates good coding interview practices.
+
+---
+
+## 3. Algorithm Overview
+
+1. **Define** the 8 knight moves.
+2. **Create** a 2‑D array `board` initialized with `-1` to mark unvisited cells.
+3. **DFS(position, step):**  
+   - Mark the current cell with `step`.  
+   - If `step == m*n - 1`, we finished → return `true`.  
+   - Generate candidate next cells.  
+   - *Optional:* sort candidates by the number of onward moves (Warnsdorff).  
+   - Recurse on each candidate.  
+   - If recursion fails, backtrack: set `board[next]` back to `-1`.  
+4. **Call** DFS starting from `(r, c, 0)`.
+
+---
+
+## 4. Complexity Analysis
+
+- **Time:**  
+  In the worst case we visit every node of the recursion tree:  
+  \(O(8^{m·n})\).  
+  For m,n ≤ 5 this is trivial (≤ 8^25 ≈ 3·10^22, but the search prunes heavily).  
+  Practically < 1 ms on modern hardware.
+
+- **Space:**  
+  - `board`: O(m·n).  
+  - Recursion stack: O(m·n).  
+  - No extra large data structures.
+
+---
+
+## 5. Edge Cases
+
+| Case | Why it matters | Handling |
+|------|----------------|----------|
+| 1 × 1 board | No moves possible | DFS immediately returns success |
+| Unreachable squares (odd boards) | Problem guarantees solvable input | No need for checks |
+| Starting position on corner | Moves reduce | Works out of the box |
+
+---
+
+## 6. Code Implementations
+
+Below are clean, interview‑ready solutions in **Java, Python, and C++**.  
+All three use the same backtracking core.
+
+### 6.1 Java
 
 ```java
 import java.util.*;
 
 public class Solution {
-    private static final int[] DX = {  2,  1, -1, -2, -2, -1,  1,  2};
-    private static final int[] DY = {  1,  2,  2,  1, -1, -2, -2, -1};
+    private static final int[] DR = {2, 1, -1, -2, -2, -1, 1, 2};
+    private static final int[] DC = {1, 2, 2, 1, -1, -2, -2, -1};
 
     public int[][] tourOfKnight(int m, int n, int r, int c) {
         int[][] board = new int[m][n];
-        int[][] visited = new int[m][n];
-        for (int i = 0; i < m; i++) Arrays.fill(visited[i], -1);
-
-        if (!dfs(r, c, 0, board, visited, m, n)) {
-            throw new IllegalStateException("Solution not found – problem guarantees existence");
-        }
+        for (int[] row : board) Arrays.fill(row, -1);
+        dfs(board, r, c, 0);
         return board;
     }
 
-    private boolean dfs(int x, int y, int step,
-                        int[][] board, int[][] visited,
-                        int m, int n) {
-        board[x][y] = step;
-        visited[x][y] = step;
+    private boolean dfs(int[][] board, int r, int c, int step) {
+        board[r][c] = step;
+        if (step == board.length * board[0].length - 1) return true;
 
-        if (step == m * n - 1) return true;
-
-        // Warnsdorff: sort next moves by number of onward moves
-        List<int[]> next = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            int nx = x + DX[i], ny = y + DY[i];
-            if (nx >= 0 && nx < m && ny >= 0 && ny < n && visited[nx][ny] == -1) {
-                next.add(new int[]{nx, ny});
+        List<int[]> moves = new ArrayList<>();
+        for (int k = 0; k < 8; k++) {
+            int nr = r + DR[k], nc = c + DC[k];
+            if (nr >= 0 && nr < board.length &&
+                nc >= 0 && nc < board[0].length &&
+                board[nr][nc] == -1) {
+                moves.add(new int[]{nr, nc});
             }
         }
 
-        next.sort(Comparator.comparingInt(pos -> countOnward(pos[0], pos[1], visited, m, n)));
+        // Optional Warnsdorff ordering
+        moves.sort(Comparator.comparingInt(a -> onwardCount(board, a[0], a[1])));
 
-        for (int[] pos : next) {
-            if (dfs(pos[0], pos[1], step + 1, board, visited, m, n))
-                return true;
+        for (int[] mv : moves) {
+            if (dfs(board, mv[0], mv[1], step + 1)) return true;
         }
 
-        // backtrack
-        board[x][y] = -1;
-        visited[x][y] = -1;
+        board[r][c] = -1; // backtrack
         return false;
     }
 
-    private int countOnward(int x, int y, int[][] visited, int m, int n) {
+    private int onwardCount(int[][] board, int r, int c) {
         int cnt = 0;
-        for (int i = 0; i < 8; i++) {
-            int nx = x + DX[i], ny = y + DY[i];
-            if (nx >= 0 && nx < m && ny >= 0 && ny < n && visited[nx][ny] == -1) cnt++;
+        for (int k = 0; k < 8; k++) {
+            int nr = r + DR[k], nc = c + DC[k];
+            if (nr >= 0 && nr < board.length &&
+                nc >= 0 && nc < board[0].length &&
+                board[nr][nc] == -1) cnt++;
         }
         return cnt;
     }
 }
 ```
 
-### Why this works  
-* **Backtracking** guarantees we explore all possibilities until we hit the final step.  
-* **Warnsdorff’s rule** (sort by onward moves) prunes branches early and keeps the recursion shallow – even on a 5 × 5 board the search finishes in milliseconds.  
-* The solution is **deterministic** – the same board always returns the same tour order, making it easy to test.
-
----
-
-## 3. Python 3
+### 6.2 Python
 
 ```python
-from typing import List
+class Solution:
+    moves = [(2, 1), (1, 2), (-1, 2), (-2, 1),
+             (-2, -1), (-1, -2), (1, -2), (2, -1)]
 
-# Pre‑computed 8 knight moves
-DX = [ 2,  1, -1, -2, -2, -1,  1,  2]
-DY = [ 1,  2,  2,  1, -1, -2, -2, -1]
+    def tourOfKnight(self, m: int, n: int, r: int, c: int) -> list[list[int]]:
+        board = [[-1] * n for _ in range(m)]
+        self.dfs(board, r, c, 0)
+        return board
 
-def tour_of_knight(m: int, n: int, r: int, c: int) -> List[List[int]]:
-    board = [[-1] * n for _ in range(m)]
-    visited = [[False] * n for _ in range(m)]
-
-    def count_onward(x: int, y: int) -> int:
-        """Warnsdorff helper – how many free squares a knight can jump to."""
-        return sum(
-            0 <= x + DX[k] < m and 0 <= y + DY[k] < n and not visited[x + DX[k]][y + DY[k]]
-            for k in range(8)
-        )
-
-    def dfs(x: int, y: int, step: int) -> bool:
-        board[x][y] = step
-        visited[x][y] = True
-
-        if step == m * n - 1:
+    def dfs(self, board, r, c, step):
+        board[r][c] = step
+        if step == len(board) * len(board[0]) - 1:
             return True
 
-        # Generate and sort next positions by Warnsdorff heuristic
-        nxt = sorted(
-            ((x + DX[k], y + DY[k]) for k in range(8)
-             if 0 <= x + DX[k] < m and 0 <= y + DY[k] < n and not visited[x + DX[k]][y + DY[k]]),
-            key=lambda p: count_onward(*p)
-        )
+        candidates = []
+        for dr, dc in self.moves:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < len(board) and 0 <= nc < len(board[0]) and board[nr][nc] == -1:
+                candidates.append((nr, nc))
 
-        for nx, ny in nxt:
-            if dfs(nx, ny, step + 1):
+        # Warnsdorff: sort by the number of onward moves
+        candidates.sort(key=lambda pos: self.onward(board, *pos))
+
+        for nr, nc in candidates:
+            if self.dfs(board, nr, nc, step + 1):
                 return True
 
-        # backtrack
-        board[x][y] = -1
-        visited[x][y] = False
+        board[r][c] = -1  # backtrack
         return False
 
-    if not dfs(r, c, 0):
-        raise RuntimeError("No solution – problem guarantees one exists")
-    return board
+    def onward(self, board, r, c):
+        count = 0
+        for dr, dc in self.moves:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < len(board) and 0 <= nc < len(board[0]) and board[nr][nc] == -1:
+                count += 1
+        return count
 ```
 
-**Quick sanity test**
-
-```python
->>> tour_of_knight(1, 1, 0, 0)
-[[0]]
->>> tour_of_knight(3, 4, 0, 0)
-[[0, 3, 6, 9], [11, 8, 1, 4], [2, 5, 10, 7]]
-```
-
----
-
-## 4. C++
+### 6.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -157,171 +194,110 @@ using namespace std;
 
 class Solution {
 public:
-    static const int DX[8];
-    static const int DY[8];
+    const int dr[8] = {2,1,-1,-2,-2,-1,1,2};
+    const int dc[8] = {1,2,2,1,-1,-2,-2,-1};
 
     vector<vector<int>> tourOfKnight(int m, int n, int r, int c) {
         vector<vector<int>> board(m, vector<int>(n, -1));
-        vector<vector<int>> visited(m, vector<int>(n, 0));
-        dfs(r, c, 0, m, n, board, visited);
+        dfs(board, r, c, 0);
         return board;
     }
 
 private:
-    bool dfs(int x, int y, int step, int m, int n,
-             vector<vector<int>>& board,
-             vector<vector<int>>& visited) {
-        board[x][y] = step;
-        visited[x][y] = 1;
+    bool dfs(vector<vector<int>>& board, int r, int c, int step) {
+        board[r][c] = step;
+        if (step == board.size() * board[0].size() - 1) return true;
 
-        if (step == m * n - 1) return true;
-
-        vector<pair<int,int>> nxt;
-        for (int k = 0; k < 8; ++k) {
-            int nx = x + DX[k], ny = y + DY[k];
-            if (nx >= 0 && nx < m && ny >= 0 && ny < n && !visited[nx][ny]) {
-                nxt.emplace_back(nx, ny);
-            }
+        vector<pair<int,int>> moves;
+        for (int k=0;k<8;k++){
+            int nr=r+dr[k], nc=c+dc[k];
+            if (nr>=0 && nr<(int)board.size() &&
+                nc>=0 && nc<(int)board[0].size() &&
+                board[nr][nc]==-1)
+                moves.push_back({nr,nc});
         }
 
-        sort(nxt.begin(), nxt.end(),
-            [&](const pair<int,int>& a, const pair<int,int>& b) {
-                return countOnward(a.first, a.second, visited, m, n)
-                     < countOnward(b.first, b.second, visited, m, n);
+        // Warnsdorff heuristic
+        sort(moves.begin(), moves.end(),
+            [&](const pair<int,int>& a, const pair<int,int>& b){
+                return onward(board,a.first,a.second) <
+                       onward(board,b.first,b.second);
             });
 
-        for (auto [nx, ny] : nxt) {
-            if (dfs(nx, ny, step + 1, m, n, board, visited))
-                return true;
+        for (auto [nr,nc]: moves) {
+            if (dfs(board,nr,nc,step+1)) return true;
         }
-
-        // backtrack
-        board[x][y] = -1;
-        visited[x][y] = 0;
+        board[r][c] = -1; // backtrack
         return false;
     }
 
-    int countOnward(int x, int y,
-                    const vector<vector<int>>& visited,
-                    int m, int n) {
-        int cnt = 0;
-        for (int k = 0; k < 8; ++k) {
-            int nx = x + DX[k], ny = y + DY[k];
-            if (nx >= 0 && nx < m && ny >= 0 && ny < n && !visited[nx][ny])
-                ++cnt;
+    int onward(const vector<vector<int>>& board, int r, int c){
+        int cnt=0;
+        for (int k=0;k<8;k++){
+            int nr=r+dr[k], nc=c+dc[k];
+            if (nr>=0 && nr<(int)board.size() &&
+                nc>=0 && nc<(int)board[0].size() &&
+                board[nr][nc]==-1) cnt++;
         }
         return cnt;
     }
 };
-
-const int Solution::DX[8] = { 2,  1, -1, -2, -2, -1,  1,  2};
-const int Solution::DY[8] = { 1,  2,  2,  1, -1, -2, -2, -1};
 ```
 
 ---
 
-## 5. Blog Article – “The Good, The Bad, and The Ugly of Implementing Knight’s Tour in LeetCode”
+## 7. Blog‑Style Exposition: “The Knight’s Tour – Good, Bad, and Ugly”
 
-> **Keywords**: *Knight’s Tour*, *LeetCode 2664*, *DFS backtracking*, *Warnsdorff heuristic*, *coding interview*, *job interview*, *algorithm design*, *C++*, *Java*, *Python*
+### 7.1 Good – Why This Problem is a Gold‑Mine for Interviewers
 
----
+1. **Shows Mastery of DFS & Backtracking**  
+   The Knight’s Tour is a classic DFS problem that checks whether the candidate can handle recursion depth, pruning, and state restoration.  
+2. **Encourages Algorithmic Thinking**  
+   Candidates need to reason about a combinatorial search space, decide on move ordering, and manage visited states.  
+3. **Time & Space Constraints Fit LeetCode’s “Medium” Category**  
+   With `m, n ≤ 5`, brute‑force is acceptable, but it’s still a subtle puzzle—good for distinguishing fast thinkers.
 
-### 1. The Good – Why Knight’s Tour is a “Show‑stopper” Skill
+### 7.2 Bad – Common Pitfalls Candidates Hit
 
-- **Showcases deep algorithmic thinking.**  
-  Solving a Hamiltonian path on a chessboard demonstrates mastery over graph traversal, recursion, and combinatorial optimization.
+| Pitfall | Why It’s Bad | How to Fix |
+|---------|--------------|------------|
+| **Storing visited in a 1‑D array** | Hard to map coordinates → off‑by‑one errors | Use a 2‑D matrix or bitmask with `(r * n + c)` |
+| **No backtracking** | Leaves the board in a half‑filled state → wrong answer | After recursion, reset cell to `-1` |
+| **Missing base case** | Recursion never ends → stack overflow | Check `step == m*n - 1` |
+| **Using global mutable state without reset** | Subsequent calls reuse the same board | Re‑initialize board in each public method |
 
-- **Scales across languages.**  
-  Whether you code in C++, Java or Python, the same logical structure works. This is a huge plus for interviews that ask you to translate an idea into multiple languages.
+### 7.3 Ugly – Why It Can Spiral Out of Control
 
-- **Time & space efficiency on tiny boards.**  
-  For the LeetCode constraints (≤ 5 × 5) a plain DFS runs in a fraction of a millisecond. Even with the *Warnsdorff* pruning the recursion depth never exceeds 25. Recruiters love solutions that run in *O(m · n)* for tiny inputs – they’re clear about constraints and still elegant.
+1. **Unordered Move Generation**  
+   Without Warnsdorff or any pruning, the search explores many dead ends, especially on 5 × 5 boards.  
+2. **Excessive Recursion Depth in Other Languages**  
+   In languages like Python, recursion depth defaults to 1000, but for a 25‑cell board it’s fine; still, always set a guard if you plan to extend.  
+3. **Ignoring the Guarantee of a Solution**  
+   Some candidates write generic Hamiltonian‑Path solvers that handle any board size—overkill for this problem.
 
-- **A clean, deterministic output.**  
-  The board values `[0…m·n-1]` give a unique tour order. When you can explain the output to a hiring manager, you instantly elevate the conversation from “I wrote a solver” to “I understand the problem space.”
+### 7.4 Tips for Nail‑Down Your Solution
 
----
-
-### 2. The Bad – Common Pitfalls That Turn “Nice” into “No‑Go”
-
-| Pitfall | Why It Happens | Fix |
-|---------|----------------|-----|
-| **Infinite recursion** | Forgetting to mark the current cell as visited before exploring next moves. | Set `visited[x][y] = true` **before** the for‑loop, and reset it on backtrack. |
-| **Wrong board dimensions** | Mixing `m` (height) and `n` (width) leads to off‑by‑one errors. | Use `board[m][n]` consistently; validate indices with `< m` and `< n`. |
-| **No solution path** | Wrong start coordinates or board that is inherently impossible. | Problem guarantees existence; double‑check the move generation logic. |
-| **Performance hit on 5 × 5** | Plain backtracking without heuristics can explore many dead ends. | Apply Warnsdorff’s rule: sort moves by *number of onward moves*. |
-| **Incorrect return value** | Returning `board` after first successful DFS call, but forgetting to clone the array for each language’s semantics. | In Java/C++ return the array itself; in Python return the list directly. |
-
----
-
-### 3. The Ugly – When the Interviewer Turns Up the Stakes
-
-1. **“What if the board was 8 × 8?”**  
-   The naive backtracking explodes combinatorially. In that case you must implement *Warnsdorff’s rule* **without** backtracking or use a *randomized* tour generator. Mention the trade‑offs: the heuristic guarantees a tour on an empty board, but you must handle edge cases.
-
-2. **“Can you make this multi‑threaded?”**  
-   Parallel DFS is possible but fragile. A cleaner solution is to pre‑compute a *canonical* tour and then rotate/reflect it. Show you can discuss algorithmic complexity and why you would avoid concurrency bugs.
-
-3. **“Explain the time complexity formally.”**  
-   While the board is tiny, recruiters may ask: *Why is it O(3 · m · n)?*  
-   • **Each node** has at most 8 outgoing edges.  
-   • In the worst case we traverse *every* edge once, i.e., `8 · m · n`.  
-   For a 5 × 5 board that’s just 200 operations – trivial but still correct.
-
-4. **“Do you support multiple start positions?”**  
-   In LeetCode you get a fixed `(r, c)`. But you can generalise the function to accept a vector of start points and return a *vector of tours*. This demonstrates robustness.
-
-5. **“Show me the complexity analysis on paper.”**  
-   Bring a whiteboard and sketch the recursion tree. Highlight how Warnsdorff’s rule keeps the tree shallow, effectively reducing the branching factor from 8 to about 2–3 on average.
+- **Always initialize the board to `-1`** (unvisited).  
+- **Use the provided 8 moves** – no magic numbers.  
+- **Apply Warnsdorff** (optional) – sort moves by onward‑move count to reduce branching.  
+- **Test edge cases**: 1 × 1, starting in the middle, starting on a corner.  
 
 ---
 
-### 4. Turning the Ugly into a Success Story
+## 8. Final Words for the Recruiter
 
-- **Frame your solution as a *module*.**  
-  “I’ve written a reusable `KnightTour` component in Java, and it can be ported to Python or C++ with minimal changes.”  
-
-- **Talk about *space optimisation*.**  
-  Use a single `int[25]` array for visited flags (bit‑mask). In C++ you can replace `vector<vector<int>>` with a flat `vector<int>` of size `m*n`. This reduces cache misses – a detail interviewers love.
-
-- **Mention *test‑first* methodology.**  
-  Write unit tests for 1 × 1, 2 × 2, 3 × 4, 5 × 5. Show that your code passes them before presenting to the interviewer. It gives a sense of confidence and quality.
-
-- **Show off the deterministic output.**  
-  “The first value is always `0` at the start, and the last value is always `m·n‑1`. We can use this property to validate the correctness on the fly.”  
-
-- **Offer to extend the algorithm.**  
-  “If we were to support blocked cells or obstacles, we could modify the visited matrix accordingly. The core DFS logic stays identical; we just skip pre‑blocked squares.”
+If you’re hiring a software engineer, presenting the Knight’s Tour in an interview session is a strong signal of a candidate’s **algorithmic maturity**.  
+The solutions above demonstrate the clean, production‑grade approach most recruiters appreciate.  
+And for job seekers: a solid implementation here earns you a “yes” and a quick confidence boost for your next coding round.
 
 ---
 
-### 4.1 Wrap‑Up: What Recruiters Care About
+### 9. References & Further Reading
 
-| Interviewer’s Question | What to Focus On |
-|------------------------|-----------------|
-| “Can you write it in multiple languages?” | Show the same DFS skeleton, adapt syntax, keep the algorithmic logic identical. |
-| “Explain the complexity.” | O(1) for 5 × 5, but O(m · n) with Warnsdorff’s rule for larger boards. |
-| “What if we want to generate many tours?” | Use a pre‑computed canonical tour; or randomised backtracking with time budget. |
-| “Why do you think this matters?” | It demonstrates understanding of graph traversal, Hamiltonian paths, and the trade‑offs between brute‑force and heuristics. |
+- [LeetCode 1231. Knights Tour (hard)](https://leetcode.com/problems/knights-tour/)
+- [Warnsdorff's Rule – Wikipedia](https://en.wikipedia.org/wiki/Warnsdorff%27s_rule)
+- [Backtracking Primer – Cracking the Coding Interview](https://www.crackingthecodinginterview.com/)
 
 ---
 
-## 6. Take‑away for the Job‑Seeker
-
-*LeetCode’s Knight’s Tour problem is a micro‑version of a classic NP‑hard problem.*  
-When you answer an interview question with a **clean** DFS + Warnsdorff heuristic in Java, Python, or C++, you demonstrate:
-
-* **Algorithmic rigour** – you’re not just coding a brute‑force loop.  
-* **Cross‑platform fluency** – you can port ideas between languages effortlessly.  
-* **Optimised thinking** – you’re aware of the problem’s constraints and use them to write the fastest code possible.
-
-Next time you see “2664 Knight’s Tour” on a recruiter’s screen, walk into the interview confident that you’ve already ticked the boxes recruiters are looking for. And if they throw a bigger board or parallelism at you – you’ve got a solid foundation to explain the necessary trade‑offs.
-
----
-
-### Final Thought
-
-> **“Algorithms are puzzles.”**  
-> Knight’s Tour is a puzzle that is *solved* by the right algorithm, *verified* by the output, and *valued* by recruiters. Master the DFS skeleton, sprinkle in Warnsdorff’s heuristic, and you’ll have a solution that is as elegant as a winning chess move.
-
-Happy coding and happy interviewing!
+*This post blends algorithmic rigor with interview strategy insights—perfect for both candidates sharpening their skills and recruiters refining their evaluation criteria.*

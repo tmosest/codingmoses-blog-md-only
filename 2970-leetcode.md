@@ -7,167 +7,143 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Summary  
+        ## 1.  Problem Recap – LeetCode 2970  
+**Count the Number of Incremovable Subarrays I**  
 
-**Leetcode 2970 – Count the Number of Incremovable Subarrays (Easy)**  
+You are given a 0‑indexed array of positive integers `nums`.  
+A **subarray** `[i … j]` (contiguous, non‑empty) is called *incremovable* if removing it makes the remaining array **strictly increasing**.  
+Return the total number of incremovable subarrays.
 
-You are given a 0‑indexed array `nums` of positive integers.  
-A **subarray** is a contiguous non‑empty slice of `nums`.  
-A subarray `[l … r]` is **incremovable** if, after deleting it, the remaining array is **strictly increasing** (empty arrays count as strictly increasing).
+*Examples*
 
-Return the number of incremovable subarrays.
+| `nums` | answer | explanation |
+|--------|--------|-------------|
+| `[1,2,3,4]` | 10 | every subarray is incremovable |
+| `[6,5,7,8]` | 7 | only the listed 7 subarrays work |
+| `[8,7,6,6]` | 3 | `[8,7,6]`, `[7,6,6]`, `[8,7,6,6]` |
 
-| Example | Input | Output | Reason |
-|---------|-------|--------|--------|
-| 1 | `[1,2,3,4]` | `10` | every non‑empty subarray works |
-| 2 | `[6,5,7,8]` | `7`  | only 7 subarrays satisfy the property |
-| 3 | `[8,7,6,6]` | `3`  | `[8,7,6]`, `[7,6,6]`, `[8,7,6,6]` |
+*Constraints*
 
-Constraints: `1 ≤ nums.length ≤ 50`, `1 ≤ nums[i] ≤ 50`.  
-These small limits let us solve the problem with a clean O(n²) algorithm.
-
----
-
-## 2.  The “Good, The Bad, The Ugly”
-
-| Category | What we love | What we hate | What we tolerate |
-|----------|--------------|--------------|------------------|
-| **The Good** | *Simplicity* – we can reason about the property in only a few lines. |  |  |
-| **The Bad** | *O(n³) brute force* is easy to code but still fast enough for `n ≤ 50`. |  |  |
-| **The Ugly** | Nested loops with poor variable names (`i, j, k, ok, lst`) make the code unreadable and error‑prone. |  |  |
-
-Our final solution will keep the *good* (clean reasoning), avoid the *bad* (quadratic time, not cubic) and steer clear of the *ugly* (meaningful names, comments).
-
----
-
-## 3.  Optimal O(n²) Solution – The Idea
-
-For a subarray `[l … r]` to be removable:
-
-1. **Left side** (indices `< l`) must already be strictly increasing.  
-   → `prefixInc[l‑1] == true` (or `l == 0`).
-
-2. **Right side** (indices `> r`) must already be strictly increasing.  
-   → `suffixInc[r+1] == true` (or `r == n‑1`).
-
-3. If both sides exist, the last element before the removed part must be < the first element after it.  
-   → `nums[l‑1] < nums[r+1]`.
-
-We pre‑compute two boolean arrays:
-
-```text
-prefixInc[i] = true  iff nums[0 … i] is strictly increasing
-suffixInc[i] = true  iff nums[i … n‑1] is strictly increasing
+```
+1 ≤ nums.length ≤ 50
+1 ≤ nums[i] ≤ 50
 ```
 
-Both arrays are built in O(n).  
-Then we try every pair `(l, r)` in O(n²) and count the ones that satisfy the three conditions.
-
-Because `n ≤ 50`, this solution is far more than fast enough, but it is also clean and easy to understand.
+Because the array is tiny (≤ 50), a simple O(n³) brute‑force solution runs in a few microseconds and is acceptable for an interview setting.  
+Below you’ll find three clean implementations – **Java**, **Python**, and **C++** – all using the same O(n³) logic.  
+We’ll also show a brief O(n²) optimisation that’s worth keeping in mind for larger inputs.
 
 ---
 
-## 4.  Reference Implementations  
+## 2.  The Brute‑Force Idea (O(n³))
 
-Below are full, self‑contained solutions in **Java**, **Python**, and **C++**.  
-All three use the optimal O(n²) algorithm described above.
+1. **Pick a subarray** `[i … j]`.  
+2. **Skip all elements inside** `[i … j]` and traverse the remaining elements from left to right.  
+3. Check that each visited element is **strictly greater** than the previously visited one.  
+4. If the check passes, the subarray is incremovable → increment the counter.
 
-### 4.1 Java
+The algorithm only needs a few integer variables (`i`, `j`, `k`, `last`, `ok`) – constant extra space.
+
+### Why It Works
+
+Removing a subarray is equivalent to concatenating the prefix (`0 … i‑1`) and suffix (`j+1 … n‑1`).  
+The concatenated array is strictly increasing iff every element of the suffix is greater than the last element of the prefix, and all elements within each segment are already increasing.  
+The algorithm mimics this test by scanning the array once per candidate subarray.
+
+---
+
+## 3.  Implementation Details
+
+| Language | Code Highlights |
+|----------|-----------------|
+| **Java** | Uses `int` arrays, a `long` counter to avoid overflow (not necessary for n=50, but safe). |
+| **Python** | Straightforward loops; Python’s simplicity shines for this tiny n. |
+| **C++** | Uses `vector<int>`, `long long` counter, and `bool ok` flag. |
+
+Below are the exact snippets.
+
+### 3.1 Java (Java 17)
 
 ```java
-import java.util.*;
-
-class Solution {
-    public int incremovableSubarrayCount(int[] nums) {
+public class Solution {
+    public long incremovableSubarrayCount(int[] nums) {
         int n = nums.length;
-        // prefixInc[i] = true if nums[0..i] strictly increasing
-        boolean[] prefixInc = new boolean[n];
-        boolean inc = true;
+        long ans = 0;
+
+        // start index
         for (int i = 0; i < n; i++) {
-            if (i > 0 && nums[i] <= nums[i - 1]) inc = false;
-            prefixInc[i] = inc;
-        }
+            // end index
+            for (int j = i; j < n; j++) {
+                boolean ok = true;
+                int last = Integer.MIN_VALUE;   // sentinel: no previous element
 
-        // suffixInc[i] = true if nums[i..n-1] strictly increasing
-        boolean[] suffixInc = new boolean[n];
-        inc = true;
-        for (int i = n - 1; i >= 0; i--) {
-            if (i < n - 1 && nums[i] >= nums[i + 1]) inc = false;
-            suffixInc[i] = inc;
-        }
-
-        int count = 0;
-        for (int l = 0; l < n; l++) {
-            for (int r = l; r < n; r++) {
-                boolean leftOk   = (l == 0)     || prefixInc[l - 1];
-                boolean rightOk  = (r == n - 1) || suffixInc[r + 1];
-                boolean borderOk = (l == 0) || (r == n - 1) || nums[l - 1] < nums[r + 1];
-                if (leftOk && rightOk && borderOk) count++;
+                // scan the entire array
+                for (int k = 0; k < n; k++) {
+                    if (k >= i && k <= j) {          // inside subarray – skip
+                        continue;
+                    }
+                    if (last >= nums[k]) {           // not strictly increasing
+                        ok = false;
+                        break;                      // no need to keep checking
+                    }
+                    last = nums[k];
+                }
+                if (ok) ans++;
             }
         }
-        return count;
+        return ans;
     }
 }
 ```
 
----
-
-### 4.2 Python
+### 3.2 Python (Python 3.11)
 
 ```python
 class Solution:
-    def incremovableSubarrayCount(self, nums: List[int]) -> int:
+    def incremovableSubarrayCount(self, nums: list[int]) -> int:
         n = len(nums)
-
-        # prefix_inc[i] = True if nums[0..i] strictly increasing
-        prefix_inc = [True] * n
-        for i in range(1, n):
-            prefix_inc[i] = prefix_inc[i - 1] and nums[i] > nums[i - 1]
-
-        # suffix_inc[i] = True if nums[i..n-1] strictly increasing
-        suffix_inc = [True] * n
-        for i in range(n - 2, -1, -1):
-            suffix_inc[i] = suffix_inc[i + 1] and nums[i] < nums[i + 1]
-
         ans = 0
-        for l in range(n):
-            for r in range(l, n):
-                left_ok   = l == 0 or prefix_inc[l - 1]
-                right_ok  = r == n - 1 or suffix_inc[r + 1]
-                border_ok = l == 0 or r == n - 1 or nums[l - 1] < nums[r + 1]
-                if left_ok and right_ok and border_ok:
+        for i in range(n):            # start
+            for j in range(i, n):     # end
+                ok = True
+                last = float('-inf')
+                for k in range(n):
+                    if i <= k <= j:   # inside the subarray
+                        continue
+                    if last >= nums[k]:
+                        ok = False
+                        break
+                    last = nums[k]
+                if ok:
                     ans += 1
         return ans
 ```
 
----
-
-### 4.3 C++
+### 3.3 C++ (C++17)
 
 ```cpp
 class Solution {
 public:
-    int incremovableSubarrayCount(vector<int>& nums) {
+    long long incremovableSubarrayCount(vector<int>& nums) {
         int n = nums.size();
+        long long ans = 0;
 
-        vector<bool> pref(n, true), suff(n, true);
+        for (int i = 0; i < n; ++i) {          // start
+            for (int j = i; j < n; ++j) {      // end
+                bool ok = true;
+                int last = INT_MIN;           // sentinel
 
-        // prefix increasing
-        for (int i = 1; i < n; ++i)
-            pref[i] = pref[i-1] && (nums[i] > nums[i-1]);
-
-        // suffix increasing
-        for (int i = n-2; i >= 0; --i)
-            suff[i] = suff[i+1] && (nums[i] < nums[i+1]);
-
-        int ans = 0;
-        for (int l = 0; l < n; ++l)
-            for (int r = l; r < n; ++r) {
-                bool leftOk  = (l == 0) || pref[l-1];
-                bool rightOk = (r == n-1) || suff[r+1];
-                bool borderOk = (l == 0) || (r == n-1) || nums[l-1] < nums[r+1];
-                if (leftOk && rightOk && borderOk) ++ans;
+                for (int k = 0; k < n; ++k) {
+                    if (k >= i && k <= j) continue; // skip subarray
+                    if (last >= nums[k]) {          // not strictly increasing
+                        ok = false;
+                        break;
+                    }
+                    last = nums[k];
+                }
+                if (ok) ++ans;
             }
+        }
         return ans;
     }
 };
@@ -175,96 +151,58 @@ public:
 
 ---
 
-## 5.  Blog Article – “The Good, The Bad, The Ugly of Leetcode 2970”
+## 4.  A More Optimised (O(n²)) View
 
-> **Title**: *Leetcode 2970 – Master the “Incremovable Subarray” Problem (Java / Python / C++)*  
-> **Meta‑description**: Learn the optimal O(n²) solution for Leetcode 2970, compare it with a brute‑force approach, and see clear code in Java, Python, and C++. Perfect for job‑prep interviews.
+Although the brute force passes comfortably, you can reduce the inner loop by pre‑computing:
 
-### 5.1 Why This Problem Rocks for Interviews
+- `leftInc[i]` – is the prefix `nums[0…i]` strictly increasing?
+- `rightInc[i]` – is the suffix `nums[i…n-1]` strictly increasing?
 
-- **Array + Subarray**: Core data‑structure concept.
-- **Strictly Increasing Check**: A frequent interview question.
-- **Counting Combinations**: Brings DP / combinatorics to the table.
-- **Small Constraints**: Allows you to focus on reasoning rather than performance hacks.
+Then for each `[i…j]` you only need to check:
 
-### 5.2 Brute Force = “Good? Bad? Ugly?”  
+1. `leftInc[i-1]` (if `i>0`) – ensures prefix before `i` is fine.  
+2. `rightInc[j+1]` (if `j+1<n`) – ensures suffix after `j` is fine.  
+3. `nums[i-1] < nums[j+1]` (if both sides exist) – guarantees the join point is increasing.  
 
-> **The Bad**:  
-> ```text
-> for (l) for (r) for (k) { delete, check, restore }
-> ```
-> This code is 10 lines long, but the `i, j, k, ok, lst` monster hides logic in loops.  
-> It is **O(n³)**, but with `n ≤ 50` it still runs in < 10 ms.  
-> *Verdict*: Works, but we want something *more elegant*.
-
-### 5.3 The “Ugly” – Why the Brute‑Force Is Hard to Read
-
-Nested loops with single‑letter variables quickly become a maintenance nightmare. If you need to debug it, you’ll spend 20 % of the time guessing what `ok` or `lst` represent.
-
-### 5.4 Our Clean O(n²) Approach
-
-> **The Good** – we prove that a subarray is removable iff:  
-> 1️⃣ Left prefix is already increasing,  
-> 2️⃣ Right suffix is already increasing,  
-> 3️⃣ Border elements satisfy `nums[l‑1] < nums[r+1]`.  
->  
-> **The Optimal Algorithm**: Build two prefix/suffix boolean arrays in linear time, then iterate over every `(l, r)` pair once.
-
-**Proof Sketch**  
-When we delete `[l … r]`, the remaining sequence is `nums[0…l-1] + nums[r+1…n-1]`.  
-Each side must be strictly increasing on its own; otherwise the result can never be increasing.  
-If both sides exist, the last element before deletion (`nums[l-1]`) must be smaller than the first element after deletion (`nums[r+1]`).  
-These are *exactly* the conditions implemented.
-
-### 5.5 Complexity Analysis
-
-| Approach | Time | Space | Comments |
-|----------|------|-------|----------|
-| Brute‑Force | O(n³) | O(1) | Only possible because `n` is tiny. |
-| Optimal O(n²) | **O(n²)** | **O(n)** | Clean, easy to explain, no loops inside loops that are hidden. |
+With these arrays the decision for a subarray becomes **O(1)**, turning the whole algorithm into **O(n²)**.  
+For the given constraints it is over‑engineering, but it’s an excellent trick to remember for interview questions where `n` might be up to `10⁵`.
 
 ---
 
-### 5.6 How to Explain This in a Live Interview
+## 5.  Edge Cases & Testing
 
-> **Step‑by‑step**  
-> 1. “Let’s pre‑compute whether each prefix and suffix is already strictly increasing.”  
-> 2. “Now we just need to check three simple boolean conditions for each subarray.”  
-> 3. “The whole thing runs in O(n²) which is trivial for the constraints.”  
+| Test | Input | Expected | Why |
+|------|-------|----------|-----|
+| 1 | `[1]` | `1` | Only subarray `[1]` is valid. |
+| 2 | `[2,1]` | `2` | `[2]` and `[1]` both leave a single element array, which is strictly increasing. |
+| 3 | `[1,1]` | `1` | Only `[1,1]` leaves an empty array. |
+| 4 | `[3,2,1]` | `3` | `[3]`, `[2]`, `[1]` each produce `[2,1]`, `[3,1]`, `[3,2]` – all strictly decreasing, so only the full subarray `[3,2,1]` works. |
+| 5 | `[1,2,3,4]` | `10` | All subarrays work. |
 
-This concise explanation shows you understand the problem deeply and can translate it into code quickly.
-
----
-
-### 5.7 Take‑Away Code Snippets
-
-The reference implementations above are your go‑to solutions.  
-Pick the language you’ll use in the interview and practice typing them quickly.  
-
-**Tip**: Keep variable names descriptive (`prefixInc`, `suffixInc`, `borderOk`) and add a single comment block at the start of each file.
+Run these tests in any language; all three solutions should match.
 
 ---
 
-### 5.8 Final Words
+## 6.  The Good, the Bad, the Ugly
 
-- **Practice**: Run the solution on the three examples, try edge cases (single element, already increasing array, all equal elements).  
-- **Explain**: During the interview, articulate the logic before coding.  
-- **Review**: The optimal O(n²) method is a *pattern* that will surface in many other subarray‑counting problems.
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Simplicity** | Easy to read, no auxiliary data structures. | Brute force may look slow at first glance. | Triple nested loops can be intimidating to newcomers. |
+| **Performance** | Runs < 1 ms for n ≤ 50. | Still O(n³), cannot scale beyond ~2000 elements. | The inner `if (k >= i && k <= j)` check is repeated many times. |
+| **Extensibility** | Straightforward to adapt to other “removal” problems. | Hard to reuse for larger constraints. | The logic isn’t reusable for non‑strictly increasing sequences. |
+| **Interview Appeal** | Shows understanding of “prefix + suffix” reasoning. | Might raise a red flag about time complexity. | Shows ability to write clean loops, but missing optimisation discussion may hurt. |
 
-> *Ready for the next Leetcode? The “incremovable subarray” trick is a solid interview staple. Keep it simple, keep it fast, and you’ll pass the array‑centric portion of most coding interviews.*  
+> **Takeaway** – For interview‑style constraints, *readability* often beats *optimality*.  
+> If the interviewer explicitly asks for a faster solution, the O(n²) method above is a quick next step.
 
---- 
+---
 
-### 5.9 Related Keywords
+## 7.  Summary – Why You’ll Score Points
 
-- Leetcode 2970  
-- Incremovable subarray  
-- Brute force array counting  
-- O(n²) algorithm  
-- Java interview problem  
-- Python array solution  
-- C++ interview code  
+- The problem is a classic “remove a segment → check monotonicity” trick.  
+- A brute‑force approach is perfect for the given limits.  
+- The Java/Python/C++ snippets share the same logical skeleton, proving the solution is *language‑agnostic*.  
+- You can always mention the O(n²) optimisation to demonstrate awareness of more efficient patterns.  
+- The code is ready to paste into a coding‑interview platform, and you can confidently explain each loop to the interviewer.
 
---- 
-
-Happy coding, and good luck on your next interview!
+Good luck landing that coding‑interview call‑out! 🚀
