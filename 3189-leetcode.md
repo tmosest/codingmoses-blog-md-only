@@ -7,102 +7,107 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap – LeetCode 3189: *Minimum Moves to Get a Peaceful Board*
+        ## 📌 LeetCode 3189 – Minimum Moves to Get a Peaceful Board  
+**Language‑agnostic solution + Java / Python / C++ implementations**  
+**SEO‑optimized blog article to help you land that next interview**  
 
-> **Definition**  
-> A peaceful board has exactly one rook in every row **and** every column of an `n × n` chessboard.  
->  
-> **Task**  
-> Given an array `rooks` where `rooks[i] = [xᵢ, yᵢ]` is the current position of rook `i` (0‑based indices), move every rook one cell vertically or horizontally at a time so that the board becomes peaceful.  
-> Return the *minimum* number of moves needed.  
+---
+
+### 1️⃣ Problem Recap  
+
+You’re given an `n × n` chessboard and `n` rooks that are already on the board.  
+Each rook is represented by its coordinates `[xᵢ, yᵢ]`.  
+In one move a rook can be moved **one cell** either vertically or horizontally (no diagonal moves).  
+
+**Goal** – Move the rooks until the board is *peaceful*: exactly one rook in every row and every column.  
+Return the **minimum number of moves** required.  
+
 > **Constraints**  
-> * `1 ≤ n = rooks.length ≤ 500`  
-> * `0 ≤ xᵢ, yᵢ ≤ n-1`  
-> * No two rooks share a cell initially.  
-> * At no time may two rooks occupy the same cell.
+> * `1 ≤ n ≤ 500`  
+> * `0 ≤ xᵢ, yᵢ < n`  
+> * No two rooks share the same cell initially  
 
 ---
 
-## 2.  Key Insight – Decouple Rows & Columns
+### 2️⃣ Intuition – Why Sorting Works  
 
-A rook moves **only** in its own row or its own column.  
-If we treat the row coordinate and the column coordinate **independently**, the problem reduces to two separate 1‑dimensional problems:
+Think about the final peaceful board: the rook in row `i` must end up somewhere in **column `i`** (after a permutation).  
+The order of the rooks in the final board matters *only* for the distance they travel **in that dimension**.
 
-1. **Row Alignment** – Put each rook in a distinct row.  
-2. **Column Alignment** – Put each rook in a distinct column.
+- **Rows** – The rook that starts the *k‑th* farthest south (largest `x`) will inevitably be forced to the bottom of the board, the next one above it, and so on.  
+  This is exactly what a stable sort does.  
+  After sorting by `x`, the rook that ends up in the *i‑th* sorted position will have to move to row `i`.  
+  The minimum number of vertical steps for that rook is `|xᵢ – i|`.
 
-Because rows and columns are orthogonal, we can solve them one after the other **without ever causing a collision**:  
-*We never need to swap two rooks in the same row or column – we only shift each rook to its target row/column one step at a time.*
+- **Columns** – The same logic holds for the horizontal direction.  
+  After sorting by `y`, the rook that ends up in the *i‑th* sorted position will have to move to column `i`.  
+  The minimum number of horizontal steps is `|yᵢ – i|`.
 
-In one dimension the optimal strategy is obvious:  
-sort the coordinates and pair the smallest coordinate with row 0, the next smallest with row 1, …, the largest with row `n‑1`.  
-The minimal number of steps for that dimension is simply the sum of absolute differences between the sorted coordinate and its target index.
+Because vertical and horizontal moves are independent (the board is a grid), the **total** minimal moves is just the sum of both contributions.
 
-The overall optimum is the sum of the two 1‑dimensional optima, because the two movements do not interfere.
-
----
-
-## 3.  Algorithm
-
-```text
-1. Sort rooks by their row (x) coordinate.
-2. For i = 0 … n-1:
-       rowMoves += |rooks[i].x - i|
-3. Sort rooks by their column (y) coordinate.
-4. For i = 0 … n-1:
-       colMoves += |rooks[i].y - i|
-5. Return rowMoves + colMoves
-```
-
-*Why does this always work?*  
-After step 2 each rook’s row is at a unique target `i`.  
-In step 4 we only touch the column coordinate, never changing the row again, so the rows stay unique.  
-Similarly, during step 3 we only permute the column coordinate, leaving the already‑fixed rows untouched.  
-Thus no two rooks collide, and we have reached a peaceful board in the fewest possible moves.
+> **Why is this optimal?**  
+> The sorting strategy is a classic *greedy* argument:  
+> 1. **Row phase** – Place the rook that is currently the farthest south into the last row, the next farthest into the second‑last row, …  
+> 2. **Column phase** – Do the same with the columns.  
+> This produces a *matching* between initial rows and target rows (and columns) that minimizes the sum of absolute differences – a well‑known property of the 1‑dimensional “earth‑mover” (transport) problem.  
+> Hence, no other arrangement can yield fewer moves.
 
 ---
 
-## 3.  Complexity Analysis
+### 3️⃣ Edge‑Case Checklist  
 
-| Step | Time | Space |
-|------|------|-------|
-| Sorting rows | `O(n log n)` | `O(1)` (in‑place) |
-| Summing row moves | `O(n)` | `O(1)` |
-| Sorting columns | `O(n log n)` | `O(1)` |
-| Summing column moves | `O(n)` | `O(1)` |
-| **Total** | **`O(n log n)`** | **`O(1)`** |
-
-With `n ≤ 500` this easily satisfies the time limits of LeetCode.
+| Edge case | Why it matters | How our algorithm copes |
+|-----------|----------------|------------------------|
+| Rook already in the correct row but wrong column | Column phase must still move it | Sorting by `y` still yields `|yᵢ – i| = 0` for the correct target column |
+| Rook starts at the corner `(0,0)` | Might need many moves in both dimensions | Each dimension is handled independently |
+| `n = 1` | Zero moves | Sorting returns an empty loop → 0 |
 
 ---
 
-## 3.  Reference Implementations
+### 4️⃣ Complexity  
 
-Below are clean, idiomatic solutions in **Java**, **Python**, and **C++**.
+| Step | Operation | Time | Space |
+|------|-----------|------|-------|
+| Sort by rows | `O(n log n)` | `O(n log n)` | `O(1)` (in‑place) |
+| Sum vertical moves | `O(n)` | `O(1)` | `O(1)` |
+| Sort by columns | `O(n log n)` | `O(n log n)` | `O(1)` |
+| Sum horizontal moves | `O(n)` | `O(1)` | `O(1)` |
+| **Total** | **`O(n log n)`** | **`O(1)`** |
+
+With `n ≤ 500`, this easily fits into the limits.
 
 ---
 
-### 3.1  Java (Java 17+)
+### 5️⃣ Code Implementation  
+
+> **Note:**  
+> *All three snippets are function‑only (no I/O).  
+> *They can be pasted straight into the LeetCode “Run Code” pane.*  
+
+---
+
+#### 5.1️⃣ Java  
 
 ```java
-import java.util.*;
-import java.util.stream.*;
+import java.util.Arrays;
 
 class Solution {
     public int minMoves(int[][] rooks) {
         int n = rooks.length;
 
-        // 1️⃣  Row alignment
-        Arrays.sort(rooks, Comparator.comparingInt(a -> a[0]));
-        int rowMoves = IntStream.range(0, n)
-                                .map(i -> Math.abs(rooks[i][0] - i))
-                                .sum();
+        // ----- Row phase -----
+        Arrays.sort(rooks, (a, b) -> Integer.compare(a[0], b[0]));
+        int rowMoves = 0;
+        for (int i = 0; i < n; ++i) {
+            rowMoves += Math.abs(rooks[i][0] - i);
+        }
 
-        // 2️⃣  Column alignment
-        Arrays.sort(rooks, Comparator.comparingInt(a -> a[1]));
-        int colMoves = IntStream.range(0, n)
-                                .map(i -> Math.abs(rooks[i][1] - i))
-                                .sum();
+        // ----- Column phase -----
+        Arrays.sort(rooks, (a, b) -> Integer.compare(a[1], b[1]));
+        int colMoves = 0;
+        for (int i = 0; i < n; ++i) {
+            colMoves += Math.abs(rooks[i][1] - i);
+        }
 
         return rowMoves + colMoves;
     }
@@ -111,18 +116,20 @@ class Solution {
 
 ---
 
-### 3.2  Python 3
+#### 5.2️⃣ Python 3  
 
 ```python
+from typing import List
+
 class Solution:
     def minMoves(self, rooks: List[List[int]]) -> int:
         n = len(rooks)
 
-        # Row alignment
+        # Row phase
         rooks.sort(key=lambda r: r[0])
         row_moves = sum(abs(r[0] - i) for i, r in enumerate(rooks))
 
-        # Column alignment
+        # Column phase
         rooks.sort(key=lambda r: r[1])
         col_moves = sum(abs(r[1] - i) for i, r in enumerate(rooks))
 
@@ -131,7 +138,7 @@ class Solution:
 
 ---
 
-### 3.3  C++17
+#### 5.3️⃣ C++ 17  
 
 ```cpp
 #include <bits/stdc++.h>
@@ -142,16 +149,16 @@ public:
     int minMoves(vector<vector<int>>& rooks) {
         int n = rooks.size();
 
-        // Row alignment
+        // Row phase
         sort(rooks.begin(), rooks.end(),
-             [](const auto& a, const auto& b){ return a[0] < b[0]; });
+             [](const vector<int>& a, const vector<int>& b){ return a[0] < b[0]; });
         int rowMoves = 0;
         for (int i = 0; i < n; ++i)
             rowMoves += abs(rooks[i][0] - i);
 
-        // Column alignment
+        // Column phase
         sort(rooks.begin(), rooks.end(),
-             [](const auto& a, const auto& b){ return a[1] < b[1]; });
+             [](const vector<int>& a, const vector<int>& b){ return a[1] < b[1]; });
         int colMoves = 0;
         for (int i = 0; i < n; ++i)
             colMoves += abs(rooks[i][1] - i);
@@ -161,210 +168,107 @@ public:
 };
 ```
 
-All three snippets share the same O(n log n) runtime and O(1) auxiliary space.
+---
+
+## 📝 Blog Article – SEO‑Ready, Interview‑Ready, Job‑Ready  
+
+> **Title:**  
+> *Mastering LeetCode 3189: Minimum Moves to Get a Peaceful Board – Algorithm, Code, and Interview Tips*  
+
+> **Meta‑Description:**  
+> *Learn the greedy sorting strategy for LeetCode 3189, see Java/Python/C++ code, and get interview‑ready insights to ace your next software‑engineering job.*  
 
 ---
 
-## 4.  Why This Solution Wins Your Interview
+### 📚 1. Problem Overview  
 
-| Point | Why it matters to interviewers |
-|-------|--------------------------------|
-| **Clarity** | You immediately separate the problem into two independent 1‑D problems – a pattern interviewers love. |
-| **Optimality Proof** | The sorted‑target approach is provably optimal in one dimension (it's just the “minimum total displacement” problem). |
-| **Edge‑case Safety** | No explicit collision handling is needed; the algorithm guarantees a peaceful board without overlapping moves. |
-| **Complexity** | `O(n log n)` time & `O(1)` space – perfectly suitable for `n ≤ 500`. |
-| **Code Size** | Under 50 lines in every language – clean and maintainable. |
-
-### The Good  
-* **Elegant decomposition** – solving rows and columns separately is a classic strategy that scales to larger boards.  
-* **Proof‑readable code** – every line does exactly one thing.  
-
-### The Bad  
-* **Implicit collision guarantee** – novices might worry about rooks crossing each other. The decoupling of coordinates ensures this never happens, but the explanation sometimes gets omitted in copy‑paste solutions.  
-
-### The Ugly  
-* **Hard‑coded 0‑based assumption** – if the board was 1‑based you’d need to adjust the target indices.  
-* **Missing test‑suite** – many copy‑paste solutions fail to include an example test case, which is annoying for interviewers who want to see your solution in action.
+- **Definition of “peaceful”** – one rook per row & column.  
+- **Goal** – *minimum* number of unit moves.  
+- Constraints make brute‑force infeasible (`O(n!)` permutations).  
 
 ---
 
-## 5.  Sample Input/Output
+### 2.  💡 Key Insight: Sorting = Minimal Distance  
 
-| Input | Expected Output |
-|-------|-----------------|
-| `[[0,0],[0,1],[1,0],[1,1]]` | `2` |
-| `[[2,1],[0,0],[1,3],[3,2]]` | `4` |
-| `[[0,2],[2,0],[1,1],[3,3]]` | `6` |
+| Dimension | Operation | Why it gives the minimal cost |
+|-----------|-----------|--------------------------------|
+| Row | Sort rooks by `x` (row index) | After sorting, the rook that should end in row `i` is already the one that needs the fewest vertical moves. |
+| Column | Sort rooks by `y` (column index) | Symmetric to rows; horizontal moves are independent of vertical moves. |
 
-*Quick sanity test in Python*
+**Proof sketch**
 
-```python
-s = Solution()
-print(s.minMoves([[0,0],[0,1],[1,0],[1,1]]))  # 2
-print(s.minMoves([[2,1],[0,0],[1,3],[3,2]]))  # 4
-```
+1. *One‑dimensional transport problem*:  
+   Given positions `p₁ … pₙ` and target positions `0 … n‑1`, the minimal total distance is `∑|pᵢ – sorted[i]|`.  
+   This is a classic result: the optimal matching is obtained by sorting both lists.  
 
----
-
-## 6.  Pseudocode (Language‑agnostic)
-
-```
-function minMoves(rooks):
-    n = length(rooks)
-
-    # Row step
-    sort(rooks by x)
-    rowMoves = 0
-    for i from 0 to n-1:
-        rowMoves += abs(rooks[i].x - i)
-
-    # Column step
-    sort(rooks by y)
-    colMoves = 0
-    for i from 0 to n-1:
-        colMoves += abs(rooks[i].y - i)
-
-    return rowMoves + colMoves
-```
+2. *Independence of dimensions*:  
+   Each move changes exactly one coordinate.  
+   Therefore, the vertical cost depends only on rows, the horizontal cost only on columns.  
+   The total cost is the sum of both optimal 1‑D costs.  
 
 ---
 
-## 7.  The SEO‑Optimized Blog Post
+### 3.  👌 What’s Good About This Approach  
 
-> **Title:** *Master LeetCode 3189 – Minimum Moves to Get a Peaceful Board (Rook Puzzle) – A Complete Guide for Coding Interviews*
-
-> **Meta Description:** Learn how to solve LeetCode 3189 “Minimum Moves to Get a Peaceful Board” with a fast O(n log n) algorithm. Get step‑by‑step Java, Python, and C++ solutions, plus interview tips and coding interview prep.
-
----
-
-### 7.1  Introduction
-
-When you hit LeetCode problem **3189 – Minimum Moves to Get a Peaceful Board**, you’re staring at a classic *rook puzzle*. It feels like a Rubik’s cube but in 2‑D, and many candidates underestimate its deceptively simple solution. In this post we’ll walk through the algorithm, show clean code in Java, Python, and C++, and discuss what makes this approach *good*, *bad*, and *ugly*. By the end, you’ll be ready to ace this question in a technical interview or on the job‑search platform.
+| Aspect | Benefit |
+|--------|---------|
+| **Simplicity** | Two sorts + linear scans – easy to code, easy to explain. |
+| **Deterministic** | No backtracking or DP – guarantees optimality. |
+| **Fast** | `O(n log n)` time, `O(1)` auxiliary space – perfect for `n ≤ 500`. |
+| **Adaptable** | Works for any number of rooks on a grid where moves are Manhattan‑based. |
 
 ---
 
-### 7.2  Problem Overview
+### 4.  ⚠️ Common Pitfalls (What to Avoid)  
 
-- **Peaceful board**: one rook per row & column.  
-- **Move cost**: one cell per move, orthogonal moves only.  
-- **Goal**: minimize total moves.
-
----
-
-### 7.3  The “Good” – Decouple the Problem
-
-> **Why it works**  
-> Each rook’s row and column coordinates evolve independently.  
-> Sorting the rows and aligning them to `[0…n‑1]` yields the minimal *row* cost.  
-> Repeating for columns yields the minimal *column* cost.
-
-- **Optimality**: In 1‑D, minimal displacement = sum of `|sorted[i] - i|`.  
-- **Safety**: Rows are fixed before columns; no collisions.  
-- **Time**: `O(n log n)` dominated by sorting.
+| Pitfall | Why it breaks the solution |
+|---------|----------------------------|
+| **Assuming the rook that starts farthest needs the most moves** | It’s the *relative* order that matters, not absolute distance. |
+| **Mixing row and column sorting in one loop** | You must perform the row sort **first**, compute the cost, *then* sort by columns. |
+| **Using `HashMap` to remember original indices** | Unnecessary overhead; sorting is cleaner and faster. |
+| **Ignoring that the board size equals the number of rooks** | If `m ≠ n`, the problem changes (assignment problem). |
 
 ---
 
-### 7.4  The “Bad” – Oversight on Collisions
+### 5.  🎨 The “Good‑Bad‑Ugly” Analysis  
 
-Many copy‑paste solutions claim: “Sorting aligns the coordinates.” Without explaining the *collision safety*, interviewers may think you’re ignoring a subtle bug.  
-**Solution:**  
-Explain that after row sorting, each rook is in a distinct target row; column moves never touch rows again.  
-This guarantees no rook will ever cross another, satisfying the “no collision” requirement.
-
----
-
-### 7.5  The “Ugly” – Why Some Code Fails
-
-- **Hard‑coded assumptions**:  
-  Some posts assume 0‑based indexing or ignore board bounds.
-- **Lack of example tests**:  
-  Candidates often present code with no accompanying test harness, leaving interviewers guessing about correctness.
-- **Long, verbose solutions**:  
-  Adding unnecessary loops or auxiliary arrays bloats the code and obscures the logic.
+| Stage | Good | Bad | Ugly |
+|-------|------|-----|------|
+| **Idea** | Greedy sorting is elegant. | Some candidates copy‑paste without understanding. | Using an NP‑hard assignment algorithm when not needed. |
+| **Code** | Clean, 3‑line loops in each language. | Over‑commenting can make the code bulky. | Manual `abs` macros, forgetting `#include <bits/stdc++.h>` in C++. |
+| **Explanation** | You can explain in 5 minutes. | Forgetting to mention independence of dimensions. | Trying to prove DP optimality where sorting suffices. |
 
 ---
 
-### 7.6  Clean Code Snapshots
+### 6.  🚀 Interview Tips: How to Ace the Discussion  
 
-**Java**
+1. **Start with a diagram** – draw a grid, place rooks, show the sorting process.  
+2. **Explain the 1‑D transport proof** – you can reference the “Earth Mover’s Distance” or “matching on a line”.  
+3. **Highlight independence** – vertical & horizontal moves are orthogonal.  
+4. **Answer “what if” questions** – show you know when this method applies.  
 
-```java
-Arrays.sort(rooks, Comparator.comparingInt(a -> a[0]));
-int rowMoves = IntStream.range(0, n)
-                        .map(i -> Math.abs(rooks[i][0] - i))
-                        .sum();
-```
-
-**Python**
-
-```python
-rooks.sort(key=lambda r: r[0])
-row_moves = sum(abs(r[0] - i) for i, r in enumerate(rooks))
-```
-
-**C++**
-
-```cpp
-sort(rooks.begin(), rooks.end(), [](const auto& a, const auto& b){ return a[0] < b[0]; });
-int rowMoves = 0;
-for (int i = 0; i < n; ++i) rowMoves += abs(rooks[i][0] - i);
-```
-
-These three snippets illustrate the same concise logic, adapted to the syntax of each language.
+> *Example Q:* “What if a rook could move diagonally?”  
+> **A:** Then the Manhattan distance is no longer separable; you’d need a different strategy.
 
 ---
 
-### 7.7  How to Explain It in an Interview
+### 6.  🚀 Final Takeaway  
 
-1. **State the decomposition**: “We’ll treat rows and columns separately.”  
-2. **Show the optimal 1‑D reasoning**: “Sorting and matching to `[0…n‑1]` minimises the total displacement.”  
-3. **Argue collision safety**: “After rows are fixed, columns never touch rows again, so they stay distinct.”  
-
-Be prepared for follow‑up questions: *What if the board was 1‑based?* – simply adjust the target indices to `i+1`.  
-*Can two rooks cross?* – No, because orthogonal coordinates are permuted independently.
+- Sorting by rows and columns, summing absolute differences, is the *canonical* solution for LeetCode 3189.  
+- Implementations in Java, Python, and C++ are straightforward and within constraints.  
+- Understanding the underlying transport problem ensures you’ll never need to resort to more complex algorithms.  
+- Use the “Good‑Bad‑Ugly” analysis to impress interviewers: show you know the *why* behind the code.
 
 ---
 
-### 7.8  Interview Preparation Checklist
+### 🎯  Call‑to‑Action  
 
-| ✔ | Item |
-|---|------|
-| ✅ | Understand the decoupling trick early. |
-| ✅ | Code in your preferred language. |
-| ✅ | Explain the optimality proof in 1‑D. |
-| ✅ | Provide a quick test example. |
-| ✅ | Be ready to discuss time & space complexities. |
+- **Practice** the idea on similar grid‑move problems (e.g., “assign points to target grid”).  
+- **Teach** the concept to a friend – teaching reinforces mastery.  
+- **Apply** the same logic to other LeetCode problems (e.g., 1‑D “Minimum Sum of Distances” or “Moving Stones”).  
 
----
-
-### 7.9  Takeaways & Further Practice
-
-- **Pattern recognition**: This decomposition appears in many grid‑movement problems (e.g., “Minimum Manhattan distance to align points”).  
-- **Coding interview**: Use this solution as a starter for any *rook* or *grid* puzzle.  
-- **Job‑search**: Highlight the O(n log n) complexity and clean code in your résumé or portfolio.
-
----
-
-### 7.10  Final Thoughts
-
-LeetCode 3189 may seem like a trick question, but with the right insight it turns into a textbook example of *divide and conquer in orthogonal dimensions*. The Java, Python, and C++ solutions above capture the heart of the problem in a few lines, proving that elegance can be both fast and foolproof. Next time you see a rook puzzle, remember: **sort, align, sum, repeat** – and you’ll always walk away with a perfect answer.
-
----
-
-### 7.11  References & Resources
-
-- LeetCode problem 3189: https://leetcode.com/problems/minimum-moves-to-get-a-peaceful-board/  
-- “Algorithmic Thinking” – Stanford CS221 Lecture on decomposition.  
-- “Sorting & Pairing” – GeeksforGeeks article on minimal displacement.
-
----
-
-**Happy coding, and good luck on your next interview!**
+Good luck on your next interview! 🚀
 
 --- 
 
-> *Ready to solve more rook puzzles? Subscribe to our newsletter for weekly interview problem deep‑dives.* 
-
---- 
-
-This concludes the full guide. Feel free to adapt the snippets to your own style or extend them with unit tests – the core insight stays the same. Happy interviewing!
+That’s it – you now have the algorithm, the code, and a polished article that showcases your deep understanding and interview readiness. Happy coding!

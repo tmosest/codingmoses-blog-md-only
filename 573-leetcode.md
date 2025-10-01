@@ -7,120 +7,170 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 573. Squirrel Simulation  
-**Difficulty:** Medium  
-**LeetCode URL:** <https://leetcode.com/problems/squirrel-simulation/>  
+        ## 📌 LeetCode 573 – **Squirrel Simulation**  
+**Difficulty** – Medium  
+**Problem link** – https://leetcode.com/problems/squirrel-simulation/
 
-> **Goal** – The squirrel starts at a given cell, must pick up *all* nuts one‑by‑one, drop each nut under the tree and finally return to the tree.  
-> **Movement** – Four directions only (up, down, left, right).  
-> **Output** – The minimum number of moves required.
+> You’re given a garden grid (height × width), the coordinates of a tree, the squirrel’s starting point, and a list of nuts.  
+> The squirrel can carry **one nut at a time** and moves only in four directions (up/down/left/right).  
+> For each nut the squirrel must:  
+> 1️⃣ Go to the nut,  
+> 2️⃣ Carry it back to the tree,  
+> 3️⃣ Drop it, and  
+> 4️⃣ Repeat until all nuts are at the tree.  
+> Return the **minimum number of moves** needed to collect all nuts.
 
----
-
-## 📌 Core Insight
-
-When you pick up a nut, you always have to walk:
-
-1. **From the tree to the nut** (or from the squirrel to the nut if it’s the first one).  
-2. **From the nut back to the tree** to drop it.
-
-If we naïvely sum *2 × distance(nut, tree)* for every nut we double‑count the leg that the squirrel takes *first* from its starting position to the first nut.  
-The best we can do is pick the nut that gives the largest *saving*:
-
-```
-saving = distance(nut, tree) – distance(nut, squirrel)
-```
-
-The minimal distance is therefore:
-
-```
-total = 2 × Σ distance(nut, tree)
-minimal = total – max(saving)
-```
-
-This formula runs in **O(n)** time and **O(1)** extra space.
+> **Constraints**  
+> * 1 ≤ height, width ≤ 100  
+> * 1 ≤ nuts.length ≤ 5000  
+> * All coordinates are within the grid
 
 ---
 
-## ✅ Implementations
+## 🧠 The Key Insight
 
-Below you’ll find three clean, production‑ready solutions – one in **Java**, **Python**, and **C++**.  
-All use the same Manhattan‑distance helper.
+The total distance depends only on **which nut the squirrel picks up first**.  
 
-### Java
+*If you pick nuts in any order*:
+
+```
+total = dist(squirrel, firstNut)          // first leg
+        + dist(firstNut, tree)            // first drop
+        + Σ[all nuts] dist(nut, tree)    // subsequent round‑trips
+```
+
+All subsequent legs start from the tree, so they are simply *two* times the distance from a nut to the tree (to go out and back).  
+Thus we can pre‑compute:
+
+```
+base = Σ (2 * dist(nut, tree))          // all nuts round‑trip
+```
+
+To turn the first leg into a “shortcut” we replace the round‑trip for the chosen first nut with:
+
+```
+dist(squirrel, nut) + dist(nut, tree)
+```
+
+So the improvement over `base` is
+
+```
+improvement(nut) = dist(nut, tree) - dist(squirrel, nut)
+```
+
+We pick the nut that maximizes this improvement.  
+The final answer is `base – maxImprovement`.
+
+That’s the whole algorithm – **O(n)** time and **O(1)** extra space.
+
+
+
+---
+
+## 📦 Code Implementations
+
+Below you’ll find clean, well‑commented solutions in **Java**, **Python**, and **C++**.  
+All three use the same optimal strategy described above.
+
+---
+
+### Java (Java 17+)
 
 ```java
+import java.util.*;
+
 public class Solution {
-    public int minDistance(int height, int width,
-                           int[] tree, int[] squirrel,
-                           int[][] nuts) {
-        int total = 0;
-        int maxSaving = Integer.MIN_VALUE;
+    // Main function required by LeetCode
+    public int minDistance(int height, int width, int[] tree, int[] squirrel, int[][] nuts) {
+        int total = 0;           // Σ 2 * dist(nut, tree)
+        int bestImprovement = Integer.MIN_VALUE;
 
         for (int[] nut : nuts) {
-            int distToTree   = manhattan(nut, tree);
-            int distToSquirrel = manhattan(nut, squirrel);
+            int distNutToTree = manhattan(nut, tree);
+            total += 2 * distNutToTree;
 
-            total += distToTree * 2;
-            maxSaving = Math.max(maxSaving, distToTree - distToSquirrel);
+            int distNutToSquirrel = manhattan(nut, squirrel);
+            int improvement = distNutToTree - distNutToSquirrel;
+            if (improvement > bestImprovement) {
+                bestImprovement = improvement;
+            }
         }
 
-        return total - maxSaving;
+        // Remove the “bad” round‑trip of the best first nut
+        return total - bestImprovement;
     }
 
+    // Helper: Manhattan distance between two points
     private int manhattan(int[] a, int[] b) {
         return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
     }
 }
 ```
 
-### Python
+> **Why this works**  
+> * `total` accumulates the cost of taking each nut from the tree and back.  
+> * `bestImprovement` holds the maximum saving obtained by making a nut the first pick.  
+> * Subtracting that saving yields the minimal distance.
+
+---
+
+### Python 3
 
 ```python
 class Solution:
     def minDistance(self, height: int, width: int,
                     tree: List[int], squirrel: List[int],
                     nuts: List[List[int]]) -> int:
-        total = 0
-        max_saving = float('-inf')
+        total = 0          # Σ 2 * dist(nut, tree)
+        best_improve = float('-inf')
 
         for nut in nuts:
-            dist_tree = self._manhattan(nut, tree)
-            dist_squirrel = self._manhattan(nut, squirrel)
+            d_nut_tree = self._dist(nut, tree)
+            total += 2 * d_nut_tree
 
-            total += 2 * dist_tree
-            max_saving = max(max_saving, dist_tree - dist_squirrel)
+            d_nut_squirrel = self._dist(nut, squirrel)
+            improve = d_nut_tree - d_nut_squirrel
+            best_improve = max(best_improve, improve)
 
-        return total - max_saving
+        return total - best_improve
 
     @staticmethod
-    def _manhattan(a: List[int], b: List[int]) -> int:
+    def _dist(a: List[int], b: List[int]) -> int:
+        """Manhattan distance."""
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 ```
 
-### C++
+---
+
+### C++17
 
 ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
 public:
     int minDistance(int height, int width,
-                    vector<int>& tree, vector<int>& squirrel,
+                    vector<int>& tree,
+                    vector<int>& squirrel,
                     vector<vector<int>>& nuts) {
-        long long total = 0;          // use long long to avoid overflow
-        long long maxSaving = LLONG_MIN;
+        long long total = 0;              // Use long long to avoid overflow
+        long long bestImprove = LLONG_MIN;
 
-        for (const auto& nut : nuts) {
-            long long distTree   = manhattan(nut, tree);
-            long long distSquirrel = manhattan(nut, squirrel);
+        for (auto& nut : nuts) {
+            long long dNutTree = manhattan(nut, tree);
+            total += 2 * dNutTree;
 
-            total += 2 * distTree;
-            maxSaving = max(maxSaving, distTree - distSquirrel);
+            long long dNutSquirrel = manhattan(nut, squirrel);
+            long long improve = dNutTree - dNutSquirrel;
+            bestImprove = max(bestImprove, improve);
         }
-        return static_cast<int>(total - maxSaving);
+
+        return static_cast<int>(total - bestImprove);
     }
 
 private:
-    long long manhattan(const vector<int>& a, const vector<int>& b) const {
+    static long long manhattan(const vector<int>& a, const vector<int>& b) {
         return llabs(a[0] - b[0]) + llabs(a[1] - b[1]);
     }
 };
@@ -128,66 +178,37 @@ private:
 
 ---
 
-## 📚 Blog Article – “Squirrel Simulation: The Good, the Bad, and the Ugly”
+## 📚 Blog Post – “The Good, The Bad, and the Ugly of LeetCode 573”
 
-> **SEO Keywords:** *Squirrel Simulation LeetCode*, *minDistance algorithm*, *Java Python C++ solution*, *interview coding problem*, *Manhattan distance*, *algorithm design*  
+### 1️⃣ The Good: Simplicity & Optimality  
+- **Linear time** (`O(n)`): Even with 5 000 nuts the solution runs in milliseconds.  
+- **Mathematical elegance**: The entire problem collapses to a single Manhattan‑distance formula.  
+- **Space‑efficient**: No DP table or graph traversal needed – just two integer accumulators.
 
----
+### 2️⃣ The Bad: Misleading Intuition  
+Many readers first think you need to perform a *full* traveling salesman search over nuts.  
+- **Why that’s wrong**: The squirrel always returns to the tree after each nut.  
+- **Key takeaway**: The only variable factor is the first nut. Once that’s fixed, the rest are fixed costs.
 
-### 1. Introduction
-
-The **Squirrel Simulation** problem is a staple on LeetCode for those preparing for coding interviews. It asks you to find the minimal number of moves a squirrel must make to collect all nuts and drop them under a tree, moving only up, down, left, or right. Although the statement feels whimsical, it actually touches on classic algorithmic concepts: **Manhattan distance** and **greedy optimization**.
-
-### 2. Why This Problem Rocks
-
-- **Clear Constraints** – No obstacles, only grid boundaries.  
-- **No need for BFS** – Since there are no obstacles, Manhattan distance is exact.  
-- **O(n) Solution** – A single pass through the nuts list gives you the answer instantly.
-
-### 3. The Elegant Solution – “The Good”
-
-| Step | What Happens | Why It Works |
-|------|--------------|--------------|
-| 1 | Compute **dist(nut, tree)** for every nut. | Gives the two legs that will always be taken: to tree and back. |
-| 2 | Sum `2 * dist(nut, tree)`. | We double‑count because each nut needs a round trip. |
-| 3 | Compute **saving** = `dist(nut, tree) – dist(nut, squirrel)`. | If we start with this nut, we replace the *tree → nut* leg with *squirrel → nut*. |
-| 4 | Subtract the largest **saving** from the total. | That’s the best possible first nut; all other nuts stay on the round‑trip pattern. |
-
-> **Result** – A minimal move count in linear time and constant extra space.
-
-### 4. Edge Cases and Gotchas – “The Bad”
-
-- **Large Inputs** – With up to 5,000 nuts, integer overflow can sneak in. Use `long long` in C++ or `long` in Java/Python `int` (which is unbounded) safely.
-- **Unreachable Cells** – The problem guarantees that every nut and the tree are within bounds, so no path‑finding is needed. If the problem changed to include obstacles, the simple Manhattan shortcut would be invalid.
-- **Negative Coordinates** – The constraints say coordinates are non‑negative, but an implementation should be robust enough to handle any integer values.
-
-### 5. When Things Get Messy – “The Ugly”
-
-If you were to tackle a variant where the squirrel cannot traverse certain cells (e.g., “holes” or “water”), the Manhattan shortcut breaks down. You would need:
-
-1. **Shortest Path Computation** – BFS from each nut to the tree and from the squirrel to each nut, which is O(n · (h·w)).  
-2. **Dynamic Programming or TSP** – The problem morphs into a variant of the Travelling Salesman, which is NP‑hard.  
-
-Thus, while the “Squirrel Simulation” problem is a wonderful teaching tool, extending it without care quickly spirals into complexity territory.
-
-### 6. Why You Should Love the Solution
-
-- **Simplicity** – A single loop, a helper method, and a bit of math.  
-- **Performance** – Runs in microseconds on typical interview stacks.  
-- **Adaptability** – The pattern (double‑count + subtract maximum saving) appears in other “collect‑and‑return” problems.
-
-### 7. Takeaway for Job Interviews
-
-- **Highlight the Greedy Argument** – Explain why picking the nut with maximum saving gives the optimal first move.  
-- **Talk About Complexity** – O(n) time, O(1) space is a great selling point.  
-- **Show Language Versatility** – Provide solutions in Java, Python, and C++ to demonstrate breadth.
+### 3️⃣ The Ugly: Edge Cases & Overflow  
+- **Large coordinates** (height/width = 100) and up to 5 000 nuts still fit comfortably in a 32‑bit integer, but beware of multiplication (`2 * dist`).  
+- **All nuts on the same spot**: `bestImprovement` may be negative – we still need to subtract it correctly.  
+- **Coding pitfalls**: Forgetting to use `long long` (or `long`) in C++ can lead to subtle overflow bugs when the grid is large.
 
 ---
 
-## 🚀 Conclusion
+## 🎯 SEO‑Optimized Summary
 
-The Squirrel Simulation problem is a shining example of how a seemingly playful challenge can illustrate powerful algorithmic thinking. By leveraging Manhattan distances and a clever greedy adjustment, we get a solution that is both elegant and efficient.
+- **Title**: “LeetCode 573 – Squirrel Simulation Explained (Java/Python/C++)”  
+- **Meta description**: “Master LeetCode 573 with a clear O(n) solution. Read our Java, Python, and C++ code, plus a blog that breaks down the good, bad, and ugly of this squirrel problem.”  
+- **Keywords**: *LeetCode 573, Squirrel Simulation, interview coding, optimal solution, Manhattan distance, algorithm design, job interview*, *software engineering interview*, *technical blog*.
 
-Whether you’re polishing your interview prep, crafting a portfolio project, or simply enjoying the joy of coding, this problem and its solution offer a delightful blend of clarity, challenge, and mastery.
+---
 
-Happy coding—and may your squirrels always collect the nuts in the shortest possible way!
+## 🚀 Final Takeaway
+
+- The **core trick** is to realize that all round‑trips except the first are fixed.  
+- Pick the first nut that gives the maximum “savings” over the normal round‑trip.  
+- Implement the formula in your language of choice and you’ll get a **fast, concise, and interview‑ready answer**.
+
+Happy coding – and may the job offers keep coming! 🌟

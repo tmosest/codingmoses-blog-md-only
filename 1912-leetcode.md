@@ -7,109 +7,94 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
+        ## 🚀 1912 – Design Movie Rental System  
+**A Deep‑Dive on the Hard LeetCode Problem (Java / Python / C++)**  
 
-# “The Good, The Bad, and The Ugly” – Solving LeetCode 1912 (Design Movie Rental System)
+> *“Your code is your résumé.”* – 2025 Software Engineer
 
-**Keywords**: LeetCode 1912, Design Movie Rental System, Java, Python, C++, interview, data structures, TreeSet, HashMap, SortedSet, job interview, algorithm, software engineer
+In this post we’ll walk through a full, production‑ready implementation of the **Movie Rental System** from LeetCode.  
+We’ll see:
 
----
+* The **core data‑structures** that make the system fast (good).  
+* Where the **implementation can be simplified** or made more maintainable (bad).  
+* The **gotchas** that trip even seasoned engineers (ugly).  
 
-## 1. Problem Recap
-
-> *You run a chain of `n` movie‑shop outlets. Each shop may own **at most one copy** of a movie.  
-> For a given movie you must be able to:*
-> * **search** – return the *cheapest 5* shops that currently own an *unrented* copy  
-> * **rent** – mark a specific copy as rented  
-> * **drop** – return a rented copy  
-> * **report** – return the *cheapest 5* rented copies in the whole system  
-
-All operations must run fast enough for up to **100 000** calls.  
-Typical constraints: `1 ≤ n ≤ 3·10⁵`, `1 ≤ entries.length ≤ 10⁵`, `1 ≤ price ≤ 10⁴`.
+Finally, we’ll share a **blog‑friendly write‑up** that is SEO‑optimized for recruiters who want to see your skills.
 
 ---
 
-## 2. High‑Level Idea
+## 🎯 Problem Recap (LeetCode 1912)
 
-| **Goal** | **Data structure** | **Why** |
-|----------|---------------------|---------|
-| Quickly find *cheapest 5 unrented copies* for a movie | **`TreeSet` / `std::set` / sorted list** of `(price, shop, movie)` | Sorted by price → shop → movie → we can just take first five |
-| Quickly find *cheapest 5 rented copies* in the whole system | Another **`TreeSet` / `std::set`** of the *same key* | Same reasoning – sorted globally |
-| Constant‑time lookup of the *exact item* in a shop | **HashMap shop → movie → Item** | Needed for rent/drop to find the item in O(1) before moving it between sets |
+You run a chain of `n` shops.  
+Each shop holds at most one copy of any movie.
 
-Thus we maintain **three** data structures:
+You must support four operations:
 
-1. **`shopMap`** – `Map<shop, Map<movie, Item>>` – fast pointer to a particular copy.
-2. **`unrented`** – `Map<movie, TreeSet<Item>>` – all currently unrented copies of that movie.
-3. **`rented`** – `TreeSet<Item>` – all rented copies sorted by the report order.
+| Op | Description |
+|---|---|
+| `search(movie)` | Return the cheapest **up to 5** shops that still own an **un‑rented** copy of the given `movie`. Sorted by price, then shop id. |
+| `rent(shop, movie)` | Mark that shop’s copy as rented. |
+| `drop(shop, movie)` | Mark that shop’s copy as returned (now available). |
+| `report()` | Return the cheapest **up to 5** *rented* items as `[shop, movie]`. Sort by price, shop id, then movie id. |
 
-All operations (`search`, `rent`, `drop`, `report`) become `O(log k)` where `k` is the size of the relevant set (≤ 10⁵).  
-
-With these structures we get:
-
-* **search** – just iterate first 5 elements → `O(5 log k)` → essentially `O(1)`
-* **rent / drop** – remove from one set, insert into the other → `O(log k)`
-* **report** – iterate first 5 elements of the global rented set → `O(1)`
+Constraints:  
+`1 ≤ n ≤ 3·10⁵`, `entries.length ≤ 10⁵`, `≤ 10⁵` total method calls.  
+All operations must run in roughly `O(log M)` time (where `M` is the number of entries).
 
 ---
 
-## 3. Detailed Design
+## 📦 Design Decisions
 
-### 3.1 Item
+### Good – Why the chosen data‑structures work
 
-| Language | Representation |
-|----------|----------------|
-| **Java** | Inner class `Item` with `shopId`, `movieId`, `price`. |
-| **Python** | Simple dataclass / tuple `(price, shop, movie)` – we keep the `shop` inside for report ordering. |
-| **C++** | `struct Item` with `int shop, movie, price;` and a custom comparator. |
+| Feature | Choice | Reason |
+|---------|--------|--------|
+| **Fast `search`** | `Dict[int, SortedList]` (Python) or `unordered_map<int, set<Item>>` (C++/Java) | Keeps all *un‑rented* copies of a movie sorted by `(price, shop)`. `search` is just the first five elements. |
+| **Fast `rent` / `drop`** | Single `Item` object per copy + bidirectional references | O(1) lookup from `shop, movie` → `Item`. Then O(log M) insertion/deletion in the two sorted containers. |
+| **Fast `report`** | Global `SortedSet<Item>` for rented copies | Constant‑time `top‑k` (first five) extraction. |
+| **Space** | O(M) | Each copy appears once in a few small containers. |
 
-All three use the **same ordering**:  
-`price` ➜ `shop` ➜ `movie`.  
-This guarantees that the first element in a `TreeSet`/`set` is always the *best* copy for either `search` or `report`.
+### Bad – Where we could clean things up
 
-### 3.2 Constructors
+1. **Custom `Item`** – All languages use a small helper class/struct. In Python it’s a plain `dataclass`; in C++ we just use a struct.  
+2. **Duplicate Comparators** – Java and C++ have identical comparator logic duplicated in the code. A single reusable comparator class/function would be nicer.  
+3. **Lazy‑deletion logic** – For languages that don’t ship a `SortedList` (C++/Java), a custom binary‑search wrapper could reduce boilerplate.
 
-During construction we simply insert every entry into:
+### Ugly – Things that are easy to miss
 
-* the shop’s local map (`shopMap`)
-* the global rented set (`rented`) – *empty* at start
-* the movie‑specific unrented set (`unrented.get(movie)`)
-
-No operation is `O(n log n)`; we are doing `O(entries)` inserts, each costing at most `O(log k)` because we create a new `TreeSet` for each new movie only once.
-
----
-
-## 4. Complexity Analysis
-
-| Operation | Time | Space |
-|-----------|------|-------|
-| **Constructor** | `O(entries log entries)` | `O(entries)` |
-| **search** | `O(1)` (just 5 pulls) | `O(1)` |
-| **rent / drop** | `O(log k)` | `O(1)` extra for map look‑ups |
-| **report** | `O(1)` (first five of the global set) | `O(1)` |
-
-All limits are comfortably below the 100 000‑operation requirement.
+| Gotcha | Impact | Mitigation |
+|--------|--------|------------|
+| **Shop may not exist for a movie** – `search` must handle missing keys gracefully. | O(1) but needs a guard. | Use `dict.get(movie, empty_set)` or `defaultdict`. |
+| **Equality of `Item`** – All operations rely on `Item.__eq__` / `hash`. | A small mistake here breaks removal from `set`. | Explicitly store the reference in the container, not a new tuple. |
+| **Duplicate `price`** – Sorting rules (`price`, `shop`, `movie`) must be identical everywhere. | A typo changes the ranking. | Centralize the comparator. |
+| **Performance vs readability trade‑off** – In Python `bisect.insort` on a list of 1e5 items is fine, but in C++/Java the `TreeSet` is already logarithmic. | Keep code simple for interviewers who read quickly. | Explain that the sorted containers are the *only* expensive steps. |
 
 ---
 
-## 5. Implementation
+## 🧩 Implementation – Java, Python, C++
 
-Below you will find a **ready‑to‑copy** implementation in **Java**, **Python**, and **C++**.  
-All three follow the same logic, just adapted to the idiomatic containers of each language.
+> All implementations follow the same logic:  
+> 1. **`Item`** stores `(shop, movie, price)`.  
+> 2. **`shopMap`** → `Item` (for O(1) look‑up).  
+> 3. **`unrented`** – a sorted set per movie.  
+> 4. **`rented`** – a global sorted set.
 
-> **Tip for interviewers**:  
-> *Explain the *why* behind each data‑structure choice – they want to see you understand “sorted collections” and “hash‑lookup” trade‑offs.*
+Below are fully‑worked snippets that compile on the latest compiler (Java 17, Python 3.11, C++17). Feel free to copy‑paste into your IDE or the LeetCode sandbox.
 
 ---
 
-### 5.1 Java (TreeSet + HashMap)
+### 🐘 Java (17+)
 
 ```java
 import java.util.*;
+import java.io.*;
 
-public class MovieRentingSystem {
-    /** One copy of a movie in a shop */
-    private static class Item {
+public class MovieRentalSystem {
+
+    /* ------------------------------------------------------------------ *
+     *  Helper class: one copy of a movie in one shop
+     * ------------------------------------------------------------------ */
+    private static final class Item {
         final int shopId;
         final int movieId;
         final int price;
@@ -117,259 +102,324 @@ public class MovieRentingSystem {
         Item(int shopId, int movieId, int price) {
             this.shopId = shopId;
             this.movieId = movieId;
-            this.price = price;
+            this.price   = price;
         }
+
+        /* Comparable for the rented set:
+           price → shopId → movieId
+         */
+        private static final Comparator<Item> RENTED_COMPARATOR =
+                Comparator.comparingInt((Item i) -> i.price)
+                          .thenComparingInt(i -> i.shopId)
+                          .thenComparingInt(i -> i.movieId);
+
+        /* Comparable for the unrented set:
+           price → shopId   (movie id is constant for the set)
+         */
+        private static final Comparator<Item> UNRented_COMPARATOR =
+                Comparator.comparingInt((Item i) -> i.price)
+                          .thenComparingInt(i -> i.shopId);
     }
 
-    // Comparator used for both unrented and rented sets
-    private static final Comparator<Item> COMPARATOR =
-            (a, b) -> a.price != b.price ? Integer.compare(a.price, b.price)
-                                          : a.shopId != b.shopId ? Integer.compare(a.shopId, b.shopId)
-                                                                : Integer.compare(a.movieId, b.movieId);
+    /* ------------------------------------------------------------------ *
+     *  Containers
+     * ------------------------------------------------------------------ */
+    private final Map<Integer, Item> shopMovieMap = new HashMap<>();   // key = shop * 1_000_000 + movie
+    private final Map<Integer, NavigableSet<Item>> unrentedMovies = new HashMap<>();
+    private final NavigableSet<Item> rentedMovies = new TreeSet<>(Item.RENTED_COMPARATOR);
 
-    private final Map<Integer, Map<Integer, Item>> shopMap = new HashMap<>();
-    private final Map<Integer, TreeSet<Item>> unrented = new HashMap<>();
-    private final TreeSet<Item> rented = new TreeSet<>(COMPARATOR);
-
-    public MovieRentingSystem(int n, int[][] entries) {
+    /* ------------------------------------------------------------------ *
+     *  Constructor
+     * ------------------------------------------------------------------ */
+    public MovieRentalSystem(int n, int[][] entries) {
         for (int[] e : entries) {
-            int shop = e[0], movie = e[1], price = e[2];
-            Item item = new Item(shop, movie, price);
+            int shop   = e[0];
+            int movie  = e[1];
+            int price  = e[2];
+            Item item  = new Item(shop, movie, price);
 
-            // 1. Map shop→movie→Item
-            shopMap.computeIfAbsent(shop, k -> new HashMap<>()).put(movie, item);
+            // 1) register by shop/movie
+            shopMovieMap.put(key(shop, movie), item);
 
-            // 2. Unrented set for this movie
-            unrented.computeIfAbsent(movie, k -> new TreeSet<>(COMPARATOR)).add(item);
+            // 2) add to unrented set for the movie
+            unrentedMovies
+                .computeIfAbsent(movie, k -> new TreeSet<>(Item.UNRented_COMPARATOR))
+                .add(item);
         }
     }
 
-    /** Return the shop IDs of the cheapest 5 unrented copies of the given movie. */
+    /* ------------------------------------------------------------------ *
+     *  Public API
+     * ------------------------------------------------------------------ */
     public List<Integer> search(int movie) {
-        TreeSet<Item> set = unrented.getOrDefault(movie, new TreeSet<>(COMPARATOR));
-        List<Integer> ans = new ArrayList<>(5);
+        NavigableSet<Item> set = unrentedMovies.getOrDefault(movie, Collections.emptyNavigableSet());
+        List<Integer> res = new ArrayList<>(Math.min(5, set.size()));
         int i = 0;
-        for (Item it : set) {
+        for (Item item : set) {
             if (i++ == 5) break;
-            ans.add(it.shopId);
-        }
-        return ans;
-    }
-
-    /** Rent a copy from a specific shop. */
-    public void rent(int shop, int movie) {
-        Item it = shopMap.get(shop).get(movie);
-        unrented.get(movie).remove(it);
-        rented.add(it);
-    }
-
-    /** Return a rented copy. */
-    public void drop(int shop, int movie) {
-        Item it = shopMap.get(shop).get(movie);
-        rented.remove(it);
-        unrented.get(movie).add(it);
-    }
-
-    /** Return the cheapest 5 rented copies (shop, movie). */
-    public List<List<Integer>> report() {
-        List<List<Integer>> res = new ArrayList<>(5);
-        int i = 0;
-        for (Item it : rented) {
-            if (i++ == 5) break;
-            res.add(Arrays.asList(it.shopId, it.movieId));
+            res.add(item.shopId);
         }
         return res;
+    }
+
+    public void rent(int shop, int movie) {
+        Item item = shopMovieMap.get(key(shop, movie));
+        if (item == null) return;            // defensive – LeetCode guarantees valid input
+        unrentedMovies.get(movie).remove(item);
+        rentedMovies.add(item);
+    }
+
+    public void drop(int shop, int movie) {
+        Item item = shopMovieMap.get(key(shop, movie));
+        if (item == null) return;
+        rentedMovies.remove(item);
+        unrentedMovies.get(movie).add(item);
+    }
+
+    public List<List<Integer>> report() {
+        List<List<Integer>> res = new ArrayList<>(Math.min(5, rentedMovies.size()));
+        int i = 0;
+        for (Item item : rentedMovies) {
+            if (i++ == 5) break;
+            res.add(Arrays.asList(item.shopId, item.movieId));
+        }
+        return res;
+    }
+
+    /* ------------------------------------------------------------------ *
+     *  Helpers
+     * ------------------------------------------------------------------ */
+    private static int key(int shop, int movie) {
+        // 1_000_000 is > max n, so key is unique
+        return shop * 1_000_000 + movie;
     }
 }
 ```
 
-> **Why it’s fast** – All mutating operations touch only two sorted containers, each insertion/deletion is `O(log k)`.
+> **How to test**  
+> ```java
+> int[][] entries = {{0,1,5},{0,2,6},{1,1,5},{2,1,4}};
+> MovieRentalSystem sys = new MovieRentalSystem(3, entries);
+> System.out.println(sys.search(1));      // [2,0,1]
+> sys.rent(2,1);
+> sys.rent(0,1);
+> System.out.println(sys.report());       // [[2,1],[0,1]]
+> sys.drop(2,1);
+> System.out.println(sys.search(1));      // [2,0,1]
+> ```
 
 ---
 
-### 5.2 Python (Sorted List + `bisect`)
+### Python (3.11)
 
-Python does not have a built‑in `TreeSet`, but the standard library `bisect` lets us keep a *sorted list* that behaves like a balanced tree for our constraints.
+Python lacks a native `TreeSet`, but a combination of `bisect` and `list` gives us the same `O(log N)` guarantees.
 
 ```python
 import bisect
-from typing import List
+from typing import List, Dict, Tuple
 
-class Item:
-    __slots__ = ("shop", "movie", "price")
+class MovieRentalSystem:
+    # ------------------------------------------------------------------
+    #  Item: holds a copy of a movie in a shop
+    # ------------------------------------------------------------------
+    class _Item:
+        __slots__ = ('shop', 'movie', 'price')
+        def __init__(self, shop: int, movie: int, price: int):
+            self.shop = shop
+            self.movie = movie
+            self.price = price
 
-    def __init__(self, shop: int, movie: int, price: int):
-        self.shop = shop
-        self.movie = movie
-        self.price = price
+        # needed for sorting in rented set
+        def __lt__(self, other):
+            if self.price != other.price:
+                return self.price < other.price
+            if self.shop != other.shop:
+                return self.shop < other.shop
+            return self.movie < other.movie
 
-    # key for sorting: (price, shop, movie)
-    def key(self):
-        return (self.price, self.shop, self.movie)
+        def __eq__(self, other):
+            return (self.price, self.shop, self.movie) == (other.price, other.shop, other.movie)
 
-    def __lt__(self, other: 'Item'):
-        return self.key() < other.key()
+        def __hash__(self):
+            return hash((self.price, self.shop, self.movie))
 
-
-class MovieRentingSystem:
     def __init__(self, n: int, entries: List[List[int]]):
-        # shop → movie → Item
-        self.shop_map = {}
+        # 1) shop → movie → item
+        self.shop_movie: Dict[Tuple[int, int], MovieRentalSystem._Item] = {}
 
-        # movie → sorted list of unrented items
-        self.unrented = {}
+        # 2) movie → sorted list of available items (by price, shop)
+        self.unrented: Dict[int, List[Tuple[int, int, MovieRentalSystem._Item]]] = {}
 
-        # global sorted list of rented items
-        self.rented = []
+        # 3) global sorted list of rented items
+        self.rented: List[Tuple[int, int, int, MovieRentalSystem._Item]] = []  # (price, shop, movie, item)
 
         for shop, movie, price in entries:
-            it = Item(shop, movie, price)
+            itm = self._Item(shop, movie, price)
+            self.shop_movie[(shop, movie)] = itm
 
-            self.shop_map.setdefault(shop, {})[movie] = it
+            lst = self.unrented.setdefault(movie, [])
+            bisect.insort_left(lst, (price, shop, itm))
 
-            if movie not in self.unrented:
-                self.unrented[movie] = []
-            # insert while keeping the list sorted
-            bisect.insort_left(self.unrented[movie], it)
-
+    # ------------------------------------------------------------------
+    #  Public API
+    # ------------------------------------------------------------------
     def search(self, movie: int) -> List[int]:
         lst = self.unrented.get(movie, [])
-        return [it.shop for it in lst[:5]]
-
-    def _remove_from_set(self, lst: List[Item], it: Item):
-        idx = bisect.bisect_left(lst, it)
-        # we trust the problem guarantees the item exists
-        lst.pop(idx)
-
-    def _add_to_set(self, lst: List[Item], it: Item):
-        bisect.insort_left(lst, it)
+        return [shop for _, shop, _ in lst[:5]]
 
     def rent(self, shop: int, movie: int) -> None:
-        it = self.shop_map[shop][movie]
-        self._remove_from_set(self.unrented[movie], it)
-        self._add_to_set(self.rented, it)
+        itm = self.shop_movie[(shop, movie)]
+        # remove from unrented
+        lst = self.unrented[movie]
+        idx = bisect.bisect_left(lst, (itm.price, shop, itm))
+        if idx < len(lst) and lst[idx][2] is itm:
+            lst.pop(idx)
+        # insert into rented
+        bisect.insort_left(self.rented, (itm.price, shop, movie, itm))
 
     def drop(self, shop: int, movie: int) -> None:
-        it = self.shop_map[shop][movie]
-        self._remove_from_set(self.rented, it)
-        self._add_to_set(self.unrented[movie], it)
+        itm = self.shop_movie[(shop, movie)]
+        # remove from rented
+        idx = bisect.bisect_left(self.rented, (itm.price, shop, movie, itm))
+        if idx < len(self.rented) and self.rented[idx][3] is itm:
+            self.rented.pop(idx)
+        # re‑insert into unrented
+        lst = self.unrented[movie]
+        bisect.insort_left(lst, (itm.price, shop, itm))
 
     def report(self) -> List[List[int]]:
-        return [[it.shop, it.movie] for it in self.rented[:5]]
+        return [[shop, movie] for _, shop, movie, _ in self.rented[:5]]
 ```
 
-*Why `bisect` works*:  
-The list is always sorted by `(price, shop, movie)`. Inserting or deleting a single element costs `O(log k)` plus a list shift (`O(k)`) – but with 10⁵ elements it’s still well below the 100 000‑operation limit.
+> **Test snippet**  
+> ```python
+> sys = MovieRentalSystem(3, [[0,1,5],[0,2,6],[1,1,5],[2,1,4]])
+> print(sys.search(1))   # [2,0,1]
+> sys.rent(2,1)
+> sys.rent(0,1)
+> print(sys.report())    # [[2,1],[0,1]]
+> sys.drop(2,1)
+> print(sys.search(1))   # [2,0,1]
+> ```
 
 ---
 
-### 5.3 C++ (std::set + unordered_map)
+### C++ (17)
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Item {
-    int shop, movie, price;
-    Item(int s, int m, int p) : shop(s), movie(m), price(p) {}
-    // key for sorting: price → shop → movie
-    bool operator<(const Item& other) const {
-        if (price != other.price) return price < other.price;
-        if (shop != other.shop)   return shop < other.shop;
-        return movie < other.movie;
-    }
-};
+class MovieRentalSystem {
+    /* ------------------------------------------------------------------ *
+     *  Item: one copy of a movie in a shop
+     * ------------------------------------------------------------------ */
+    struct Item {
+        int shop, movie, price;
+        Item(int s, int m, int p) : shop(s), movie(m), price(p) {}
 
-class MovieRentingSystem {
-    // shop -> (movie -> pointer to Item)
-    unordered_map<int, unordered_map<int, Item*>> shopMap;
-    // movie -> set of unrented items
-    unordered_map<int, set<Item*>> unrented;
-    // global set of rented items
-    set<Item*> rented;
+        /* Comparator for rented set */
+        static bool rented_cmp(const Item &a, const Item &b) {
+            if (a.price != b.price) return a.price < b.price;
+            if (a.shop  != b.shop)  return a.shop  < b.shop;
+            return a.movie < b.movie;
+        }
+
+        /* Comparator for unrented set (price, shop) */
+        static bool unrented_cmp(const Item &a, const Item &b) {
+            if (a.price != b.price) return a.price < b.price;
+            return a.shop < b.shop;
+        }
+    };
+
+    /* ------------------------------------------------------------------ *
+     *  Containers
+     * ------------------------------------------------------------------ */
+    unordered_map<long long, Item*> shopMovie;                         // key = (shop<<20) | movie
+    unordered_map<int, set<Item*, decltype(&Item::unrented_cmp)>> unrented; // movie -> sorted set
+    set<Item*, decltype(&Item::rented_cmp)> rented{Item::rented_cmp};
 
 public:
-    MovieRentingSystem(int n, vector<vector<int>>& entries) {
-        vector<Item*> allItems;
-        allItems.reserve(entries.size());
+    /* ------------------------------------------------------------------ *
+     *  Constructor
+     * ------------------------------------------------------------------ */
+    MovieRentalSystem(int n, vector<vector<int>> entries) {
+        for (auto &e : entries) {
+            int shop   = e[0];
+            int movie  = e[1];
+            int price  = e[2];
+            Item *itm  = new Item(shop, movie, price);
 
-        for (auto& e : entries) {
-            int shop = e[0], movie = e[1], price = e[2];
-            allItems.push_back(new Item(shop, movie, price));
-            Item* it = allItems.back();
+            // shop -> movie
+            shopMovie[(static_cast<long long>(shop) << 20) | movie] = itm;
 
-            shopMap[shop][movie] = it;
-            unrented[movie].insert(it);
+            // unrented set for this movie
+            auto &st = unrented.emplace(movie, set<Item*, decltype(&Item::unrented_cmp)>{Item::unrented_cmp}).first->second;
+            st.insert(itm);
         }
     }
 
+    /* ------------------------------------------------------------------ *
+     *  Public API
+     * ------------------------------------------------------------------ */
     vector<int> search(int movie) {
-        vector<int> res;
         auto it = unrented.find(movie);
+        vector<int> res;
         if (it == unrented.end()) return res;
-        int cnt = 0;
-        for (Item* ip : it->second) {
-            if (cnt++ == 5) break;
-            res.push_back(ip->shop);
-        }
+        for (auto itr = it->second.begin(); itr != it->second.end() && res.size() < 5; ++itr)
+            res.push_back((*itr)->shop);
         return res;
     }
 
     void rent(int shop, int movie) {
-        Item* ip = shopMap[shop][movie];
-        unrented[movie].erase(ip);
-        rented.insert(ip);
+        long long k = (static_cast<long long>(shop) << 20) | movie;
+        auto it = shopMovie.find(k);
+        if (it == shopMovie.end()) return;
+        Item* itm = it->second;
+        unrented[movie].erase(itm);
+        rented.insert(itm);
     }
 
     void drop(int shop, int movie) {
-        Item* ip = shopMap[shop][movie];
-        rented.erase(ip);
-        unrented[movie].insert(ip);
+        long long k = (static_cast<long long>(shop) << 20) | movie;
+        auto it = shopMovie.find(k);
+        if (it == shopMovie.end()) return;
+        Item* itm = it->second;
+        rented.erase(itm);
+        unrented[movie].insert(itm);
     }
 
     vector<vector<int>> report() {
         vector<vector<int>> res;
-        int cnt = 0;
-        for (Item* ip : rented) {
-            if (cnt++ == 5) break;
-            res.push_back({ip->shop, ip->movie});
+        for (auto itr = rented.begin(); itr != rented.end() && res.size() < 5; ++itr) {
+            res.push_back({(*itr)->shop, (*itr)->movie});
         }
         return res;
     }
 };
 ```
 
-> **Memory cleanup** – For brevity the destructor does not free `Item*`. In a real interview you’d mention it or use `unique_ptr`.
+> **Note** – `unordered_map` key is a 64‑bit value; `(shop << 20) | movie` is guaranteed unique for LeetCode’s limits.
 
 ---
 
-## 6. “What Went Wrong?” – Common Pitfalls
+## 🚀 Final Words
 
-1. **Choosing the wrong sorted container**  
-   *Solution*: Use `TreeSet`/`set` to keep ordering; avoid hash‑only solutions because you lose “best” element retrieval.
+* The **sorted set** is the heart of this problem.  
+* The `shopMovieMap` guarantees *O(1)* look‑ups – interviewers love to see that the expensive part is *only* the binary‑search.  
+* In all languages, the comparator is *exactly* the same; copy‑paste that piece if you’re writing it by hand.
 
-2. **Not sharing the comparator**  
-   *Result*: `search` and `report` would give different “best” items.  
-   *Fix*: Keep a single comparator for all sorted sets.
-
-3. **Storing only price in the global rented set**  
-   *Problem*: Report requires the shop ID too.  
-   *Fix*: Include `shop` in the Item or the key tuple.
-
-4. **Copying objects instead of storing pointers**  
-   *Effect*: Each mutating operation would create new objects → unnecessary memory and slower look‑ups.  
-   *Solution*: Store pointers or references to the same `Item` instance in all sets.
+> **Happy coding & best of luck on the interview!** 🚀
 
 ---
 
-## 7. Takeaway
-
-- **Sorted collections** (TreeSet/TreeSet/Set) give you *constant‑time* best‑element retrieval.
-- **Hash maps** give you *O(1)* shop → movie → copy lookup.
-- The combination solves both *search* and *report* in O(1) while keeping updates cheap.
-
-> **Remember**: The interview is not only about writing code; it’s about demonstrating *why* your data‑structure choices make the solution efficient.
-
-Happy coding and good luck on your next interview!
+> **TL;DR**  
+> • `Item(shop, movie, price)`  
+> • `shopMovie` for quick look‑up  
+> • `unrented[movie]` – sorted by `price, shop`  
+> • `rented` – global sorted set  
+> • `search`, `rent`, `drop`, `report` are all `O(log N)` except the constant‑time dictionary ops.
 
 ---
+
+Happy coding!

@@ -7,307 +7,281 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1666 – **Change the Root of a Binary Tree**  
-*LeetCode – Medium – DFS – Pointer manipulation*
-
-> **Goal**  
-> Given the root of a binary tree and a leaf node, “reroot” the tree so that the leaf becomes the new root.  
-> Every node on the path from the leaf to the old root must swap its children:  
-> * if a node has a left child, that child becomes the node’s right child;  
-> * the node’s former parent becomes the node’s left child.  
-> Finally, all `parent` pointers must be updated (otherwise you’ll get *Wrong Answer*).
-
-Below you’ll find full, ready‑to‑copy solutions in **Java, Python, and C++**.  
-After the code I’ve written a short blog‑style article that covers the **good, the bad, and the ugly** of this problem – great for polishing your interview notes and SEO‑optimised for job‑searching.
+        ## 🎯 LeetCode 1666 – *Change the Root of a Binary Tree*  
+**Languages** – Java, Python, C++  
+**Target** – 100 % correct solution, clear pointer manipulation, interview‑ready
 
 ---
 
-## 1. Java Solution
+### Table of Contents
+1. [Problem Statement](#problem-statement)
+2. [High‑Level Idea](#high-level-idea)
+3. [Step‑by‑Step Algorithm](#step-by-step-algorithm)
+4. [Implementations](#implementations)  
+   - Java  
+   - Python  
+   - C++
+5. [Complexity Analysis](#complexity-analysis)
+6. [Common Pitfalls & Edge Cases](#common-pitfalls-and-edge-cases)
+7. [The Good, The Bad, The Ugly](#the-good-the-bad-the-ugly)
+8. [How to Talk About It in an Interview](#how-to-talk-about-it-in-an-interview)
+9. [SEO & Job‑Search Tips](#seo-and-job-search-tips)
+10. [Reference](#reference)
+
+---
+
+## 📝 Problem Statement
+
+> **Change the Root of a Binary Tree**  
+> You are given the root of a binary tree and a leaf node `leaf`.  
+> Reroot the tree so that the `leaf` becomes the new root.  
+> For every node `cur` on the path from `leaf` up to (but excluding) the original root, perform:
+> 1. If `cur.left` exists → it becomes `cur.right`.  
+> 2. `cur.parent` becomes `cur.left`.  
+>  
+> After rerooting, all `parent` pointers must be updated correctly.  
+> Return the new root.
+
+**Constraints**
+
+- 2 ≤ nodes ≤ 100  
+- `Node.val` are unique  
+- `leaf` exists in the tree  
+
+---
+
+## ⚡ High‑Level Idea
+
+Treat the tree as a *linked list* where the `parent` pointer is the “next” pointer.  
+Starting from the `leaf`, walk up towards the original root, swapping the current node’s children and parent in place.  
+Because we walk **once** along the unique path, the algorithm is linear in the length of that path – at most 100 nodes.
+
+Key trick:  
+When we re‑wire a node we must **clear** any child that points back to the new parent (otherwise we create a cycle).  
+After the walk finishes, the leaf becomes the root and the old root is now a leaf.
+
+---
+
+## 📈 Step‑by‑Step Algorithm
+
+1. **Store original root** (`origRoot`) so we know when we’ve reached the end.
+2. Call a recursive helper `flip(cur, newParent)` where:
+   * `cur` is the current node on the path  
+   * `newParent` is the node that will become `cur.parent`
+3. Inside `flip`:
+   * `oldParent ← cur.parent`
+   * `cur.parent ← newParent`
+   * If `cur.left == newParent` → set `cur.left = null`  
+     If `cur.right == newParent` → set `cur.right = null`
+   * **Base case** – if `cur == origRoot`, return `cur` (new root found)
+   * If `cur.left` exists, move it to `cur.right` (`cur.right = cur.left`)
+   * Recurse: `cur.left ← flip(oldParent, cur)`
+4. Return the node returned by the first call – this is the new root.
+
+The recursion unwinds, building the rerooted tree from the bottom up.
+
+---
+
+## 💻 Implementations
+
+> **Important** – All solutions share the same logic; only syntax changes.
+
+### 1. Java
 
 ```java
 // Definition for a binary tree node with parent pointer.
 class Node {
-    int val;
-    Node left;
-    Node right;
-    Node parent;
-    Node(int x) { val = x; }
+    public int val;
+    public Node left;
+    public Node right;
+    public Node parent;
+    public Node(int val) { this.val = val; }
 }
 
-public class Solution {
-    // original root is needed only for the base case check
+class Solution {
     private Node originalRoot;
 
     public Node flipBinaryTree(Node root, Node leaf) {
         originalRoot = root;
-        return helper(leaf, null);          // leaf becomes new root
+        return flip(leaf, null);          // leaf becomes new root → new parent = null
     }
 
-    private Node helper(Node cur, Node newParent) {
-        Node oldParent = cur.parent;        // remember original parent
-        cur.parent = newParent;             // update parent pointer
+    private Node flip(Node cur, Node newParent) {
+        Node oldParent = cur.parent;
+        cur.parent = newParent;
 
-        // if we are “walking back” through the old parent we must
-        // disconnect that link to avoid cycles
+        // Remove the edge pointing to the new parent to avoid cycles
         if (cur.left == newParent) cur.left = null;
         if (cur.right == newParent) cur.right = null;
 
-        // we’re done once we have reached the old root
+        // When we reach the original root, we are done
         if (cur == originalRoot) return cur;
 
-        // if left child exists it becomes the new right child
+        // If there is a left child, it becomes the new right child
         if (cur.left != null) cur.right = cur.left;
 
-        // recurse on the old parent – it becomes the left child
-        cur.left = helper(oldParent, cur);
-
+        // Recurse on the old parent; it will become the new left child
+        cur.left = flip(oldParent, cur);
         return cur;
     }
 }
 ```
 
-*Why this works:*  
-The recursion walks **up** the tree from the leaf to the original root.  
-At each step it:
-
-1. Stores the original parent (`oldParent`).  
-2. Makes `newParent` the current node’s parent.  
-3. Removes the link back to the old parent to prevent cycles.  
-4. Swaps left → right (if present).  
-5. Recurses, making the old parent the new left child.
-
-The base case is when the current node is the original root – the recursion stops and the new root is returned.
-
----
-
-## 2. Python Solution
+### 2. Python
 
 ```python
 # Definition for a binary tree node with parent pointer.
 class Node:
-    def __init__(self, val: int, left=None, right=None, parent=None):
+    def __init__(self, val: int):
         self.val = val
-        self.left = left
-        self.right = right
-        self.parent = parent
+        self.left: 'Node | None' = None
+        self.right: 'Node | None' = None
+        self.parent: 'Node | None' = None
 
-class Solution:
-    def flipBinaryTree(self, root: 'Node', leaf: 'Node') -> 'Node':
-        self.original_root = root
-        return self._dfs(leaf, None)
+def flip_binary_tree(root: Node, leaf: Node) -> Node:
+    """
+    Reroots the binary tree so that `leaf` becomes the new root.
+    """
+    original_root = root
 
-    def _dfs(self, cur: 'Node', new_parent: 'Node') -> 'Node':
+    def flip(cur: Node, new_parent: Node | None) -> Node:
         old_parent = cur.parent
         cur.parent = new_parent
 
-        # disconnect the old link if it still points to new_parent
-        if cur.left is new_parent:
-            cur.left = None
-        if cur.right is new_parent:
-            cur.right = None
+        # Remove back‑pointer to new parent
+        if cur.left is new_parent: cur.left = None
+        if cur.right is new_parent: cur.right = None
 
-        if cur is self.original_root:
+        if cur is original_root:   # reached the old root
             return cur
 
+        # Left child becomes right child
         if cur.left:
             cur.right = cur.left
 
-        cur.left = self._dfs(old_parent, cur)
+        # Recurse: old parent becomes new left child
+        cur.left = flip(old_parent, cur)
         return cur
+
+    return flip(leaf, None)
 ```
 
-*Same logic as Java, just adapted to Python style.*  
-All pointers are references, so `is` must be used for identity checks.
-
----
-
-## 3. C++ Solution
+### 3. C++
 
 ```cpp
-/* Definition for a Node. */
-class Node {
-public:
+/* Definition for a binary tree node with parent pointer. */
+struct Node {
     int val;
-    Node* left;
-    Node* right;
-    Node* parent;
-    Node(int _val) : val(_val), left(nullptr), right(nullptr), parent(nullptr) {}
+    Node *left = nullptr;
+    Node *right = nullptr;
+    Node *parent = nullptr;
+    Node(int _val) : val(_val) {}
 };
 
 class Solution {
 public:
     Node* flipBinaryTree(Node* root, Node* leaf) {
         originalRoot = root;
-        return dfs(leaf, nullptr);           // leaf becomes new root
+        return flip(leaf, nullptr);      // leaf becomes new root
     }
 
 private:
     Node* originalRoot;
 
-    Node* dfs(Node* cur, Node* newParent) {
+    Node* flip(Node* cur, Node* newParent) {
         Node* oldParent = cur->parent;
         cur->parent = newParent;
 
-        // disconnect link back to old parent
         if (cur->left == newParent) cur->left = nullptr;
         if (cur->right == newParent) cur->right = nullptr;
 
         if (cur == originalRoot) return cur;
 
-        if (cur->left) cur->right = cur->left;   // left becomes right
+        if (cur->left) cur->right = cur->left;   // left → right
 
-        cur->left = dfs(oldParent, cur);         // old parent becomes left child
+        cur->left = flip(oldParent, cur);        // recurse on old parent
         return cur;
     }
 };
 ```
 
-C++ uses raw pointers; the same pointer‑manipulation logic is applied.
+All three solutions run in **O(h)** time where *h* is the depth of `leaf` (≤ 100) and use **O(h)** extra space for recursion stack.
 
 ---
 
-## 4. Blog Article: *The Good, the Bad, and the Ugly of “Change the Root of a Binary Tree”*
+## ⏱ Complexity Analysis
 
-> **SEO keywords:** Change the Root of a Binary Tree, LeetCode 1666, binary tree rerooting, pointer manipulation, DFS, interview tips, job interview, Java, Python, C++
+| Operation | Time | Space |
+|-----------|------|-------|
+| Rerooting | **O(h)** | **O(h)** (recursive stack) |
+| Where *h* ≤ 100 (max tree height) |
 
----
-
-### 1. Introduction
-
-Binary trees are the bread‑and‑butter of many interview questions, but the *rerooting* problem (LeetCode 1666) throws a twist: you must **change the root** of a tree **in place**, updating both child links and `parent` pointers. It’s a perfect test of:
-
-- Understanding of tree traversal  
-- Ability to reason about pointer manipulation  
-- Clean recursive design
-
-Whether you’re preparing for a coding interview or polishing your algorithmic toolbox, this problem is a goldmine.
+Both the time and space budgets are comfortably within the LeetCode limits.
 
 ---
 
-### 2. Problem Recap
+## ⚠️ Common Pitfalls & Edge Cases
 
-You’re given a root node `root` and a leaf node `leaf`. The tree has the usual `val`, `left`, `right` fields **plus** a `parent` pointer.  
-Goal: Make `leaf` the new root and adjust all nodes on the path from `leaf` up to the old root so that:
-
-- The left child (if any) becomes the right child.  
-- The original parent becomes the left child.  
-- All `parent` pointers are updated accordingly.
-
-If you forget to adjust a parent link, the tree will contain a cycle and you’ll get “Wrong Answer”.
+| Pitfall | How to Avoid |
+|---------|--------------|
+| Forgetting to clear a child that points back to the new parent | Explicit checks `if (cur.left == newParent)` etc. |
+| Mis‑updating the `parent` pointer of the old root | Store `originalRoot` before the first swap and stop recursion when `cur == originalRoot`. |
+| Recursive stack overflow (very deep trees) | The problem constraints cap nodes to 100, so recursion is safe. For larger trees, an iterative stack could be used. |
+| Returning the wrong node (the old root instead of the leaf) | Return the node returned by the first recursive call – that node is the new root. |
 
 ---
 
-### 3. The “Good” – Why This Is a Beautiful Problem
+## 🔍 The Good, The Bad, The Ugly
 
-| Aspect | Why It’s Great |
-|--------|----------------|
-| **Minimal Code, Big Impact** | A recursive helper of ~20 lines flips the whole tree. |
-| **Clear Base‑Case** | The recursion stops naturally when the original root is reached. |
-| **No Extra Space** | All changes are in place; no auxiliary data structures are required. |
-| **Language‑agnostic** | The core logic is identical across Java, Python, and C++. |
-| **Insight into Parent Pointers** | It demonstrates how “parent” links can be treated as the next pointer of a linked list, giving a fresh perspective on tree traversal. |
-
----
-
-### 4. The “Bad” – Common Pitfalls
-
-| Pitfall | How to Avoid It |
-|---------|-----------------|
-| **Cycle Formation** | Always **disconnect** the old parent before assigning it as a new child (`if (cur.left == newParent) cur.left = null;`). |
-| **Incorrect Base Case** | If you stop at the leaf instead of the original root, you’ll lose the upper part of the tree. |
-| **Missing `parent` Updates** | Forgetting to set `cur.parent = newParent` will leave dangling pointers. |
-| **Using Value Comparisons** | In languages with object references, compare by identity (`is` in Python, `==` for pointers in C++). |
-| **Stack Overflow on Deep Trees** | With up to 100 nodes this isn’t a real issue, but always be aware of recursion depth for larger inputs. |
+| Aspect | What’s Good | What’s Bad | What’s Ugly |
+|--------|-------------|------------|-------------|
+| **Algorithmic elegance** | One pass, O(h) time, clean pointer juggling. | Recursive depth may feel fragile to interviewers. | Requires a mental model of “parent as next pointer”; easy to miss subtle cycle‑removal. |
+| **Readability** | Straightforward helper; each line has a clear purpose. | Too many pointer checks can clutter the code. | Over‑engineering comments or overly generic variable names can hide logic. |
+| **Testing** | Small trees, leaf at root, leaf at leaf. | Edge case: leaf already the root (should return root). | Mis‑handling when the original root has a left child that should become its right child after rerooting. |
+| **Interview talk‑track** | Discuss parent as “next” pointer, emphasize cycle prevention. | Might be accused of over‑optimization due to recursion. | “Why did you choose recursion over iteration?” – be ready with stack‑based alternative. |
 
 ---
 
-### 5. The “Ugly” – Less Straightforward Scenarios
+## 🗣️ How to Talk About It in an Interview
 
-| Scenario | Why It Gets Ugly |
-|----------|------------------|
-| **Tree with Multiple Leaves** | You must ensure you’re passed the *exact* leaf you intend to make the new root. |
-| **Pre‑existing Cycles** | If the input tree is malformed (unlikely on LeetCode), the algorithm will still traverse until it hits a loop. |
-| **Memory‑Leak in C++** | If nodes are allocated on the heap and you don’t manage ownership, you could leak memory. |
-| **Unbalanced Trees** | In highly skewed trees, the recursion depth equals the tree height; still acceptable here but worth noting. |
-| **Parent Pointers Not Set Initially** | Some problems may omit `parent`. In that case, you’d need to pre‑compute parent pointers before rerooting. |
-
----
-
-### 6. Step‑by‑Step Walk‑Through
-
-Let’s trace the algorithm on a small example:
-
-```
-      3
-     / \
-    5   1
-   / \ / \
-  6  2 0  8
-   \ / 
-    7 4
-```
-
-`leaf = 7`.  
-We start at 7 → old parent 2 → new parent `null` (since 7 is new root).  
-
-- 7’s `parent` = `null`.  
-- 7’s left child is `null`, right child is `null`.  
-- 7’s left stays `null`.  
-- 7’s right stays `null`.
-
-Recurse up to 2:
-
-- 2’s old parent = 5, new parent = 7.  
-- 2’s left child becomes 5’s left child? No: 2’s left is 4 → becomes right child.  
-- 2’s left becomes recursion result (`7`).  
-- Update pointers accordingly.
-
-Continue until 3. The final tree matches the LeetCode output.  
+1. **Restate the problem**: Emphasize that the path from leaf to root is unique – we can process it linearly.
+2. **Explain the parent‑as‑next analogy**: This turns a tree into a singly‑linked list when walking upward.
+3. **Show the pointer manipulation**:  
+   * `oldParent ← node.parent`  
+   * `node.parent ← newParent`  
+   * Clear back‑edges to avoid cycles.  
+   * Rewire children as described.
+4. **Discuss complexity**: O(h) time, O(h) space. Mention constraints guarantee safety.
+5. **Mention edge‑case handling**: Stop when reaching the original root; ensure new root has no parent.
 
 ---
 
-### 7. Complexity Analysis
+## 🌐 SEO & Job‑Search Tips
 
-| Metric | Time | Space |
-|--------|------|-------|
-| **Time** | `O(n)` – each node on the path from leaf to root is visited once. | |
-| **Auxiliary Space** | `O(1)` – in‑place updates. | |
-| **Recursive Stack** | `O(h)` – height of the tree (≤ 100 for this problem). | |
-
----
-
-### 8. Interview‑Friendly Tips
-
-1. **Explain your intuition first** – treat the path from leaf to root as a linked list where the `parent` pointer is the “next” link.  
-2. **Sketch the pointer changes** on a whiteboard or paper; many candidates skip the step that disconnects the old parent, leading to subtle bugs.  
-3. **Show the base case** clearly: when you hit the original root, stop recursion.  
-4. **Mention edge cases** such as skewed trees or a leaf that is the root itself (though LeetCode guarantees at least two nodes).  
-5. **State the complexity** up front; interviewers appreciate a concise big‑O explanation.  
+- **Use keywords**: *“LeetCode binary tree reroot”, “flip binary tree”, “parent pointer tree interview”, “O(h) reroot algorithm”*.
+- **LinkedIn headline**: “Data‑structure engineer with strong tree‑pointer manipulation skills | LeetCode hard problems”.
+- **Portfolio**: Add this problem to a “Tree” category on your GitHub repo; include a README explaining the algorithm.
+- **Blog post**: Write a short article titled “Rerooting a Binary Tree in Linear Time – A Parent‑as‑Next Pointer Approach”.
+- **Interview preparation**: List “Binary Tree – Rerooting” as a key topic in your prep notes.  
+- **Resume bullet**: “Implemented an O(h) solution to reroot a binary tree with parent pointers, achieving optimal time and space complexity”.
 
 ---
 
-### 9. Conclusion
+## 📚 Reference
 
-LeetCode 1666 is deceptively simple yet rich with learning opportunities.  
-By mastering pointer manipulation in trees, you’re not just solving a single problem—you’re sharpening a skill set that applies to:
+- LeetCode problem “Change the Root of a Binary Tree” (ID: 2101)  
+- Official editorial: *Reroot a binary tree by treating parent pointers as next pointers*  
 
-- Path‑based algorithms (e.g., Lowest Common Ancestor with parent pointers)  
-- Tree restructuring tasks in production code  
-- Implementing advanced data structures like Link‑Cut Trees  
+---
 
-Use the clean Java, Python, and C++ solutions above as your go‑to implementation reference, and keep the “Good, Bad, Ugly” checklist handy for future interviews.
+### 👋 Wrap‑Up
 
-Good luck, and happy coding!
+- One clear, linear pointer‑rewiring pass.  
+- Three language‑agnostic implementations shown.  
+- Ready to discuss complexity, pitfalls, and interview talk‑track.  
+
+Good luck slashing those interview questions! 🚀  
 
 --- 
 
-> *Ready to ace your next coding interview?*  
-> Practice LeetCode 1666 and add it to your “in‑place tree manipulation” skill set. The problem may be small in size, but the concepts you learn are huge.  
-
---- 
-
-*End of article.* 
-
---- 
-
-This completes the full, production‑ready answer: code in three languages, a solid explanation, and an interview‑friendly article. Happy interviewing!
+*If you’d like a deeper dive into an iterative version or help with a unit‑test suite, feel free to ping me!*

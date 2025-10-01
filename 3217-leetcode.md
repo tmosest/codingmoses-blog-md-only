@@ -7,295 +7,361 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap
+        ## 🚀 Delete Nodes From Linked List Present in Array – A Full‑Stack Walkthrough  
+*(Java | Python | C++)*  
 
-> **LeetCode #3217 – Delete Nodes From Linked List Present in Array**  
-> Given an array `nums` and the head of a singly‑linked list, remove **all** nodes whose values appear in `nums`.  
-> Return the head of the modified list.
+> **Why you should care**  
+> The “Delete Nodes From Linked List Present in Array” problem is a frequent interview question on LeetCode, HackerRank, and even in real‑world tech interviews. Mastering it shows you can:  
+> • Handle two data‑structures at once (array + linked list)  
+> • Use hash‑based lookup for O(1) search  
+> • Write clean, production‑ready code in multiple languages  
 
-**Constraints**
-
-| Constraint | Value |
-|------------|-------|
-| `1 ≤ nums.length ≤ 10⁵` | |
-| `1 ≤ nums[i] ≤ 10⁵` | |
-| All `nums` elements are unique | |
-| Linked‑list size `1 … 10⁵` | |
-| `1 ≤ node.val ≤ 10⁵` | |
-| At least one node is **not** removed | |
-
-The problem is a classic interview question that tests:
-* hash‑set usage
-* linked‑list manipulation
-* time/space trade‑offs
-
-Below you’ll find clean, production‑ready solutions in **Java, Python, and C++** – all using a single traversal of the list and an O(1) lookup set.  
-After the code you’ll find a *blog‑style guide* that explains the “good, the bad, and the ugly” of this problem and is SEO‑optimized to help you land your next coding interview.
+Below you’ll find a **step‑by‑step solution**, an **SEO‑optimized blog post** that explains the *good*, *bad*, and *ugly* of typical solutions, and **fully‑working code** in **Java, Python, and C++**.
 
 ---
 
-## 2.  Reference Solutions
+# 📄 Problem Statement
 
-> ⚙️ All three implementations use the same idea:
-> 1. Build a hash‑set (`unordered_set` / `HashSet` / `set`) from `nums`.  
-> 2. Walk the linked list with a dummy head.  
-> 3. Skip nodes whose value is in the set, otherwise keep them.  
-> 4. Return `dummy.next`.
+Given an array `nums` (unique integers) and the head of a singly‑linked list `head`, **remove every node whose value is present in `nums`** and return the head of the modified list.
 
-### 2.1 Java
+*Constraints*  
+
+- `1 ≤ nums.length ≤ 10⁵`  
+- `1 ≤ nums[i] ≤ 10⁵`  
+- All elements in `nums` are unique.  
+- `1 ≤ number of nodes ≤ 10⁵`  
+- `1 ≤ Node.val ≤ 10⁵`  
+- There is at least one node whose value is **not** in `nums`.
+
+---
+
+# 🔍 The Good, The Bad, The Ugly
+
+| Aspect | Good (Typical Interview‑Ready) | Bad (Common Pitfalls) | Ugly (Avoid) |
+|--------|--------------------------------|-----------------------|--------------|
+| **Data structure for lookup** | `HashSet<Integer>` (Java), `unordered_set<int>` (C++), `set` (Python) – O(1) average lookup | Using an array of size 10⁵ → wasted memory if numbers are sparse | Using a linked list to search for each node → O(n²) |
+| **Edge cases** | Empty list after deletion (return `null`), or head itself removed | Forgetting to detach the tail (`next = nullptr`) | Modifying the original list without creating a new dummy head (risk of memory leak) |
+| **Complexity** | `O(n + m)` time, `O(n)` extra space | `O(n*m)` time if naive | O(1) extra space but still O(n²) time |
+| **Code readability** | Clear variable names, comments, separate helper functions | Too many nested `if` statements | Over‑optimising prematurely (bitset hacks) |
+
+---
+
+# 📚 Approach (Hash‑Set + Dummy Head)
+
+1. **Build a hash set** from `nums`.  
+   - Enables constant‑time membership checks.
+2. **Create a dummy head** (`new ListNode(0)`).
+3. **Traverse the original list** using a pointer `curr`.  
+   - If `curr.val` is **not** in the set, attach it to the result list (`tail.next = curr`).
+   - Move `tail` forward.
+4. **Terminate** the new list (`tail.next = null`) to avoid cycles.
+5. Return `dummy.next`.
+
+> **Why a dummy head?**  
+> It simplifies edge cases (e.g., the first node is removed) by guaranteeing a non‑null previous node.
+
+---
+
+# 🏁 Complexity Analysis
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Building the set | `O(n)` | `O(n)` |
+| Traversing the list | `O(m)` | `O(1)` (besides output) |
+| Total | **`O(n + m)`** | **`O(n)`** |
+
+`n` – length of `nums`, `m` – length of the linked list.
+
+---
+
+# 📦 Code Implementations
+
+Below are complete, ready‑to‑copy solutions in **Java**, **Python**, and **C++**. Each file contains a minimal `ListNode` definition and a `Solution` class (or function) that can be pasted into your IDE or online judge.
+
+---
+
+## Java
 
 ```java
-/**
- * Definition for singly-linked list.
- * public class ListNode {
- *     int val;
- *     ListNode next;
- *     ListNode() {}
- *     ListNode(int val) { this.val = val; }
- *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
- * }
- */
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Definition for singly-linked list.
+ */
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode() {}
+    ListNode(int val) { this.val = val; }
+    ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+}
+
 public class Solution {
     public ListNode deleteNodes(int[] nums, ListNode head) {
-        // 1. Build the set of values to delete
-        Set<Integer> toDelete = new HashSet<>(nums.length);
-        for (int v : nums) toDelete.add(v);
-
-        // 2. Dummy head simplifies edge cases
-        ListNode dummy = new ListNode(0);
-        dummy.next = head;
-        ListNode prev = dummy, curr = head;
-
-        // 3. Walk the list once
-        while (curr != null) {
-            if (toDelete.contains(curr.val)) {
-                // skip this node
-                prev.next = curr.next;
-            } else {
-                prev = curr;                // keep it
-            }
-            curr = curr.next;
+        // 1. Build the hash set
+        Set<Integer> toDelete = new HashSet<>();
+        for (int num : nums) {
+            toDelete.add(num);
         }
+
+        // 2. Dummy head to simplify deletions
+        ListNode dummy = new ListNode(0);
+        ListNode tail = dummy;
+
+        // 3. Traverse the list
+        while (head != null) {
+            if (!toDelete.contains(head.val)) {
+                tail.next = head;   // keep the node
+                tail = tail.next;
+            }
+            head = head.next;
+        }
+
+        // 4. Terminate the new list
+        tail.next = null;
         return dummy.next;
     }
 }
 ```
 
----
+**Test snippet**
 
-### 2.2 Python
+```java
+public static void main(String[] args) {
+    // Build list: 1->2->3->4->5
+    ListNode head = new ListNode(1, new ListNode(2,
+                      new ListNode(3, new ListNode(4,
+                      new ListNode(5)))));
+    int[] nums = {1, 2, 3};
 
-```python
-# Definition for singly-linked list.
-class ListNode:
-    def __init__(self, val=0, next=None):
-        self.val = val
-        self.next = next
+    Solution sol = new Solution();
+    ListNode res = sol.deleteNodes(nums, head);
 
-class Solution:
-    def deleteNodes(self, nums, head):
-        # 1. Build the set of values to delete
-        to_delete = set(nums)
-
-        # 2. Dummy head to handle deletions at the front
-        dummy = ListNode(0)
-        dummy.next = head
-        prev, curr = dummy, head
-
-        # 3. Single pass
-        while curr:
-            if curr.val in to_delete:
-                prev.next = curr.next          # skip
-            else:
-                prev = curr                    # keep
-            curr = curr.next
-
-        return dummy.next
+    // Print result
+    while (res != null) {
+        System.out.print(res.val + " ");
+        res = res.next;
+    } // Expected: 4 5
+}
 ```
 
 ---
 
-### 2.3 C++
+## Python
+
+```python
+from typing import List, Optional
+
+class ListNode:
+    def __init__(self, val: int = 0, next: Optional['ListNode'] = None):
+        self.val = val
+        self.next = next
+
+class Solution:
+    def deleteNodes(self, nums: List[int], head: Optional[ListNode]) -> Optional[ListNode]:
+        to_delete = set(nums)           # O(n) time, O(n) space
+        dummy = ListNode(0)
+        tail = dummy
+
+        while head:
+            if head.val not in to_delete:  # keep node
+                tail.next = head
+                tail = tail.next
+            head = head.next
+
+        tail.next = None
+        return dummy.next
+```
+
+**Test snippet**
+
+```python
+def build_list(vals):
+    dummy = ListNode(0)
+    cur = dummy
+    for v in vals:
+        cur.next = ListNode(v)
+        cur = cur.next
+    return dummy.next
+
+def print_list(node):
+    while node:
+        print(node.val, end=' ')
+        node = node.next
+    print()
+
+head = build_list([1,2,3,4,5])
+nums = [1,2,3]
+sol = Solution()
+res = sol.deleteNodes(nums, head)
+print_list(res)   # Output: 4 5
+```
+
+---
+
+## C++
 
 ```cpp
-/**
- * Definition for singly-linked list.
- * struct ListNode {
- *     int val;
- *     ListNode *next;
- *     ListNode(int x) : val(x), next(nullptr) {}
- * };
- */
-#include <unordered_set>
+#include <bits/stdc++.h>
+using namespace std;
+
+// Definition for singly‑linked list.
+struct ListNode {
+    int val;
+    ListNode *next;
+    ListNode(int x) : val(x), next(nullptr) {}
+};
 
 class Solution {
 public:
     ListNode* deleteNodes(vector<int>& nums, ListNode* head) {
-        // 1. Hash‑set for O(1) lookups
         unordered_set<int> toDelete(nums.begin(), nums.end());
 
-        // 2. Dummy node to avoid special cases
         ListNode dummy(0);
-        dummy.next = head;
-        ListNode *prev = &dummy, *curr = head;
+        ListNode* tail = &dummy;
 
-        // 3. One pass
-        while (curr) {
-            if (toDelete.count(curr->val)) {
-                prev->next = curr->next;          // skip
-            } else {
-                prev = curr;                      // keep
+        while (head) {
+            if (toDelete.find(head->val) == toDelete.end()) {
+                tail->next = head;
+                tail = tail->next;
             }
-            curr = curr->next;
+            head = head->next;
         }
+        tail->next = nullptr;   // cut off possible old tail
         return dummy.next;
     }
 };
 ```
 
----
+**Test snippet**
 
-## 3.  Blog Article – *The Good, The Bad, and The Ugly of Deleting Nodes from a Linked List*
+```cpp
+int main() {
+    // Build list: 1->2->3->4->5
+    ListNode* head = new ListNode(1);
+    ListNode* cur = head;
+    for (int v = 2; v <= 5; ++v) {
+        cur->next = new ListNode(v);
+        cur = cur->next;
+    }
 
-> **SEO Keywords**: delete nodes from linked list, linked list interview questions, leetcode 3217, Java linked list, Python linked list, C++ linked list, interview tips, hash set, time complexity, space complexity, job interview coding
+    vector<int> nums = {1, 2, 3};
+    Solution sol;
+    ListNode* res = sol.deleteNodes(nums, head);
 
----
-
-### 3.1 Introduction
-
-Linked lists are the **foundation** of many interview questions.  
-One of the most common twists: “remove all nodes that contain a value from a given array.”  
-You’ve probably seen it on LeetCode (Problem 3217) or in a technical interview.  
-It looks simple, but getting the corner cases right and delivering an optimal solution can be tricky.
-
-Let’s break down **the good**, **the bad**, and **the ugly** of this problem.
-
----
-
-### 3.2 The Good: Why It’s a Great Interview Test
-
-| Why | How it tests you |
-|-----|------------------|
-| **Data structure manipulation** | You must understand pointers (or references) and how to safely change `next` links. |
-| **Hash‑set usage** | You must convert an array into a set for O(1) look‑ups. |
-| **Single‑pass requirement** | You should realize you can’t afford to traverse the list multiple times. |
-| **Edge‑case handling** | Removing the head, all nodes, or no nodes – all must be handled gracefully. |
-| **Scalability** | The input size can be up to 100 k – so O(n) time and O(1) extra space is the sweet spot. |
-
-For interviewers, it’s a **compact “do you understand pointers + hash‑set?”** question that yields a quick quality signal.
-
----
-
-### 3.3 The Bad: Common Pitfalls
-
-| Pitfall | Why it breaks |
-|---------|---------------|
-| **Not using a dummy head** | If the first node is deleted you’ll lose the reference to the new head. |
-| **Modifying `next` incorrectly** | Assigning `curr = curr.next` *after* deleting can skip a node or create a cycle. |
-| **Wrong data‑type for the set** | Using a list or array for look‑ups gives O(n) per node → O(n²) time. |
-| **Assuming input array is sorted** | Many candidates mistakenly try binary search; the array may be unsorted. |
-| **Not handling “no deletions”** | Some solutions return `null` when the list is unchanged. |
-| **Wrong return type** | Returning the dummy node instead of `dummy.next` gives an empty list. |
-
-Avoiding these pitfalls shows you understand linked‑list memory layout and set theory.
-
----
-
-### 3.4 The Ugly: “What If” Variants
-
-| Variant | Challenge |
-|---------|-----------|
-| **Delete nodes by *value* instead of *index*** | You must convert values into a set, not positions. |
-| **Large node values** | The array may contain values up to 10⁵, but you must still keep O(1) lookup. |
-| **Multithreaded deletion** | (Rarely asked) you’d need to lock the list or use a concurrent data structure. |
-| **Linked list with random pointers** | If it were a *doubly* linked list or had `prev`, you’d need to update both sides. |
-| **Immutable list** | Some languages expose immutable lists; you’d have to build a new list. |
-
-In a real interview, the “ugly” variants often come as **curve‑ball follow‑ups** (“What if the array is huge? What if the list is a double‑linked list?”).  
-
-Show you can **adapt** the core idea (hash‑set + single pass) to new constraints.
-
----
-
-### 3.5 Optimal Solution Walk‑through
-
-```text
-1. Build a hash‑set from the array.
-2. Create a dummy node pointing to the original head.
-3. Iterate with two pointers: prev (starting at dummy) and curr.
-4. If curr.val is in the set: prev.next = curr.next  // skip
-   Else: prev = curr                                 // keep
-5. Move curr = curr.next.
-6. Return dummy.next.
+    // Print result
+    for (ListNode* p = res; p; p = p->next)
+        cout << p->val << " ";
+    // Expected: 4 5
+    return 0;
+}
 ```
 
-*Time*: **O(n + m)** → O(n) because `m` = `nums.length`  
-*Space*: **O(m)** for the set, **O(1)** additional pointers.
+---
 
-With `m ≤ 10⁵`, a hash‑set is the only realistic way to stay within the time limits.  
-All languages’ standard libraries give you an **unordered** or **hash** structure that does exactly that.
+# 📣 SEO‑Optimized Blog Post
 
 ---
 
-### 3.6 Edge‑Case Checklist
+## Title  
+**“Delete Nodes From Linked List Present in Array – Java, Python, C++ Solutions + Interview Tips”**
 
-| Edge case | What to check |
-|-----------|---------------|
-| Head is deleted | Dummy head keeps the new head. |
-| Tail is deleted | `prev.next` correctly becomes `null`. |
-| All nodes deleted except one | Loop continues until `curr` is `null`. |
-| No node is deleted | `prev` always moves forward, `dummy.next` remains the original head. |
-| Empty array (won’t happen due to constraints) | You can guard against it, but the spec guarantees at least one value. |
-
-Testing against a small driver like:
-
-```python
-# build list: 1->2->3->4
-head = ListNode(1, ListNode(2, ListNode(3, ListNode(4))))
-nums = [2, 4]
-result = Solution().deleteNodes(nums, head)
-# result should be 1->3
-```
-
-ensures you’re ready for the “no‑deletion” corner case.
+> **Keywords**: LeetCode, interview problem, delete nodes, linked list, hash set, C++ solution, Java solution, Python solution, O(n) algorithm, data structures interview, technical interview prep
 
 ---
 
-### 3.6 Interview‑Ready Tips
+## Introduction  
 
-| Tip | Reason |
-|-----|--------|
-| **Explain your plan before coding** | Shows you can think on the fly. |
-| **Talk through pointer updates** | Helps avoid accidental cycles. |
-| **Ask clarifying questions** | “Is the array sorted?” “Do we need to preserve order?” |
-| **Mention time/space trade‑offs** | Impress the interviewer that you’re aware of algorithmic constraints. |
-| **Write a small test harness** | In the interview you can run a quick mental test or even a quick Python REPL to prove your logic. |
-| **Use a dummy head** | It’s a safe‑guard you’re never going to forget. |
+Interviews at Google, Amazon, Microsoft, and even startups love problems that force you to think about **data‑structure interaction**. One such favorite is *Delete Nodes From Linked List Present in Array*. On LeetCode it’s a Medium‑level problem that has a clear optimal solution: **hash‑set lookup + dummy head traversal**.
 
----
+In this article you’ll discover:  
 
-### 3.7 How This Article Helps You Land a Job
+1. Why the problem is interview‑worthy.  
+2. The most elegant algorithm (O(n+m) time).  
+3. How to avoid common mistakes.  
+4. Complete, copy‑pasteable code in three languages.  
+5. Bonus interview questions that “spin off” from the same idea.
 
-* The **code samples** give you a quick copy‑paste reference.  
-* The **blog sections** highlight common interview traps, so you can brag about *not* falling for them.  
-* The **SEO tags** help recruiters find this article when searching for “linked list interview questions.”  
-
-**Next Step**: Paste any of the reference solutions into your IDE, run the sample tests, and feel confident explaining the algorithm in your next interview.
+Let’s dive in!
 
 ---
 
-### 3.8 Closing Thought
+## 1. Why This Problem Stands Out  
 
-Linked lists will stay a staple of coding interviews for years.  
-Mastering this “delete nodes” problem not only gives you a **winning algorithm** but also demonstrates:
+| Company | What they test | Typical Follow‑Up |
+|---------|----------------|-------------------|
+| Google | Linked lists & set operations | “What if the list had cycles?” |
+| Amazon | Space optimization | “Can you do it in O(1) extra space?” |
+| Facebook | Edge‑case handling | “What if the array is huge but sparse?” |
 
-1. **Pointers are not just a theoretical concept** – they’re a real‑world tool.
-2. **Hash‑sets are your fastest lookup friend** when time matters.
-3. **Single‑pass solutions are the gold standard** for interview‑size constraints.
+The problem demonstrates a clear mapping: **“lookup” → **hash‑set**. Interviewers ask you to justify your choice of data structure and to explain the trade‑offs.
 
-Show up, bring a dummy head, and you’ll walk away with more than just a correct answer—you’ll walk away with a signal that you *really understand* data‑structures.  
+---
 
-Good luck, and happy coding!
+## 2. The Algorithm – O(n+m)  
+
+1. **Hash‑Set** – store all values that must be removed.  
+2. **Dummy head** – eliminates special handling when the first node is deleted.  
+3. **Single pass** – iterate once over the list, append only the nodes that are *not* in the set.  
+4. **Terminate** – set `next` of the last node to `null` to avoid dangling pointers.  
+
+This approach gives you an **optimal time complexity** of `O(n + m)` and an **extra space** of `O(n)` for the set.  
+
+---
+
+## 3. Language‑Specific Tips  
+
+| Language | Tip | Why |
+|----------|-----|-----|
+| **Java** | Use `HashSet<Integer>` – it’s part of the JDK and keeps your code clean. | Constant‑time lookup and no extra boilerplate. |
+| **Python** | Convert the array to a `set` before iterating. | Python’s `in` operator on sets is O(1) on average. |
+| **C++** | `unordered_set<int>` is the STL counterpart of `HashSet`. | Faster than `set<int>` (balanced tree) and uses hash tables under the hood. |
+
+---
+
+## 4. Common Mistakes to Avoid  
+
+| Mistake | Consequence | Fix |
+|---------|-------------|-----|
+| Using a large array for lookup | Wastes memory if numbers are sparse. | Switch to a hash‑based structure. |
+| Not detaching the tail | May produce a cycle in the resulting list. | Explicitly set `tail->next = nullptr`. |
+| Forgetting the dummy head | Need extra code to handle deletions at the front. | Always start with `ListNode dummy(0)`. |
+
+---
+
+## 5. “Spin‑Off” Interview Questions  
+
+1. **Remove Nodes In‑Place** – can you do it without allocating any new nodes?  
+2. **Sorted List Variant** – `nums` is sorted; does that change your algorithm?  
+3. **Multi‑Threaded Deletion** – imagine the list is being read by another thread while you delete nodes.  
+4. **Large Numbers** – if `Node.val` could be up to `10⁹`, would an array‑based lookup still work?  
+
+These are natural follow‑ups that test deeper understanding and edge‑case handling.
+
+---
+
+## 6. Takeaway Checklist  
+
+- [ ] Convert `nums` into a `HashSet / unordered_set / set`.  
+- [ ] Use a **dummy head** to simplify the algorithm.  
+- [ ] Do a single pass over the list, appending nodes not in the set.  
+- [ ] Terminate the list with `next = null`.  
+- [ ] Handle the case where the entire list is removed (`return null`).  
+
+> **Pro tip**: If you’re on LeetCode, paste the solution into the online editor, run the sample tests, then submit. The same code works on most online judges.
+
+---
+
+## 🎓 Final Words  
+
+Mastering this problem proves you understand **hash‑based lookup**, **linked‑list traversal**, and **edge‑case handling**. Your interviewers will see that you can write clean, efficient code that scales to 10⁵ elements – a critical skill in any performance‑critical codebase.
+
+Happy coding, and good luck on your next interview! 🎉
+
+---
+
+**Author**: *Your Name* – Software Engineer & Interview Coach.  
+Follow me on Twitter, LinkedIn, and GitHub for more interview prep and open‑source projects.  
+
+---

@@ -7,232 +7,285 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 Minimum Health to Beat Game – 3‑Language Solution + Blog for Job‑Hunters
+        # 🛡️ Minimum Health to Beat Game – LeetCode 2214  
+**Difficulty**: Medium | **Runtime**: O(n) | **Space**: O(1)
 
-Below you’ll find a clean, production‑ready implementation of the LeetCode problem **2214. Minimum Health to Beat Game** in **Java, Python, and C++**.  
-After the code, a *“good, bad, ugly”* style blog post explains the trick behind the solution, common pitfalls, and how you can turn this interview question into a showcase for recruiters.
-
----
-
-## 1. Problem Recap
-
-> **You play a game with `n` sequential levels.**  
-> `damage[i]` = health you lose at level `i`.  
-> You have an armor that can be used **once** to cancel up to `armor` damage at **any** level.  
-> Your health must stay **> 0** at all times.  
-> Return the minimum starting health needed to finish all levels.
-
-Constraints  
-```
-1 ≤ n ≤ 10^5
-0 ≤ damage[i], armor ≤ 10^5
-```
+> “You are playing a game that has *n* levels numbered from 0 to *n‑1. You’re given a damage array and an armor value. You can use the armor at most once to reduce damage. Find the minimum starting health that lets you finish all levels with health > 0.”
 
 ---
 
-## 2. O(n) Solution – The “Greedy‑+‑Subtract” Trick
-
-1. **Total damage** you’ll take if you never use armor:  
-   `sum = Σ damage[i]`
-2. The best place to use armor is the **single level that deals the most damage** (call it `maxDamage`).  
-   – If `armor ≥ maxDamage` you can fully cancel that level.  
-   – If `armor < maxDamage` you cancel only `armor` points.
-3. Minimum starting health = `sum – min(maxDamage, armor) + 1`.  
-   +1 is needed because health must stay **strictly positive**.
-
-Why it works:  
-By cancelling the *largest* damage you reduce the total damage the most, and no other placement of the armor can give a larger reduction. Since you only care about the *sum* of damage, this greedy choice is optimal.
-
-Complexities  
-- **Time**: O(n) – one pass to compute sum and max.  
-- **Space**: O(1) – constant extra memory.
+## Table of Contents  
+1. [Why This Problem Matters for Interviews](#why)  
+2. [Problem Recap & Constraints](#recap)  
+3. [The Good, The Bad, & The Ugly](#good-bad-ugly)  
+4. [Intuitive Greedy Solution](#solution)  
+5. [Code in 3 Languages](#code)  
+   - Java  
+   - Python  
+   - C++  
+6. [Complexity Analysis](#complexity)  
+7. [Edge Cases & Common Pitfalls](#edge-cases)  
+8. [Testing Your Solution](#testing)  
+9. [Take‑away & How to Talk About It in an Interview](#takeaway)  
+10. [SEO Keywords & Meta‑Tags](#seo)  
 
 ---
 
-## 3. Code Implementations
+## 1. Why This Problem Matters for Interviews <a name="why"></a>
+- **LeetCode 2214** is a *medium* problem that frequently appears in Java/Python/C++ interview stacks for software‑engineering roles.
+- It tests a candidate’s ability to:
+  - **Reason with greedy algorithms** – pick the optimal spot to use a limited resource (armor).
+  - **Handle large inputs efficiently** – `n ≤ 10⁵`.
+  - **Use correct data types** – avoid overflow when summing up to `10¹⁰` damage.
 
-### 3.1 Java
+If you nail this problem, you’ll show recruiters that you can:
+
+- Think *in linear time*, *constant space*.  
+- Convert a problem description into a clean, production‑grade code snippet.  
+- Spot subtle bugs (e.g., forgetting the `+1` to keep health strictly positive).
+
+---
+
+## 2. Problem Recap & Constraints <a name="recap"></a>
+
+| Item | Value |
+|------|-------|
+| `damage` length `n` | 1 … 10⁵ |
+| `damage[i]` | 0 … 10⁵ |
+| `armor` | 0 … 10⁵ |
+
+**Goal**: Return the *minimum starting health* (an integer) so that after playing all levels in order, the health is always **strictly positive**.
+
+---
+
+## 3. The Good, The Bad, & The Ugly <a name="good-bad-ugly"></a>
+
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Algorithm** | Greedy, O(n) time, O(1) space | None – the greedy is optimal. | Some naive solutions iterate twice or use a binary search, increasing complexity unnecessarily. |
+| **Data Types** | Use 64‑bit (`long`, `long long`) for cumulative damage | 32‑bit integers can overflow (`10⁵ * 10⁵ = 10¹⁰ > 2³¹`). | Overlooking this leads to WA on large test cases. |
+| **Implementation Detail** | `+1` to the total damage ensures health stays > 0 at the end | Forgetting `+1` returns 0, which is invalid. | Misunderstanding the armor’s *upper bound* (use `min(armor, maxDamage)` to avoid subtracting more than available). |
+| **Edge Cases** | `damage` can contain zeros, armor can be zero | None | Misreading “at most once” can lead to trying to use armor multiple times. |
+
+---
+
+## 4. Intuitive Greedy Solution <a name="solution"></a>
+
+1. **Total damage you would take without armor**  
+   \[
+   \text{total} = 1 + \sum_{i=0}^{n-1}\text{damage}[i]
+   \]
+   We add `1` because after finishing the last level, health must still be **> 0**.
+
+2. **Where to use armor**  
+   The armor is most useful on the *single* level that inflicts the **maximum** damage.  
+   - Let `maxDamage` = `max(damage)`.  
+   - Armor can reduce at most `armor`, so the effective reduction is `min(maxDamage, armor)`.
+
+3. **Final answer**  
+   \[
+   \text{answer} = \text{total} - \min(\text{maxDamage}, \text{armor})
+   \]
+
+That’s all – a single pass through the array.
+
+---
+
+## 5. Code in 3 Languages <a name="code"></a>
+
+Below are clean, commented, production‑ready solutions. All three share the same O(n) time, O(1) space logic.
+
+### Java (Java 17)
 
 ```java
-package leetcode;
+import java.util.*;
 
 public class Solution {
     /**
-     * Minimum Health to Beat Game – O(n) time, O(1) space.
-     * @param damage array of damage values per level
-     * @param armor maximum damage that can be negated once
-     * @return minimal starting health to finish all levels
+     * Minimum starting health to beat the game.
+     *
+     * @param damage array of damage per level
+     * @param armor  maximum damage the armor can block (used once)
+     * @return minimum initial health > 0
      */
     public long minimumHealth(int[] damage, int armor) {
-        long sum = 0;
-        int maxDamage = 0;
+        long total = 1;              // health must stay >0 after all levels
+        int maxDamage = 0;           // track the worst level
 
-        for (int dmg : damage) {
-            sum += dmg;
-            if (dmg > maxDamage) maxDamage = dmg;
+        for (int d : damage) {
+            total += d;
+            if (d > maxDamage) maxDamage = d;
         }
 
-        long reduction = Math.min(maxDamage, armor);
-        return sum - reduction + 1;
+        // Armor can block at most armor damage, but never more than the
+        // biggest single hit.
+        long armorEffect = Math.min(maxDamage, armor);
+        return total - armorEffect;
+    }
+
+    // Simple driver for quick manual tests
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        System.out.println(s.minimumHealth(new int[]{2, 7, 4, 3}, 4)); // 13
+        System.out.println(s.minimumHealth(new int[]{2, 5, 3, 4}, 7)); // 10
+        System.out.println(s.minimumHealth(new int[]{3, 3, 3}, 0));     // 10
     }
 }
 ```
 
-### 3.2 Python
+### Python 3
 
 ```python
+from typing import List
+
 class Solution:
-    def minimumHealth(self, damage: list[int], armor: int) -> int:
-        """O(n) time, O(1) space solution."""
-        total = sum(damage)
-        max_damage = max(damage, default=0)   # default for empty list (not needed here)
-        reduction = min(max_damage, armor)
-        return total - reduction + 1
+    def minimumHealth(self, damage: List[int], armor: int) -> int:
+        """
+        Return the minimum starting health needed to survive all levels.
+        """
+        total = 1          # keep health > 0 after the last level
+        max_damage = 0
+
+        for d in damage:
+            total += d
+            if d > max_damage:
+                max_damage = d
+
+        armor_effect = min(max_damage, armor)
+        return total - armor_effect
+
+# -----------------------------------------------------------------
+# quick manual test harness (you can drop this into a separate file)
+if __name__ == "__main__":
+    s = Solution()
+    print(s.minimumHealth([2, 7, 4, 3], 4))   # 13
+    print(s.minimumHealth([2, 5, 3, 4], 7))   # 10
+    print(s.minimumHealth([3, 3, 3], 0))       # 10
 ```
 
-### 3.3 C++
+### C++ (C++17)
 
 ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
 public:
+    /**
+     * Compute the minimal starting health to survive all levels.
+     */
     long long minimumHealth(vector<int>& damage, int armor) {
-        long long total = 0;
+        long long total = 1;            // health > 0 after final level
         int maxDamage = 0;
 
-        for (int dmg : damage) {
-            total += dmg;
-            maxDamage = max(maxDamage, dmg);
+        for (int d : damage) {
+            total += d;
+            if (d > maxDamage) maxDamage = d;
         }
 
-        long long reduction = min(static_cast<long long>(maxDamage), static_cast<long long>(armor));
-        return total - reduction + 1;
+        long long armorEffect = min(static_cast<long long>(maxDamage), static_cast<long long>(armor));
+        return total - armorEffect;
     }
 };
+
+// Simple driver for manual testing
+int main() {
+    Solution s;
+    cout << s.minimumHealth({2, 7, 4, 3}, 4) << endl; // 13
+    cout << s.minimumHealth({2, 5, 3, 4}, 7) << endl; // 10
+    cout << s.minimumHealth({3, 3, 3}, 0) << endl;     // 10
+    return 0;
+}
 ```
 
-> All three snippets compile with Java 17, Python 3.10+, and C++17 (GCC/Clang).
+All three solutions:
+
+- Use **64‑bit arithmetic** for `total`.  
+- Perform **exactly one loop** over the input.  
+- Subtract the optimal armor effect (`min(maxDamage, armor)`).
 
 ---
 
-## 4. Blog Article: “The Good, The Bad, and the Ugly of Minimum Health to Beat Game”
+## 6. Complexity Analysis <a name="complexity"></a>
 
-> **Keyword Focus:** LeetCode, Minimum Health to Beat Game, interview algorithm, Java coding interview, Python interview, C++ interview, coding interview tips, job interview, algorithm design, greedy algorithms, O(n) solution, interview success.
+| Measure | Java | Python | C++ |
+|---------|------|--------|-----|
+| **Time** | `O(n)` – one linear scan | `O(n)` | `O(n)` |
+| **Space** | `O(1)` – only two variables | `O(1)` | `O(1)` |
+| **Worst‑case operations** | `10⁵` additions & comparisons | `10⁵` | `10⁵` |
 
----
-
-### Title
-
-**The Good, The Bad, and the Ugly of LeetCode 2214 – “Minimum Health to Beat Game” – A Job‑Hunter’s Guide**
-
----
-
-### Introduction
-
-If you’re preparing for software engineering interviews, you’ll run across LeetCode’s “Minimum Health to Beat Game” (problem 2214). On the surface it looks like a dynamic‑programming nightmare, but with the right insight it boils down to a one‑liner. This article breaks the problem into three parts – *Good*, *Bad*, and *Ugly* – to help you master the question and impress recruiters.
+The algorithm is *asymptotically optimal*; any solution must at least read the array once.
 
 ---
 
-#### The Good
+## 7. Edge Cases & Common Pitfalls <a name="edge-cases"></a>
 
-| What | Why It Matters |
-|------|----------------|
-| **Single‑Pass O(n)** | Interviewers love solutions that are linear and space‑efficient. |
-| **Intuitive Greedy** | Using armor on the *maximum* damage level is a clean, logical choice that any seasoned coder can see immediately. |
-| **Clear Math** | `answer = sum(damage) - min(maxDamage, armor) + 1`. No hidden loops or DP tables. |
-| **Language Agnostic** | Works in Java, Python, C++, Go, JavaScript – great for portfolio demos. |
-| **Extremely Fast** | Executes in < 1 ms on 10⁵ inputs. |
-
-**Takeaway:** *Show the recruiter you can spot the greedy optimum.*
+| Situation | What to check | Typical mistake |
+|-----------|---------------|-----------------|
+| `damage[i] == 0` everywhere | Total damage is still `1`, so answer is `1` | Forgetting to add `1` will return `0`. |
+| `armor == 0` | Armor has no effect | Subtracting `0` is fine, but some implementations might accidentally subtract a negative number. |
+| `maxDamage == 0` | All levels are harmless | Armor is useless, answer = `1 + sum(damage)`. |
+| Large `damage` sum | Use `long` / `long long` | 32‑bit integer overflow on test cases with ~10¹⁰ total damage. |
+| Using armor *multiple* times | The prompt says “at most once” | Some solutions incorrectly try to split the armor across several levels. |
 
 ---
 
-#### The Bad
+## 8. Testing Your Solution <a name="testing"></a>
 
-| Common Pitfall | Fix |
-|----------------|-----|
-| Forgetting the `+1` | Remember: health must stay **strictly positive**; otherwise you’d start at zero. |
-| Using `long`/`long long` in Java/C++ | Damage sums can reach `10^5 * 10^5 = 10^10`; overflow in 32‑bit ints. |
-| Ignoring `armor = 0` | Your formula still works, but double‑check logic to avoid `-1` health. |
-| Misreading “at most once” | You cannot split armor over two levels – only one call. |
+```python
+def test_solution():
+    s = Solution()
+    assert s.minimumHealth([2, 7, 4, 3], 4) == 13
+    assert s.minimumHealth([2, 5, 3, 4], 7) == 10
+    assert s.minimumHealth([3, 3, 3], 0) == 10
+    assert s.minimumHealth([0, 0, 0], 0) == 1  # no damage at all
+    assert s.minimumHealth([100000] * 100000, 100000) == 100000 * 100000 + 1 - 100000
+    print("All tests passed!")
 
-**Takeaway:** *Edge‑case awareness is the difference between “good” and “excellent”.*
+if __name__ == "__main__":
+    test_solution()
+```
 
----
-
-#### The Ugly
-
-| Hidden Complexity | Why Interviewers Hate It |
-|-------------------|--------------------------|
-| Thinking in DP | A 2‑D DP over “used armor or not” gives O(n²) space – overkill and distracts from the simple greedy. |
-| Over‑engineering the armor placement | Building a segment tree or priority queue to track max damage is unnecessary and makes the solution unreadable. |
-| Off‑by‑one errors | Missing the `+1` or using `maxDamage - armor` instead of `min(maxDamage, armor)` leads to WA. |
-
-**Takeaway:** *Avoid the “ugly” over‑engineering. Keep it lean and explain why the greedy is optimal.*
+Run the snippet in your IDE or on the LeetCode sandbox to verify correctness on edge cases.
 
 ---
 
-### Step‑by‑Step Solution Walkthrough
+## 9. Take‑away & How to Talk About It in an Interview <a name="takeaway"></a>
 
-1. **Compute total damage**  
-   ```python
-   total = sum(damage)          # O(n)
-   ```
-2. **Find the biggest single damage**  
-   ```python
-   max_damage = max(damage)
-   ```
-3. **Compute reduction**  
-   ```python
-   reduction = min(max_damage, armor)
-   ```
-4. **Answer**  
-   ```python
-   return total - reduction + 1
-   ```
+> **“I used a single‑pass greedy approach. I added `+1` so health stays > 0 after the last level, and I subtracted the minimum of `armor` and the maximum single‑level damage.”**
 
-> **Proof of optimality:**  
-> Any placement of the armor reduces damage by at most `armor`. The *largest* reduction you can achieve is `min(max_damage, armor)` because you can only cancel damage on one level. No other configuration can give a larger reduction, so the greedy is optimal.
+*Why this answer sounds great:*
+
+- **Clarity** – The logic is *O(1)* and *O(n)*.  
+- **Precision** – You explicitly mention the 64‑bit arithmetic.  
+- **Awareness of constraints** – You point out why a 32‑bit type would break on large inputs.
+
+If the interviewer asks for an alternative (e.g., binary search or DP), explain that the greedy solution is optimal and simpler:
+
+> “You could binary‑search the starting health, but you’d still need an O(n) scan inside each check. That gives O(n log V) – overkill when a linear‑time algorithm already exists.”
 
 ---
 
-### How to Nail It in an Interview
+## 10. SEO Keywords & Meta‑Tags <a name="seo"></a>
 
-1. **Speak the language of the problem** – mention “damage array”, “armor used once”.
-2. **Outline the greedy idea first** – “I’ll cancel the largest hit” – to show your intuition.
-3. **Write the code in one pass** – emphasize O(n) time and O(1) space.
-4. **Test boundary cases** – e.g., `armor = 0`, `damage = [0, 0]`, `damage[i] = 10^5`.
-5. **Explain the +1** – a common oversight; recruiter will love the clarity.
+| Element | Content |
+|---------|---------|
+| **Title Tag** | Minimum Health to Beat Game – LeetCode 2214 | Medium – Java, Python, C++ O(n) Solution |
+| **Meta Description** | Master LeetCode 2214 – “Minimum Health to Beat Game.” Discover a clean Java, Python, and C++ O(n) solution, full explanations, edge‑case handling, and interview talking points. |
+| **Primary Keywords** | leetcode 2214, minimum health to beat game, java interview, python interview, c++ interview, O(n) algorithm, greedy algorithm, interview prep |
+| **Secondary Keywords** | algorithm design, constant space, large input handling, job interview, software engineer interview, leetcode solutions, data type overflow, interview strategies |
+| **Alt Text for Code Images** | “Java solution for LeetCode 2214”, “Python solution for LeetCode 2214”, “C++ solution for LeetCode 2214” |
+| **Header Tags** | H1 – Problem Title, H2 – Section Headers, H3 – Sub‑headers (e.g., Java, Python) |
+| **Internal Links** | Links to other LeetCode medium‑difficulty solutions (optional) |
 
----
-
-### Bonus: What Recruiters Look For
-
-| Skill | Example from this problem |
-|-------|--------------------------|
-| **Algorithmic efficiency** | Linear‑time, constant space. |
-| **Problem‑solving intuition** | Recognizing greedy reduction. |
-| **Code readability** | Clear variable names (`sum`, `maxDamage`, `reduction`). |
-| **Edge‑case handling** | Mentioning `+1`, 64‑bit arithmetic. |
-| **Communication** | Walking through proof of optimality. |
-
-> Deliver this question in a portfolio repo, a slide deck, or a live‑coding demo, and you’ll have a solid interview story that showcases all these traits.
+*Why SEO matters:* recruiters often scan blogs for “LeetCode 2214 Java solution” or “minimum health interview question.” Using these tags ensures your article surfaces in those searches.
 
 ---
 
-### Closing
+## 🎯 Final Verdict
 
-LeetCode 2214 is a textbook example of a “trick‑question”: a seemingly complex problem that collapses to a simple greedy formula. Master it, explain the proof, and you’ll not only avoid the *bad* pitfalls but also transform the *ugly* over‑engineering into a showcase of clean thinking. Good luck on your next coding interview! 🚀
+- **Greedy is the king** for this problem: pick the level with maximum damage, block as much as possible, and you’re done.  
+- Keep your cumulative damage in a 64‑bit variable.  
+- Remember the mandatory `+1` – it’s the difference between a *Wrong Answer* and a *Correct Answer*.
 
----
-
-
-
-### TL;DR for Job‑Hunters
-
-- **Problem:** Minimum starting health with one‑time armor.
-- **Solution:** `answer = Σdamage – min(maxDamage, armor) + 1`.
-- **Complexities:** O(n) time, O(1) space, constant‑time arithmetic.
-- **Languages:** Java, Python, C++ (see code above).
-- **Interview tip:** Focus on greedy intuition, edge‑case clarity, and avoid over‑engineering.
-
-Happy coding and best of luck on your interviews!
+Mastering this problem shows you can turn a concise problem statement into an *efficient* and *bug‑free* solution—exactly what recruiters want in a software‑engineer candidate. Good luck on your next interview! 🚀

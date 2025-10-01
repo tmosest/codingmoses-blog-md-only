@@ -7,278 +7,200 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 📦 3644. **Maximum K to Sort a Permutation** – Three‑Language Solution + SEO‑Optimized Blog
+        ---
 
-> **Author:** *Your Name*  
-> **Platforms:** LeetCode, Interview Preparation, Coding Interviews  
-> **Skills Highlighted:** Bit‑wise Operations, Greedy Algorithms, O(n) Time Complexity, Space‑Efficient Coding
+## 1. Problem Recap – LeetCode 3644: **Maximum K to Sort a Permutation**
 
----
+You’re given a permutation `nums` of length `n` (`0 … n‑1`).  
+You may swap any two positions `i` and `j` **only if**  
 
-## TL;DR
+```
+nums[i] & nums[j] == k
+```
 
-- **Goal** – Find the largest non‑negative integer **k** such that we can sort the given permutation by swapping *any* pair of indices **i, j** *iff* `nums[i] & nums[j] == k`.
-- **Answer** – The maximum k is the **bitwise AND of all misplaced numbers**.  
-- **Complexity** – `O(n)` time, `O(1)` space.  
-- **Why it works** – Every misplaced element shares at least the bits in that common AND, and the permutation property guarantees we can always reach the correct order using only those bits.
+(`&` is the bit‑wise AND).  
+All swaps in one test case must use the *same* value `k`.  
+You can perform any number of such swaps.  
+Return the **maximum** `k` that allows you to sort `nums` in non‑decreasing order.  
+If `nums` is already sorted, return `0`.
 
----
+**Constraints**
 
-## Why This Problem Is a Gold‑Mine for Interviews
-
-| **Aspect** | **Why It Matters** | **How It Shines in Interviews** |
-|------------|--------------------|---------------------------------|
-| **Bitwise Insight** | Uses & to filter common bits – a classic interview pattern. | Show you understand bit manipulation, not just loops. |
-| **Greedy Simplicity** | The optimal `k` is obtained by one pass, no backtracking. | Demonstrates you can spot linear greedy solutions. |
-| **Edge‑Case Awareness** | Already sorted → answer 0, all numbers misplaced → all bits. | Tests careful handling of special cases. |
-| **Language Agnostic** | Implementable in Java, Python, C++. | Proves you can translate logic across ecosystems. |
-| **Job‑Relevance** | Companies ask about permutations, sorting, and bitwise ops. | Highlights transferable problem‑solving skills. |
+* `1 ≤ n ≤ 10⁵`
+* `nums` is a permutation of `[0, …, n‑1]`
 
 ---
 
-## The Good, The Bad, & The Ugly
+## 2. Why This Problem Looks Hard
 
-### The Good  
-- **One‑pass solution** – no need for union‑find or graph cycle detection.  
-- **Deterministic k** – you never have to “try” multiple k values.  
-- **Intuitive proof** – the AND of misplaced elements is the *only* candidate that guarantees every swap is allowed.
-
-### The Bad  
-- **Common Misunderstanding** – Many think you can pick different k’s for different swaps.  
-- **Assumption of Permutation** – If the array isn’t a true permutation, the AND trick breaks.  
-
-### The Ugly  
-- **Implementation Pitfalls** – Starting with `INT_MAX` (or `~0`) and forgetting to reset it when no misplacements exist.  
-- **Mis‑reading “Non‑decreasing”** – The permutation property ensures sorted order is `0..n‑1`; otherwise you’d need to handle duplicates.  
+The constraints force an `O(n)` solution, yet the swap condition looks like a graph‑theory problem:  
+`i` can swap with `j` iff `nums[i] & nums[j] = k`.  
+A naïve cycle‑detection approach would involve building the graph and then checking connectivity for every candidate `k`. That would be far too slow.
 
 ---
 
-## Full Code (Three Languages)
+## 3. The Secret Sauce – A One‑Pass “Cumulative AND”
 
-> All implementations run in `O(n)` time and `O(1)` extra space.  
-> Use the same logic in your favorite language; the core idea never changes.
+The key observation (used by Harshit Sharda’s editorial) is:
+
+> **If you AND all numbers that are not already in the correct position, the resulting mask is always a valid `k`.**
+
+Why?  
+* In the final sorted array, every number `i` must end up at index `i`.  
+* Any misplaced number must be swapped, directly or indirectly, with another number whose bitwise AND equals that common `k`.  
+* The AND of all misplaced numbers guarantees that each of those numbers shares *every* bit set in the mask, so you can always pair any two of them and satisfy the condition.
+
+Thus the algorithm is:
+
+1. Start with `mask = all bits set` (`INT_MAX` in C++/Java, `~0` in Python).
+2. For every index `i`:
+   * If `nums[i] != i`, set `mask &= nums[i]`.
+3. If no number was misplaced (`mask` never changed), return `0`.  
+   Otherwise, return `mask`.
+
+The mask is guaranteed to be the maximum possible `k` because any larger `k` would contain a bit that is not present in at least one misplaced number, breaking the AND condition.
 
 ---
 
-### Java
+## 4. Algorithm Summary
+
+| Step | Action | Complexity |
+|------|--------|------------|
+| 1 | `mask ← all‑ones` | O(1) |
+| 2 | For each `i` in `[0, n)` do: <br>‑ If `nums[i] ≠ i`, `mask ← mask & nums[i]` | O(n) |
+| 3 | Return `mask == all‑ones ? 0 : mask` | O(1) |
+
+Total time: **O(n)**  
+Total extra space: **O(1)**
+
+---
+
+## 5. Code Implementations
+
+Below are ready‑to‑copy implementations in **Java**, **Python**, and **C++**.
+
+### 5.1 Java
 
 ```java
 import java.util.*;
 
-public class Solution {
+class Solution {
     public int sortPermutation(int[] nums) {
-        // If already sorted, no swaps are needed → k = 0
-        int mask = Integer.MAX_VALUE;          // all 1s in binary
+        int mask = Integer.MAX_VALUE;           // all bits set
         for (int i = 0; i < nums.length; i++) {
-            if (nums[i] != i) {                // only consider misplaced elements
-                mask &= nums[i];                // keep only common bits
+            if (nums[i] != i) {
+                mask &= nums[i];
             }
         }
-        // If mask unchanged, array was sorted
-        return mask == Integer.MAX_VALUE ? 0 : mask;
-    }
-
-    // Optional main for quick testing
-    public static void main(String[] args) {
-        Solution s = new Solution();
-        System.out.println(s.sortPermutation(new int[]{0,3,2,1})); // 1
-        System.out.println(s.sortPermutation(new int[]{0,1,3,2})); // 2
-        System.out.println(s.sortPermutation(new int[]{3,2,1,0})); // 0
+        return (mask == Integer.MAX_VALUE) ? 0 : mask;
     }
 }
 ```
 
----
-
-### Python
+### 5.2 Python
 
 ```python
 class Solution:
-    def sortPermutation(self, nums: list[int]) -> int:
-        mask = (1 << 31) - 1          # 32‑bit all‑ones mask (works for any n)
+    def sortPermutation(self, nums: List[int]) -> int:
+        mask = ~0  # all bits set (for 32‑bit ints this is -1)
         for i, val in enumerate(nums):
             if val != i:
                 mask &= val
-        return 0 if mask == ((1 << 31) - 1) else mask
-
-
-# Quick test harness
-if __name__ == "__main__":
-    s = Solution()
-    print(s.sortPermutation([0, 3, 2, 1]))  # 1
-    print(s.sortPermutation([0, 1, 3, 2]))  # 2
-    print(s.sortPermutation([3, 2, 1, 0]))  # 0
+        return 0 if mask == ~0 else mask
 ```
 
----
+> **Python Note:**  
+> `~0` evaluates to `-1` (all 1’s in two’s‑complement).  
+> The mask stays in the range `[0, n-1]` because every `val` is in that range.
 
-### C++
+### 5.3 C++
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
 class Solution {
 public:
     int sortPermutation(vector<int>& nums) {
-        int mask = INT_MAX;              // all bits set
+        int mask = INT_MAX;          // all bits set
         for (int i = 0; i < (int)nums.size(); ++i) {
-            if (nums[i] != i)            // only for misplaced elements
-                mask &= nums[i];         // keep only common bits
+            if (nums[i] != i) {
+                mask &= nums[i];
+            }
         }
-        return mask == INT_MAX ? 0 : mask;
+        return (mask == INT_MAX) ? 0 : mask;
     }
 };
-
-int main() {
-    Solution s;
-    cout << s.sortPermutation({0,3,2,1}) << endl; // 1
-    cout << s.sortPermutation({0,1,3,2}) << endl; // 2
-    cout << s.sortPermutation({3,2,1,0}) << endl; // 0
-}
 ```
 
 ---
 
-## Step‑by‑Step Proof (Why the AND Works)
+## 6. Edge‑Case Checklist
 
-1. **All elements are from `0 … n‑1`.**  
-   This guarantees that every integer has at most `⌊log₂ n⌋ + 1` bits, and the set of all numbers is *closed* under bitwise AND.
-
-2. **Let `M` be the set of misplaced indices**:  
-   `M = { i | nums[i] ≠ i }`.
-
-3. **Define `k* = nums[i₁] & nums[i₂] & … & nums[iₘ]`** (bitwise AND over all misplaced numbers).  
-   By construction, `k*` is the **common subset of bits** present in every mis‑placed element.
-
-4. **Any swap between two misplaced elements** `a, b ∈ M` satisfies  
-   `a & b` contains all bits of `k*` (since `k*` is the AND of all).  
-   Therefore, swapping `a` and `b` is allowed *if we choose* `k = k*`.
-
-5. **Bridging via correctly placed elements**  
-   Even if some misplaced numbers share no direct bitwise AND equal to `k*`, we can route through a *correctly placed* element `c` that already contains the required bits.  
-   Because `c` is `c = i` (its own index), it always shares at least the bits of `i` with any element `x` that has `i & x` containing those bits.  
-   This guarantees we can move any misplaced element to its correct position using a sequence of swaps all respecting `k = k*`.
-
-6. **Maximality** – Suppose any larger `k` (`k' > k*`) could sort the array.  
-   Then `k'` would have to be a common bitwise AND of **every** misplaced number (since each swap must satisfy `x & y == k'`).  
-   But `k*` is already the *maximum* such common bitset: adding any extra bit would turn it off in at least one misplaced element, breaking the equality.  
-   Therefore, `k*` is the maximum feasible `k`.
-
-7. **Edge Cases** – If no element is misplaced, the loop never changes `mask`, so we return `0`.  
-   If all elements are misplaced, `mask` becomes the AND of all numbers in `0 … n‑1`, which is `0` for `n ≥ 2` (since some number is missing each bit). Thus, the answer is `0`, matching intuition.
+| Scenario | Expected Output | Why |
+|----------|-----------------|-----|
+| Already sorted (`nums[i] == i` ∀ i) | `0` | No swaps needed. |
+| All numbers misplaced | `nums[0] & nums[1] & ... & nums[n-1]` | Every number contributes to the mask. |
+| `n = 1` | `0` | Single element is trivially sorted. |
+| Large `n` (10⁵) | Works in O(n) | Linear scan only. |
 
 ---
 
-## How to Turn This into a Job‑Winning Narrative
+## 7. Alternative (Brute‑Force) Approaches and Why They Fail
 
-1. **Start with the Problem Statement** – Summarize in one sentence: “Find the largest `k` that allows sorting a permutation by swapping only pairs with `nums[i] & nums[j] == k`.”
+| Approach | Complexity | Verdict |
+|----------|------------|---------|
+| Build swap graph for each candidate `k`, then BFS/DFS | `O(n²)` (worst‑case) | Too slow for `n = 10⁵`. |
+| Try all `k` from 0 to `max(nums)` and simulate swaps | `O(n * max(nums))` | `max(nums) ≈ n`, so `O(n²)` again. |
+| Use Union‑Find on indices with same bits | Still requires exploring all pairs | Still `O(n²)` in worst case. |
 
-2. **Show Your Thought Process** – Explain why you first considered a greedy AND approach, why cycles were unnecessary, and how the permutation property simplifies things.
-
-3. **Present the Code** – Highlight the linear pass and the subtle use of `INT_MAX`/`~0` as the initial mask. Mention that the solution works in any language.
-
-4. **Explain the Proof** – Share the reasoning (as above) to demonstrate deep understanding. Interviewers love candidates who can articulate why a solution works.
-
-5. **Mention Edge Cases & Testing** – Show test harnesses in each language and verify correctness for typical examples.
-
-6. **Wrap Up with Takeaways** – “Bitwise AND can often collapse constraints into a single integer. In this problem, the common AND of misplaced elements is the magic key to sorting.”  
-
-Adding this story to your résumé or portfolio will give you a *standout* talking point in technical interviews.
+The one‑pass cumulative AND sidesteps any graph construction and delivers optimal performance.
 
 ---
 
-## SEO‑Optimized Blog Post Draft
+## 8. Why This Solution Is a “Good” Interview Answer
 
-> **Title**: *Master LeetCode 3644 – “Maximum K to Sort a Permutation” – One‑Pass, O(n) Solution (Java, Python, C++)*  
-> **Meta Description**: Learn the fastest way to solve LeetCode 3644. A step‑by‑step guide, proof, and Java/Python/C++ code snippets for “Maximum K to Sort a Permutation”.  
-
----
-
-### Introduction (≈200 words)
-
-> In coding interviews, LeetCode’s “Maximum K to Sort a Permutation” (ID 3644) is a favorite for testing your mastery of bitwise operations and greedy algorithms. The challenge asks: *Given a permutation of 0…n‑1, find the largest integer k such that we can sort the array by swapping only pairs where the AND equals k.*  
-> Many solutions waste time exploring graph cycles or using union‑find. The real key is a simple, elegant one‑pass trick. This article walks you through the intuition, the formal proof, and ready‑to‑copy code in Java, Python, and C++.  
-
-> By the end of this post you’ll not only know how to implement the solution but also why it’s optimal—a crucial skill to impress interviewers at Google, Amazon, and Microsoft.  
+1. **Optimal Complexity** – Linear time, constant space.  
+2. **Clear Intuition** – The AND of misplaced numbers is a *common divisor* of all allowed swaps.  
+3. **Robustness** – Handles all edge cases automatically.  
+4. **Minimal Code** – Easy to implement, read, and debug.  
+5. **Extensibility** – Works for any `k` defined by a similar bitwise operation.
 
 ---
 
-### 1. Problem Recap (≈150 words)
+## 9. Common Mistakes (The “Bad” and the “Ugly”)
 
-- Definition of permutation  
-- Swap constraint `nums[i] & nums[j] == k`  
-- Goal: maximum `k` to sort array
-
----
-
-### 2. Brute Force vs. Optimized (≈200 words)
-
-- Discuss naive approach (try every k) → O(n · 2^bits)  
-- Why cycles/unions are unnecessary due to permutation  
-- Lead into greedy AND
+| Mistake | What went wrong | How to fix |
+|---------|-----------------|------------|
+| *Assuming any two misplaced numbers can swap directly* | You can only swap if `nums[i] & nums[j] == k`. |
+| *Trying to find a k by checking each pair of indices* | Exponential blow‑up. |
+| *Returning the AND of all elements instead of only misplaced ones* | Including correctly placed numbers can set bits that *must not* be in `k`. |
+| *Using a 64‑bit mask for 32‑bit numbers* | Unnecessary and may produce negative numbers in Java/C++. |
+| *Ignoring the “already sorted” case* | Returning `INT_MAX` or `-1` would be incorrect. |
 
 ---
 
-### 3. Core Idea: AND of Misplaced Elements (≈300 words)
+## 10. Interview Tips
 
-- Introduce `mask = all bits`  
-- One loop: if `nums[i] != i` → `mask &= nums[i]`  
-- Return `0` if mask unchanged  
-
-Include the proof in a “Why It Works” sidebar.  
-
----
-
-### 4. Code Galleries (≈250 words each)
-
-- Java snippet  
-- Python snippet  
-- C++ snippet  
-
-Show minimal boilerplate, highlight any language quirks (e.g., `~0` in Python).  
+1. **State your approach first** – Talk about the “cumulative AND” idea before diving into code.  
+2. **Show the intuition** – Explain why AND of misplaced numbers works.  
+3. **Edge‑case analysis** – Mention the sorted‑array case, `n = 1`, and large `n`.  
+4. **Time & space complexity** – Always state them.  
+5. **Write clean code** – Use meaningful variable names (`mask`, `isSorted`).  
+6. **Optional extension** – Ask how the solution would change if swaps were allowed with *different* `k` values (the answer: you’d need a more complex graph analysis).  
 
 ---
 
-### 5. Edge Cases & Test Cases (≈200 words)
+## 11. SEO‑Optimized Blog Title & Meta Description
 
-- Already sorted → 0  
-- All misplaced → 0 for n≥2  
-- Provide quick harness and sample outputs.  
+**Title:**  
+“Maximum K to Sort a Permutation – The One‑Pass Cumulative AND Trick (LeetCode 3644)”
 
----
-
-### 6. Proof of Optimality (≈400 words)
-
-- Formal explanation as earlier.  
-- Use diagrams or a simple table of bits to illustrate.
+**Meta Description:**  
+Learn the optimal solution for LeetCode 3644 “Maximum K to Sort a Permutation.” This article explains the one‑pass cumulative AND trick, provides Java, Python, and C++ code, and shares interview tips to ace your coding interview.
 
 ---
 
-### 7. Takeaways for Interviews (≈200 words)
+## 12. Conclusion
 
-- Bitwise AND as a collapsing constraint.  
-- Permutation property ensures closed set.  
-- No cycles or graph needed – a pure greedy linear scan.
+The “Maximum K to Sort a Permutation” problem looks intimidating because of the swap restriction, but a single linear pass over the array gives you the answer instantly.  
+The cumulative AND of all misplaced numbers is not just a clever trick – it’s a mathematically sound proof that guarantees the maximum possible `k`.  
 
----
-
-### Closing (≈150 words)
-
-> Whether you’re preparing for a senior software engineer role or just brushing up on bitwise tricks, LeetCode 3644 is a must‑know problem. The one‑pass, `O(n)` solution in Java, Python, and C++ is as elegant as it is efficient. Drop the code into your interview prep, walk your interviewer through the proof, and you’ll show you can solve non‑trivial constraints with minimal complexity. Happy coding!
-
----
-
-### Call‑to‑Action
-
-> *Want more fast LeetCode solutions? Subscribe for weekly posts, or contact me to review your interview prep.*  
-
----
-
-## Final Thought
-
-*The “Maximum K to Sort a Permutation” problem is not just a test of coding—it’s a test of insight. The AND trick turns a seemingly complex constraint into a single integer, allowing a clean, one‑pass solution. Master it, share it, and watch interviewers recognize the depth of your algorithmic thinking.*
-
---- 
-
-Happy coding—and good luck landing that dream job! 🚀
+Use the code snippets above in your job interviews, share this blog post, and let the SEO‑friendly title help recruiters find you. Happy coding!
