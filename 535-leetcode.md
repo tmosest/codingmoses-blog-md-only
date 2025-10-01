@@ -7,249 +7,251 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🎯 535. Encode and Decode TinyURL – Code, Concepts & SEO‑Ready Blog
+        ## 1.  Problem Recap – LeetCode 535 Encode and Decode TinyURL  
 
-> **Target keyword bundle:** *Encode and Decode TinyURL, TinyURL URL shortener, LeetCode 535, job interview coding, Java/Python/C++ solution, URL encoder, software engineering interview.*  
-> **Meta‑Title (SEO):** “Encode & Decode TinyURL (LeetCode 535) – Java, Python & C++ Solutions | Interview‑Ready Blog”
+| Topic | Description |
+|-------|-------------|
+| **Goal** | Build a *tiny URL* service that can encode any long URL into a short one and decode it back. |
+| **Constraints** | `1 ≤ url.length ≤ 10⁴`, the short URL will only contain characters from the set `0‑9 a‑z A‑Z`. |
+| **Input / Output** | `encode(String longUrl) → String shortUrl` <br> `decode(String shortUrl) → String longUrl` |
+| **Important** | The same `Codec` object will always be used for both operations – therefore the mapping can be kept in memory. |
 
----
-
-### 1️⃣ Problem Summary (LeetCode 535)
-
-> **Goal:** Design a tiny URL service – `encode(longUrl)` returns a shortened URL; `decode(shortUrl)` returns the original long URL.  
-> **Constraints:**  
-> * `1 ≤ url.length ≤ 10⁴`  
-> * The same `Codec` object is used for both encode/decode; no collisions guarantee.  
-> * You may pick any encoding scheme – base‑62 strings, hashing, counter, etc.  
-
-> **Why it matters:** URL shorteners are everywhere (TinyURL, Bit.ly, GitHub Gists). Interviewers love this problem because it tests:
-> * Hashing & dictionary usage
-> * Randomness & collision avoidance
-> * Space/time trade‑offs
-> * Practical API design
+> **Why is this a great interview question?**  
+> 1. **Systems‑design flavour** – you have to think about unique ID generation, collision avoidance, and persistence.  
+> 2. **Algorithms & data‑structures** – hash maps, random ID generation, base‑62 encoding.  
+> 3. **Edge cases** – collisions, very long URLs, and how to keep the solution fast.
 
 ---
 
-### 2️⃣ Common Design Approaches
+## 2.  Solution Overview
 
-| # | Approach | Pros | Cons | Typical Use‑Case |
-|---|----------|------|------|------------------|
-| 1 | **Random 6‑char base‑62 + HashMap** | • Extremely simple <br>• Constant‑time ops <br>• Easy to reset | • Needs collision check (rare) <br>• Not deterministic | LeetCode & small‑scale services |
-| 2 | **Incremental counter + base‑62** | • No collisions, deterministic <br>• Predictable URLs | • State persistence required <br>• Longer URLs if many entries | Real production systems |
-| 3 | **Hash of longUrl (e.g., MD5) + truncation** | • No storage needed (pure stateless) <br>• Fast | • Possible collisions <br>• Truncated hash may break | CDN or caching proxies |
-| 4 | **Custom encoding (base‑36, base‑64, or Huffman)** | • Very short URLs <br>• Can compress data | • Implementation complexity | High‑throughput services |
+The simplest, most common approach:
 
-> **Takeaway:** For interview coding, the *random 6‑char base‑62* approach (approach 1) is the de‑facto standard. It balances simplicity, correctness, and clear reasoning.
+1. **Generate a random 6‑character key** from the 62‑character alphabet (`0‑9 a‑z A‑Z`).  
+2. **Store** `key → longUrl` in a `HashMap`.  
+3. **Encode**: prepend a base domain (`http://tinyurl.com/`) to the key.  
+4. **Decode**: strip the domain, look up the key in the map.
+
+Because the same object keeps the map alive, decoding is guaranteed to succeed.  
+If a collision occurs we just retry with a new key.  
+
+**Why 6 characters?**  
+`62⁶ ≈ 56 800 235 584` unique combinations – enough for a personal or interview‑scale project.
 
 ---
 
-## 3️⃣ Reference Solutions
+## 3.  Time / Space Complexity
 
-> **Note:** All solutions are self‑contained, use `HashMap`/`dict`/`unordered_map`, and keep state in a single class.
+| Operation | Time | Space |
+|-----------|------|-------|
+| `encode` | `O(1)` on average (hash map lookup & insertion) | `O(1)` additional per URL |
+| `decode` | `O(1)` (hash map lookup) | `O(1)` |
+| **Total** | **`O(n)`** for `n` encode/decode calls | **`O(n)`** for stored URLs |
 
-### 3.1 Java (OOP style)
+---
+
+## 4.  Code Snippets
+
+### 4.1  Java
 
 ```java
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class Codec {
+
     private static final String ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final int CODE_LEN = 6;
+    private static final String DOMAIN = "http://tinyurl.com/";
+    private static final int KEY_LENGTH = 6;
 
-    private final Random random = new Random();
-    private final HashMap<String, String> map = new HashMap<>();
+    private final Random rand = new Random();
+    private final Map<String, String> map = new HashMap<>();
 
-    /** Generate a random 6‑char key */
-    private String generateKey() {
-        StringBuilder sb = new StringBuilder(CODE_LEN);
-        for (int i = 0; i < CODE_LEN; i++) {
-            sb.append(ALPHABET.charAt(random.nextInt(ALPHABET.length())));
+    /** Generate a random 6‑char key. */
+    private String randomKey() {
+        StringBuilder sb = new StringBuilder(KEY_LENGTH);
+        for (int i = 0; i < KEY_LENGTH; i++) {
+            sb.append(ALPHABET.charAt(rand.nextInt(ALPHABET.length())));
         }
         return sb.toString();
     }
 
-    /** Encodes a URL to a shortened URL. */
+    /** Encodes a URL to a tiny URL. */
     public String encode(String longUrl) {
-        String key;
-        do {
-            key = generateKey();
-        } while (map.containsKey(key));   // Avoid collisions
+        String key = randomKey();
+        // Resolve collisions – in practice this loop will run only once
+        while (map.containsKey(key)) {
+            key = randomKey();
+        }
         map.put(key, longUrl);
-        return "http://tinyurl.com/" + key;
+        return DOMAIN + key;
     }
 
-    /** Decodes a shortened URL to its original URL. */
+    /** Decodes a tiny URL to its original URL. */
     public String decode(String shortUrl) {
-        String key = shortUrl.replace("http://tinyurl.com/", "");
-        return map.get(key);              // Guaranteed to exist
+        String key = shortUrl.substring(DOMAIN.length());
+        return map.getOrDefault(key, "");
     }
 }
 ```
 
-> **Complexity**  
-> *Time:* `O(1)` average for both `encode` & `decode`.  
-> *Space:* `O(N)` where `N` is the number of encoded URLs.
-
 ---
 
-### 3.2 Python
+### 4.2  Python
 
 ```python
 import random
 import string
+from typing import Dict
 
 class Codec:
-    _ALPHABET = string.digits + string.ascii_letters
-    _CODE_LEN = 6
+    ALPHABET = string.digits + string.ascii_lowercase + string.ascii_uppercase
+    DOMAIN = "http://tinyurl.com/"
+    KEY_LENGTH = 6
 
     def __init__(self):
-        self._store = {}
+        self.store: Dict[str, str] = {}
 
-    def _random_code(self) -> str:
-        return ''.join(random.choice(self._ALPHABET) for _ in range(self._CODE_LEN))
+    def _rand_key(self) -> str:
+        return "".join(random.choice(self.ALPHABET) for _ in range(self.KEY_LENGTH))
 
-    def encode(self, long_url: str) -> str:
-        while True:
-            code = self._random_code()
-            if code not in self._store:          # Collision check
-                break
-        self._store[code] = long_url
-        return f"http://tinyurl.com/{code}"
+    def encode(self, longUrl: str) -> str:
+        key = self._rand_key()
+        while key in self.store:            # very unlikely collision
+            key = self._rand_key()
+        self.store[key] = longUrl
+        return f"{self.DOMAIN}{key}"
 
-    def decode(self, short_url: str) -> str:
-        code = short_url.replace("http://tinyurl.com/", "")
-        return self._store[code]
+    def decode(self, shortUrl: str) -> str:
+        key = shortUrl.replace(self.DOMAIN, "", 1)
+        return self.store.get(key, "")
 ```
-
-> **Pythonic Touches**  
-> * `string.digits + string.ascii_letters` gives the base‑62 alphabet.  
-> * `self._store` is the internal dictionary.
 
 ---
 
-### 3.3 C++
+### 4.3  C++
 
 ```cpp
 #include <unordered_map>
 #include <string>
 #include <random>
+#include <sstream>
 
 class Codec {
-    static constexpr const char* alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    static constexpr int codeLen = 6;
+private:
+    static const std::string alphabet;
+    static constexpr const char* DOMAIN = "http://tinyurl.com/";
+    static constexpr int KEY_LEN = 6;
 
-    std::unordered_map<std::string, std::string> mp;
-    std::mt19937 rng{ std::random_device{}() };
-    std::uniform_int_distribution<> dist{0, 61};
+    std::unordered_map<std::string, std::string> table;
+    std::mt19937 rng{std::random_device{}()};
 
-    std::string randCode() {
-        std::string s(codeLen, '\0');
-        for (int i = 0; i < codeLen; ++i) {
-            s[i] = alphabet[dist(rng)];
-        }
-        return s;
+    std::string randomKey() {
+        std::uniform_int_distribution<int> dist(0, alphabet.size() - 1);
+        std::string key;
+        key.reserve(KEY_LEN);
+        for (int i = 0; i < KEY_LEN; ++i)
+            key.push_back(alphabet[dist(rng)]);
+        return key;
     }
 
 public:
+    /** Encodes a URL to a tiny URL. */
     std::string encode(const std::string& longUrl) {
-        std::string key;
-        do {
-            key = randCode();
-        } while (mp.find(key) != mp.end()); // collision check
-        mp[key] = longUrl;
-        return "http://tinyurl.com/" + key;
+        std::string key = randomKey();
+        while (table.find(key) != table.end()) {   // collision guard
+            key = randomKey();
+        }
+        table[key] = longUrl;
+        std::ostringstream oss;
+        oss << DOMAIN << key;
+        return oss.str();
     }
 
+    /** Decodes a tiny URL to its original URL. */
     std::string decode(const std::string& shortUrl) {
-        std::string key = shortUrl.substr(shortUrl.find_last_of('/') + 1);
-        return mp[key];  // guaranteed to exist
+        std::string key = shortUrl.substr(std::strlen(DOMAIN));
+        auto it = table.find(key);
+        return it != table.end() ? it->second : "";
     }
 };
+
+const std::string Codec::alphabet =
+    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 ```
 
-> **Why `mt19937`?**  
-> It’s a fast, high‑quality PRNG suitable for coding interviews and real services.
+---
+
+## 5.  Blog Article – “Encode & Decode TinyURL: The Good, the Bad, and the Ugly”
+
+> **Keywords** – *Encode and Decode TinyURL*, *LeetCode 535*, *URL shortener*, *coding interview*, *Java*, *Python*, *C++*, *hashmap*, *random key generation*, *time complexity*, *space complexity*  
 
 ---
 
-## 4️⃣ The Good, The Bad, & The Ugly
+### 5.1  Introduction
 
-| Category | The Good | The Bad | The Ugly |
-|----------|----------|---------|----------|
-| **Simplicity** | Random 6‑char keys are *tiny* and easy to implement. | Need to handle rare collisions. | Over‑engineering (e.g., distributed lock, sharding) for a simple interview. |
-| **Determinism** | Stateless solutions (hash‑based) guarantee reproducibility. | Random solutions produce different URLs each run → not ideal for unit tests. | Using global static RNG state can lead to flaky tests. |
-| **Scalability** | HashMap works fine for millions of URLs in memory. | Memory grows linearly; not persistent. | Trying to store every key‑value pair in a file or DB inside the interview → overkill. |
-| **Security** | Short, non‑guessable URLs protect against enumeration. | Random strings can still be brute‑forced in large scale. | Exposing the mapping (e.g., via debug prints) leaks data. |
-| **Thread‑Safety** | Java’s `HashMap` is *not* thread‑safe; Python’s dict is also not thread‑safe. | Ignoring concurrency can cause race conditions. | In a real tinyURL service you’d need to lock or use `ConcurrentHashMap`. |
-| **Real‑world concerns** | Incremental counter guarantees uniqueness and is easier to audit. | Random collisions require re‑generation logic. | Using external services (Redis, S3) for persistence adds latency and complexity. |
+When you type a long URL into a browser, it can be intimidating – but what if a tiny link could carry the same meaning?  
+The **LeetCode 535 – Encode and Decode TinyURL** problem forces you to build that miniature service, and it’s a *gold‑mine* for interviews. In this article we walk through the classic solution, dissect its strengths and pitfalls, and finally hand‑craft code in **Java, Python, and C++** that you can paste straight into a coding test.
 
 ---
 
-## 5️⃣ Optimizations & Variants
+### 5.2  The “Good” – Simplicity & Speed
 
-| Idea | Implementation | When to use |
-|------|----------------|-------------|
-| **Base‑62 counter** | Convert an integer counter to base‑62 string. | Deterministic URLs, easier debugging. |
-| **Collision‑resistant hash** | Use `hashlib.sha256(longUrl)` → take first 6 bytes. | Stateless service; minimal storage. |
-| **Prefix with domain** | Store domain in a config file, e.g., `http://tinyurl.com`. | Flexible for multiple tenants. |
-| **Shorter keys** | Use 4‑char keys → 62⁴ ≈ 14 million unique combos. | If you know your URL count < 14M. |
-| **Stateless** | Return `https://tinyurl.com/` + base62(sha256(longUrl)). | No storage, no decode map (but lose reverse lookup). |
+1. **One‑pass O(1) operations** – Inserting a mapping and retrieving it from a hash map is practically instantaneous.  
+2. **No external dependencies** – All we need is a random generator and a dictionary; no database or file I/O.  
+3. **Collision resilience** – The 6‑character base‑62 key space gives us ~56 billion unique IDs.  
+4. **Deterministic decode** – Since the same `Codec` instance holds the state, decoding is guaranteed to work for any encoded URL.  
 
 ---
 
-## 6️⃣ Interview Tips
+### 5.3  The “Bad” – Collision & Scalability
 
-1. **Clarify requirements first**  
-   * Ask if persistence is needed.  
-   * Are you allowed to use external libraries?  
-   * What about thread safety?
-
-2. **Explain the design trade‑offs**  
-   * Random vs counter vs hash.  
-   * Collision handling strategy.
-
-3. **Write clean code**  
-   * Separate concerns: key generation, map management.  
-   * Use constants for domain, alphabet, key length.
-
-4. **Discuss edge cases**  
-   * Very long URLs (10 kB).  
-   * Re‑encoding the same URL multiple times.
-
-5. **Show complexity**  
-   * `O(1)` time, `O(N)` space.  
-   * Potential memory bottleneck for huge N.
-
-6. **Offer a production extension**  
-   * Persist the map in a DB.  
-   * Use a distributed counter.  
-   * Add rate‑limiting and analytics.
+| Issue | Why it matters | Mitigation |
+|-------|----------------|------------|
+| **Random collisions** | Rare, but possible. | Loop until a free key is found. |
+| **Memory footprint** | Every URL stays in memory. | For production, persist to a database or use a CDN. |
+| **No persistence** | Restarting the service loses data. | Use a persistent store or a distributed cache. |
+| **Fixed key length** | 6 chars limit to ~56B URLs – fine for an interview, not for a real tinyURL service. | Use incremental IDs and base‑62 encode or increase key length. |
 
 ---
 
-## 7️⃣ Final Thoughts
+### 5.4  The “Ugly” – Edge Cases & Security
 
-- The *random 6‑char base‑62* solution is the textbook answer for LeetCode 535 – it balances brevity, correctness, and performance.
-- In a real service, you’d lean toward a **counter‑based** approach with persistent storage (e.g., Redis) to guarantee uniqueness and allow for analytics.
-- Always keep the interview’s scope in mind: show you understand trade‑offs, can write clean code, and can discuss potential real‑world extensions.
-
-> **Pro tip for job hunting** – post these solutions on your GitHub repo, tag them with `tinyurl`, and mention them in your résumé’s “Coding Projects” section. Recruiters love seeing the exact implementation you used for a classic interview problem.
+- **Very long URLs** – Up to 10 000 chars, which is fine for hashing but can bloat memory.  
+- **URL normalization** – `http://a.com` vs `https://a.com/` are treated as distinct keys.  
+- **Security** – Random keys are not cryptographically secure. Attackers can guess a URL if the key space is small.  
+- **Error handling** – Current code returns an empty string for unknown keys. A robust service would throw an exception or return `null`.
 
 ---
 
-## 8️⃣ Want More Practice?
+### 5.5  Putting It All Together – Full Code
 
-- **Top Interview Coding Problems** – 30+ questions covering data structures, algorithms, and system design.  
-- **GitHub Repository** – `tinyurl-leetcode-535` with all language variants and unit tests.  
-- **Live Coding Session** – schedule a 1‑hour mock interview on GMeet or Zoom; I’ll walk you through these solutions.
+(See the code blocks above for Java, Python, and C++.)
 
-> **Get ready**: You’ve just mastered one of the *most common* interview questions. Use the insights above to ace the next tech interview!
+---
 
---- 
+### 5.6  Time & Space Complexity (Quick Cheat‑Sheet)
 
-💡 **SEO Keywords**: TinyURL design, LeetCode 535 solution, random base‑62 mapping, URL shortening, hash map interview, counter‑based URL shortener, collision avoidance, real‑world tinyURL service, coding interview patterns.  
+- `encode` → **O(1)** time, **O(1)** extra space per call.  
+- `decode` → **O(1)** time, **O(1)** space.  
+- Total memory for `n` URLs → **O(n)**.
 
---- 
+---
 
-**Good luck!** 🚀 
+### 5.7  Take‑aways for Your Next Coding Interview
+
+1. **Explain your data‑structure choice** – “I’m using a hash map because it gives constant‑time look‑ups.”  
+2. **Mention collision handling** – “The probability is negligible, but we’ll loop until we find a free key.”  
+3. **Show awareness of scalability** – “In a real system, we’d store mappings in Redis or a database.”  
+4. **Add a tiny demo** – Paste the snippet into the editor and test quickly.  
+
+---
+
+### 5.8  Final Thoughts
+
+The **Encode and Decode TinyURL** problem may look simple at first glance, but it’s a microcosm of real‑world URL shorteners. By mastering the *good*, *bad*, and *ugly* parts, you’ll not only ace the LeetCode challenge but also impress interviewers with your depth of understanding.
+
+Happy coding – and may your URLs always be tiny and your solutions massive! 🚀
+
+---

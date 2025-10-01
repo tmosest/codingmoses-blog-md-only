@@ -7,217 +7,247 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## Three Divisors – 1952 (LeetCode)  
-**Goal**: Return `true` if an integer `n` has exactly three positive divisors, otherwise `false`.  
-**Constraints**: `1 ≤ n ≤ 10⁴`
+        ## Three Divisors – LeetCode 1952  
+**Difficulty:** Easy | **Tags:** Math | Number Theory | Math‑Intuition
+
+> “Given an integer `n`, return true if `n` has exactly three positive divisors. Otherwise, return false.”
 
 ---
 
-## 1️⃣ Three Ways to Solve It  
-Below you’ll find clean, idiomatic solutions in **Java**, **Python**, and **C++**.  
-The implementation uses the mathematical fact:
+### 1.  The “aha” observation  
 
-> A number has exactly three divisors **iff** it is a perfect square of a prime number.
+For any integer `n` to have **exactly 3 divisors** it must be of the form  
+
+```
+n = p²
+```
+
+where `p` is a **prime**.
+
+* 1 is always a divisor.  
+* `p` is the second divisor.  
+* `p²` itself is the third divisor.  
+
+If `n` were not a perfect square, the number of divisors would be even (pairs of `d` and `n/d`).  
+If the square root isn’t prime, `p²` will have at least one extra divisor (e.g., `p·q`).
+
+So the problem boils down to:
+
+1. Is `n` a perfect square?  
+2. Is the integer square root a prime number?
+
+Both steps are `O(√n)` at worst, but for `n ≤ 10⁴` it is trivial.
 
 ---
 
-### 📌 Java (Efficient & Readable)
+## Code
 
-```java
-public class Solution {
-    // O(√n) time, O(1) space
+Below are clean, idiomatic implementations in **Java, Python, and C++**.
+
+| Language | Code | Complexity |
+|----------|------|------------|
+| **Java** | ```java
+class Solution {
     public boolean isThree(int n) {
-        if (n < 4) return false;          // 1,2,3 cannot have 3 divisors
+        // 1. perfect‑square test
+        int r = (int) Math.sqrt(n);
+        if (r * r != n) return false;
 
-        int root = (int) Math.sqrt(n);
-        if (root * root != n) return false; // not a perfect square
-
-        return isPrime(root);              // check if sqrt(n) is prime
-    }
-
-    private boolean isPrime(int x) {
-        if (x < 2) return false;
-        if (x % 2 == 0) return x == 2;
-        for (int i = 3; i * i <= x; i += 2) {
-            if (x % i == 0) return false;
-        }
+        // 2. primality test for r
+        if (r < 2) return false;          // 1 is not prime
+        for (int i = 2; i * i <= r; i++)
+            if (r % i == 0) return false;
         return true;
     }
 }
-```
-
-> **Why it works**  
-> * Perfect squares are the only candidates that can have an odd number of divisors.  
-> * If the square root is a prime, its divisors are `1`, `p`, `p²` → exactly three.
-
----
-
-### 📌 Python (Elegant One‑liner)
-
-```python
+``` | `O(√n)` time, `O(1)` space |
+| **Python** | ```python
 class Solution:
     def isThree(self, n: int) -> bool:
-        # Perfect square check
-        root = int(n ** 0.5)
-        if root * root != n:
+        r = int(n ** 0.5)
+        if r * r != n:          # not a perfect square
             return False
 
-        # Prime check for root
-        if root < 2:
+        if r < 2:               # 1 is not prime
             return False
-        if root % 2 == 0:
-            return root == 2
-        for i in range(3, int(root ** 0.5) + 1, 2):
-            if root % i == 0:
+
+        for i in range(2, int(r ** 0.5) + 1):
+            if r % i == 0:
                 return False
         return True
-```
-
-> **Pythonic touches**  
-> * `int(n ** 0.5)` gives the floor of the square root.  
-> * The loop iterates only over odd numbers for speed.
-
----
-
-### 📌 C++ (Fast & STL‑free)
-
-```cpp
+``` | `O(√n)` time, `O(1)` space |
+| **C++** | ```cpp
 class Solution {
 public:
     bool isThree(int n) {
-        if (n < 4) return false;
+        int r = static_cast<int>(sqrt(n));
+        if (r * r != n) return false;          // not a perfect square
 
-        int root = static_cast<int>(sqrt(n));
-        if (root * root != n) return false;
+        if (r < 2) return false;               // 1 is not prime
 
-        return isPrime(root);
-    }
-
-private:
-    bool isPrime(int x) {
-        if (x < 2) return false;
-        if (x % 2 == 0) return x == 2;
-        for (int i = 3; i * i <= x; i += 2)
-            if (x % i == 0) return false;
+        for (int i = 2; i * i <= r; ++i)
+            if (r % i == 0) return false;      // composite
         return true;
     }
 };
-```
+``` | `O(√n)` time, `O(1)` space |
 
-> **Why it’s optimal**  
-> * `sqrt()` from `<cmath>` is O(1).  
-> * Prime test loops only up to `√root`, which is ≤ 100 for the given constraints.
-
----
-
-## 2️⃣ Blog Article – “The Good, the Bad, and the Ugly of Solving Three Divisors”
-
-### Title  
-**“Mastering LeetCode 1952 – Three Divisors: A Job‑Ready Guide (Java, Python, C++)”**
-
-### Meta Description  
-Unlock your next interview with our in‑depth walkthrough of LeetCode 1952 (Three Divisors). Learn the math, code in Java/Python/C++, and understand the good, bad, and ugly pitfalls. Ideal for software engineers targeting top tech jobs.
+> **Why this is the “best” solution?**  
+> 1. **Fast** – only a few integer operations per test case.  
+> 2. **Memory‑efficient** – no auxiliary data structures.  
+> 3. **Readable** – the math‑intuition is spelled out in the code comments.
 
 ---
 
-### 📚 Introduction  
-When you hit **LeetCode 1952 – Three Divisors**, you’re looking at an “Easy” problem that can be a *golden opportunity* in a technical interview. It tests your ability to:
+## The Blog Article
 
-1. Spot mathematical shortcuts.  
-2. Write clean, efficient code.  
-3. Translate a simple algorithm into multiple languages.
-
-Below, we dissect the problem, show you the *good* efficient solution, expose the *bad* naive pitfalls, and warn you about the *ugly* anti‑patterns. All while keeping the code snippets ready for Java, Python, and C++.
+> **Title (SEO‑Optimized)**  
+> “Three Divisors – LeetCode 1952: Java, Python, & C++ Solutions for Your Next Coding Interview”
 
 ---
 
-### 🔍 Problem Recap  
-> **Given** an integer `n` (1 ≤ n ≤ 10⁴).  
-> **Return** `true` if `n` has exactly three positive divisors, otherwise `false`.
+### 1. Introduction
+
+The **Three Divisors** problem is a staple in the LeetCode “Number Theory” section. Even though it is marked **Easy**, many candidates stumble because they forget the key mathematical insight: *only the square of a prime has exactly three divisors.*  
+In this article we’ll walk through the **good**, the **bad**, and the **ugly** ways to solve the problem, and show you clean, interview‑ready code in **Java, Python, and C++**.
+
+**Keywords:** LeetCode 1952, Three Divisors, Java solution, Python solution, C++ solution, number theory interview, coding interview, algorithm, job interview, programming.
 
 ---
 
-### 💡 The Math Behind the Solution  
+### 2. What Makes a Number Have Exactly Three Divisors?
 
-1. **Divisors in Pairs** – For a number `n`, every divisor `d` has a partner `n/d`.  
-2. **Perfect Squares** – Only perfect squares break this pairing, leaving one unpaired divisor (`√n`).  
-3. **Three Divisors** – For a perfect square `p²`, its divisors are `1`, `p`, `p²`.  
-   *Hence, `p` must be prime to keep the count at three.*
+A divisor of `n` is an integer `d` such that `n = d * k` for some integer `k`.  
+If `n` is a perfect square, its divisor pairs are symmetrical; the middle divisor is the square root itself.  
+When `n = p²` and `p` is a prime:
 
-**Key Insight**: *Check if `n` is a perfect square; if so, test if its square root is a prime.*
+| divisor | description |
+|---------|-------------|
+| `1` | always divides any integer |
+| `p` | the prime factor |
+| `p²` | the number itself |
+
+No other integer can divide `p²` because `p` has no divisors other than `1` and `p`.  
+If `p` were composite, say `p = a · b`, then `a` and `b` would also divide `p²`, giving more than three divisors.
+
+So the problem is reduced to:
+
+1. **Is `n` a perfect square?**  
+2. **Is the square root a prime?**
 
 ---
 
-### ⚡️ The Good – Efficient & Elegant Code  
+### 3. The “Good” – An Elegant, Math‑Driven Solution
 
-*Why it’s great*:  
-- **Time Complexity**: O(√n) – far below the constraint limit.  
-- **Space Complexity**: O(1).  
-- **Readability**: Small helper function (`isPrime`).  
-- **Language Agnostic**: Works in Java, Python, C++ with minor syntax changes.
+*Why it shines:*
 
-See the code snippets above.
+- **Clarity:** The code mirrors the math.  
+- **Performance:** `O(√n)` time, `O(1)` space.  
+- **Robustness:** Handles edge cases (`n = 1`, non‑squares, etc.) gracefully.
 
----
-
-### ❌ The Bad – Naïve Brute Force  
+**Java**
 
 ```java
-int count = 0;
-for (int i = 1; i <= n; i++) {
-    if (n % i == 0) count++;
+public boolean isThree(int n) {
+    int r = (int) Math.sqrt(n);
+    if (r * r != n) return false;          // 1️⃣ Not a perfect square
+
+    if (r < 2) return false;               // 2️⃣ 1 isn’t prime
+
+    for (int i = 2; i * i <= r; i++)       // 3️⃣ Check primality
+        if (r % i == 0) return false;
+    return true;
 }
-return count == 3;
 ```
 
-*Problems*  
-- **O(n) Time** – Even with n = 10⁴, this is wasteful in an interview setting.  
-- **Inefficient for Larger Limits** – If constraints were relaxed, this would time out.  
-- **Poor Use of Math** – Ignores the divisor pairing property.
+**Python**
 
-**When it’s Acceptable**: For toy problems or very small input ranges. But for real interviews, this is a red flag.
+```python
+def isThree(n: int) -> bool:
+    r = int(n ** 0.5)
+    if r * r != n:          # Not a perfect square
+        return False
+    if r < 2:               # 1 isn’t prime
+        return False
+    for i in range(2, int(r ** 0.5) + 1):
+        if r % i == 0:
+            return False
+    return True
+```
 
----
+**C++**
 
-### ⚠️ The Ugly – Common Anti‑Patterns  
-
-| Pattern | Why It’s Ugly | Fix |
-|---------|---------------|-----|
-| **Hard‑coded limits** | `if (n < 4)` | Use generic checks (`root*root != n`). |
-| **Repeated sqrt** | Calling `sqrt(n)` inside a loop | Compute once and reuse. |
-| **Full trial division** | Checking all numbers up to `n` | Check only up to `√root`. |
-| **Not handling edge cases** | Forgetting `n = 1` | Return `false` immediately. |
-| **Verbose variable names** | `isThree` vs `hasThreeDivisors` | Use clear, descriptive names. |
-
----
-
-### 🚀 Takeaway for Job Interviews  
-
-1. **Talk through the math** before coding.  
-2. **Mention the O(√n) strategy** – interviewers love seeing algorithmic awareness.  
-3. **Show clean code** – small helper functions, clear names, and comments.  
-4. **Be ready to translate** to any language – you’ll likely get asked to rewrite in another language.
-
----
-
-### 🎯 Keywords & SEO Boost  
-
-- Three Divisors problem  
-- LeetCode 1952 solution  
-- Java three divisors code  
-- Python prime check  
-- C++ perfect square algorithm  
-- Interview algorithm practice  
-- Job interview algorithm questions  
-- Software engineer interview prep  
-- Math-based coding challenge  
+```cpp
+bool isThree(int n) {
+    int r = static_cast<int>(sqrt(n));
+    if (r * r != n) return false;          // Not a perfect square
+    if (r < 2) return false;               // 1 isn’t prime
+    for (int i = 2; i * i <= r; ++i)       // Primality test
+        if (r % i == 0) return false;
+    return true;
+}
+```
 
 ---
 
-### 📌 Final Thoughts  
+### 4. The “Bad” – Brute‑Force Divisor Counting
 
-- **Good**: Elegant prime‑square logic, O(√n) time.  
-- **Bad**: Brute‑force divisor counting.  
-- **Ugly**: Inefficient loops, unhandled edge cases, poor naming.
+A common beginner’s mistake is to iterate over **all** integers from `1` to `n` and count the divisors.
 
-By mastering this problem, you’ll demonstrate your ability to combine mathematical insight with clean code—a key skill employers look for. Happy coding, and best of luck on your next interview!
+```java
+public boolean isThree(int n) {
+    int count = 0;
+    for (int i = 1; i <= n; i++) {
+        if (n % i == 0) count++;
+    }
+    return count == 3;
+}
+```
+
+**Problems**
+
+- **Time‑consuming:** `O(n)` operations. For `n = 10⁴` it’s fine, but it scales poorly.  
+- **Unnecessary:** It does a lot of work for a very simple mathematical shortcut.  
+- **Hard to explain in an interview:** You’d waste valuable interview time.
+
+---
+
+### 5. The “Ugly” – Over‑Optimised or Hard‑to‑Read Hacks
+
+Some candidates try to avoid the perfect‑square check entirely, or use advanced tricks that hurt readability.
+
+```cpp
+bool isThree(int n) {
+    int r = round(sqrt(n));
+    return r * r == n && isPrime(r);   // isPrime uses a sieve or other heavy machinery
+}
+```
+
+While this is fast, the extra function (`isPrime`) can be an overkill for a problem with such small input constraints. It also makes the solution harder to audit quickly during a coding interview.
+
+---
+
+### 6. Takeaway for Your Next Coding Interview
+
+| ✅ Tip | Why |
+|--------|-----|
+| **State the math first** | It gives you a roadmap for the code. |
+| **Use `sqrt(n)` only once** | Avoid recomputing the same value. |
+| **Check `r < 2` before primality** | Quickly reject the special case `n = 1`. |
+| **Write comments** | Helps interviewers follow your logic. |
+| **Test edge cases** | `n = 1`, `n = 4`, `n = 9`, `n = 16`, etc. |
+
+> **Remember:** The interviewer isn’t just judging your ability to code; they’re assessing your problem‑solving mindset. A short, mathematically sound solution is usually better than a lengthy brute‑force approach.
+
+---
+
+### 7. Closing Thoughts
+
+The **Three Divisors** problem is a wonderful example of how a solid grasp of number theory can turn an O(n) brute force into a clean O(√n) solution.  
+Implementing it in **Java, Python, and C++** shows that the underlying algorithm is language‑agnostic; only the syntax changes.  
+
+Keep this pattern in mind: **identify the core property** (perfect square + prime), **translate it into a minimal set of checks**, and **code it with clarity**. That’s the recipe for success on LeetCode and in technical interviews alike.
+
+---
+
+**Happy coding and best of luck with your job search!**

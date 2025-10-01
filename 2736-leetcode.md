@@ -12,404 +12,400 @@ hideToc: true
 For every index `i`
 
 ```
-point i = (a1[i] , a2[i])          0 ≤ i < n
-sum i   = a1[i] + a2[i]
+pair  i  = ( nums1[i] , nums2[i] )
+sum   i  = nums1[i] + nums2[i]
 ```
 
-For a query `(x , y)` we need
+A query is a pair `(x , y)` and we have to find
 
 ```
-maximum sum i   with   a1[i] ≥ x   and   a2[i] ≥ y
+max{ nums1[i] + nums2[i] }      (1)
+   i
+such that   nums1[i] ≥ x  and  nums2[i] ≥ y
 ```
 
-If no such index exists the answer is `-1`.
+If no index satisfies the two inequalities the answer is `‑1`.
 
-The problem is a two‑dimensional dominance query:
-
-```
-points : (a1[i] , a2[i])            value : a1[i] + a2[i]
-query  : (x , y)  – all points with   x ≤ a1  and   y ≤ a2
-answer : maximum value among those points
-```
+The arrays can contain up to `2·10⁵` elements, so we need an
+`O((n+m) log n)` algorithm  
+(`n` – length of the two input arrays,
+`m` – number of queries).
 
 --------------------------------------------------------------------
 
-#### 1.   Offline processing
+#### 1.  Offline processing
 
-`a1` and `a2` are up to `2·10^5`, therefore an
-`O((n + q) log n)` algorithm is required.
+For a fixed `x` only indices with `nums1[i] ≥ x` are useful.
+If we sort the pairs by `nums1` in **decreasing** order and also sort the
+queries by `x` in decreasing order, we can scan both lists once:
 
 ```
-sort all indices by a1   (descending)
-sort all queries by x    (descending)
-
-while processing the queries:
-        add all points with a1 ≥ current query.x
-        answer the query with a data structure that keeps
-        the maximum sum of all already added points
-        with a2 ≥ current query.y
+current x = 0
+for every query (x , y) in decreasing x
+        add all pairs whose nums1 ≥ x   to a data structure
+        answer the query with the data structure
 ```
 
-When all points with `a1 ≥ x` are inserted,
-only the restriction `a2 ≥ y` remains.
-The remaining problem is a one‑dimensional
-*range maximum* query over the `a2` values.
-
-
+When we move from one query to the next we only **add** new pairs,
+never delete them.  
+The whole process is therefore “offline” – we first sort the input
+and then run through it.
 
 --------------------------------------------------------------------
 
-#### 2.   Compression of `a2`
+#### 2.  What must the data structure support?
 
-Only the values of `a2` that really appear are needed.
+After the “add” step the data structure contains all pairs
+with `nums1 ≥ current x`.  
+We have to answer
 
 ```
-unique_a2   = sorted list of all distinct a2 values
-index[a2]   = position of a2 inside unique_a2   (0 … m-1)
+maximum sum among all indices with nums2 ≥ y          (2)
 ```
 
-`m = unique_a2.len()` – the number of different `a2` values.
-
-
+The pairs are inserted in the order of decreasing `nums1`, therefore
+after the first insertion a pair may later be inserted again with a
+larger `nums1` – we must keep the **maximum** sum for every value of
+`nums2`.
 
 --------------------------------------------------------------------
 
-#### 3.   Segment Tree for maximum
+#### 3.  Coordinate compression of `nums2`
 
-The segment tree stores for every compressed `a2` index the
-maximum sum of all inserted points that have exactly this `a2`.
-Only the *maximum* value inside a range is needed.
-
-```
-update(position , new_value)      O(log m)
-query( left , right )             O(log m)
-```
-
-All values are initialised with `-1`
-(`-1` is smaller than every possible sum, therefore it represents
-“no point yet”).
-
-For a query with lower bound `y`:
+Only the values of `nums2` are used as keys in the data structure.
+We replace every value by its rank in the sorted list of distinct
+`nums2` values.
 
 ```
-lb = first index with unique_a2[lb] ≥ y
-if lb == m          → no a2 is large enough → answer -1
-else                → answer = query(lb , m-1)
+uniq = sorted list of all distinct nums2 values      (ascending)
+k    = uniq.len()          – number of different keys
 ```
 
-The tree automatically ignores all points whose `a2` is
-smaller than the requested `y`.
+For a value `v` let
+
+```
+pos(v)   = index of v in uniq  (0 … k‑1)
+rev(v)   = k-1 - pos(v)        (reversed index)
+```
+
+If we store the data structure on the **reversed** indices,
+querying all `nums2 ≥ y` (positions `pos(y) … k‑1`)
+becomes a query on the prefix `[0 … rev(y)]` – exactly what a Fenwick
+tree (Binary Indexed Tree) supports.
 
 
 
 --------------------------------------------------------------------
 
-#### 4.   Correctness Proof  
+#### 4.  Fenwick tree for maximum
 
-We prove that the algorithm prints the required maximum sum
-for every query.
+A Fenwick tree can be used for prefix maximum in `O(log k)`:
+
+```
+update(idx , value)          // point update – keep the maximum
+query_prefix(idx)            // maximum on [0 … idx]
+```
+
+All values are initialised to `‑1` (no pair inserted yet).
+
+--------------------------------------------------------------------
+
+#### 5.  Complete algorithm
+
+```
+pairs = [(nums1[i], nums2[i]) for i in 0..n]
+sort pairs  by first element (nums1)   descending
+
+uniq = sorted distinct nums2 values
+for each pair (a,b) create rev_idx(b) = k-1 - pos(b)
+
+queries = [(x, y, original_index) for each query]
+sort queries by x   descending
+
+Fenwick tree T of size k, all entries = -1
+i = 0                                 // pointer in pairs
+
+for each query (x, y, id) in sorted order
+        while i < n and pairs[i].0 >= x
+                let (a,b)   = pairs[i]
+                let rev     = rev_idx(b)
+                let sum     = a + b
+                T.update(rev, sum)      // keep the maximum
+                i += 1
+
+        // answer the query
+        find the first position p in uniq with uniq[p] >= y
+        if such p does not exist          → answer[id] = -1
+        else
+                rev_start = k-1 - p
+                best = T.query_prefix(rev_start)
+                answer[id] = if best < 0 { -1 } else { best }
+```
+
+--------------------------------------------------------------------
+
+#### 6.  Correctness Proof  
+
+We prove that the algorithm outputs the correct answer for every
+query.
 
 ---
 
 ##### Lemma 1  
-During the processing of a query `q = (x , y)`  
-every point `p = (a1 , a2)` with `a1 ≥ x` is inserted into the
-segment tree, and no point with `a1 < x` is inserted.
+After processing all pairs with `nums1[i] ≥ X` (where `X` is the
+current query's `x`), the Fenwick tree at position
+`rev_idx(v)` stores
 
-**Proof.**
+```
+max{ nums1[i] + nums2[i] }  over all indices i with
+        nums1[i] ≥ X  and  nums2[i] = v
+```
 
-Points are sorted by `a1` in decreasing order.
-A pointer `pos` moves over this array.
-While `pos < n` and `points[pos].a1 ≥ x`
-the point is inserted and `pos` is increased.
-Consequently, after the while loop
+*Proof.*
 
-* all points with `a1 ≥ x` are inserted,
-* all points with `a1 < x` are still not inserted. ∎
+Pairs are inserted in the order of decreasing `nums1`.  
+When a pair `(a,b)` is processed, its sum `a+b` is written to the
+Fenwick tree at the position `rev_idx(b)`.
+If later another pair with the same `nums2` value is processed,
+`update` keeps the larger sum.  
+Thus, after all pairs with `nums1 ≥ X` are inserted, the tree
+contains the maximum sum for every `nums2` value that satisfies the
+first inequality. ∎
 
 
 
 ##### Lemma 2  
-After all insertions for a query `q`,
-the segment tree value at position `k` equals
+For a query `(x,y)` let `p` be the smallest index with
+`uniq[p] ≥ y`.  
+Then the value returned by `T.query_prefix(k-1-p)` equals
 
 ```
-max { a1[i] + a2[i] |  i already inserted and  a2_index[i] = k }
+max{ nums1[i] + nums2[i] }     (3)
+   i
+such that   nums1[i] ≥ x  and  nums2[i] ≥ y
 ```
 
-**Proof.**
+*Proof.*
 
-When a point `i` is inserted,
-`update(k , a1[i] + a2[i])` is executed.
-The update keeps the maximum of all values written to position `k`,
-therefore after processing all inserted points the stored value is
-exactly the maximum sum over all of them with that `a2_index`. ∎
+`p` is the first distinct `nums2` value that is at least `y`.  
+All indices with `nums2 ≥ y` have compressed positions `pos ≥ p`.
+Their reversed indices are `rev ≤ k-1-p`.  
+Because of Lemma&nbsp;1 the tree contains the maximum sum for every
+such position, and `query_prefix(k-1-p)` returns the maximum over
+exactly those positions.  
+Consequently the returned value is the maximum sum among all indices
+satisfying both inequalities. ∎
 
 
 
 ##### Lemma 3  
-For a query `q = (x , y)` let  
-`lb = first index with unique_a2[lb] ≥ y`.  
-`query(lb , m-1)` returns
+If no index satisfies the inequalities of a query,
+the algorithm outputs `‑1`.
 
-```
-max { a1[i] + a2[i] |  i inserted for q  and  a2[i] ≥ y }
-```
+*Proof.*
 
-**Proof.**
-
-By Lemma&nbsp;1 only points with `a1 ≥ x` are inserted.
-By Lemma&nbsp;2 each tree position contains the maximum sum among
-inserted points with this exact `a2_index`.  
-The query asks for the maximum over the range `lb … m-1`,
-i.e. over all compressed indices whose real `a2` value is at least
-`y`.  
-No inserted point with `a2 < y` contributes to this range, therefore
-the returned value equals the maximum sum among all already
-inserted points satisfying both restrictions of the query. ∎
-
-
-
-##### Lemma 4  
-`query(lb , m-1)` is `-1` iff no inserted point satisfies `a2 ≥ y`.
-
-**Proof.**
-
-If no inserted point has `a2 ≥ y`,
-every tree position in the queried range has value `-1`
-(Lemma&nbsp;2), thus the maximum over this range is `-1`.  
-Conversely, if at least one inserted point has `a2 ≥ y`,
-the corresponding tree position contains a value ≥ `0`,
-therefore the maximum of the queried range is not `-1`. ∎
-
-
-
-##### Lemma 4 (continued)  
-If `lb == m` the algorithm outputs `-1`,
-otherwise it outputs the maximum sum of all inserted points with
-`a2 ≥ y`.
-
-**Proof.**
-
-`lb == m` means there is no compressed index whose real `a2`
-value is at least `y`.  
-Consequently no inserted point can satisfy `a2 ≥ y`, hence by
-definition the answer is `-1`, which the algorithm prints.
-
-If `lb < m`, by Lemma&nbsp;3 the segment tree query returns the
-maximum sum of all inserted points with `a2 ≥ y`. ∎
-
-
-
-##### Lemma 5  
-For a query `q = (x , y)`  
-every index `i` that satisfies the query conditions
-(`a1[i] ≥ x` and `a2[i] ≥ y`) is inserted before the answer is
-computed.
-
-**Proof.**
-
-Directly from Lemma&nbsp;1:
-every point with `a1 ≥ x` is inserted before the answer,
-and `a2[i] ≥ y` is handled by the tree query. ∎
-
-
-
-##### Lemma 6  
-For a query `q = (x , y)` the algorithm outputs the maximum
-possible sum over *all* indices that satisfy the query.
-
-**Proof.**
-
-Let `S` be the set of all indices satisfying the query.
-By Lemma&nbsp;5 all indices in `S` are inserted when the answer is
-computed.
-By Lemma&nbsp;4 the algorithm returns the maximum sum among
-those inserted indices.
-Because the set of inserted indices is exactly `S`, the returned
-value equals `max { a1[i] + a2[i] | i ∈ S }`.  
-If `S` is empty the algorithm outputs `-1`. ∎
+In that case the Fenwick tree contains only values `< 0` for all
+positions `rev ≤ k-1-p`.  
+`query_prefix` therefore returns `‑1`.  
+The algorithm translates that to the output `‑1`. ∎
 
 
 
 ##### Theorem  
-For every query the program prints the required maximum sum, and
-`-1` iff no index satisfies the query constraints.
+For every query `(x,y)` the algorithm outputs
 
-**Proof.**
+```
+max{ nums1[i] + nums2[i] }  over all i with  nums1[i] ≥ x  and  nums2[i] ≥ y,
+```
 
-Directly from Lemma&nbsp;6. ∎
+or `‑1` if such an `i` does not exist.
+
+*Proof.*
+
+Consider an arbitrary query `(x,y)`.
+
+*Insertion phase*  
+All pairs with `nums1 ≥ x` are inserted into the Fenwick tree.
+By Lemma&nbsp;1 the tree now contains the maximum sum for every
+`nums2` value among those pairs.
+
+*Query phase*  
+`p` is the first distinct `nums2` value that is at least `y`.  
+If it does not exist, by definition no index can satisfy
+`nums2[i] ≥ y`; the algorithm outputs `‑1` (Lemma&nbsp;3).  
+Otherwise `T.query_prefix(k-1-p)` returns the maximum sum over all
+indices with `nums2 ≥ y` (Lemma&nbsp;2).  
+Because only indices with `nums1 ≥ x` were inserted, this sum also
+fulfils `nums1[i] ≥ x`.  
+Thus the returned value is exactly the expression in (1).
+
+Therefore every query is answered correctly. ∎
 
 
 
 --------------------------------------------------------------------
 
-#### 5.   Complexity Analysis
+#### 7.  Complexity Analysis
 
 ```
-compression of a2          :  O(n log n)
-sorting points & queries   :  O(n log n + q log q)
-segment tree updates/query  :  O((n + q) log n)
-memory consumption         :  O(n + m)  (m ≤ n)
+sorting pairs            :  O(n log n)
+sorting queries          :  O(m log m)
+building uniq list       :  O(n log n)
+for each of n pairs      :  O(log n)  (Fenwick update)
+for each of m queries    :  O(log n)  (binary search + Fenwick query)
+
+Total time                :  O((n+m) log n)
+Memory consumption        :  O(n + k)   (k = number of distinct nums2 ≤ n)
 ```
-
-The program fulfils the required limits.
-
-
 
 --------------------------------------------------------------------
 
-#### 6.   Reference Implementation  (Rust 1.56)
+#### 8.  Reference Implementation  (Rust 1.56)
 
 ```rust
-use std::cmp::max;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::{self, Read};
 
-/// Point that will be inserted into the tree
-#[derive(Clone)]
-struct Point {
-    a1: i64,
-    a2: i64,
+/// Fenwick tree that keeps the maximum value on a prefix
+struct Fenwick {
+    n: usize,
+    data: Vec<i64>, // values are sums, -1 means “not inserted yet”
 }
 
-/// Query stored with its original position
-#[derive(Clone)]
-struct Query {
-    x: i64,
-    y: i64,
-    id: usize,
-}
-
-/// Segment tree for range maximum
-struct SegTree {
-    size: usize,
-    data: Vec<i64>,          // 1‑based indexing
-}
-
-impl SegTree {
+impl Fenwick {
     fn new(n: usize) -> Self {
-        SegTree {
-            size: n,
-            data: vec![-1; 4 * n + 4],
+        Fenwick {
+            n,
+            data: vec![-1; n],
         }
     }
 
-    /// point update: tree[idx] = max(tree[idx], val)
-    fn update(&mut self, node: usize, l: usize, r: usize, idx: usize, val: i64) {
-        if l == r {
-            if self.data[node] < val {
-                self.data[node] = val;
+    // point update: keep the maximum
+    fn update(&mut self, mut idx: usize, val: i64) {
+        while idx < self.n {
+            if self.data[idx] < val {
+                self.data[idx] = val;
             }
-            return;
+            idx |= idx + 1; // move to parent
         }
-        let mid = (l + r) / 2;
-        if idx <= mid {
-            self.update(node * 2, l, mid, idx, val);
-        } else {
-            self.update(node * 2 + 1, mid + 1, r, idx, val);
-        }
-        self.data[node] = max(self.data[node * 2], self.data[node * 2 + 1]);
     }
 
-    /// range maximum on [ql, qr]
-    fn query(&self, node: usize, l: usize, r: usize, ql: usize, qr: usize) -> i64 {
-        if ql > r || qr < l {
-            return -1;
+    // maximum on prefix [0 .. idx]
+    fn query_prefix(&self, mut idx: usize) -> i64 {
+        let mut res = -1;
+        while idx > 0 {
+            if self.data[idx] > res {
+                res = self.data[idx];
+            }
+            idx &= idx + 1; // move to parent
         }
-        if ql <= l && r <= qr {
-            return self.data[node];
+        // handle the last element separately (idx == 0)
+        if self.data[0] > res {
+            res = self.data[0];
         }
-        let mid = (l + r) / 2;
-        let left = self.query(node * 2, l, mid, ql, qr);
-        let right = self.query(node * 2 + 1, mid + 1, r, ql, qr);
-        max(left, right)
+        res
     }
 }
 
 fn main() {
-    /* ---------- read all input ---------- */
+    // ---------- read input ----------
     let mut input = String::new();
     io::stdin().read_to_string(&mut input).unwrap();
-    let mut it = input.split_whitespace().map(|s| s.parse::<i64>().unwrap());
+    let mut it = input.split_whitespace();
 
-    let n = it.next().unwrap() as usize;
+    let n: usize = it.next().unwrap().parse().unwrap();
+    let m: usize = it.next().unwrap().parse().unwrap();
 
-    let mut a1: Vec<i64> = Vec::with_capacity(n);
-    let mut a2: Vec<i64> = Vec::with_capacity(n);
+    let mut nums1: Vec<i64> = Vec::with_capacity(n);
+    let mut nums2: Vec<i64> = Vec::with_capacity(n);
     for _ in 0..n {
-        a1.push(it.next().unwrap());
+        nums1.push(it.next().unwrap().parse::<i64>().unwrap());
     }
     for _ in 0..n {
-        a2.push(it.next().unwrap());
+        nums2.push(it.next().unwrap().parse::<i64>().unwrap());
     }
 
-    let q_cnt = it.next().unwrap() as usize;
-    let mut queries: Vec<Query> = Vec::with_capacity(q_cnt);
-    for id in 0..q_cnt {
-        let x = it.next().unwrap();
-        let y = it.next().unwrap();
-        queries.push(Query { x, y, id });
-    }
-
-    /* ---------- compression of a2 ---------- */
-    let mut unique_a2 = a2.clone();
-    unique_a2.sort_unstable();
-    unique_a2.dedup();
-    let m = unique_a2.len();                     // number of different a2
-
-    let mut index_map: HashMap<i64, usize> = HashMap::new();
-    for (i, &val) in unique_a2.iter().enumerate() {
-        index_map.insert(val, i);
-    }
-
-    /* ---------- sort points and queries ---------- */
-    let mut points: Vec<Point> = Vec::with_capacity(n);
+    // pairs
+    let mut pairs: Vec<(i64, i64)> = Vec::with_capacity(n);
     for i in 0..n {
-        points.push(Point { a1: a1[i], a2: a2[i] });
+        pairs.push((nums1[i], nums2[i]));
     }
-    points.sort_by(|p1, p2| p2.a1.cmp(&p1.a1));    // descending a1
+    // sort by nums1 descending
+    pairs.sort_by(|a, b| b.0.cmp(&a.0));
 
-    let mut queries_sorted = queries.clone();
-    queries_sorted.sort_by(|q1, q2| q2.x.cmp(&q1.x)); // descending x
+    // ---------- coordinate compression of nums2 ----------
+    let mut uniq: Vec<i64> = nums2.clone();
+    uniq.sort_unstable();
+    uniq.dedup();
+    let k = uniq.len();
 
-    /* ---------- segment tree ---------- */
-    let mut seg_tree = SegTree::new(m);
+    // map from original nums2 value to reversed index
+    let mut rev_map: HashMap<i64, usize> = HashMap::new();
+    for (pos, &val) in uniq.iter().enumerate() {
+        let rev = k - 1 - pos;
+        rev_map.insert(val, rev);
+    }
 
-    let mut pos = 0usize;          // next point that is not inserted
-    let mut answer = vec![-1i64; q_cnt];
+    // ---------- read queries ----------
+    let mut queries: Vec<(i64, i64, usize)> = Vec::with_capacity(m);
+    for idx in 0..m {
+        let x: i64 = it.next().unwrap().parse().unwrap();
+        let y: i64 = it.next().unwrap().parse().unwrap();
+        queries.push((x, y, idx));
+    }
+    // sort by x descending
+    queries.sort_by(|a, b| b.0.cmp(&a.0));
 
-    for q in queries_sorted.iter() {
-        /* insert all points with a1 >= q.x */
-        while pos < n && points[pos].a1 >= q.x {
-            let idx_a2 = *index_map.get(&points[pos].a2).unwrap();
-            let sum = points[pos].a1 + points[pos].a2;
-            seg_tree.update(1, 0, m - 1, idx_a2, sum);
-            pos += 1;
+    // ---------- Fenwick tree ----------
+    let mut fw = Fenwick::new(k);
+
+    // ---------- process ----------
+    let mut answers: Vec<i64> = vec![-1; m];
+    let mut ptr = 0usize; // pointer in pairs
+
+    for &(x, y, id) in &queries {
+        // insert all pairs with nums1 >= x
+        while ptr < n && pairs[ptr].0 >= x {
+            let (a, b) = pairs[ptr];
+            let rev = rev_map[&b];
+            let sum = a + b;
+            fw.update(rev, sum);
+            ptr += 1;
         }
 
-        /* find lower bound for y */
-        let lb = match unique_a2.binary_search(&q.y) {
-            Ok(idx) => idx,
-            Err(idx) => idx,
+        // binary search for first uniq[pos] >= y
+        let pos_opt = uniq
+            .binary_search_by(|v| {
+                if *v < y {
+                    Ordering::Less
+                } else {
+                    Ordering::Greater
+                }
+            })
+            .or_else(|pos| if uniq[pos] >= y { Ok(pos) } else { Err(k) });
+
+        let ans = match pos_opt {
+            Err(_) => -1, // no nums2 >= y
+            Ok(pos) => {
+                let rev_start = k - 1 - pos;
+                let best = fw.query_prefix(rev_start);
+                if best < 0 { -1 } else { best }
+            }
         };
-
-        if lb < m {
-            let res = seg_tree.query(1, 0, m - 1, lb, m - 1);
-            answer[q.id] = res;
-        } else {
-            answer[q.id] = -1;
-        }
+        answers[id] = ans;
     }
 
-    /* ---------- output ---------- */
+    // ---------- output ----------
     let mut out = String::new();
-    for val in answer {
-        out.push_str(&format!("{}\n", val));
+    for &v in &answers {
+        out.push_str(&format!("{}\n", v));
     }
     print!("{}", out);
 }
 ```
 
-The program follows exactly the algorithm proven correct above
-and is fully compatible with Rust 1.56.
+The program follows exactly the algorithm proven correct above and
+conforms to the Rust 1.56 standard library.  It uses only
+standard containers and runs in `O((n+m) log n)` time with
+`O(n)` memory.

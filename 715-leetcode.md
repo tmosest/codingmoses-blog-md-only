@@ -7,143 +7,177 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 715 – **Range Module**  
-**Hard | 10⁴ operations | 10⁹ range**  
-**LeetCode**: <https://leetcode.com/problems/range-module/>
+        # Range Module – Leetcode 715  
+> **Hard** | **Java** | **Python** | **C++** | **Job‑Interview Readiness** | **SEO‑Optimized**  
 
-> A `RangeModule` tracks a set of half‑open intervals \([l,r)\).  
->  
-> * `addRange(l,r)` – add an interval, merging with any existing ones.  
-> * `queryRange(l,r)` – return `true` if the entire interval is currently covered.  
-> * `removeRange(l,r)` – delete the interval from the tracked set.  
+## 1.  Problem Recap (What you’ll see on Leetcode)
 
-Below you’ll find three clean, production‑ready solutions – **Java (TreeMap)**, **Python (bisect + sorted list)**, **C++ (std::map)** – each with O(log n) time per operation.  
-After the code, read the SEO‑friendly blog article that explains *the good, the bad, and the ugly* of this problem, how it’s often used in technical interviews, and why mastering it can boost your job prospects.
+```
+RangeModule()                  // initialise
+void addRange(int left, int right)      // add [left, right)
+boolean queryRange(int left, int right) // is every x ∈ [left, right) tracked?
+void removeRange(int left, int right)   // stop tracking [left, right)
+```
+
+*`left < right`, values up to 10⁹, ≤ 10⁴ total calls.*  
+We need a data structure that can insert, query, and delete *half‑open* integer intervals in **O(log N)** time, where *N* is the number of disjoint ranges stored.
 
 ---
 
-## 1. Java – TreeMap (Fast, Easy to Understand)
+## 2.  “The Good, The Bad, The Ugly”
+
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Data‑structure choice** | Balanced BST (Java `TreeMap`, C++ `std::map`, Python `SortedList` / `bisect`) | None – always *O(log N)* | Heavyweight segment trees with lazy propagation (overkill for 10⁴ ops) |
+| **Implementation complexity** | ~30 lines of clean code | Handling edge cases (overlap, adjacency) | Lots of pointer gymnastics, debug‑painful |
+| **Space overhead** | O(N) – one node per disjoint interval | None | Segment tree uses O(4 N) nodes |
+| **Readability for interview** | Very high | Requires clear explanation of `floorEntry` semantics | Very low; interviewers rarely expect lazy‑prop code |
+| **Potential bugs** | Forgetting half‑open convention, off‑by‑one errors | None if careful | Over‑merging / missing split parts |
+
+> **TL;DR** – The *TreeMap / map* solution is the sweet spot: fast, small, and readable. The segment‑tree alternative is elegant but too verbose for most interview scenarios.
+
+---
+
+## 3.  The Idea – Keep a Sorted Set of *Disjoint* Intervals
+
+- All intervals in the data structure are **non‑overlapping** and **sorted by start**.  
+- When we add a new range we:
+
+  1. Merge it with any existing intervals that overlap or touch it.  
+  2. Delete those overlapped intervals.  
+  3. Insert the merged interval.
+
+- When we query we just need to check the immediate predecessor interval: does it start before the query left and end after or at the query right?
+
+- When we remove a range we:
+
+  1. Possibly split the leftmost overlapping interval at the start of the removal.  
+  2. Possibly split the rightmost overlapping interval at the end of the removal.  
+  3. Delete every interval completely inside the removal.
+
+Because the intervals are sorted, all operations touch only *O(log N)* nodes.
+
+---
+
+## 4.  Java Implementation (TreeMap)
 
 ```java
 import java.util.*;
 
-public class RangeModule {
-    /**  key = start, value = end  (exclusive) */
-    private final TreeMap<Integer, Integer> ranges = new TreeMap<>();
+class RangeModule {
+    /** map: key = start, value = end (exclusive) of a disjoint interval */
+    private final TreeMap<Integer, Integer> map = new TreeMap<>();
 
     public RangeModule() {}
 
-    /** Add [l, r) */
-    public void addRange(int l, int r) {
-        // Find leftmost overlapping interval
-        Map.Entry<Integer, Integer> left = ranges.floorEntry(l);
-        if (left != null && left.getValue() >= l) l = left.getKey();
+    /** Add [left, right) */
+    public void addRange(int left, int right) {
+        // 1. Find possible left & right overlapping intervals
+        Map.Entry<Integer, Integer> l = map.floorEntry(left);
+        Map.Entry<Integer, Integer> r = map.floorEntry(right);
 
-        // Find rightmost overlapping interval
-        Map.Entry<Integer, Integer> right = ranges.floorEntry(r);
-        if (right != null && right.getValue() > r) r = right.getValue();
-
-        // Remove all fully overlapped ranges
-        ranges.subMap(l, r).clear();
-
-        // Insert the merged interval
-        ranges.put(l, r);
-    }
-
-    /** Return true if [l, r) is fully covered */
-    public boolean queryRange(int l, int r) {
-        Map.Entry<Integer, Integer> left = ranges.floorEntry(l);
-        return left != null && left.getValue() >= r;
-    }
-
-    /** Remove [l, r) */
-    public void removeRange(int l, int r) {
-        Map.Entry<Integer, Integer> left = ranges.floorEntry(l);
-        if (left != null && left.getValue() > l) {
-            ranges.put(left.getKey(), l);   // keep left side
+        // 2. Merge with left overlap
+        if (l != null && l.getValue() >= left) {
+            left = l.getKey();
         }
 
-        Map.Entry<Integer, Integer> right = ranges.floorEntry(r);
-        if (right != null && right.getValue() > r) {
-            ranges.put(r, right.getValue()); // keep right side
+        // 3. Merge with right overlap
+        if (r != null && r.getValue() > right) {
+            right = r.getValue();
         }
 
-        // Erase all ranges that fall inside [l, r)
-        ranges.subMap(l, r).clear();
+        // 4. Remove all fully covered intervals
+        map.subMap(left, right).clear();
+
+        // 5. Insert merged interval
+        map.put(left, right);
+    }
+
+    /** Return true if [left, right) is fully covered */
+    public boolean queryRange(int left, int right) {
+        Map.Entry<Integer, Integer> l = map.floorEntry(left);
+        return l != null && l.getValue() >= right;
+    }
+
+    /** Remove [left, right) */
+    public void removeRange(int left, int right) {
+        Map.Entry<Integer, Integer> l = map.floorEntry(left);
+        Map.Entry<Integer, Integer> r = map.floorEntry(right);
+
+        // If left part of an overlapping interval remains
+        if (l != null && l.getValue() > left) {
+            map.put(l.getKey(), left);
+        }
+
+        // If right part of an overlapping interval remains
+        if (r != null && r.getValue() > right) {
+            map.put(right, r.getValue());
+        }
+
+        // Delete everything inside [left, right)
+        map.subMap(left, right).clear();
     }
 }
 ```
 
-**Why TreeMap?**  
-- Keeps intervals sorted by start point.  
-- `floorEntry` gives the largest key ≤ target, making overlap checks O(log n).  
-- `subMap` allows bulk removal of all fully overlapped intervals.
+**Why this works:**  
+- `floorEntry` gives us the interval whose start is ≤ a given point.  
+- `subMap(fromKey, toKey)` (exclusive of `toKey`) lets us delete a contiguous slice in O(log N).  
+- All operations are `O(log N)`.
 
 ---
 
-## 2. Python – SortedList + bisect
+## 5.  Python Implementation (SortedList + bisect)
 
 ```python
 import bisect
-from typing import List
 
 class RangeModule:
     def __init__(self):
-        self.starts: List[int] = []  # start points
-        self.ends: List[int] = []    # end points (exclusive)
-
-    def _find_left(self, x: int) -> int:
-        """Largest index i such that starts[i] <= x"""
-        i = bisect.bisect_right(self.starts, x) - 1
-        return i
+        # list of starts and corresponding ends (both sorted)
+        self.starts = []  # start of intervals
+        self.ends   = []  # end of intervals
 
     def addRange(self, left: int, right: int) -> None:
-        i = self._find_left(left)
-        if i >= 0 and self.ends[i] >= left:
-            left = self.starts[i]
-        j = self._find_left(right)
-        if j >= 0 and self.ends[j] > right:
+        i = bisect.bisect_left(self.ends, left)   # first interval that ends after left
+        j = bisect.bisect_left(self.ends, right)  # first interval that ends after right
+
+        # Expand boundaries if needed
+        if i > 0 and self.ends[i-1] >= left:
+            left = self.starts[i-1]
+        if j < len(self.ends) and self.ends[j] > right:
             right = self.ends[j]
 
-        # Delete overlapping intervals
-        del self.starts[max(0, i+1):j+1]
-        del self.ends[max(0, i+1):j+1]
-
-        # Insert merged interval
-        pos = bisect.bisect_left(self.starts, left)
-        self.starts.insert(pos, left)
-        self.ends.insert(pos, right)
+        # Remove overlapped intervals
+        self.starts[i:j] = [left]
+        self.ends[i:j]   = [right]
 
     def queryRange(self, left: int, right: int) -> bool:
-        i = self._find_left(left)
+        i = bisect.bisect_right(self.starts, left) - 1
         return i >= 0 and self.ends[i] >= right
 
     def removeRange(self, left: int, right: int) -> None:
-        i = self._find_left(left)
-        if i >= 0 and self.ends[i] > left:
-            self.ends[i] = left          # truncate left part
+        i = bisect.bisect_left(self.ends, left)
+        j = bisect.bisect_left(self.ends, right)
 
-        j = self._find_left(right)
-        if j >= 0 and self.ends[j] > right:
-            # Insert a new interval for the right part
-            pos = bisect.bisect_left(self.starts, right)
-            self.starts.insert(pos, right)
-            self.ends.insert(pos, self.ends[j])
-            self.ends[j] = right
+        # Keep left fragment
+        if i > 0 and self.ends[i-1] > left:
+            self.ends[i-1] = left
 
-        # Delete fully overlapped intervals
-        del self.starts[max(0, i+1):j+1]
-        del self.ends[max(0, i+1):j+1]
+        # Keep right fragment
+        if j < len(self.ends) and self.ends[j] > right:
+            self.starts[j] = right
+
+        # Delete fully covered intervals
+        del self.starts[i:j]
+        del self.ends[i:j]
 ```
 
-**Why bisect + lists?**  
-- Python’s `bisect` gives O(log n) search.  
-- Two parallel lists keep start/end pairs, making memory footprint small.  
-- All modifications stay O(log n) plus O(k) for removing `k` overlapping intervals (k ≤ n).
+*The Python code mirrors the Java logic but uses two parallel lists with `bisect`. It stays in `O(log N)` time.*
 
 ---
 
-## 3. C++ – `std::map` (ordered associative container)
+## 6.  C++ Implementation (std::map)
 
 ```cpp
 #include <map>
@@ -155,16 +189,22 @@ public:
     RangeModule() {}
 
     void addRange(int left, int right) {
-        auto it = mp.lower_bound(left);
-        if (it != mp.begin()) {
-            auto prev = std::prev(it);
+        auto l = mp.lower_bound(left);
+        if (l != mp.begin()) {
+            auto prev = std::prev(l);
             if (prev->second >= left) left = prev->first;
         }
-        while (it != mp.end() && it->first <= right) {
-            right = std::max(right, it->second);
-            it = mp.erase(it);
+
+        auto r = mp.lower_bound(right);
+        if (r != mp.begin()) {
+            auto prev = std::prev(r);
+            if (prev->second > right) right = prev->second;
         }
-        mp.emplace(left, right);
+
+        // erase all overlapping intervals
+        auto it = mp.lower_bound(left);
+        while (it != mp.end() && it->first < right) it = mp.erase(it);
+        mp[left] = right;
     }
 
     bool queryRange(int left, int right) {
@@ -175,113 +215,70 @@ public:
     }
 
     void removeRange(int left, int right) {
-        auto it = mp.lower_bound(left);
-        if (it != mp.begin()) {
-            auto prev = std::prev(it);
+        auto l = mp.lower_bound(left);
+        if (l != mp.begin()) {
+            auto prev = std::prev(l);
             if (prev->second > left) {
-                int old_end = prev->second;
-                prev->second = left;
-                if (old_end > right) {
-                    mp.emplace(right, old_end);
-                }
+                mp[prev->first] = left;          // left fragment
             }
         }
-        while (it != mp.end() && it->first < right) {
-            if (it->second > right) {
-                mp.emplace(right, it->second);
+
+        auto r = mp.lower_bound(right);
+        if (r != mp.begin()) {
+            auto prev = std::prev(r);
+            if (prev->second > right) {
+                mp[right] = prev->second;        // right fragment
             }
-            it = mp.erase(it);
         }
+
+        // erase fully covered
+        it = mp.lower_bound(left);
+        while (it != mp.end() && it->first < right) it = mp.erase(it);
     }
 };
 ```
 
-**Why `std::map`?**  
-- Logarithmic insert, delete, and search.  
-- Clear syntax for split/merge logic.  
-- Works well in competitive programming environments.
+> **Note:** The C++ version is almost identical to the Java solution but uses iterators instead of `floorEntry`.
 
 ---
 
-## 4. The Good, the Bad, & the Ugly
+## 7.  Complexity Analysis
 
-| Aspect | What’s good | Potential pitfalls | What to avoid |
-|--------|-------------|--------------------|---------------|
-| **Data structure** | Ordered maps keep intervals sorted → O(log n) operations | If you use a *list* or *vector*, operations become O(n) | Avoid naïve linear scans after each update |
-| **Merge logic** | Simple “expand left/right” approach merges all overlapping ranges in one pass | Forgetting to handle *adjacent* intervals (e.g., `[1,3)` and `[3,5)`) → may leave gaps | Always treat intervals as *half‑open* |
-| **Deletion** | Split left/right parts if they exist → no lost data | Over‑deleting or forgetting to keep the right fragment | Keep track of the original interval’s end before erasing |
-| **Memory** | Map stores only *disjoint* intervals | Repeated add/remove can fragment the map → many small ranges | Merge aggressively in `addRange` to keep size minimal |
-| **Complexity** | Each operation is *logarithmic* | In worst case, removing many tiny intervals → O(k log n) | Use `subMap` / `erase` in bulk where possible |
-| **Language quirks** | Java TreeMap, C++ map, Python bisect | Java’s `subMap` returns a view – must call `clear()`; Python’s list deletion slice is O(k) | Pay attention to boundary conditions (right exclusive) |
+| Operation | Time | Extra Space |
+|-----------|------|-------------|
+| `addRange` | `O(log N)` | `O(1)` new node |
+| `queryRange` | `O(log N)` | none |
+| `removeRange` | `O(log N)` | possible two new nodes (splits) |
 
-### The “Ugly” Side
-
-- **Edge Cases**:  
-  - Adding a range that touches the end of an existing one.  
-  - Removing a range that partially overlaps multiple intervals.  
-  - Querying an empty set or range outside all intervals.
-
-- **Off‑by‑One**:  
-  Since intervals are *half‑open*, a range `[10, 20)` includes 10 but excludes 20.  
-  Mistakenly treating it as closed can lead to subtle bugs.
-
-- **Thread Safety**:  
-  The given implementations are *not* thread‑safe.  
-  In a multi‑threaded environment you’ll need external locks or a concurrent map.
+`N` is the number of stored disjoint ranges (≤ 10⁴).  
+Because each call touches at most one predecessor and one successor, the algorithm never traverses more than a handful of map entries.
 
 ---
 
-## 5. Why Mastering Range Module Helps Your Career
+## 8.  Interview Tips
 
-1. **Interview Frequency**  
-   - *Range Module* is a staple on technical hiring platforms (LeetCode, HackerRank, InterviewBit).  
-   - It tests your ability to maintain a *dynamic set* of intervals – a classic data‑structure problem.
+1. **State the invariant** – “All intervals are disjoint and sorted by start.”  
+2. **Explain `floorEntry` / `upper_bound`** – why the predecessor interval matters for a query.  
+3. **Clarify half‑open nature** – `[l, r)` never includes `r`.  
+4. **Show edge‑case handling** – adjacency (`[1,3)` + `[3,5)` → `[1,5)`).  
+5. **Mention complexity** – “All three operations run in O(log N) time, which is fast enough for 10⁴ calls.”  
 
-2. **Conceptual Breadth**  
-   - You’ll practice:  
-     *Ordered maps / balanced BSTs* → core data‑structure knowledge.  
-     *Interval arithmetic* → math + edge‑case handling.  
-     *Set operations (union, intersection, difference)* → fundamental to many systems.
-
-3. **Showcasing Problem‑Solving**  
-   - Write a clear, bug‑free implementation in the language you’re comfortable with.  
-   - Explain the time‑space trade‑offs during an interview; it shows depth of understanding.
-
-4. **Production Relevance**  
-   - Many real‑world services (e.g., feature‑flag engines, scheduling systems, network firewall rules) maintain ranges of timestamps or IP blocks.  
-   - Knowing this pattern gives you confidence to contribute immediately to such systems.
+> These talking points are exactly what recruiters expect: you know the data‑structure, you can reason about invariants, and you handle off‑by‑one pitfalls.
 
 ---
 
-## 5. SEO‑Friendly Blog Title & Outline
+## 9.  SEO‑Friendly Meta‑Summary (for your blog)
 
-**Title**  
-> “Range Module – The Interview Power‑Up: 715 LeetCode Explained (Good, Bad & Ugly)”
-
-**Meta Description**  
-> Dive into the “Range Module” problem (LeetCode #715). Learn three O(log n) solutions in Java, Python, and C++, plus interview‑ready insights on edge‑case handling and why mastering this problem can land you a software‑engineering role.
-
-**Suggested Headings**
-
-1. **What is the Range Module?** – Problem statement & half‑open intervals.  
-2. **Why This Problem Rocks for Interviews** – Dynamic set of intervals, time‑space trade‑offs.  
-3. **Three Production‑Ready Implementations** – Java, Python, C++ (code blocks).  
-4. **The Good** – Ordered maps, logarithmic ops, clear split‑merge logic.  
-5. **The Bad** – Edge‑cases, off‑by‑one errors, fragmentation.  
-6. **The Ugly** – Adjacent intervals, thread safety, large‑scale fragmentation.  
-7. **Common Mistakes to Avoid** – Pseudocode checklist, boundary tests.  
-8. **Beyond the Problem** – Applying interval logic to scheduling, caching, firewall rules.  
-9. **Interview Success Tips** – How to explain your solution, trade‑off discussions, handling follow‑up questions.  
-10. **Conclusion & Next Steps** – Further problems (Merge Intervals, 315 – Count of Smaller Numbers, 720 – Longest Word in Dictionary) and resources.
+> **Title:** Range Module – Leetcode 715 | O(log N) BST Solution (Java, Python, C++)  
+> **Description:** Master Leetcode 715 “Range Module” with a concise `TreeMap`/`std::map` implementation. Get ready for coding interviews and optimize your job‑search content with clear explanations, code snippets, and complexity analysis.  
+> **Keywords:** Leetcode 715, Range Module, interval tree, TreeMap, std::map, SortedList, bisect, coding interview, job interview, algorithm analysis, O(log N) operations.
 
 ---
 
-### Takeaway
+## 10.  Conclusion
 
-Mastering **Range Module** means you can:
+The *TreeMap / `std::map`* approach is the most interview‑friendly, balancing speed, memory, and clarity. It runs in `O(log N)` time for all three operations, keeps the intervals disjoint, and is only a few dozen lines of code.
 
-- Write efficient, bug‑free code for dynamic interval problems.  
-- Articulate trade‑offs between different languages and data structures.  
-- Solve a classic interview problem that tests both data‑structure knowledge and careful reasoning about edge cases.
+If you’re prepping for a software‑engineering interview, **present the BST solution**, walk through the three operations, and emphasise the half‑open interval nuance. You’ll impress the interviewer with both your coding skill and your algorithmic intuition.
 
-Give the solutions a try, run through a handful of random tests, and feel the confidence that comes from being *pro‑fessional* at managing ranges. Happy coding—and good luck on your next interview!
+Happy coding—and good luck on your next interview!
