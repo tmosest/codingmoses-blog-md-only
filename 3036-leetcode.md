@@ -7,409 +7,364 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  The Code – Three Languages
+        ## 1.  Problem 3036 – *Number of Subarrays That Match a Pattern II*
 
-Below you’ll find a **ready‑to‑copy** implementation of the optimal solution for LeetCode 3036  
-`Number of Subarrays That Match a Pattern II`.  
-The solution runs in **O(n + m)** time and **O(m)** auxiliary space, using the KMP
-(“Knuth–Morris–Pratt”) string‑matching idea on a *comparison* array.
+**Problem URL** – <https://leetcode.com/problems/number-of-subarrays-that-match-a-pattern-ii/>
 
-> *Why KMP?*  
->  After converting the numeric array into an array of `-1, 0, 1` that
->  represents “<, =, >” between adjacent elements, the problem becomes
->  an exact pattern‑matching problem on an integer string – exactly what
->  KMP is meant for.
+**What we need to do**
 
----
+> Given an array `nums` (size *n*) and a pattern array `pattern` (size *m*, each element is `-1, 0, 1`), count how many sub‑arrays `nums[i..i+m]` satisfy the pattern:  
+> • `pattern[k] = 1` → `nums[i+k+1] > nums[i+k]`  
+> • `pattern[k] = 0` → `nums[i+k+1] = nums[i+k]`  
+> • `pattern[k] = -1`→ `nums[i+k+1] < nums[i+k]`
 
-### 1.1  Java – `Solution.java`
+The sub‑array length is always `m+1`, so we slide a window of length `m` over the *difference* sequence of `nums`.
 
-```java
-import java.util.*;
+-------------------------------------------------------------------
 
-public class Solution {
+## 2.  Why This Problem Is a Gold‑mine for Interviews
 
-    /* ----------  Build the lps array (KMP preprocessing) ---------- */
-    private static void buildLps(int[] pat, int[] lps) {
-        int m = pat.length;
-        int len = 0;              // length of the previous longest prefix suffix
-        lps[0] = 0;               // lps[0] is always 0
+| Why you should care | How it shows your skill |
+|---------------------|------------------------|
+| **Array + Pattern Matching** – a classic interview topic | Demonstrates *array manipulation*, *string/array pattern matching*, and *algorithmic thinking* |
+| **LeetCode “hard” but solvable in *O(n)* time** | You’ll impress recruiters with an efficient solution |
+| **Typical “gotcha”** – many candidates fall into an *O(n·m)* TLE trap | Avoid that trap and land the interview |
+| **Applicable to real‑world problems** – e.g. trend detection in time series | Shows you can solve production‑grade problems |
 
-        for (int i = 1; i < m; ) {
-            if (pat[i] == pat[len]) {
-                len++;
-                lps[i] = len;
-                i++;
-            } else {
-                if (len != 0) {
-                    len = lps[len - 1];
-                } else {
-                    lps[i] = 0;
-                    i++;
-                }
-            }
-        }
-    }
+-------------------------------------------------------------------
 
-    /* -------------------------  Main API ------------------------- */
-    public int countMatchingSubarrays(int[] nums, int[] pattern) {
-        int n = nums.length;
-        int m = pattern.length;
-        if (m == 0) return 0;
+## 2.  High‑Level Idea – KMP on the “hill” array
 
-        /* Build the “comparison” array for nums (size n‑1) */
-        int[] cmp = new int[n - 1];
-        for (int i = 0; i < n - 1; i++) {
-            if (nums[i] < nums[i + 1]) cmp[i] = 1;   // “>”   → 1
-            else if (nums[i] > nums[i + 1]) cmp[i] = -1;  // “<”   → -1
-            else cmp[i] = 0;                      // “=”   → 0
-        }
+1. **Convert `nums` to a “hill” array**  
+   `hill[i] = sign(nums[i+1] - nums[i])`  
+   where `sign(x)` = `1` if `x > 0`, `0` if `x == 0`, `-1` if `x < 0`.
 
-        /* KMP requires the pattern itself, so we keep it as‑is. */
-        int[] lps = new int[m];
-        buildLps(pattern, lps);
+2. **The pattern itself is already a sequence of `-1,0,1`**, so after step 1 we only have to find how many times the `pattern` appears in `hill`.  
+   This is a classic **string‑matching** problem → we can use the **Knuth‑Morris‑Pratt (KMP)** algorithm.
 
-        /* ----------  KMP search on cmp  ---------- */
-        int i = 0;          // index for cmp[]
-        int j = 0;          // index for pattern[]
-        int answer = 0;
+3. The KMP algorithm gives **`O(n)` time** and **`O(m)` auxiliary space**.  
+   (The “hill” array has length `n‑1`; we only keep a rolling window of length `m` while running KMP.)
 
-        while (i < cmp.length) {
-            if (cmp[i] == pattern[j]) {
-                i++; j++;
-            }
+-------------------------------------------------------------------
 
-            if (j == m) {                     // a full match found
-                answer++;
-                j = lps[j - 1];               // continue searching for next overlap
-            } else if (i < cmp.length && cmp[i] != pattern[j]) {
-                if (j != 0) j = lps[j - 1];
-                else i++;
-            }
-        }
-        return answer;
-    }
-}
-```
+## 3.  The *Good* – KMP Implementation (All 3 Languages)
 
-> **Compiling & running**  
-> ```bash
-> javac Solution.java
-> java -jar leetcode.jar   # the LeetCode harness will call countMatchingSubarrays
-> ```
+| Language | File | Time | Space |
+|----------|------|------|-------|
+| C++ | `kmp.cpp` | `O(n)` | `O(m)` |
+| Java | `kmp.java` | `O(n)` | `O(m)` |
+| Python | `kmp.py` | `O(n)` | `O(m)` |
 
----
-
-### 1.2  Python – `solution.py`
-
-```python
-class Solution:
-    # ---------- KMP preprocessing ----------
-    def _build_lps(self, pat):
-        m = len(pat)
-        lps = [0] * m
-        length = 0
-        i = 1
-        while i < m:
-            if pat[i] == pat[length]:
-                length += 1
-                lps[i] = length
-                i += 1
-            else:
-                if length != 0:
-                    length = lps[length - 1]
-                else:
-                    lps[i] = 0
-                    i += 1
-        return lps
-
-    # ---------- Main API ----------
-    def countMatchingSubarrays(self, nums: List[int], pattern: List[int]) -> int:
-        n, m = len(nums), len(pattern)
-        if m == 0:
-            return 0
-
-        # Build the comparison array for nums (size n-1)
-        cmp = [0] * (n - 1)
-        for i in range(n - 1):
-            if nums[i] < nums[i + 1]:
-                cmp[i] = 1          # “>”
-            elif nums[i] > nums[i + 1]:
-                cmp[i] = -1         # “<”
-            else:
-                cmp[i] = 0          # “=”
-
-        # Build KMP failure table
-        lps = self._build_lps(pattern)
-
-        # KMP search
-        i = j = 0
-        answer = 0
-        while i < len(cmp):
-            if cmp[i] == pattern[j]:
-                i += 1
-                j += 1
-            if j == m:                # full match
-                answer += 1
-                j = lps[j - 1]
-            elif i < len(cmp) and cmp[i] != pattern[j]:
-                if j != 0:
-                    j = lps[j - 1]
-                else:
-                    i += 1
-        return answer
-```
-
-> **Running**  
-> ```bash
-> python -m unittest solution.py   # optional test harness
-> ```
-
----
-
-### 1.3  C++ – `solution.cpp`
+### 3.1  C++ – KMP
 
 ```cpp
+// kmp.cpp
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
-public:
-    /* ----------  KMP preprocessing: build lps array ---------- */
-    void buildLps(const vector<int>& pat, vector<int>& lps) {
+private:
+    // Build longest-prefix‑suffix (LPS) table
+    vector<int> buildLPS(const vector<int>& pat) {
         int m = pat.size();
-        lps.assign(m, 0);
-        int len = 0;                       // previous longest prefix suffix
-        for (int i = 1; i < m; ) {
+        vector<int> lps(m, 0);
+        for (int i = 1, len = 0; i < m; ) {
             if (pat[i] == pat[len]) {
-                len++;
-                lps[i] = len;
-                i++;
+                lps[i++] = ++len;
+            } else if (len) {
+                len = lps[len-1];
             } else {
-                if (len != 0)
-                    len = lps[len - 1];
-                else
-                    lps[i] = 0, i++;
+                lps[i++] = 0;
             }
         }
+        return lps;
     }
 
-    /* ----------  Main API ---------- */
-    int countMatchingSubarrays(vector<int>& nums, vector<int>& pattern) {
-        int n = nums.size(), m = pattern.size();
-        if (m == 0) return 0;
-
-        /* Build the comparison array for nums (size n-1) */
-        vector<int> cmp(n - 1);
-        for (int i = 0; i < n - 1; ++i) {
-            if (nums[i] < nums[i + 1]) cmp[i] = 1;      // “>”
-            else if (nums[i] > nums[i + 1]) cmp[i] = -1; // “<”
-            else cmp[i] = 0;                            // “=”
+    // Convert nums into the hill array: [-1,0,1] → [-1,0,1]
+    vector<int> buildHill(const vector<int>& nums) {
+        int n = nums.size();
+        vector<int> hill(n-1);
+        for (int i = 0; i < n-1; ++i) {
+            if (nums[i+1] > nums[i]) hill[i] =  1;
+            else if (nums[i+1] < nums[i]) hill[i] = -1;
+            else hill[i] = 0;
         }
+        return hill;
+    }
 
-        /* KMP preprocessing on the pattern */
-        vector<int> lps;
-        buildLps(pattern, lps);
+public:
+    int countMatchingSubarrays(vector<int>& nums, vector<int>& pattern) {
+        if (pattern.empty() || nums.size() <= pattern.size()) return 0;
 
-        /* KMP search */
-        int i = 0, j = 0, answer = 0;
-        while (i < cmp.size()) {
-            if (cmp[i] == pattern[j]) {
+        vector<int> hill = buildHill(nums);
+        vector<int> lps = buildLPS(pattern);
+
+        int ans = 0, i = 0, j = 0, h = hill.size(), m = pattern.size();
+
+        while (i < h) {
+            if (hill[i] == pattern[j]) {
                 ++i; ++j;
             }
-
-            if (j == m) {          // full match
-                ++answer;
-                j = lps[j - 1];
-            } else if (i < cmp.size() && cmp[i] != pattern[j]) {
-                if (j != 0)
-                    j = lps[j - 1];
-                else
-                    ++i;
+            if (j == m) {          // pattern found
+                ++ans;
+                j = lps[j-1];
+            } else if (i < h && hill[i] != pattern[j]) {
+                if (j) j = lps[j-1];
+                else ++i;
             }
         }
-        return answer;
+        return ans;
     }
 };
 ```
 
-> **Compilation**  
-> ```bash
-> g++ -std=c++17 -O2 -pipe -static -s solution.cpp -o solution
-> ```
+> **Why it works** – The hill array is the “signature” of adjacent comparisons.  
+> The KMP algorithm guarantees that we never re‑inspect a character that we already know is a match or mismatch, giving us linear time.
 
---- 
+-------------------------------------------------------------------
 
-## 2.  A Quick‑Look at the Optimal Approach
+### 3.2  Java – KMP
 
-| Approach | Time | Space | Remarks |
-|----------|------|-------|---------|
-| **Brute‑Force** | **O(n · m)** | O(1) | Simple to write but TLE on the 10⁵‑size tests. |
-| **Sliding‑Window + Hash** | **O(n)** | O(n) | Uses a rolling hash; collision risk (rare but possible). |
-| **KMP on Comparison Array** | **O(n + m)** | **O(m)** | Collision‑free, deterministic, easy to reason about. |
+```java
+// kmp.java
+import java.util.*;
 
-### 2.1  What the “Comparison Array” Looks Like
+public class Solution {
+    /* Build longest‑prefix‑suffix (LPS) array */
+    private void buildLPS(int[] pat, int[] lps) {
+        int m = pat.length;
+        lps[0] = 0;
+        for (int i = 1, len = 0; i < m; ) {
+            if (pat[i] == pat[len]) {
+                lps[i++] = ++len;
+            } else if (len != 0) {
+                len = lps[len-1];
+            } else {
+                lps[i++] = 0;
+            }
+        }
+    }
 
-For `nums = [1, 3, 2, 4]`:
+    /* Convert nums to hill array (-1,0,1) */
+    private int[] buildHill(int[] nums) {
+        int n = nums.length;
+        int[] hill = new int[n-1];
+        for (int i = 0; i < n-1; i++) {
+            if (nums[i+1] > nums[i]) hill[i] = 1;
+            else if (nums[i+1] < nums[i]) hill[i] = -1;
+            else hill[i] = 0;
+        }
+        return hill;
+    }
 
+    public int countMatchingSubarrays(int[] nums, int[] pattern) {
+        if (pattern.length == 0 || nums.length <= pattern.length) return 0;
+
+        int[] hill = buildHill(nums);
+        int m = pattern.length;
+        int[] lps = new int[m];
+        buildLPS(pattern, lps);
+
+        int i = 0, j = 0, ans = 0;
+        while (i < hill.length) {
+            if (hill[i] == pattern[j]) {
+                i++; j++;
+            }
+            if (j == m) {               // pattern matched
+                ans++;
+                j = lps[j-1];
+            } else if (i < hill.length && hill[i] != pattern[j]) {
+                if (j != 0) j = lps[j-1];
+                else i++;
+            }
+        }
+        return ans;
+    }
+}
 ```
-1 < 3 →  1
-3 > 2 → -1
-2 < 4 →  1
-```
 
-So the comparison array is `[1, -1, 1]`.  
-The pattern stays `[1, -1, 1]` (exactly the same values).  
-Now the task is: *“how many times does the integer string `pattern` appear in
-this comparison string?”* – a classic KMP question.
+-------------------------------------------------------------------
 
----
-
-## 3.  Blog Article – “Cracking LeetCode 3036 with KMP (Java, Python, C++)”
-
-> **Keywords**: *Leetcode 3036*, *Number of Subarrays That Match a Pattern II*, *KMP*, *Java*, *Python*, *C++*, *coding interview*, *algorithm design*, *job interview prep*.
-
----
-
-### 3.1  Introduction
-
-> **LeetCode 3036 – Number of Subarrays That Match a Pattern II**  
->  is a deceptively simple yet highly‑rated problem that tests a candidate’s
->  ability to recognize patterns, transform data, and apply a classic
->  string‑matching algorithm (KMP).  
->  For anyone preparing for coding interviews at top tech companies, mastering
->  this problem is a “must‑know” because it demonstrates:
-
-- Deep understanding of **array manipulation** and **dynamic programming**.
-- Ability to identify a problem as a hidden **string‑matching** task.
-- Proficiency in **Java, Python, and C++** – the three languages most often
-  requested in interviews.
-
----
-
-### 3.2  Problem Statement (Short & Sweet)
-
-> Given two integer arrays `nums` (size *n*) and `pattern` (size *m*),
-> count how many contiguous sub‑arrays of `nums` have the **exact same
-> directional pattern** as `pattern`.  
-> The directional pattern is defined by comparisons:
-> * `pattern[i] = 1`  → the sub‑array element at position *i* is **greater**  
-> * `pattern[i] = -1` → the sub‑array element at position *i* is **less**  
-> * `pattern[i] = 0`  → the sub‑array element at position *i* is **equal**  
-
-> *Return the total count.*
-
----
-
-### 3.3  Why Brute‑Force Fails (Good Reasons)
-
-The straightforward O(*n* · *m*) algorithm checks every possible sub‑array
-and compares it against the pattern.  
-With constraints up to 100 000 elements, this becomes impractical:
+### 3.3  Python – KMP
 
 ```python
-for start in range(n - m + 1):
-    match = True
-    for k in range(m):
-        if compare(nums[start + k], nums[start + k + 1]) != pattern[k]:
-            match = False; break
+# kmp.py
+class Solution:
+    def countMatchingSubarrays(self, nums, pattern):
+        if not pattern or len(nums) <= len(pattern):
+            return 0
+
+        # 1. Build hill array: -1,0,1 based on adjacent comparisons
+        hill = [1 if nums[i+1] > nums[i] else -1 if nums[i+1] < nums[i] else 0
+                for i in range(len(nums)-1)]
+
+        # 2. Build LPS table for pattern
+        m = len(pattern)
+        lps = [0] * m
+        len_lps = 0
+        i = 1
+        while i < m:
+            if pattern[i] == pattern[len_lps]:
+                len_lps += 1
+                lps[i] = len_lps
+                i += 1
+            else:
+                if len_lps:
+                    len_lps = lps[len_lps-1]
+                else:
+                    lps[i] = 0
+                    i += 1
+
+        # 3. Run KMP over hill
+        ans = 0
+        i = 0  # index in hill
+        j = 0  # index in pattern
+        while i < len(hill):
+            if hill[i] == pattern[j]:
+                i += 1
+                j += 1
+            if j == m:
+                ans += 1
+                j = lps[j-1]
+            elif i < len(hill) and hill[i] != pattern[j]:
+                if j:
+                    j = lps[j-1]
+                else:
+                    i += 1
+        return ans
 ```
 
-Time complexity: `O(10⁵ · 10⁵)` → **exceeds the 1‑second limit** on LeetCode.
+-------------------------------------------------------------------
 
----
+## 2.  The *Good* – What You’ll Show in a Real Interview
 
-### 3.4  The Key Insight – Convert to a Comparison Array
+|  Feature  |  Why it’s Good |
+|-----------|----------------|
+| **Linear time (`O(n)`)** | Interviewers love solutions that “don’t do the obvious nested loops.” |
+| **No heavy data‑structures** | Keeps the memory footprint small (`O(m)` for the LPS table). |
+| **Deterministic** | No hash‑collision risk. |
+| **Reusable** | The same KMP skeleton works for any pattern‑matching problem on integer arrays. |
 
-1. **Build a “direction” array** for `nums` of length `n-1`:
-   - `>`  → `1`
-   - `<`  → `-1`
-   - `=`  → `0`
+### Complexity Summary
 
-2. **The pattern itself is already a sequence of `1, -1, 0`**.  
-   Therefore, we simply search for `pattern` inside the comparison array.
+| Implementation | Time | Space |
+|----------------|------|-------|
+| Brute‑force | `O(n · m)` | `O(1)` |
+| KMP (above) | `O(n)` | `O(m)` |
+| Rolling‑hash (alternative) | `O(n)` | `O(m)` (hash table) |
+| **KMP** (our favourite) | **`O(n)`** | **`O(m)`** |
 
-3. **No extra memory for hashing**; just a linear transformation of the
-   original array.
+-------------------------------------------------------------------
 
----
+## 3.  The *Bad* – Common Pitfalls
 
-### 3.5  Why KMP Is the Right Tool
+| Pitfall | Why it hurts |
+|---------|--------------|
+| Forgetting that the “hill” array length is `n‑1` | Mis‑aligning indices → off‑by‑one errors |
+| Using `O(n·m)` nested loops | TLE on the test set |
+| Using a rolling hash without handling collisions | May produce wrong answers on adversarial input |
+| Not handling empty pattern or `nums.size() == pattern.size()` | Edge‑case bugs (often uncovered in tests). |
 
-- **Deterministic**: Unlike hash‑based methods, KMP never fails due to collisions.
-- **Efficient**: Preprocessing takes `O(m)` time; searching takes `O(n)`.
-- **Simple**: The failure table (`lps`) guarantees linear progression even
-  after a match.
+### Edge‑Case Checklist
 
----
+1. `pattern` empty → answer is `0`.
+2. `nums.size()` ≤ `pattern.size()` → answer is `0`.
+3. `nums` of length 1 → no hill array → answer is `0`.
 
-### 3.6  Implementation Highlights
+-------------------------------------------------------------------
 
-| Language | Core Technique | Code Snippet |
-|----------|----------------|--------------|
-| **Java** | `int[] cmp = new int[n-1]` | `if (nums[i] < nums[i+1]) cmp[i] = 1;` |
-| **Python** | List comprehension + KMP helper | `cmp[i] = 1 if nums[i] < nums[i+1] else -1` |
-| **C++** | `vector<int> cmp(n-1);` | `cmp[i] = (nums[i] < nums[i+1]) ? 1 : -1;` |
+## 3.  The *Alternative* – Rolling‑Hash (Optional)
 
-> **Tip**: In LeetCode’s Java harness, ensure that the method signature matches
-> `public int countMatchingSubarrays(int[] nums, int[] pattern)`.
+If you’re comfortable with probabilistic solutions, you can replace KMP with a **rolling hash** (Rabin‑Karp) on the hill array. It’s also `O(n)` on average, but you must pick a large prime modulus and base, and be careful of overflow. For interview‑ready code, stick to KMP.
 
----
+-------------------------------------------------------------------
 
-### 3.7  Complexity Analysis (What Interviewers Love)
+## 3.  The *Tricky* – Rolling‑Hash Implementation (Optional)
 
-| Metric | Brute‑Force | KMP (Optimal) |
-|--------|-------------|---------------|
-| Time   | `O(n·m)`    | `O(n + m)`    |
-| Space  | `O(1)`      | `O(m)`        |
+| Language | File |
+|----------|------|
+| C++ | `hash.cpp` |
+| Java | `hash.java` |
+| Python | `hash.py` |
 
-> The linear time complexity guarantees that even the worst‑case tests with
-> *n* = 10⁵ and *m* = 10⁵ run in under a few milliseconds.
+> **Caution** – Even though `O(n)` is promised, you might still get wrong answers if the chosen base or modulus leads to a collision. KMP is the safest choice.
 
----
+-------------------------------------------------------------------
 
-### 3.8  Common Pitfalls & “Good Bad” Practices
+## 3.  The *Bad* – Brute‑Force (Illustrate the TLE)
 
-| Pitfall | Fix |
-|---------|-----|
-| Forgetting that the comparison array has length *n‑1* | Use `if (i < cmp.size())` guard. |
-| Over‑complicating by using `int[][]` for 2‑D slices | Stick to a 1‑D comparison array. |
-| Using a rolling hash without handling collisions | Prefer KMP for guaranteed correctness. |
-| Mixing “>`” and “`<`” semantics in the comparison array | Double‑check the sign mapping. |
+|  Implementation |  Time |
+|-----------------|-------|
+| Brute‑force | `O(n · m)` |
 
----
+```python
+def brute(nums, pattern):
+    hill = [1 if nums[i+1] > nums[i] else -1 if nums[i+1] < nums[i] else 0
+            for i in range(len(nums)-1)]
+    m = len(pattern)
+    ans = 0
+    for i in range(len(hill)-m+1):
+        if hill[i:i+m] == pattern:
+            ans += 1
+    return ans
+```
 
-### 3.9  Real‑World Takeaway
+> **Why it’s bad** – `n` can be up to 10⁵ and `m` up to 10⁴ (in many test sets).  
+> The nested loop will hit the “10⁹ operations” barrier and receive **Time‑Limit Exceeded**.
 
-> **LeetCode 3036** is an excellent example of **“data‑structure transformation”**.  
-> Many interview problems hide a pattern‑matching core; turning the problem
-> into a familiar algorithmic form (here, KMP) is a powerful skill.  
-> Implement it in **Java, Python, C++**, and you’ll have a versatile, proven
-> solution that impresses interviewers at Google, Amazon, Microsoft, and more.
+-------------------------------------------------------------------
 
----
+## 3.  The *Nice* – Rolling‑Hash Alternative (for completeness)
 
-### 3.10  Call to Action
+Below is a simple **Rabin‑Karp** solution.  
+It runs in linear time on average but has a **tiny probability of collision** (negligible for interview purposes if you choose a 64‑bit modulus).
 
-> Practice the following variations:
+### C++ – Rabin‑Karp
 
-1. **Add a new direction** (`2` meaning “difference > threshold”) and
-   adapt the comparison array accordingly.
-2. **Change the requirement** to “at least *k* overlapping matches”.
-3. **Translate the solution into Go** (for your next interview).
+```cpp
+// rk.cpp
+class Solution {
+public:
+    int countMatchingSubarrays(vector<int>& nums, vector<int>& pattern) {
+        if (!pattern.size() || nums.size() <= pattern.size()) return 0;
+        const long long MOD = 1e9 + 7;
+        const long long BASE = 91138233;  // random odd number
 
-> Remember: **Good code is elegant, correct, and fast**.  
-> The KMP solution above ticks all those boxes.
+        // Hill array
+        vector<int> hill(nums.size()-1);
+        for (int i=0; i<hill.size(); ++i) {
+            hill[i] = (nums[i+1] > nums[i]) - (nums[i+1] < nums[i]); // -1,0,1
+        }
 
---- 
+        // Prefix hash for hill
+        vector<long long> pref(hill.size()+1, 0), pow(BASE, hill.size()+1, 1);
+        for (int i=1; i<=hill.size(); ++i) pow[i] = pow[i-1]*BASE % MOD;
+        for (int i=0; i<hill.size(); ++i)
+            pref[i+1] = (pref[i]*BASE + (hill[i]+2)) % MOD; // shift to [1,3]
 
-## 4.  Conclusion
+        // Hash of pattern
+        long long hpat = 0;
+        for (int x: pattern) hpat = (hpat*BASE + (x+2)) % MOD;
 
-We have:
+        int ans = 0;
+        for (int i=0; i<=hill.size()-pattern.size(); ++i) {
+            long long hsub = (pref[i+pattern.size()] - pref[i]*pow[pattern.size()]) % MOD;
+            if (hsub < 0) hsub += MOD;
+            if (hsub == hpat) ++ans;
+        }
+        return ans;
+    }
+};
+```
 
-- Delivered production‑ready implementations in Java, Python, and C++.
-- Shown the transformation from an array‑pattern problem to a KMP search.
-- Provided a ready‑to‑publish blog post that highlights why mastering LeetCode 3036
-  is essential for coding interview success.
+> **Shift (`x+2`)** maps `{-1,0,1}` → `{1,2,3}` so we avoid negative modulo operations.
 
-Happy coding, and good luck on your next interview!
+-------------------------------------------------------------------
+
+## 3.  Final Take‑Away
+
+1. **Use the KMP algorithm on the hill array** – that is the canonical, deterministic, and linear‑time solution.  
+2. Keep your code **readable** and **compact** – the skeleton above is production‑ready.  
+3. Always test the edge cases first: empty pattern, short `nums`, etc.
+
+You’ve now got a fully‑functional, interview‑ready solution in **C++**, **Java**, and **Python**. Good luck, and happy coding!
