@@ -7,29 +7,59 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Code Solutions
+        ## 1.  The 356. Line Reflection problem – 3‑way solution + a SEO‑friendly blog post
 
-Below are clean, production‑ready implementations in **Java**, **Python**, and **C++** that solve LeetCode 356 – *Line Reflection* in **O(n)** time and **O(n)** extra space.
+> **LeetCode #356 – Line Reflection**  
+> **Difficulty**: Medium  
+> **Target language**: Java, Python, C++  
+> **Goal**: Determine whether a vertical line (parallel to the *y*‑axis) exists that perfectly reflects a set of 2‑D points onto itself.
+
+Below you’ll find:
+
+|  | **Java** | **Python** | **C++** |
+|---|---|---|---|
+| **Complexity** | O(n) time, O(n) space | O(n) time, O(n) space | O(n) time, O(n) space |
+| **Key idea** | Use the “center” = (min + max)/2 | Same as Java | Same as Java |
+| **Why it’s fast** | Constant‑time hash look‑ups | Constant‑time hash look‑ups | Constant‑time hash look‑ups |
+| **Edge‑cases** | Duplicate points, negative coordinates, integer overflow | Same | Same |
+
+> 📌 *If you’re preparing for coding interviews, this is one of the “must‑know” geometry + hash‑set questions.*  
 
 ---
 
-### 1.1 Java – `Solution.java`
+## 2.  Problem Statement (paraphrased)
+
+Given `n` points `points[i] = [xi, yi]` (duplicates allowed), determine if a vertical line `x = c` exists such that reflecting every point across that line produces a point that also exists in the original set. In other words:
+
+> For every `(x, y)` there must be a point `(2c – x, y)` in the set.
+
+---
+
+## 3.  Approach – “Good, Bad, Ugly”
+
+| **Good** | **Bad** | **Ugly** |
+|---|---|---|
+| **O(n) solution** using a single pass to find `minX` and `maxX`, then a hash‑set to verify reflected pairs. | A naive O(n²) pairwise comparison quickly becomes impractical for 10⁴ points. | Attempting to store coordinates as `double` for the line can introduce rounding errors; integer arithmetic is safer. |
+| **No sorting** – avoids `O(n log n)` overhead. | Relying on sorting would be fine but is an unnecessary complication for this problem. | Using a custom struct for the hash key without proper `hash`/`equals` (Java) or `operator==`/`hash` (C++) leads to subtle bugs. |
+| **Clear math** – center = (min + max)/2, integer‑only. | Forgetting that `min + max` may overflow a 32‑bit `int`. | Using `float`/`double` for the center but still comparing integer coordinates can cause subtle mismatches. |
+
+---
+
+## 4.  Code
+
+Below are clean, commented implementations in **Java**, **Python**, and **C++**.
+
+---
+
+### 4.1 Java – HashSet of Strings (easy, safe)
 
 ```java
 import java.util.HashSet;
 import java.util.Set;
 
 public class Solution {
-    /**
-     * Checks whether all points can be reflected across some vertical line.
-     *
-     * @param points 2‑D integer array of points. 0 ≤ points[i].length == 2
-     * @return true if a vertical line of reflection exists, false otherwise
-     */
     public boolean isReflected(int[][] points) {
-        if (points == null || points.length == 0) return true;
-
-        // Find the extreme x‑coordinates.
+        // 1. Find min and max X
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
         for (int[] p : points) {
@@ -37,220 +67,170 @@ public class Solution {
             maxX = Math.max(maxX, p[0]);
         }
 
-        // Sum of the extreme x‑coordinates = 2 * center of symmetry
-        int sum = minX + maxX;
+        // 2. The line must be at x = (minX + maxX) / 2
+        // Use a *double* to avoid integer division truncation
+        double mid = (minX + (double) maxX) / 2.0;
 
-        // Store every point in a hash set for O(1) look‑ups.
-        Set<Long> set = new HashSet<>();
+        // 3. Put all points into a set as a unique key "x#y"
+        Set<String> set = new HashSet<>();
         for (int[] p : points) {
-            set.add(encode(p[0], p[1]));
+            set.add(p[0] + "#" + p[1]);
         }
 
-        // For every point, its mirror must also exist.
+        // 4. For each point, the reflected point must exist
         for (int[] p : points) {
-            int mirroredX = sum - p[0];
-            long key = encode(mirroredX, p[1]);
+            double reflectedX = 2 * mid - p[0];
+            // reflectedX must be an integer for a valid reflection
+            if (Math.abs(reflectedX - Math.round(reflectedX)) > 1e-9) {
+                return false;
+            }
+            String key = ((long) Math.round(reflectedX)) + "#" + p[1];
             if (!set.contains(key)) {
-                return false;          // missing partner – not symmetric
+                return false;
             }
         }
         return true;
     }
-
-    /**
-     * Encodes a pair (x, y) into a single long.
-     * Assumes |x|, |y| ≤ 10^8 → fits comfortably into 32 bits each.
-     */
-    private long encode(int x, int y) {
-        return (((long) x) << 32) ^ (y & 0xffffffffL);
-    }
 }
 ```
 
+**Why this works**
+
+* `mid` is computed as a `double` but we immediately check that the reflected X is an integer.
+* Using `"x#y"` guarantees unique string keys even when `x` or `y` is negative.
+* The algorithm is `O(n)` time and `O(n)` space.
+
 ---
 
-### 1.2 Python – `solution.py`
+### 4.2 Python – Tuple in a set
 
 ```python
-from typing import List
-
 class Solution:
     def isReflected(self, points: List[List[int]]) -> bool:
-        """Return True if the set of points is symmetric across a vertical line."""
-        if not points:
-            return True
-
-        # Find extremes of the x‑axis.
+        # 1. min and max X
         min_x = min(p[0] for p in points)
         max_x = max(p[0] for p in points)
-        sum_x = min_x + max_x                     # 2 * center of symmetry
 
-        # Store all points as tuples in a set for O(1) look‑ups.
+        # 2. Center of the line
+        mid = (min_x + max_x) / 2
+
+        # 3. Put points into a set of tuples
         point_set = {tuple(p) for p in points}
 
-        # Every point must have its mirror.
+        # 4. Verify each point has its mirror
         for x, y in points:
-            mirrored = (sum_x - x, y)
-            if mirrored not in point_set:
+            reflected_x = 2 * mid - x
+            # the reflected point must be integral
+            if int(reflected_x) != reflected_x:
+                return False
+            if (int(reflected_x), y) not in point_set:
                 return False
         return True
 ```
 
+**Key points**
+
+* Python’s `tuple` is hashable, making `point_set` a natural choice.
+* `int(reflected_x) != reflected_x` is a concise way to ensure the reflected X is an integer.
+* The code is easy to read and runs in linear time.
+
 ---
 
-### 1.3 C++ – `Solution.cpp`
+### 4.3 C++ – `unordered_set` with `pair_hash`
 
 ```cpp
-#include <vector>
-#include <unordered_set>
-#include <cstdint>
+#include <bits/stdc++.h>
+using namespace std;
+
+struct PairHash {
+    size_t operator()(const pair<long long, long long>& p) const noexcept {
+        return hash<long long>()((p.first << 32) ^ p.second);
+    }
+};
 
 class Solution {
 public:
-    bool isReflected(std::vector<std::vector<int>>& points) {
-        if (points.empty()) return true;
-
-        // Find extreme x‑values.
-        int minX = INT_MAX, maxX = INT_MIN;
-        for (const auto& p : points) {
-            minX = std::min(minX, p[0]);
-            maxX = std::max(maxX, p[0]);
+    bool isReflected(vector<vector<int>>& points) {
+        long long minX = LLONG_MAX, maxX = LLONG_MIN;
+        for (auto& p : points) {
+            minX = min(minX, (long long)p[0]);
+            maxX = max(maxX, (long long)p[0]);
         }
-        int sumX = minX + maxX;               // 2 * center of symmetry
 
-        // Encode a point into a 64‑bit integer.
-        auto encode = [](int x, int y) -> int64_t {
-            return (static_cast<int64_t>(x) << 32) ^ static_cast<int64_t>(y) & 0xffffffffLL;
-        };
+        long double mid = (minX + maxX) / 2.0L;
 
-        std::unordered_set<int64_t> S;
-        for (const auto& p : points)
-            S.insert(encode(p[0], p[1]));
+        unordered_set<pair<long long, long long>, PairHash> s;
+        for (auto& p : points)
+            s.insert({p[0], p[1]});
 
-        for (const auto& p : points) {
-            int mirroredX = sumX - p[0];
-            if (!S.count(encode(mirroredX, p[1])))
-                return false;
+        for (auto& p : points) {
+            long double reflected = 2 * mid - p[0];
+            if (floor(reflected) != ceil(reflected)) return false; // not integer
+            auto key = make_pair((long long)llround(reflected), (long long)p[1]);
+            if (!s.count(key)) return false;
         }
         return true;
     }
 };
 ```
 
-> **Why this works?**  
-> The line of symmetry must be halfway between the smallest and largest `x` values.  
-> If a point `(x, y)` exists, the reflected point must be `(minX + maxX - x, y)`.  
-> Using a hash set gives constant‑time partner checks, so the whole algorithm is linear.
+**Highlights**
+
+* Uses `long long` to avoid overflow when adding `minX` and `maxX`.
+* A custom hash `PairHash` guarantees efficient unordered set look‑ups.
+* `long double` provides enough precision for the calculation, and `llround` is used to get the integer reflected X.
 
 ---
 
-## 2.  Blog Article – “Line Reflection: The Good, The Bad, and The Ugly”
+## 5.  Edge Cases & Common Pitfalls
 
-> **Meta‑Description (SEO‑friendly):**  
-> Master LeetCode 356 – Line Reflection. Get a deep dive into the algorithm, code snippets in Java, Python & C++, plus insights on edge cases, performance, and interview tips. Boost your coding interview prep!
+| **Edge Case** | **What to watch out for** | **Solution** |
+|---|---|---|
+| Duplicate points | The set still contains the point; no special handling needed. | Using a set automatically deduplicates. |
+| Negative coordinates | String concatenation or tuple hashing handles negatives fine. | Just use the same key scheme. |
+| Very large coordinates | `int` addition may overflow in Java/C++. | Promote to `long`/`long long` or `long double`. |
+| Non‑integer mid | Reflecting a point across a non‑integer center will produce a non‑integer reflected X. | Check `reflectedX == round(reflectedX)` before lookup. |
+| Floating point precision | `double`/`float` rounding can mis‑detect a valid reflection. | Perform the check with an epsilon (`1e-9`) or use integer arithmetic entirely (mid expressed as rational). |
 
-### 2.1 Introduction
+---
 
-When you sit down to solve LeetCode 356, *Line Reflection*, the first thought is probably “a sorting trick” or “two pointers”. In reality, there’s a far cleaner, O(n) solution that even passes 10⁴ points with flying colours. In this article we’ll dissect the problem, walk through the best approach, touch on the pitfalls (the ugly), and finish with ready‑to‑copy code for **Java**, **Python**, and **C++**.
+## 6.  Complexity Analysis
 
-### 2.2 Problem Statement (Restated)
+| **Operation** | **Time** | **Space** |
+|---|---|---|
+| Compute min/max X | O(n) | O(1) |
+| Build set of points | O(n) | O(n) |
+| Verify reflections | O(n) | O(1) (besides the set) |
+| **Total** | **O(n)** | **O(n)** |
 
-> **Given**: `n` points on a 2‑D plane, `points[i] = [x_i, y_i]`.  
-> **Task**: Determine if there exists a vertical line `x = k` such that reflecting all points across this line yields exactly the same set of points.
+The algorithm easily meets the constraints (`n ≤ 10⁴`). Even on the edge of `int` range, the use of 64‑bit integers in C++/Java prevents overflow.
 
-> Repeated points are allowed.
+---
 
-### 2.3 Intuition: The Mirror Line is Halfway Between Extremes
+## 7.  Why This Blog Helps Your Job Hunt
 
-Think of the line as a mirror. For any point `(x, y)`, its reflection is `(k*2 - x, y)`. Notice the y‑coordinate stays the same – only x flips. Therefore, if you know the line’s **center**, you can instantly calculate a partner.
+* **Keywords** – “Line Reflection LeetCode 356”, “Java O(n) solution”, “Python interview problem”, “C++ hash set geometry”, “job interview coding questions”.
+* **Structure** – Clear sections with code, complexity, edge‑case discussion – a format recruiters love.
+* **SEO** – Use of header tags, bullet points, and keyword‑rich text ensures higher search rankings.
+* **Demonstrated skillset** – Shows deep understanding of hash sets, integer arithmetic, and algorithmic thinking.
 
-The center `k` is simply the average of the smallest and largest x‑coordinates:
+If you want to impress hiring managers, showcase this solution in your portfolio or GitHub, and be ready to explain the “good, bad, ugly” discussion in a technical interview.
 
-```
-k = (minX + maxX) / 2
-```
+---
 
-Why? Because the leftmost and rightmost points must be symmetric about the mirror; otherwise, no single line can satisfy all points. This gives us an O(1) candidate for `k`.
+## 8.  Final Thoughts
 
-### 2.4 The Elegant O(n) Solution (Hash Set)
+The Line Reflection problem is a great test of **geometric insight + hash‑based verification**. The linear solution is elegant: compute the midpoint of the extreme X values, then simply check that every point’s mirror exists. Avoid pitfalls like overflow or floating‑point drift, and you’ll have a robust, interview‑ready answer.
 
-1. **Find extremes** – traverse once to get `minX` and `maxX`.
-2. **Compute sum** – `sumX = minX + maxX`.  
-   *Note*: `sumX` equals `2 * k`. Working with `sumX` keeps us in integers and avoids floating point errors.
-3. **Store all points** – hash each `(x, y)` pair. In Java/C++ we encode into a single 64‑bit integer; in Python a tuple is fine.
-4. **Verify partners** – for every point `(x, y)` check whether `(sumX - x, y)` exists in the set.
+Happy coding, and good luck landing that dream job! 🚀
 
-If any point is missing its partner, the answer is `false`. Otherwise, we have perfect symmetry.
+---
 
-> **Why O(n)**:  
-> - One pass to find extremes → O(n).  
-> - One pass to build the set → O(n).  
-> - One pass to check partners → O(n).  
-> The hash set gives constant‑time lookup, so total is linear.
+### 9.  Reference Links
 
-### 2.5 Edge Cases (The Ugly)
+* LeetCode problem page: https://leetcode.com/problems/line-reflection/
+* Java hash‑set solution (simple): https://leetcode.com/problems/line-reflection/solutions/82970/simple-java-hashset-solution-by-juanren-aihc/
+* Python solution (tuple set): https://leetcode.com/problems/line-reflection/solutions/4183052/easy-to-understand-solution-with-hashmap-zz7t/
+* C++ solution (unordered_set with pair hash): https://leetcode.com/problems/line-reflection/solutions/3331741/solution-by-deleted_user-0b3o/
 
-| Edge case | Why it matters | How the algorithm handles it |
-|-----------|----------------|------------------------------|
-| Duplicate points | They must all have partners (even with themselves). | Hash set stores every instance, so `count` works. |
-| All points on the same vertical line | `minX = maxX` → `sumX = 2*minX`. | Each point’s partner is itself → passes. |
-| Very large coordinates (±10⁸) | Prevent overflow. | Encoding uses 64‑bit integers (Java long / C++ long long). |
-| `n = 1` | A single point is trivially symmetric. | The loop finds its own partner. |
-
-### 2.6 Alternative Approaches (The Good)
-
-- **Sorting + Two Pointers** – sort by x, then for each leftmost point pair it with the rightmost. Works in O(n log n).  
-  *Pro*: No hash set needed.  
-  *Con*: Extra log factor; code more verbose.
-
-- **Map of y → Set of x** – group by y to handle large n faster in practice.  
-  *Pro*: Handles huge datasets well.  
-  *Con*: More complex.
-
-### 2.7 Why This Matters for Interviews
-
-- **Shows familiarity with hash structures** – a core data structure interview skill.  
-- **Highlights understanding of geometry** – not just coding.  
-- **Demonstrates clean, testable code** – essential for production interviews.
-
-### 2.8 The Final Word (The Bad)
-
-- **Beware of integer overflow** when summing `minX + maxX` if you’re using 32‑bit ints in languages like C++/Java.  
-- **Remember to encode pairs**; using a string `"x#y"` is easy but slower.  
-- **Edge cases** like repeated points or a single line of points can trip up naive solutions.
-
-### 2.9 Code Snippets (Ready‑to‑Paste)
-
-> **Java**  
-> ```java
-> public class Solution {
->     public boolean isReflected(int[][] points) {
->         // ... (code from section 1.1)
->     }
-> }
-> ```
-
-> **Python**  
-> ```python
-> class Solution:
->     def isReflected(self, points: List[List[int]]) -> bool:
->         # ... (code from section 1.2)
-> ```
-
-> **C++**  
-> ```cpp
-> class Solution {
-> public:
->     bool isReflected(vector<vector<int>>& points) {
->         // ... (code from section 1.3)
->     }
-> };
-> ```
-
-### 2.10 Wrap‑Up
-
-LeetCode 356 is deceptively simple but a great showcase of algorithmic thinking and clean code. The hash‑set trick gives you an **O(n)**, **O(n)** space solution that passes all edge cases and is interview‑ready. Use the snippets above to polish your portfolio, ace the interview, and maybe snag that next job offer. Happy coding!
-
---- 
-
-**Keywords:** Line Reflection, LeetCode 356, vertical line symmetry, O(n) algorithm, hash set solution, Java, Python, C++, interview prep, coding interview, algorithmic problem solving.
+---

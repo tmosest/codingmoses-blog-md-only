@@ -7,280 +7,291 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Code – Three Languages
-
-Below you’ll find **three independent solutions** that all run in **O(n)** time and **O(1)** extra space.  
-They all implement the same idea – a *single‑pass Kadane* on the difference array – but are written in the style that is idiomatic for each language.
+        ## 🎯 2321. Maximum Score Of Spliced Array  
+### The Good, The Bad, & The Ugly – A Job‑Interview‑Ready Guide  
 
 ---
 
-### 1.1  Java
+### 🚀 TL;DR  
+- **Goal:** Choose one sub‑array to swap between two equal‑length arrays and maximize  
+  `max( sum(nums1), sum(nums2) )`.  
+- **Optimal Idea:**  
+  1. Compute the two totals (`sum1`, `sum2`).  
+  2. The swap effect is `Δ = sum2[l…r] – sum1[l…r]`.  
+  3. We want the *maximum* Δ to boost the larger array, and the *minimum* Δ to boost the smaller array.  
+  4. A single linear scan (Kadane) finds both the maximum and minimum sub‑array sum of the difference array.  
+- **Complexity:** **O(n)** time, **O(1)** extra space.  
+- **Languages:** Java, Python, C++ – all shown below.
+
+> **SEO keywords**: LeetCode, interview, coding interview, Java, Python, C++, Kadane’s algorithm, O(n) solution, array manipulation, resume, job interview, coding interview prep.
+
+---
+
+## 1. Problem Recap
+
+You are given two integer arrays of equal length, `nums1` and `nums2`.  
+You may pick any sub‑array `[left…right]` (inclusive) and *swap* the two sub‑arrays between the arrays **once** (or do nothing).  
+The score is the larger of the two total sums after the optional swap.  
+Return the maximum achievable score.
+
+```text
+Input  : nums1 = [60,60,60], nums2 = [10,90,10]
+Output : 210  (swap index 1)
+```
+
+Constraints: `1 ≤ n ≤ 10^5`, `1 ≤ nums[i] ≤ 10^4`.
+
+---
+
+## 2. Why the Naïve Brute‑Force Fails
+
+A brute‑force solution would enumerate all `O(n^2)` sub‑arrays, compute the swap effect and keep the best.  
+Even with `n = 10^5`, that’s ~10^10 operations – far beyond practical limits.  
+You need an **O(n)** algorithm.
+
+---
+
+## 3. The Insight
+
+Let:
+
+```
+sum1 = Σ nums1[i]
+sum2 = Σ nums2[i]
+diff[i] = nums2[i] – nums1[i]   // element‑wise difference
+```
+
+If we swap sub‑array `[l…r]`:
+
+```
+new_sum1 = sum1 + Σ diff[l…r]
+new_sum2 = sum2 – Σ diff[l…r]
+```
+
+The **only thing that matters** is the sum of `diff[l…r]`.  
+Hence we just need the *maximum* and *minimum* sub‑array sums of the `diff` array.
+
+- **Maximizing the larger array**: add the **maximum** Δ.  
+- **Boosting the smaller array**: subtract the **minimum** Δ (i.e. add its absolute value).
+
+The problem reduces to two classic one‑dimensional maximum/minimum sub‑array problems, solvable by **Kadane’s algorithm** in linear time.
+
+---
+
+## 4. The O(n) Algorithm (Kadane + One Pass)
+
+1. Compute `sum1` and `sum2`.  
+2. Build `diff[i] = nums2[i] - nums1[i]` on the fly.  
+3. Run Kadane twice:
+   - **maxDiff**: maximum sub‑array sum of `diff`.  
+   - **minDiff**: minimum sub‑array sum of `diff` (can be found by running Kadane on `-diff` or using a dual‑track approach).  
+4. Final answer = `max( sum1 + max(0, maxDiff),  sum2 + max(0, -minDiff) )`.
+
+---
+
+## 5. Code Walkthrough
+
+Below are clean, production‑ready solutions in **Java**, **Python**, and **C++**.  
+Each uses a single scan and O(1) extra memory.
+
+### 5.1 Java (LeetCode‑style)
 
 ```java
-/**
- * LeetCode 2321 – Maximum Score Of Spliced Array
- *
- * Time   : O(n)
- * Space  : O(1)
- */
 class Solution {
-    public int maximumsSplicedArray(int[] nums1, int[] nums2) {
+    public int maximumScoreOfSplicedArray(int[] nums1, int[] nums2) {
         long sum1 = 0, sum2 = 0;
         int n = nums1.length;
-
-        for (int v : nums1) sum1 += v;
-        for (int v : nums2) sum2 += v;
-
-        // We will try to make nums1 larger than nums2.
-        // If not, swap the arrays and their sums – the logic is symmetrical.
-        if (sum2 > sum1) {
-            long tmpS = sum1; sum1 = sum2; sum2 = tmpS;
-            int[] tmpA = nums1; nums1 = nums2; nums2 = tmpA;
+        for (int i = 0; i < n; ++i) {
+            sum1 += nums1[i];
+            sum2 += nums2[i];
         }
 
-        long bestGain = 0;          // maximum subarray of (nums2[i] – nums1[i])
-        long cur = 0;
+        // diff[i] = nums2[i] - nums1[i]
+        long maxDiff = Long.MIN_VALUE, curMax = 0;
+        long minDiff = Long.MAX_VALUE, curMin = 0;
 
         for (int i = 0; i < n; ++i) {
-            long diff = (long) nums2[i] - nums1[i];
-            cur = Math.max(0, cur + diff);   // Kadane
-            bestGain = Math.max(bestGain, cur);
+            long d = (long) nums2[i] - nums1[i];
+
+            // Kadane for maximum sub‑array
+            curMax = Math.max(d, curMax + d);
+            maxDiff = Math.max(maxDiff, curMax);
+
+            // Kadane for minimum sub‑array
+            curMin = Math.min(d, curMin + d);
+            minDiff = Math.min(minDiff, curMin);
         }
 
-        // If we do NOT swap, the best score is sum1 (the already larger one).
-        // If we do swap on a sub‑array with positive gain, we increase sum1 by that gain.
-        return (int) Math.max(sum1 + bestGain, sum2 - Math.min(0, bestGain));
+        long option1 = sum1 + Math.max(0, maxDiff);
+        long option2 = sum2 + Math.max(0, -minDiff);
+        return (int) Math.max(option1, option2);
     }
 }
 ```
 
----
+**Why `long`?**  
+The sums can reach `10^5 * 10^4 = 10^9`.  
+Adding a difference can push it slightly higher; `long` guarantees no overflow.
 
-### 1.2  Python
+### 5.2 Python 3
 
 ```python
-"""
-LeetCode 2321 – Maximum Score Of Spliced Array
-Time   : O(n)
-Space  : O(1)
-"""
-
 class Solution:
-    def maximumsSplicedArray(self, nums1: list[int], nums2: list[int]) -> int:
-        sum1 = sum(nums1)
-        sum2 = sum(nums2)
+    def maximumScoreOfSplicedArray(self, nums1: list[int], nums2: list[int]) -> int:
+        sum1, sum2 = sum(nums1), sum(nums2)
 
-        # Make nums1 the larger array; the logic is symmetric.
-        if sum2 > sum1:
-            sum1, sum2 = sum2, sum1
-            nums1, nums2 = nums2, nums1
-
-        best_gain = 0          # maximum subarray of (nums2[i] - nums1[i])
-        cur = 0
+        max_diff = cur_max = 0
+        min_diff = cur_min = 0
 
         for a, b in zip(nums1, nums2):
-            diff = b - a
-            cur = max(0, cur + diff)   # Kadane
-            best_gain = max(best_gain, cur)
+            d = b - a
 
-        return max(sum1 + best_gain, sum2 - min(0, best_gain))
+            # Kadane for max
+            cur_max = max(d, cur_max + d)
+            max_diff = max(max_diff, cur_max)
+
+            # Kadane for min
+            cur_min = min(d, cur_min + d)
+            min_diff = min(min_diff, cur_min)
+
+        option1 = sum1 + max(0, max_diff)
+        option2 = sum2 + max(0, -min_diff)
+        return max(option1, option2)
 ```
 
----
+**Note**: Python automatically handles big integers, so no extra type juggling is needed.
 
-### 1.3  C++
+### 5.3 C++ (Fast & Idiomatic)
 
 ```cpp
-/**
- * LeetCode 2321 – Maximum Score Of Spliced Array
- * Time   : O(n)
- * Space  : O(1)
- */
 class Solution {
 public:
-    int maximumsSplicedArray(vector<int>& nums1, vector<int>& nums2) {
+    int maximumScoreOfSplicedArray(vector<int>& nums1, vector<int>& nums2) {
         long long sum1 = 0, sum2 = 0;
         int n = nums1.size();
 
-        for (int v : nums1) sum1 += v;
-        for (int v : nums2) sum2 += v;
-
-        // Ensure sum1 >= sum2
-        if (sum2 > sum1) {
-            swap(sum1, sum2);
-            swap(nums1, nums2);
+        for (int i = 0; i < n; ++i) {
+            sum1 += nums1[i];
+            sum2 += nums2[i];
         }
 
-        long long bestGain = 0;   // maximum subarray of (nums2[i] - nums1[i])
-        long long cur = 0;
+        long long maxDiff = LLONG_MIN, curMax = 0;
+        long long minDiff = LLONG_MAX, curMin = 0;
 
         for (int i = 0; i < n; ++i) {
-            long long diff = (long long)nums2[i] - nums1[i];
-            cur = max(0LL, cur + diff);   // Kadane
-            bestGain = max(bestGain, cur);
+            long long d = static_cast<long long>(nums2[i]) - nums1[i];
+
+            curMax = max(d, curMax + d);
+            maxDiff = max(maxDiff, curMax);
+
+            curMin = min(d, curMin + d);
+            minDiff = min(minDiff, curMin);
         }
 
-        return static_cast<int>(max(sum1 + bestGain,
-                                   sum2 - min(0LL, bestGain)));
+        long long option1 = sum1 + max(0LL, maxDiff);
+        long long option2 = sum2 + max(0LL, -minDiff);
+        return static_cast<int>(max(option1, option2));
     }
 };
 ```
 
-All three snippets:
-
-| Language | Runtime | Memory | Comments |
-|----------|---------|--------|----------|
-| Java     | ~5 ms   | 37 MB  | Uses `long` for safety |
-| Python   | ~35 ms  | 37 MB  | `int` is arbitrary‑precision |
-| C++      | ~3 ms   | 37 MB  | `long long` for safety |
+All three solutions keep the algorithmic core identical: *single pass + Kadane*.  
+Feel free to copy‑paste them into your IDE or a LeetCode submission.
 
 ---
 
-## 2.  Blog Article  
-**Title: “Maximum Score Of Spliced Array – The Good, the Bad, and the Ugly”**
+## 6. The Good
 
-> **Keywords:** LeetCode 2321, Maximum Score Of Spliced Array, Kadane’s Algorithm, Java, Python, C++, array splicing, interview question, algorithmic thinking, time complexity, space complexity
-
----
-
-### 2.1  Introduction
-
-“Maximum Score Of Spliced Array” (LeetCode **2321**) is a deceptively simple‑looking question that tests your ability to reason about *array differences* and *dynamic sub‑array optimization*.  
-If you’re preparing for a coding interview or just want to deepen your algorithmic toolbox, this problem is a gold mine.
-
-The core of the problem: you have two arrays, `nums1` and `nums2`, of equal length. You may choose **at most one contiguous segment** and swap the elements of that segment between the arrays. After that, the score is the **maximum of the two array sums**. The challenge is to decide *whether* and *where* to swap to maximise that score.
+| Aspect | What to Emphasize |
+|--------|-------------------|
+| **Time‑efficiency** | Linear scan, ideal for interviewers looking for *O(n)* solutions. |
+| **Space‑efficiency** | Constant extra space – a huge plus for coding interviews. |
+| **Readability** | Simple variable names (`maxDiff`, `minDiff`, `curMax`, `curMin`). |
+| **Language‑agnostic** | Works in Java, Python, C++ – shows you can solve the same problem in multiple languages. |
+| **Edge‑case safety** | Handles “do nothing” naturally via `max(0, …)` and `max(0, -minDiff)`. |
 
 ---
 
-### 2.2  Problem Statement (In Your Own Words)
+## 7. The Bad – Common Pitfalls
 
-> **Given** two integer arrays `nums1` and `nums2` of length `n` (1 ≤ n ≤ 10⁵).  
-> **Action**: choose at most one continuous sub‑array `[l, r]` and *swap* the elements of that segment between the arrays.  
-> **Score**: after the (possible) swap, the score is `max(sum(nums1), sum(nums2))`.  
-> **Goal**: return the maximum achievable score.
+| Pitfall | Why It Happens | How to Fix |
+|---------|----------------|------------|
+| **Overflow in 32‑bit integers** | Sum can exceed 2 × 10^9 in extreme cases. | Use `long` (Java/C++) or `long long` (C++). In Python it’s automatic. |
+| **Two separate passes** | Some implement two Kadane passes, doubling runtime. | Run Kadane *once* while tracking both max and min simultaneously. |
+| **Ignoring negative differences** | You might add negative Δ, reducing the score. | Take `max(0, maxDiff)` and `max(0, -minDiff)` to avoid harmful swaps. |
+| **Off‑by‑one errors in the loop** | `diff` array mis‑computed leads to wrong Δ. | Use `zip(nums1, nums2)` or `for (int i = 0; i < n; ++i)` consistently. |
+| **Missing the “do nothing” option** | You must consider the case where swapping hurts. | The `max(0, …)` part handles it automatically. |
 
 ---
 
-### 2.3  Brute‑Force – The Bad Idea
+## 8. The Ugly – Less‑Known Edge Cases
 
-You could try every possible segment `(l, r)`:
+| Edge Case | Description | Quick Fix |
+|-----------|-------------|-----------|
+| **All differences are zero** | Arrays identical. | Max/Min Δ will be 0; answer is simply `max(sum1, sum2)`. |
+| **All differences negative** | `nums2` strictly smaller at every index. | `maxDiff` will be negative, so you rely on boosting the smaller array via `minDiff`. |
+| **All differences positive** | `nums2` strictly larger at every index. | Symmetric to the previous; swap never hurts. |
+| **Large intermediate sums** | While computing `curMax + d`, intermediate sum could overflow 32‑bit. | Use `long`/`long long`. |
+| **`n == 1`** | Only one possible sub‑array. | Kadane works fine, but initialise `maxDiff` & `minDiff` with the first difference. |
+
+---
+
+## 9. How to Test the Solution
 
 ```text
-for each l in [0..n-1]
-    for each r in [l..n-1]
-        simulate the swap, compute both sums, take the max
+Test 1: Basic swap
+nums1 = [1,2,3]
+nums2 = [3,2,1]   -> Score 6
+
+Test 2: No swap better
+nums1 = [100, 200]
+nums2 = [1, 1]    -> Score 300
+
+Test 3: All negatives difference
+nums1 = [5, 5, 5]
+nums2 = [1, 1, 1] -> Score 15
+
+Test 4: Large random arrays
+nums1 = [randint(1,10000) for _ in range(100000)]
+nums2 = [randint(1,10000) for _ in range(100000)]
 ```
 
-* **Time:** O(n³) (building each sub‑array costs O(n))
-* **Space:** O(1) aside from the input
-
-With `n` up to 100 000, this is hopelessly slow. Even an *O(n²)* DP would kill you. The takeaway: “look for structure” – there’s a much cleaner way.
+Run these in your favourite IDE or via unit tests (`@Test` in Java, `unittest` in Python, or GoogleTest in C++).
 
 ---
 
-### 2.4  The Good – Kadane’s Insight
+## 10. Time & Space Complexity
 
-#### 2.4.1  Why Kadane Works
-
-If you decide to swap a sub‑array `[l, r]`, the change to the sum of `nums1` is exactly:
-
-```
-gain = Σ (nums2[i] - nums1[i])   for i in [l, r]
-```
-
-So the problem reduces to: **find a sub‑array of the *difference array* whose sum is maximised**. That’s a textbook Kadane problem.
-
-#### 2.4.2  Two Symmetric Perspectives
-
-You can think of it as:
-
-1. **Try to enlarge `nums1`**: look for a positive‑gain segment in `(nums2 - nums1)`.  
-2. **Or try to enlarge `nums2`**: look for a positive‑gain segment in `(nums1 - nums2)`.
-
-The answer is the better of the two.
-
-#### 2.4.3  Final Formula
-
-Let
-
-* `sum1` = sum(nums1)  
-* `sum2` = sum(nums2)  
-* `bestGain` = maximum subarray of `(nums2[i] - nums1[i])`
-
-If we *don’t* swap, the best score is simply `max(sum1, sum2)`.  
-If we *do* swap on a segment with positive `bestGain`, we add that gain to the larger sum.
-
-Hence:
-
-```
-score = max( sum1 + max(bestGain, 0),
-             sum2 - min(0, bestGain) )
-```
-
-Both branches are symmetrical – swapping the two arrays yields the same logic.
+| Metric | Java | Python | C++ |
+|--------|------|--------|-----|
+| **Time** | `O(n)` | `O(n)` | `O(n)` |
+| **Extra Space** | `O(1)` | `O(1)` | `O(1)` |
+| **Worst‑case** | `~2 * 10^5` integer ops | Same | Same |
 
 ---
 
-### 2.5  The Implementation – What You Need to Watch
+## 11. Takeaway for Your Next Coding Interview
 
-| Language | Common Gotcha | Fix |
-|----------|---------------|-----|
-| **Java** | Integer overflow on `sum1 + bestGain` (2 × 10⁹) | Use `long`/`long long` for safety |
-| **Python** | None – Python ints auto‑extend | Just be mindful of readability |
-| **C++** | Signed overflow on 32‑bit `int` | Use `long long` everywhere |
+1. **Understand the swap effect** – it boils down to a difference array.  
+2. **Know Kadane** – the single‑pass maximum/minimum sub‑array trick is interview gold.  
+3. **Keep it simple** – one scan, one pass, constant memory.  
+4. **Explain your reasoning** – interviewers love a clear “why” behind every step.  
+5. **Show versatility** – present solutions in multiple languages to demonstrate breadth of skill.
 
-**Tip:** Keep the “make the larger array first” trick. It reduces the final formula to a single `max` call and lets you reuse the same Kadane routine twice without branching logic.
-
----
-
-### 2.6  The Ugly – What Often Trips People Up
-
-1. **Neglecting the “swap the arrays” symmetry**  
-   Many contestants only implement the Kadane on one direction and forget that you can also swap the other array. The easy “two‑pass” version (`kadane(A,B)` and `kadane(B,A)`) eliminates this pitfall.
-
-2. **Using `int` for sums**  
-   The maximal sum is `10⁴ × 10⁵ = 10⁹`. Adding two of them can exceed the signed 32‑bit limit on edge cases. A small `long`/`long long` guard keeps you safe.
-
-3. **Thinking the difference array must be pre‑computed**  
-   It is trivial to compute `diff` on the fly in the same loop, which keeps space at **O(1)**.
+> **Pro Tip:** When explaining the solution in an interview, mention the “do nothing” case explicitly. Many interviewers ask if you considered that – it’s a subtle but important detail.
 
 ---
 
-### 2.7  Complexity Analysis
+## 🎉 Wrap‑Up & Job‑Interview Boost
 
-| Step | Operation | Cost |
-|------|-----------|------|
-| Summation of both arrays | `O(n)` | |
-| Kadane pass | `O(n)` | |
-| Final math | `O(1)` | |
+Solving LeetCode 2321 with an O(n) Kadane solution showcases:
 
-**Total:** `O(n)` time, `O(1)` auxiliary space.  
-For `n = 100 000`, this runs in ~3–5 ms in C++/Java and ~30 ms in Python on typical LeetCode hardware.
+- **Algorithmic depth** – you can turn a quadratic brute‑force into a linear, elegant approach.  
+- **Attention to edge‑cases** – handling overflow, negative differences, and the “do nothing” option.  
+- **Multilingual fluency** – Java, Python, C++ code shows you can translate concepts across ecosystems.  
 
----
+These are exactly the qualities hiring managers look for when they see “array manipulation”, “dynamic programming”, or “Kadane’s algorithm” in your portfolio.  
 
-### 2.8  Testing – Quick Checklist
+**Next step:** Push the solution to your GitHub, add the problem description to your README, and practice explaining it on a whiteboard.  Your résumé will have an interview‑ready LeetCode story that impresses recruiters.
 
-| Test | Description |
-|------|-------------|
-| **All equal** (`nums1 = nums2`) | No swap yields the same sum; answer = sum |
-| **Strictly larger first array** | Gain must be non‑negative to increase score |
-| **All negative differences** | Kadane returns 0; no swap |
-| **Single element** | Edge case, should work |
-| **Maximum limits** (`n = 10⁵`, values = `10⁴`) | Stress‑test for overflow and speed |
-
----
-
-### 2.9  Conclusion
-
-LeetCode 2321 teaches you:
-
-* The importance of **transforming a problem** into a well‑known sub‑problem (difference array → Kadane).
-* How a **symmetry trick** (swap the larger array first) lets you write a **clean, reusable routine**.
-* Why **careful type handling** matters in interview coding.
-
-With the Java, Python, and C++ snippets above, you have production‑ready solutions that you can paste into your LeetCode submission and walk through in a 5‑minute interview. Happy coding!  
-
---- 
-
-> **Share this post** on LinkedIn, Twitter, or your personal blog – it’s a great conversation starter for data‑structure & algorithm prep.
+Happy coding, and best of luck landing that dream job! 🚀

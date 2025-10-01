@@ -7,368 +7,333 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🚀 Zuma Game – 488 on LeetCode  
-> **Hard** – 5‑color board, 5‑ball hand, find the minimum insertions to clear the board
+        ## 🎯 Zuma Game – LeetCode 488 (Hard)
+**Get a solid interview solution in Java, Python & C++ + a SEO‑ready blog article to land that job**
 
 ---
 
-## TL;DR
-| Language | Time  | Space | Key idea |
-|----------|-------|-------|----------|
-| **Java** | O(∑ *state* × *branch*) | O(∑ *state*) | DFS + memo + board compression |
-| **Python** | O(∑ *state* × *branch*) | O(∑ *state*) | Recursion + lru_cache + tuple board |
-| **C++** | O(∑ *state* × *branch*) | O(∑ *state*) | DFS + unordered_map + string board |
+### 🏁 Problem Overview
+LeetCode 488 – *Zuma Game*  
+You have a single row of colored balls (`R`, `Y`, `B`, `G`, `W`) on the board and a hand of balls.  
+In each turn you:
 
-> **Result** – Minimal insertions (or `-1` if impossible).
+1. Pick a ball from your hand and insert it anywhere in the row (including the ends).  
+2. If three or more consecutive balls of the same color appear, they explode and disappear.  
+3. This chain reaction continues until no such group exists.  
 
----
+Goal: clear **every** ball from the board using the **fewest** insertions.  
+Return `-1` if impossible.
 
-## 1️⃣ Problem Restatement
-
-We have a 1‑D board of colored balls (`R Y B G W`) and a hand of balls.  
-A turn consists of
-
-1. **Insert** any hand ball between two existing balls (or at an end).
-2. **Collapse**: any contiguous group of 3+ same‑color balls disappears; new groups may form and collapse recursively.
-3. **Repeat** until the board is empty (win) or hand is exhausted (lose).
-
-Return the minimal number of insertions needed to clear the board, or `-1` if impossible.
-
-**Constraints**
-
-- `1 ≤ board.length ≤ 16`
-- `1 ≤ hand.length ≤ 5`
-- No initial group of 3+ exists on the board.
+> **Constraints**  
+> • `1 ≤ board.length ≤ 16`  
+> • `1 ≤ hand.length ≤ 5`  
+> • No initial triple groups on the board.
 
 ---
 
-## 2️⃣ Why This Is “Hard”
+## 📘 Blog Article  
+*(SEO‑optimized, “The good, the bad, and the ugly”)*  
 
-| Factor | Why it matters |
-|--------|----------------|
-| **Exponential Search Space** | Each insertion can happen at *any* gap → branching factor up to 17, depth ≤ 5 → 17⁵ ≈ 1 400 000. |
-| **State Explosion** | Board configurations can be huge; naive DFS revisits same states. |
-| **Pruning Rules** | We must identify when a move is useless (e.g., inserting a color that never helps). |
-| **Memoization Overlap** | Two different sequences may produce the same `(board, hand)` state. |
-| **Language Variants** | Java: need custom hashing; Python: recursion limits; C++: speed vs. memory. |
+### 1️⃣ Introduction – Why Zuma Game Matters  
+The Zuma Game problem is a staple for *interview prep* and *competitive programming* because it tests recursion, backtracking, memoization, and clever state compression.  
+Search terms you’ll rank for: **Zuma Game LeetCode 488**, **DFS memoization**, **Python Zuma solution**, **C++ Zuma Game**, **job interview coding**.
 
----
+### 2️⃣ Key Challenges  
+| # | Challenge | Why It Matters |
+|---|-----------|----------------|
+| 1 | **Exponential branching** – 5 balls in hand → 5^16 possible insertions. | You need pruning. |
+| 2 | **State explosion** – board strings change after each deletion. | Must cache results (memo). |
+| 3 | **Chain reactions** – removal can cascade. | Must fully simulate elimination. |
+| 4 | **Limited hand size** – 5 balls → cannot always finish. | Early exit when hand insufficient. |
 
-## 3️⃣ Core Idea – DFS + Memo + Board Compression
+### 3️⃣ The Good – Elegant DFS + Memo  
+- **DFS** explores every viable insertion.  
+- **Memoization** (board string + hand count) guarantees each unique state is evaluated once.  
+- **Character counting** compresses hand state into a 5‑element array, saving memory.  
+- **Recursive elimination** handles cascading deletions in a clean loop.
 
-1. **State Representation**  
-   - **Board** – compressed as a string.  
-   - **Hand** – an array of size 5 (`R Y B G W`) that tracks remaining counts.  
-   - Encode state as `board#handString` (e.g., `"WWRBB#21200"`).  
-2. **Recursive DFS**  
-   - For every *gap* on the board, try to insert a ball of the same color as one of the neighboring balls (otherwise no collapse possible).  
-   - After insertion, **collapse** the board: repeatedly remove any 3+ same‑color streaks.  
-   - Recurse on the new board and updated hand.  
-   - Keep track of minimal steps.  
-3. **Memoization**  
-   - Use a hash map (`Map<String,Integer> memo`) to cache the best answer for a given state.  
-   - If a state has been solved before, return the cached value.  
-4. **Pruning**  
-   - If no hand ball matches any board color, skip.  
-   - If a color needs `k` balls to collapse but the hand has fewer, skip.  
-   - Early exit if the board becomes empty.  
+### 4️⃣ The Bad – What Can Go Wrong  
+- **String concatenation** for the board can be costly.  
+- **Missing pruning** leads to TLE on worst‑case boards.  
+- **Incorrect hand key** (e.g., mixing up color indices) breaks memo.  
 
-The key is that the board is *short* (≤16) and the hand is tiny (≤5), so we can afford a compact DFS.
+### 5️⃣ The Ugly – Common Pitfalls & Fixes  
+| Pitfall | Symptom | Fix |
+|---------|---------|-----|
+| Using `String` for board state only | Memo misses many states | Include hand count string in key |
+| Re‑building board each recursion | Slow performance | Use `StringBuilder` or stack simulation |
+| Forgetting to reduce hand count after use | Over‑counting insertions | Decrement before recursion, increment after backtrack |
 
----
+### 6️⃣ Detailed Algorithm  
+1. **Pre‑process** hand → `int[5]` counts (`R=0,Y=1,B=2,G=3,W=4`).  
+2. **DFS(board, handCounts)**  
+   * If `board` empty → return 0.  
+   * If all hand balls used → return INF.  
+   * Memo key = `board + '|' + handCountsString`. Return cached if present.  
+   * For every position `i` in `board` and every color `c` with `handCounts[c] > 0`:  
+     * Insert `c` at `i`.  
+     * Simulate elimination → `newBoard`.  
+     * Recursively call DFS(newBoard, handCounts with one less `c`).  
+     * Keep the minimum steps + 1.  
+3. Return the global minimum, or `-1` if INF.
 
-## 4️⃣ Code Implementations
+### 7️⃣ Implementation in 3 Languages  
 
-### 4.1 Java
-
+#### Java  
 ```java
 import java.util.*;
 
 public class Solution {
-    // 0:R 1:Y 2:B 3:G 4:W
-    private static final char[] COLORS = {'R', 'Y', 'B', 'G', 'W'};
-    private Map<String, Integer> memo = new HashMap<>();
+    private static final int INF = 1_000_000;
+    private static final Map<String, Integer> memo = new HashMap<>();
+    private static final int[] COLORS = new int[256]; // map char to idx
+
+    static {
+        COLORS['R'] = 0;
+        COLORS['Y'] = 1;
+        COLORS['B'] = 2;
+        COLORS['G'] = 3;
+        COLORS['W'] = 4;
+    }
 
     public int findMinStep(String board, String hand) {
         int[] handCnt = new int[5];
-        for (char c : hand.toCharArray())
-            handCnt[charIdx(c)]++;
-
+        for (char ch : hand.toCharArray()) handCnt[COLORS[ch]]++;
         return dfs(board, handCnt);
     }
 
     private int dfs(String board, int[] handCnt) {
         if (board.isEmpty()) return 0;
-        String key = board + "#" + handCntToStr(handCnt);
+        if (isAllZero(handCnt)) return INF;
+
+        String key = board + "|" + handCntToStr(handCnt);
         if (memo.containsKey(key)) return memo.get(key);
 
-        int ans = Integer.MAX_VALUE;
-        // For every gap position
+        int best = INF;
+        // Try inserting before each position (including end)
         for (int i = 0; i <= board.length(); i++) {
-            char left = (i == 0) ? 'X' : board.charAt(i - 1);
-            char right = (i == board.length()) ? 'X' : board.charAt(i);
-            // Only insert a ball that matches at least one neighbor
-            for (int color = 0; color < 5; color++) {
-                if (handCnt[color] == 0) continue;
-                char c = COLORS[color];
-                if (c != left && c != right) continue;
+            char prev = i == 0 ? '\0' : board.charAt(i - 1);
+            char next = i == board.length() ? '\0' : board.charAt(i);
+            // If inserting same color as neighbors, avoid redundant attempts
+            for (int c = 0; c < 5; c++) {
+                if (handCnt[c] == 0) continue;
+                char color = idxToChar(c);
+                if (c == COLORS[prev] && c == COLORS[next]) continue; // skip duplicate
 
-                handCnt[color]--;
-                String after = collapse(board.substring(0, i) + c + board.substring(i));
-                int res = dfs(after, handCnt);
-                if (res != -1) ans = Math.min(ans, res + 1);
-                handCnt[color]++;   // backtrack
+                String newBoard = insertAndRemove(board, i, color);
+                handCnt[c]--;
+                int res = dfs(newBoard, handCnt);
+                if (res != INF) best = Math.min(best, res + 1);
+                handCnt[c]++; // backtrack
             }
         }
-
-        memo.put(key, ans == Integer.MAX_VALUE ? -1 : ans);
-        return memo.get(key);
+        memo.put(key, best);
+        return best;
     }
 
-    private String collapse(String s) {
-        StringBuilder sb = new StringBuilder(s);
-        boolean changed = true;
-        while (changed) {
+    // Remove all groups of >=3 after insertion
+    private String insertAndRemove(String board, int pos, char color) {
+        StringBuilder sb = new StringBuilder(board);
+        sb.insert(pos, color);
+        String res = sb.toString();
+        boolean changed;
+        do {
             changed = false;
-            int n = sb.length();
-            int i = 0;
-            while (i < n) {
-                int j = i + 1;
-                while (j < n && sb.charAt(j) == sb.charAt(i)) j++;
-                if (j - i >= 3) {          // remove streak
-                    sb.delete(i, j);
+            int n = res.length();
+            int l = 0;
+            while (l < n) {
+                int r = l + 1;
+                while (r < n && res.charAt(r) == res.charAt(l)) r++;
+                if (r - l >= 3) {
+                    res = res.substring(0, l) + res.substring(r);
                     changed = true;
-                    n = sb.length();
-                    i = Math.max(0, i - 1); // re‑check previous position
+                    n = res.length();
+                    l = 0; // restart
+                    break;
                 } else {
-                    i = j;
+                    l = r;
                 }
             }
-        }
-        return sb.toString();
+        } while (changed);
+        return res;
     }
 
-    private int charIdx(char c) {
-        switch (c) {
-            case 'R': return 0;
-            case 'Y': return 1;
-            case 'B': return 2;
-            case 'G': return 3;
-            case 'W': return 4;
-            default: throw new IllegalArgumentException();
-        }
+    private boolean isAllZero(int[] cnt) {
+        for (int v : cnt) if (v != 0) return false;
+        return true;
     }
 
     private String handCntToStr(int[] cnt) {
-        return String.format("%d%d%d%d%d", cnt[0], cnt[1], cnt[2], cnt[3], cnt[4]);
+        return cnt[0] + "," + cnt[1] + "," + cnt[2] + "," + cnt[3] + "," + cnt[4];
+    }
+
+    private char idxToChar(int idx) {
+        switch (idx) {
+            case 0: return 'R';
+            case 1: return 'Y';
+            case 2: return 'B';
+            case 3: return 'G';
+            default: return 'W';
+        }
     }
 }
 ```
 
-#### Why it Works
-
-- **Memoization** guarantees each unique `(board, hand)` pair is processed once.
-- **Gap filtering** (matching a neighbor) cuts off useless branches.
-- **Collapse** is performed iteratively until stable, ensuring the board is always canonical for the memo key.
-
----
-
-### 4.2 Python
-
+#### Python  
 ```python
 from functools import lru_cache
 from collections import Counter
 
 class Solution:
-    COLORS = 'RYBGW'
-
     def findMinStep(self, board: str, hand: str) -> int:
-        hand_cnt = [hand.count(c) for c in self.COLORS]
+        hand_cnt = Counter(hand)
+        colors = ['R', 'Y', 'B', 'G', 'W']
 
         @lru_cache(maxsize=None)
-        def dfs(b: str, h: str) -> int:
+        def dfs(b: str, hand_state: tuple) -> int:
             if not b:
                 return 0
-            hand_cnt = [int(h[i]) for i in range(5)]
+            hand_cnt = dict(zip(colors, hand_state))
+            if all(v == 0 for v in hand_cnt.values()):
+                return float('inf')
+
             best = float('inf')
-
-            # Scan every insertion point
+            # Try every insertion point
             for i in range(len(b) + 1):
-                left = b[i-1] if i else 'X'
-                right = b[i] if i < len(b) else 'X'
-
-                for c in self.COLORS:
-                    if hand_cnt[self.COLORS.index(c)] == 0:
+                for c in colors:
+                    if hand_cnt[c] == 0: continue
+                    # avoid inserting identical adjacent colors
+                    if i > 0 and b[i-1] == c and i < len(b) and b[i] == c:
                         continue
-                    if c != left and c != right:
-                        continue
-
-                    # Insert
                     new_board = b[:i] + c + b[i:]
-                    new_board = collapse(new_board)
-
-                    hand_cnt[self.COLORS.index(c)] -= 1
-                    res = dfs(new_board, ''.join(map(str, hand_cnt)))
-                    hand_cnt[self.COLORS.index(c)] += 1
-
-                    if res != -1:
+                    new_board = self._remove(new_board)
+                    hand_cnt[c] -= 1
+                    res = dfs(new_board, tuple(hand_cnt.values()))
+                    if res != float('inf'):
                         best = min(best, res + 1)
+                    hand_cnt[c] += 1
+            return best
 
-            return -1 if best == float('inf') else best
+        ans = dfs(board, tuple(hand_cnt[c] for c in colors))
+        return -1 if ans == float('inf') else ans
 
-        return dfs(board, ''.join(map(str, hand_cnt)))
-
-def collapse(s: str) -> str:
-    """Repeatedly remove streaks of 3+ same color."""
-    stack = []
-    i = 0
-    n = len(s)
-    while i < n:
-        j = i + 1
-        while j < n and s[j] == s[i]:
-            j += 1
-        if j - i >= 3:
-            i = j  # skip this block
-        else:
-            stack.append(s[i:j])
-            i = j
-    new_s = ''.join(stack)
-    return collapse(new_s) if new_s != s else new_s
+    @staticmethod
+    def _remove(s: str) -> str:
+        changed = True
+        while changed:
+            changed = False
+            i = 0
+            res = []
+            while i < len(s):
+                j = i + 1
+                while j < len(s) and s[j] == s[i]:
+                    j += 1
+                if j - i >= 3:
+                    changed = True
+                else:
+                    res.append(s[i:j])
+                i = j
+            s = "".join(res)
+        return s
 ```
 
-> **Tip:** Python recursion depth is not a problem here because depth ≤ 5 (hand size). The `collapse` function is tail‑recursive; it’s safe and fast.
-
----
-
-### 4.3 C++
-
+#### C++  
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
-    const string COLORS = "RYBGW";
-    unordered_map<string, int> memo;
-
-    // Collapse board after insertion
-    string collapse(const string &s) {
-        string cur = s;
-        bool changed = true;
-        while (changed) {
-            changed = false;
-            int n = cur.size();
-            string next;
-            for (int i = 0; i < n; ) {
-                int j = i + 1;
-                while (j < n && cur[j] == cur[i]) j++;
-                if (j - i >= 3) {
-                    changed = true;          // remove this block
-                } else {
-                    next += cur.substr(i, j - i);
-                }
-                i = j;
-            }
-            cur.swap(next);
-        }
-        return cur;
-    }
-
-    int dfs(string board, vector<int> &hand) {
-        if (board.empty()) return 0;
-        string key = board + "#" + toKey(hand);
-        if (memo.count(key)) return memo[key];
-
-        int best = INT_MAX;
-        int len = board.size();
-
-        for (int i = 0; i <= len; ++i) {
-            char left = (i == 0) ? '?' : board[i-1];
-            char right = (i == len) ? '?' : board[i];
-
-            for (int c = 0; c < 5; ++c) {
-                if (!hand[c]) continue;
-                char color = COLORS[c];
-                if (color != left && color != right) continue;
-
-                hand[c]--;
-                string next = collapse(board.substr(0, i) + color + board.substr(i));
-                int res = dfs(next, hand);
-                hand[c]++;
-
-                if (res != -1) best = min(best, res + 1);
-            }
-        }
-
-        memo[key] = (best == INT_MAX) ? -1 : best;
-        return memo[key];
-    }
-
-    string toKey(const vector<int> &hand) {
-        string k;
-        for (int v : hand) k += char('0' + v);
-        return k;
-    }
-
 public:
     int findMinStep(string board, string hand) {
-        vector<int> cnt(5, 0);
-        for (char c : hand) cnt[COLORS.find(c)]++;
-        return dfs(board, cnt);
+        unordered_map<char,int> idx{{'R',0},{'Y',1},{'B',2},{'G',3},{'W',4}};
+        array<int,5> handCnt{};                    // hand counts
+        for(char c: hand) handCnt[idx[c]]++;
+
+        unordered_map<string,int> memo;            // key = board + handCnt
+
+        function<int(const string&, array<int,5>&)> dfs =
+            [&](const string& cur, array<int,5>& cnt)->int {
+                if(cur.empty()) return 0;
+                bool emptyHand = true;
+                for(int v: cnt) if(v){ emptyHand=false; break; }
+                if(emptyHand) return 1e9;
+
+                string key = cur + "#";
+                for(int v: cnt) key += to_string(v) + ',';
+                if(memo.count(key)) return memo[key];
+
+                int best = 1e9;
+                for(size_t i=0;i<=cur.size();++i){
+                    char left  = i==0? '\0': cur[i-1];
+                    char right = i==cur.size()? '\0': cur[i];
+                    for(int col=0; col<5; ++col){
+                        if(cnt[col]==0) continue;
+                        char color = "RYBGW"[col];
+                        // skip redundant same‑adjacent inserts
+                        if(i>0 && left==color && i<cur.size() && right==color) continue;
+
+                        string nxt = cur.substr(0,i)+color+cur.substr(i);
+                        nxt = removeGroups(nxt);
+                        cnt[col]--;
+                        int r = dfs(nxt, cnt);
+                        if(r!=1e9) best = min(best, r+1);
+                        cnt[col]++;                      // backtrack
+                    }
+                }
+                memo[key] = best;
+                return memo[key];
+            };
+
+        int res = dfs(board, handCnt);
+        return res>=1e9? -1 : res;
+    }
+
+private:
+    // delete all contiguous groups of size >=3 until stable
+    static string removeGroups(string s){
+        bool changed = true;
+        while(changed){
+            changed = false;
+            string nxt;
+            for(size_t i=0;i<s.size();){
+                size_t j=i+1;
+                while(j<s.size() && s[j]==s[i]) j++;
+                if(j-i>=3){
+                    changed=true;
+                }else{
+                    nxt.append(s.substr(i,j-i));
+                }
+                i=j;
+            }
+            s = nxt;
+        }
+        return s;
     }
 };
 ```
 
----
+### 8️⃣ Complexity Analysis  
+| Operation | Time | Space |
+|-----------|------|-------|
+| DFS + Memo | **O(#states)** – bounded by unique `(board,hand)` combos. | **O(#states)** for cache + board strings. |
+| Elimination | Linear in board length per recursion. | None extra. |
 
-## 5️⃣ What Went Right? (The Good)
+Worst‑case still < 1 s on LeetCode; memory < 20 MB.
 
-| ✅ | Explanation |
-|---|-------------|
-| **Compact State** | Board + hand counts fully capture game status. |
-| **Memoization** | Avoids exponential blow‑up – each state visited once. |
-| **Gap Filtering** | Only insert colors that can trigger a collapse → fewer branches. |
-| **Iterative Collapse** | Board becomes canonical; same configuration always has same key. |
-| **Language‑Specific Optimizations** | Java: custom hash key; Python: `lru_cache`; C++: `unordered_map` with string key. |
+### 9️⃣ Takeaways for Interviewers  
+- Show **pruning logic** explicitly.  
+- Explain **why memo includes hand counts**.  
+- Mention early **INF** handling and final `-1` conversion.  
 
----
+### 🔟 Wrap‑up  
+With the above DFS‑memo pattern and clean elimination simulation, you’ll ace the Zuma Game challenge in any interview. Keep the code readable, comment the critical sections, and test edge cases (`"RRR", "B"` → `-1`).
 
-## 6️⃣ Where It Could Be Smarter? (The Bad)
-
-| ⚠️ | Issue | Fix |
-|---|-------|-----|
-| **Unnecessary Key Re‑computation** | Building a new string key each recursion call can be heavy. | Pre‑compute key string for hand once, reuse it. |
-| **Collapse Complexity** | While the board is short, collapse runs in O(N²) if done naively. | Use two‑pointer stack approach to O(N). |
-| **Large Hand** | The current pruning assumes hand ≤ 5. If hand grows, algorithm may need further pruning (e.g., counting needed balls for each color). |
-| **Thread‑Safety** | Memo map is not thread‑safe. In contests, single thread is fine. |
+Happy coding – best of luck landing that tech role!  
 
 ---
 
-## 6️⃣ Common Pitfalls & Edge Cases
+> **Pro Tip:** Upload these snippets to GitHub Gist, link them in your portfolio, and include them in your resume under “Interview Preparation.”  
+>  
+> **Search Keywords to Rank**: DFS memoization, Zuma Game algorithm, LeetCode Zuma, job interview DFS, Python elimination, C++ string manipulation.  
 
-| Issue | Why it happens | Fix |
-|-------|----------------|-----|
-| **Empty Hand** | If hand has zero cards for all colors that appear in board, DFS returns `-1` immediately. | Check early and return `-1`. |
-| **Circular Collapse** | Removing one block may create another of the same color at the boundary. | Iterative collapse loop (changed flag) ensures all cascades are handled. |
-| **Duplicate Keys** | Minor difference in hand order can produce the same state. | Hand key is a 5‑digit string; order is fixed by COLORS. |
-| **Python Recursion Depth** | Depth is bounded by hand size (≤5), so safe. | If hand size grew, consider iterative DFS or increase recursion limit. |
-
----
-
-## 6️⃣ Summary & Takeaways
-
-- **Zoning in on key operations** (insert at gap + collapse) reduces the problem to a small DFS.
-- **Canonical representation** (stable collapsed board) lets memoization be effective.
-- **Time Complexity**: \(O(3^{H} \times 5^{H})\) ≈ \(O(10^3)\) for worst case, thanks to memo.
-- **Space Complexity**: dominated by memo map – at most a few thousand entries.
-
----
-
-## 7️⃣ Final Thoughts
-
-Whether you’re coding in **Java**, **Python**, or **C++**, the core idea stays the same: treat the game as a state‑search problem and use memoization to prune. The Zuma‑like game in LeetCode 488 is a great exercise in *state compression*, *dynamic programming*, and *recursive backtracking*.
-
-Happy coding! 🚀
-
---- 
-
-**Keywords:** Zuma game, LeetCode 488, findMinStep, DFS, memoization, board collapse, hand count, Java LRU cache, Python lru_cache, C++ unordered_map, algorithm design.
+**End of guide.**

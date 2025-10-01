@@ -7,88 +7,74 @@ author: moses
 tags: []
 hideToc: true
 ---
-        **Problem**
+        **Solution Explanation**
 
-You are given two strings of the same length  
-
-* `s` – only the characters `'('` and `')'`  
-* `locked` – a string of `'0'` and `'1'`.  
-  `locked[i] == '1'` means that `s[i]` is *fixed* – it cannot be changed.  
-  `locked[i] == '0'` means that `s[i]` is *free* – you may replace it by either
-  `'('` or `')'`.
-
-Can you change every free position so that the whole string becomes a *valid*
-parentheses string (properly matched)?
-
---------------------------------------------------------------------
-
-#### 1.  Observations
-
-* A valid parentheses string must have even length – otherwise it is
-  impossible to pair every opening with a closing bracket.
-
-* While scanning the string from left to right we can keep track of how many
-  fixed opening brackets we have seen minus the fixed closing brackets.
-  Let this be `balance`.  
-  Every free position can be used as an opening bracket (or later
-  as a closing one) – at the moment we only know that it can help to
-  cover a deficit.
-
-  If at some prefix `balance + free < 0` we already have more closing
-  brackets than we can cover – the string can never become valid.
-
-* The same logic must hold when scanning from right to left,
-  but now we look at the *fixed* closing brackets minus the fixed opening
-  brackets.  
-  Whenever the deficit of closing brackets exceeds the number of free
-  positions in that suffix, a fixed opening bracket will remain unmatched.
-
-If **both** passes finish without a contradiction, we can always assign the
-free brackets in a way that the final string is valid.
-
---------------------------------------------------------------------
-
-#### 2.  Algorithm
+For every position of the string
 
 ```
-canBeValid(s, locked)
-    n ← length of s
-    if n is odd → return false          // a valid string must be even
+s[i]  ∈  {'(', ')'}
+locked[i] ∈ {'0','1'}        // '0' → unlocked, can be turned into '(' or ')'
+```
 
-    // ----- left → right pass -----
-    balance ← 0      // fixed '('  – fixed ')'
-    freeLeft ← 0     // free positions seen so far
-    for i = 0 … n-1
-        if locked[i] == '0'
-            freeLeft ← freeLeft + 1
-        else if s[i] == '('
-            balance ← balance + 1
-        else            // s[i] == ')'
-            balance ← balance – 1
+We may change *any* unlocked character into the other parenthesis.  
+The question: *Is there a way to obtain a **valid** parenthesis string?*
 
-        if balance + freeLeft < 0
-            return false                // too many fixed ')' already
+--------------------------------------------------------------------
 
-    // ----- right → left pass -----
-    balance ← 0      // fixed ')' – fixed '('
-    freeRight ← 0
-    for i = n-1 … 0
-        if locked[i] == '0'
-            freeRight ← freeRight + 1
-        else if s[i] == ')'
-            balance ← balance + 1
-        else            // s[i] == '('
-            balance ← balance – 1
+#### Observations
 
-        if balance + freeRight < 0
-            return false                // too many fixed '(' already
+* A valid parenthesis string is always of **even** length.  
+  If the length is odd → impossible.
+
+* While scanning the string from the left, at any position the number of
+  `(` that are *fixed* (locked `'('`) minus the number of fixed `)` (locked `')'`)
+  may be compensated by some of the unlocked positions (`'0'`).  
+  If at some point
+
+```
+fixedOpen + unlocked < 0
+```
+
+  we would have more `)` than we can still match → impossible.
+
+* Symmetrically, scanning from the right we must never have
+  more fixed `'('` than fixed `')'` that can still be compensated by
+  unlocked positions.
+
+If both scans finish without contradiction, a valid assignment exists.
+
+--------------------------------------------------------------------
+
+#### Algorithm
+```
+canBeValid(s, locked):
+    n = len(s)
+    if n is odd: return false
+
+    // left → right
+    open  = 0          // locked '(' – locked ')'
+    freeL = 0          // unlocked positions so far
+    for i from 0 to n-1:
+        if locked[i] == '0': freeL++
+        else if s[i] == '(': open++
+        else if s[i] == ')': open--
+        if open + freeL < 0: return false
+
+    // right → left
+    close = 0          // locked ')' – locked '('
+    freeR = 0          // unlocked positions so far
+    for i from n-1 down to 0:
+        if locked[i] == '0': freeR++
+        else if s[i] == ')': close++
+        else if s[i] == '(': close--
+        if close + freeR < 0: return false
 
     return true
 ```
 
 --------------------------------------------------------------------
 
-#### 3.  Correctness Proof  
+#### Correctness Proof  
 
 We prove that the algorithm returns `true` iff the string can be made
 valid.
@@ -96,142 +82,177 @@ valid.
 ---
 
 ##### Lemma 1  
-During the left‑to‑right pass, for every prefix `P` of the string,
-`balance(P) + freeLeft(P) ≥ 0` holds *iff* it is possible to replace all
-free positions inside `P` so that no closing bracket in `P` is unmatched
-when reading from left to right.
+During the left‑to‑right scan `open + freeL` is the maximum possible
+balance (number of unmatched `'('`) that could exist at that position
+using only the unlocked characters seen so far.
 
 **Proof.**
 
-*If part.*  
-Suppose `balance(P) + freeLeft(P) < 0`.  
-`balance(P)` is the number of fixed `'('` minus fixed `')'` in `P`.  
-`freeLeft(P)` counts the free positions, which we can decide later.
-Even if we turn **all** free positions into `'('`, the net number of
-closing brackets in `P` would still be
-`- (balance(P) + freeLeft(P)) > 0`.  
-Hence there would be at least one unmatched `')'` – impossible.
-
-*Only if part.*  
-Assume `balance(P) + freeLeft(P) ≥ 0`.  
-We can assign `balance(P) + freeLeft(P)` of the free positions in `P`
-as `'('`, and the rest as `')'`.  
-The resulting net balance after this prefix is exactly
-`balance(P) + (balance(P) + freeLeft(P)) - freeLeft(P) = 0`  
-or positive, so no `')'` can be unmatched. ∎
+* `open` counts the difference `locked('(') – locked(')')` up to this
+  position.  
+* `freeL` counts all unlocked positions seen so far; each of them can be
+  turned into `'('` if needed, thus increasing the balance by at most
+  `freeL`.  
+Therefore `open + freeL` is the largest balance achievable with the
+information available so far. ∎
 
 
 
 ##### Lemma 2  
-During the right‑to‑left pass, for every suffix `S` of the string,
-`balance(S) + freeRight(S) ≥ 0` holds *iff* it is possible to replace all
-free positions inside `S` so that no opening bracket in `S` is unmatched
-when reading from right to left.
+If during the left‑to‑right scan the algorithm encounters
+`open + freeL < 0`, then the string cannot be made valid.
 
-*The proof is symmetric to Lemma&nbsp;1.* ∎
+**Proof.**
+
+`open` is the exact balance contributed by the *locked* parentheses.
+`freeL` can compensate at most one `)` per unlocked position.  
+If even after using all currently available unlocked characters the
+balance becomes negative, there are more `)` than possible `(` before
+this point, which will stay unmatched no matter how we change later
+unlocked positions.  
+Thus no valid assignment exists. ∎
+
+
+
+##### Lemma 3  
+If the left‑to‑right scan finishes without violating the condition
+in Lemma&nbsp;2, then for every prefix of the string there exists a
+choice of the unlocked positions inside this prefix that keeps the
+balance non‑negative.
+
+**Proof.**
+
+The scan ensures that after processing each prefix
+
+```
+open + freeL >= 0
+```
+
+which means the prefix can be completed (by turning some unlocked
+positions into `'('`) to a balanced prefix. ∎
+
+
+
+##### Lemma 4  
+The right‑to‑left scan is analogous to Lemma&nbsp;3 but for the suffix
+ending at each position. Therefore, if it finishes without violation,
+every suffix can be completed to a balanced suffix.
+
+∎
 
 
 
 ##### Theorem  
-The algorithm returns `true` iff there exists a way to replace all
-free positions of `s` so that the resulting string is a valid
-parentheses string.
+`canBeValid` returns `true` **iff** the string can be turned into a
+valid parenthesis string by changing only the unlocked positions.
 
 **Proof.**
 
-*If the algorithm returns `true`.*  
-Both passes never violated the inequalities, thus by Lemma&nbsp;1 and
-Lemma&nbsp;2 every prefix can be made free of unmatched `')'` and every
-suffix can be made free of unmatched `'('`.  
-Because the string length is even, the total number of `'('` equals the
-number of `')'` after choosing the free characters appropriately.
-Therefore a complete assignment exists and the whole string can be made
-valid.
+*If the algorithm returns `true`*  
+  - Length is even.  
+  - By Lemma&nbsp;3 every prefix can be completed to a balanced prefix.  
+  - By Lemma&nbsp;4 every suffix can be completed to a balanced suffix.  
+  Since the whole string has even length, these two properties together
+  guarantee that we can assign the unlocked positions so that the
+  resulting string is a correct parenthesis sequence.
 
-*If the algorithm returns `false`.*  
-The algorithm stops at the first prefix `P` or suffix `S` where the
-inequality fails.  
-By Lemma&nbsp;1 or Lemma&nbsp;2, no assignment of the free positions can
-eliminate the unmatched bracket in that prefix/suffix.
-Consequently a valid assignment for the entire string does not exist. ∎
+*If the algorithm returns `false`*  
+  - Either the length is odd → impossible.  
+  - Or one of the scans violates its condition.  
+    By Lemma&nbsp;2 or its symmetric version, a prefix or suffix would
+    contain more locked `)` than possible `'('` even after using all
+    unlocked characters.  
+    Thus no assignment can make the whole string valid.
+
+Hence the algorithm is correct. ∎
 
 
-
---------------------------------------------------------------------
-
-#### 4.  Complexity Analysis
-
-| Step | Time | Extra Space |
-|------|------|-------------|
-| Length check | O(1) | – |
-| Left‑to‑right pass | O(n) | O(1) |
-| Right‑to‑left pass | O(n) | O(1) |
-| **Total** | **O(n)** | **O(1)** |
 
 --------------------------------------------------------------------
 
-#### 5.  Reference Implementation (C++17)
+#### Complexity Analysis
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-class Solution {
-public:
-    bool canBeValid(string s, string locked) {
-        int n = s.size();
-        if (n % 2 != 0) return false;          // must be even
-
-        // left → right
-        int bal = 0;          // fixed '(' - fixed ')'
-        int freeLeft = 0;     // number of free positions seen so far
-        for (int i = 0; i < n; ++i) {
-            if (locked[i] == '0')
-                ++freeLeft;
-            else if (s[i] == '(')
-                ++bal;
-            else            // s[i] == ')'
-                --bal;
-
-            if (bal + freeLeft < 0) return false;
-        }
-
-        // right → left
-        bal = 0;          // fixed ')' - fixed '('
-        int freeRight = 0;
-        for (int i = n - 1; i >= 0; --i) {
-            if (locked[i] == '0')
-                ++freeRight;
-            else if (s[i] == ')')
-                ++bal;
-            else            // s[i] == '('
-                --bal;
-
-            if (bal + freeRight < 0) return false;
-        }
-
-        return true;
-    }
-};
-```
+*Time* – Two linear scans: `O(n)`  
+*Space* – A handful of integer counters: `O(1)`
 
 --------------------------------------------------------------------
 
-#### 6.  Quick Test
+#### Reference Implementation (Go 1.17)
 
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func canBeValid(s string, locked string) bool {
+	n := len(s)
+	if n%2 != 0 { // must be even
+		return false
+	}
+
+	// left‑to‑right
+	open := 0   // locked '(' minus locked ')'
+	freeL := 0  // number of unlocked positions seen so far
+	// right‑to‑left
+	close := 0  // locked ')' minus locked '('
+	freeR := 0  // number of unlocked positions seen so far
+
+	for i := 0; i < n; i++ {
+		// ---------- left to right ----------
+		if locked[i] == '0' {
+			freeL++
+		} else {
+			if s[i] == '(' {
+				open++
+			} else { // ')'
+				open--
+			}
+		}
+		if open+freeL < 0 {
+			return false
+		}
+
+		// ---------- right to left ----------
+		j := n - i - 1
+		if locked[j] == '0' {
+			freeR++
+		} else {
+			if s[j] == ')' {
+				close++
+			} else { // '('
+				close--
+			}
+		}
+		if close+freeR < 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	var s, locked string
+	if _, err := fmt.Fscan(in, &s); err != nil {
+		return
+	}
+	if _, err := fmt.Fscan(in, &locked); err != nil {
+		return
+	}
+	if canBeValid(s, locked) {
+		fmt.Println("true")
+	} else {
+		fmt.Println("false")
+	}
+}
 ```
-s      = "((()))"
-locked = "111111"   → true          // already valid
 
-s      = "((()))"
-locked = "110110"   → false         // a fixed ')' cannot be covered
-
-s      = "())("
-locked = "0000"     → true          // assign "(())"
-
-s      = "(()))("
-locked = "000000"   → false         // no assignment can balance
-```
-
-The program follows exactly the algorithm proven correct above
-and satisfies the `O(n)` time / `O(1)` space requirement.
+The program reads two strings from standard input (`s` and `locked`),
+calls `canBeValid`, and prints `true` or `false`.  
+It follows exactly the algorithm proven correct above and is fully
+compatible with Go 1.17.

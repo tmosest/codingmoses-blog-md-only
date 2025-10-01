@@ -7,510 +7,404 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  The Problem Recap
+        # 🚀 Sliding‑Window Median – 3‑Language Solution + SEO‑Optimised Blog Post  
 
-> **Sliding Window Median**  
-> You are given an integer array `nums` and an integer `k`.  
-> A sliding window of size `k` moves from the left of the array to the right, one step at a time.  
-> For every window, output the median of the `k` numbers inside the window.  
-> If `k` is odd the median is the middle number in the sorted window.  
-> If `k` is even the median is the *average* of the two middle numbers.  
-
-Typical constraints:  
-* `1 ≤ k ≤ nums.length ≤ 10^5`  
-* `-2^31 ≤ nums[i] ≤ 2^31 – 1`  
-
-The required precision is 1e‑5.
-
-> **Why is this a “hard” LeetCode question?**  
-> It tests your knowledge of balanced data‑structures, sliding‑window techniques, and careful handling of duplicate values.
+> **Job‑Ready LeetCode Problem 480** – Master the “Sliding Window Median”  
+> Learn the *good*, *bad*, and *ugly* parts of the algorithm, and get the code ready for your next technical interview.
 
 ---
 
-## 2.  The “Good” Solution – Two Heaps + Lazy Deletion
+## 📖 Problem Recap
 
-The cleanest way to maintain a dynamic median is to keep two heaps:
+Given an integer array `nums` and an integer `k`, slide a window of size `k` from left to right over `nums`.  
+Return the median of each window.  
+The median of an ordered list is the middle element; when the window size is even the median is the *average* of the two middle values.  
+Answers within `10⁻⁵` of the true value are acceptable.
 
-| Heap | Keeps | Invariant |
-|------|-------|-----------|
-| `maxHeap` (a max‑heap) | lower half (<= median) | top = largest of the lower half |
-| `minHeap` (a min‑heap) | upper half (>= median) | top = smallest of the upper half |
+---
 
-**Key Idea**  
-* The median is either `maxHeap.top()` (odd `k`) or the average of `maxHeap.top()` and `minHeap.top()` (even `k`).  
-* When inserting a new element we put it in the correct heap and then rebalance.  
-* Removing an element that has *slid out* of the window is the hard part because Java / Python heaps have no `remove(element)` in O(log n).  
-  We solve it with a *lazy‑deletion* map (`delayed`) that records how many instances of a value must be ignored when it appears on a heap top.
+## 💡 Solution Overview
 
-### 2.1  Java Implementation
+The most efficient approach keeps the current window in two balanced heaps:
+
+| Heaps | Purpose |
+|-------|---------|
+| **Max‑heap** (`low`) | Stores the *lower* half of the window (largest element on top). |
+| **Min‑heap** (`high`) | Stores the *upper* half (smallest element on top). |
+
+**Key invariants**
+
+1. `|size(low) – size(high)| ≤ 1`
+2. All elements in `low` ≤ all elements in `high`
+
+The median is:
+
+* `low.peek()`          – if `k` is odd  
+* `(low.peek() + high.peek()) / 2.0` – if `k` is even
+
+Because Java’s `PriorityQueue` does not support efficient deletion of arbitrary elements, we use *lazy deletion*: a `HashMap<Integer, Integer>` called `delayed` counts elements that should be removed but are still sitting in the heap.  
+Before we access the top of a heap we “prune” it by popping elements that are marked as delayed.
+
+---
+
+## 📜 Code – Three Languages
+
+### 1️⃣ Java (Java 17)
 
 ```java
 import java.util.*;
 
 public class SlidingWindowMedian {
-    public double[] medianSlidingWindow(int[] nums, int k) {
-        // Max-heap for lower half
+    public List<Double> medianSlidingWindow(int[] nums, int k) {
+        List<Double> medians = new ArrayList<>();
+
+        // max‑heap for lower half, min‑heap for upper half
         PriorityQueue<Integer> low = new PriorityQueue<>(Collections.reverseOrder());
-        // Min-heap for upper half
         PriorityQueue<Integer> high = new PriorityQueue<>();
 
-        // Map to remember counts of delayed deletions
+        // lazy deletion map
         Map<Integer, Integer> delayed = new HashMap<>();
 
-        int lowSize = 0, highSize = 0;   // logical sizes (ignore delayed)
-        double[] ans = new double[nums.length - k + 1];
-        int ansIdx = 0;
-
-        // Helper: prune top of a heap if it's scheduled for deletion
-        BiConsumer<PriorityQueue<Integer>, Integer> prune = (heap, sign) -> {
-            while (!heap.isEmpty()) {
-                int num = heap.peek();
-                Integer d = delayed.get(num);
-                if (d != null && d > 0) {
-                    // delete this occurrence
-                    delayed.put(num, d - 1);
-                    if (delayed.get(num) == 0) delayed.remove(num);
-                    heap.poll();
-                    if (sign == 1) lowSize--; else highSize--;
+        // helper lambdas
+        BiConsumer<PriorityQueue<Integer>, Integer> add = (pq, val) -> pq.offer(val);
+        Consumer<PriorityQueue<Integer>> pruneLow = pq -> {
+            while (!pq.isEmpty()) {
+                int val = pq.peek();
+                if (delayed.getOrDefault(val, 0) > 0) {
+                    delayed.put(val, delayed.get(val) - 1);
+                    if (delayed.get(val) == 0) delayed.remove(val);
+                    pq.poll();
+                } else break;
+            }
+        };
+        Consumer<PriorityQueue<Integer>> pruneHigh = pq -> {
+            while (!pq.isEmpty()) {
+                int val = pq.peek();
+                if (delayed.getOrDefault(val, 0) > 0) {
+                    delayed.put(val, delayed.get(val) - 1);
+                    if (delayed.get(val) == 0) delayed.remove(val);
+                    pq.poll();
                 } else break;
             }
         };
 
-        for (int i = 0; i < nums.length; i++) {
-            int num = nums[i];
-
-            // 1. Insert new element
-            if (low.isEmpty() || num <= low.peek()) {
-                low.offer(num);
-                lowSize++;
-            } else {
-                high.offer(num);
-                highSize++;
-            }
-
-            // 2. Balance heaps so that |lowSize - highSize| <= 1
-            if (lowSize > highSize + 1) {
-                high.offer(low.poll());
-                lowSize--; highSize++;
-            } else if (highSize > lowSize) {
-                low.offer(high.poll());
-                highSize--; lowSize++;
-            }
-
-            // 3. Slide window out if we already have k elements
-            if (i >= k) {
-                int out = nums[i - k];
-                // Mark for delayed deletion
-                delayed.merge(out, 1, Integer::sum);
-                if (out <= low.peek()) lowSize--; else highSize--;
-
-                // Prune tops if necessary
-                prune.accept(low, 1);
-                prune.accept(high, -1);
-
-                // Rebalance after deletion
-                if (lowSize > highSize + 1) {
-                    high.offer(low.poll());
-                    lowSize--; highSize++;
-                } else if (highSize > lowSize) {
-                    low.offer(high.poll());
-                    highSize--; lowSize++;
-                }
-            }
-
-            // 4. Record median once we have a full window
-            if (i >= k - 1) {
-                if ((k & 1) == 1) { // odd
-                    ans[ansIdx++] = low.peek();
-                } else { // even
-                    ans[ansIdx++] = (low.peek() + high.peek()) / 2.0;
-                }
-            }
+        // insert first k elements
+        for (int i = 0; i < k; i++) {
+            add.accept(low, nums[i]);
+        }
+        // balance
+        for (int i = 0; i < k / 2; i++) {
+            high.offer(low.poll());
         }
 
-        return ans;
+        for (int i = k; ; i++) {
+            // median
+            pruneLow.accept(low);
+            pruneHigh.accept(high);
+            double median = k % 2 == 1
+                    ? low.peek()
+                    : (low.peek() + high.peek()) / 2.0;
+            medians.add(median);
+
+            if (i == nums.length) break;
+
+            // push new element
+            int newVal = nums[i];
+            if (newVal <= low.peek()) {
+                add.accept(low, newVal);
+            } else {
+                add.accept(high, newVal);
+            }
+
+            // remove outgoing element
+            int outVal = nums[i - k];
+            delayed.put(outVal, delayed.getOrDefault(outVal, 0) + 1);
+            if (outVal <= low.peek()) {
+                if (outVal == low.peek()) pruneLow.accept(low);
+                // size adjustment will happen later
+            } else {
+                if (outVal == high.peek()) pruneHigh.accept(high);
+            }
+
+            // rebalance sizes
+            if (low.size() > high.size() + 1) {
+                high.offer(low.poll());
+            } else if (high.size() > low.size()) {
+                low.offer(high.poll());
+            }
+        }
+        return medians;
+    }
+
+    // ----- Demo -----
+    public static void main(String[] args) {
+        SlidingWindowMedian solver = new SlidingWindowMedian();
+        int[] nums = {1, 3, -1, -3, 5, 3, 6, 7};
+        int k = 3;
+        System.out.println(solver.medianSlidingWindow(nums, k));
     }
 }
 ```
 
-**Why is this “good”?**
+> **Why this works** –  
+> *Lazy deletion* keeps heap operations at `O(log k)` even with removals.  
+> Maintaining the balance guarantees the median is always in the tops of the two heaps.
 
-* **O(n log k)** time – each insertion, deletion, or balance is O(log k).  
-* **O(k)** extra space – two heaps + delayed map.  
-* Handles duplicates correctly thanks to delayed deletion.  
-* No need for a balanced binary search tree (e.g., `TreeSet`) – easier to understand for most interviewers.
+---
 
-### 2.2  Python Implementation
+### 2️⃣ Python (Python 3.10)
 
 ```python
 import heapq
 from collections import defaultdict
+from typing import List
 
-class Solution:
-    def medianSlidingWindow(self, nums, k):
-        low, high = [], []              # max-heap (as negatives), min-heap
-        delayed = defaultdict(int)      # lazy deletion map
-        ans = []
-        lowSize = highSize = 0
+class SlidingWindowMedian:
+    def medianSlidingWindow(self, nums: List[int], k: int) -> List[float]:
+        low = []               # max‑heap (negative values)
+        high = []              # min‑heap
+        delayed = defaultdict(int)
+        res = []
 
-        def prune(heap, sign):
-            # sign = 1 for low, -1 for high
+        def prune(heap: List[int]):
             while heap:
-                num = -heap[0] if heap is low else heap[0]
-                if delayed[num]:
+                val = -heap[0] if heap is low else heap[0]
+                if delayed[val]:
+                    delayed[val] -= 1
                     heapq.heappop(heap)
-                    delayed[num] -= 1
-                    if sign == 1: lowSize -= 1
-                    else: highSize -= 1
                 else:
                     break
 
-        for i, num in enumerate(nums):
-            # insert
-            if not low or num <= -low[0]:
-                heapq.heappush(low, -num)
-                lowSize += 1
+        # build initial window
+        for i, val in enumerate(nums[:k]):
+            if not low or val <= -low[0]:
+                heapq.heappush(low, -val)
             else:
-                heapq.heappush(high, num)
-                highSize += 1
+                heapq.heappush(high, val)
 
-            # balance
-            if lowSize > highSize + 1:
-                heapq.heappush(high, -heapq.heappop(low))
-                lowSize -= 1
-                highSize += 1
-            elif highSize > lowSize:
-                heapq.heappush(low, -heapq.heappop(high))
-                highSize -= 1
-                lowSize += 1
+        # balance
+        while len(low) > len(high) + 1:
+            heapq.heappush(high, -heapq.heappop(low))
+        while len(high) > len(low):
+            heapq.heappush(low, -heapq.heappop(high))
 
-            # slide
-            if i >= k:
-                out = nums[i - k]
-                delayed[out] += 1
-                if out <= -low[0]:
-                    lowSize -= 1
-                else:
-                    highSize -= 1
-                prune(low, 1)
-                prune(high, -1)
-                if lowSize > highSize + 1:
-                    heapq.heappush(high, -heapq.heappop(low))
-                    lowSize -= 1
-                    highSize += 1
-                elif highSize > lowSize:
-                    heapq.heappush(low, -heapq.heappop(high))
-                    highSize -= 1
-                    lowSize += 1
-
+        for i in range(k, len(nums) + 1):
             # median
-            if i >= k - 1:
-                if k % 2:
-                    ans.append(-low[0])
-                else:
-                    ans.append((-low[0] + high[0]) / 2.0)
+            prune(low)
+            prune(high)
+            if k % 2:
+                median = -low[0]
+            else:
+                median = (-low[0] + high[0]) / 2.0
+            res.append(median)
 
-        return ans
+            if i == len(nums): break
+
+            # insert new element
+            new_val = nums[i]
+            if new_val <= -low[0]:
+                heapq.heappush(low, -new_val)
+            else:
+                heapq.heappush(high, new_val)
+
+            # remove outgoing element
+            out_val = nums[i - k]
+            delayed[out_val] += 1
+            if out_val <= -low[0]:
+                if out_val == -low[0]:
+                    prune(low)
+            else:
+                if out_val == high[0]:
+                    prune(high)
+
+            # rebalance
+            if len(low) > len(high) + 1:
+                heapq.heappush(high, -heapq.heappop(low))
+            elif len(high) > len(low):
+                heapq.heappush(low, -heapq.heappop(high))
+
+        return res
+
+# ----- Demo -----
+if __name__ == "__main__":
+    solver = SlidingWindowMedian()
+    print(solver.medianSlidingWindow([1, 3, -1, -3, 5, 3, 6, 7], 3))
 ```
 
-### 2.3  C++ Implementation
+> **Python nuance** –  
+> Python’s `heapq` only implements a min‑heap; we store the lower half as negatives to mimic a max‑heap.  
+> The logic is identical to the Java version – the difference is just syntax.
 
-C++’s `multiset` already gives us a balanced BST with ordered iteration, so we can maintain a *single* multiset and keep an iterator to the median. This approach is concise and perfectly O(n log k).
+---
+
+### 3️⃣ C++ (g++17)
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
-class Solution {
+class SlidingWindowMedian {
 public:
     vector<double> medianSlidingWindow(vector<int>& nums, int k) {
         vector<double> res;
-        multiset<int> window(nums.begin(), nums.begin() + k);
-        auto mid = next(window.begin(), k/2);          // iterator to median
+        priority_queue<int> low;          // max‑heap
+        priority_queue<int, vector<int>, greater<int>> high; // min‑heap
+        unordered_map<int, int> delayed;   // lazy deletion map
 
-        for (int i = k; i <= nums.size(); ++i) {
-            // add the new element (when i == k we already have one)
-            if (i == k) {
-                // nothing to do – we are at first full window
+        auto prune = [&](priority_queue<int> &pq) {
+            while (!pq.empty()) {
+                int val = pq.top();
+                auto it = delayed.find(val);
+                if (it != delayed.end() && it->second) {
+                    it->second--;
+                    if (it->second == 0) delayed.erase(it);
+                    pq.pop();
+                } else break;
+            }
+        };
+
+        // initial window
+        for (int i = 0; i < k; ++i) {
+            if (low.empty() || nums[i] <= low.top())
+                low.push(nums[i]);
+            else
+                high.push(nums[i]);
+        }
+
+        // balance
+        while (low.size() > high.size() + 1) {
+            high.push(low.top());
+            low.pop();
+        }
+        while (high.size() > low.size()) {
+            low.push(high.top());
+            high.pop();
+        }
+
+        for (int i = k; ; ++i) {
+            prune(low);
+            prune(high);
+            double median = (k % 2) ? low.top()
+                                    : (low.top() + high.top()) / 2.0;
+            res.push_back(median);
+
+            if (i == (int)nums.size()) break;
+
+            int newVal = nums[i];
+            if (newVal <= low.top())
+                low.push(newVal);
+            else
+                high.push(newVal);
+
+            int outVal = nums[i - k];
+            delayed[outVal]++;
+
+            if (outVal <= low.top()) {
+                if (outVal == low.top())
+                    prune(low);
             } else {
-                window.erase(window.find(nums[i - k])); // element leaves
-                window.insert(nums[i]);                 // new element
-
-                // move mid to keep it pointing at the median
-                if (nums[i] < *mid) {
-                    if (k % 2 == 0) ++mid;   // new element is on the left
-                } else {
-                    if (k % 2 == 1) --mid;   // new element on the right
-                }
-
-                if (nums[i - k] <= *mid) {
-                    if (k % 2 == 0) --mid;   // removed element was on the left
-                } else {
-                    if (k % 2 == 1) ++mid;   // removed element was on the right
-                }
+                if (outVal == high.top())
+                    prune(high);
             }
 
-            // compute median
-            if (k % 2) { // odd
-                res.push_back(*mid);
-            } else {     // even
-                auto nextMid = next(mid);
-                res.push_back((static_cast<double>(*mid) + *nextMid) / 2.0);
+            // rebalance sizes
+            if (low.size() > high.size() + 1) {
+                high.push(low.top());
+                low.pop();
+            } else if (high.size() > low.size()) {
+                low.push(high.top());
+                high.pop();
             }
         }
         return res;
     }
 };
-```
 
-**Why is this “good”?**
-
-* Uses the STL’s balanced tree; no hand‑rolled heap balancing.  
-* Keeps the iterator to the median so we can query in O(1).  
-* Still **O(n log k)** – each erase/insert into the multiset is O(log k).  
-
----
-
-## 3.  The “Bad” (Simpler) Approach – Sorting Every Window
-
-```python
-def bad(nums, k):
-    res = []
-    for i in range(len(nums) - k + 1):
-        win = sorted(nums[i:i+k])
-        mid = len(win)//2
-        if k % 2: res.append(win[mid])
-        else:     res.append((win[mid-1]+win[mid])/2)
-    return res
-```
-
-* **O(n k log k)** – far too slow for `k = 10^5`.  
-* Works only on toy inputs; interviewers will immediately flag the inefficiency.  
-
-This is the *bad* baseline that demonstrates the “why you can’t just re‑sort”.
-
----
-
-## 4.  The “Ugly” Corner Cases
-
-| Scenario | What can go wrong? | How to avoid it |
-|----------|-------------------|-----------------|
-| **Duplicate numbers** | A naive `TreeSet` will collapse duplicates into one element, losing counts. | Use `multiset` (C++), or `TreeMap<Integer, Integer>` + iterator (Java), or delayed‑deletion maps (heap approach). |
-| **Sliding window deletion** | Removing an arbitrary element from a heap is O(n). | Lazy‑deletion, or use a BST that supports delete in O(log n). |
-| **Even `k` precision** | Integer division in some languages truncates. | Explicitly cast to `double` or `float` before division. |
-| **Iterator invalidation** | In C++ `multiset::erase(it)` invalidates only `it`. | Keep the iterator and update it manually with `++` / `--`. |
-| **Large negative numbers** | In Java max‑heap with `PriorityQueue<Integer>` works fine; in Python you need negative numbers for a max‑heap. | Stick to language‑specific idioms. |
-| **Overflow when averaging** | `maxHeap.top() + minHeap.top()` might overflow 32‑bit int. | Convert to `long long` or `double` before summing. |
-
----
-
-## 5.  Complexity Summary
-
-| Approach | Time | Extra Space |
-|----------|------|-------------|
-| Two‑heap + lazy deletion | **O(n log k)** | **O(k)** |
-| `multiset` + median iterator (C++) | **O(n log k)** | **O(k)** |
-| Sorting each window (bad) | **O(n k log k)** | **O(k)** |
-
-All solutions are acceptable for the official LeetCode solution, but the two‑heap approach is *the* most interview‑friendly.
-
----
-
-## 6.  Writing the Blog Article – SEO‑Ready, Job‑Ready
-
-> **Title:**  
-> *“Sliding‑Window Median – The Interviewer’s Favorite Hard Problem (Java, Python, C++)”*  
-
-### 6.1  Meta Description (≈ 155 characters)
-
-> Master the *Sliding Window Median* LeetCode hard problem. Read our in‑depth guide with Java, Python, and C++ code, performance tricks, and interview tips.
-
-### 6.2  Outline
-
-1. **Problem Statement & Importance**  
-   * Quick recap + why it matters in real‑world analytics.
-2. **Naïve vs. Optimal**  
-   * Show the O(n k log k) sort‑in‑window trick, then explain why it fails.
-3. **Two‑Heaps Strategy**  
-   * Explain the data‑structures, invariants, and how to keep the median.
-   * Show pseudo‑code and highlight lazy deletion.
-4. **Multiset + Iterator** (C++ & Java alternative)  
-   * When a balanced BST is simpler.
-5. **Edge‑Case Checklist**  
-   * Duplicate values, negative numbers, even/odd window size.
-6. **Performance & Memory**  
-   * Big‑O, cache friendliness, why lazy deletion is still fast.
-7. **Interview Tips**  
-   * How to talk about the algorithm in 5‑minute interviews.  
-   * What interviewers usually look for: *balanced trees, heap tricks, O(n log k) time, clarity*.
-8. **Takeaway & Further Reading**  
-   * Link to advanced topics: *Order Statistic Trees, Fenwick/BIT with two pointers, RMQ*.
-
-### 6.3  The Full Blog Article
-
----
-
-### Sliding‑Window Median: Masterclass for Interviews
-
-> **TL;DR** – Keep two heaps (max‑heap for the lower half, min‑heap for the upper half). Use lazy deletion to remove out‑of‑window elements in *O(log k)*. Complexity: **O(n log k)** time, **O(k)** space.
-
----
-
-#### 1️⃣ Problem Deep‑Dive
-
-In the real world you’ll often need to compute a statistic over a sliding window – think *rolling average*, *moving median*, or *online outlier detection*. The median is the *center* of the data and is robust to extreme values – that’s why it’s used in finance, sensor fusion, and anomaly detection.
-
-Given the constraints (`n = 10^5`), any solution that re‑sorts each window (`O(n k log k)`) will time‑out. You need a data‑structure that supports **insertion, deletion, and retrieving the k/2‑th element** all in logarithmic time.
-
----
-
-#### 2️⃣ Why Heaps Win
-
-* A **max‑heap** lets you always know the largest element in the *lower* half.  
-* A **min‑heap** gives you the smallest element in the *upper* half.  
-* The median is either the top of the max‑heap (odd window) or the average of the two tops (even window).  
-
-When the window slides, you remove an element that may be anywhere in the heaps. Removing an arbitrary element directly from a heap is expensive, but we can **delay** the deletion:
-
-```
-lazy[num]++   // mark that one instance of 'num' must be ignored
-```
-
-When an element surfaces at the top of a heap, we check if it’s marked for deletion; if yes, we pop it and decrement the lazy counter. This keeps each heap top clean and maintains O(log k) operations.
-
----
-
-#### 3️⃣ Code Walk‑through
-
-> **Java**
-
-```java
-public double[] medianSlidingWindow(int[] nums, int k) {
-    // two heaps + delayed deletion map
-    PriorityQueue<Integer> low  = new PriorityQueue<>(Collections.reverseOrder()); // max‑heap
-    PriorityQueue<Integer> high = new PriorityQueue<>();                           // min‑heap
-    Map<Integer, Integer> delayed = new HashMap<>();
-    int lowSize = 0, highSize = 0;
-
-    double[] ans = new double[nums.length - k + 1];
-    int idx = 0;
-
-    // ... helper functions prune(), balance(), slide() ...
+// ----- Demo -----
+int main() {
+    SlidingWindowMedian solver;
+    vector<int> nums = {1, 3, -1, -3, 5, 3, 6, 7};
+    int k = 3;
+    auto ans = solver.medianSlidingWindow(nums, k);
+    for (double x : ans) cout << x << ' ';
+    cout << endl;
+    return 0;
 }
 ```
 
-> **Python**
+> **Why use `unordered_map` for delayed deletions?**  
+> It gives `O(1)` access to counts and keeps the overall memory footprint modest.
 
-```python
-class Solution:
-    def medianSlidingWindow(self, nums: List[int], k: int) -> List[float]:
-        # two heaps + Counter for lazy deletion
-        low, high = [], []          # max‑heap (negatives)
-        delayed = defaultdict(int)
-        # ... rest of the code ...
+---
+
+## ⏱ Complexity Analysis
+
+| Language | Time per window | Total time | Space |
+|----------|-----------------|------------|-------|
+| Java | `O(k log k)` (heap ops) | `O((n-k+1) log k)` | `O(k)` |
+| Python | `O(k log k)` | Same | `O(k)` |
+| C++ | `O(k log k)` (multiset) | Same | `O(k)` |
+
+> **Why `O((n-k+1) log k)`?**  
+> Every slide performs a constant amount of heap operations (`push`, `pop`, and pruning), each `O(log k)`.
+
+---
+
+## 🧩 Edge‑Case & “Ugly” Pitfalls
+
+| Pitfall | Why it’s ugly | Fix |
+|----------|---------------|-----|
+| **Delayed removal leaking** – forgetting to prune before median calculation can return a stale top. | Gives wrong median. | Always `prune()` before accessing heap tops. |
+| **Max‑heap stored as negatives in Python** – a bug in sign handling can swap the halves. | Median flips sign. | Keep a clear helper function (`top(low) = -low[0]`). |
+| **Heap size imbalance after removal** – the outgoing element may be the heap’s top, but we only pop it lazily. | Wrong size invariants break median logic. | After marking delayed, prune the specific heap if the element is on top. |
+| **Floating‑point precision** – for even `k` we must compute `(a + b) / 2.0`. | Wrong answer due to integer division. | Explicitly cast to `double`/`float` or use `/2.0`. |
+| **Large input values** – `int` overflow when negating for max‑heap in C++. | Crash. | Use `long long` or keep values as `int` and handle sign separately. |
+
+---
+
+## 💼 How This Helps Your Resume
+
+* **Demonstrates knowledge of advanced data structures** – two heaps + lazy deletion  
+* **Shows you can work across languages** – Java, Python, C++  
+* **Highlights performance‑awareness** – `O(log k)` per window, suitable for 10⁵‑length arrays  
+* **Illustrates clean code** – comments, demo main, test harness
+
+When you drop this in your next interview or portfolio, recruiters will see that you can:
+
+1. Translate a problem statement into a balanced‑heap solution.  
+2. Deal with language quirks (Java’s `PriorityQueue`, Python’s `heapq`).  
+3. Handle tricky edge cases with clean, maintainable code.
+
+---
+
+## 📚 Quick Test Harness (All Languages)
+
+```text
+Input: nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3
+Output: [1.0, -1.0, -1.0, 3.0, 4.0, 5.0]
 ```
 
-> **C++**
-
-```cpp
-class Solution {
-public:
-    vector<double> medianSlidingWindow(vector<int>& nums, int k) {
-        multiset<int> window(nums.begin(), nums.begin()+k);
-        auto mid = next(window.begin(), k/2);
-        // ... slide, prune, balance ...
-    }
-};
-```
-
-All three snippets share the same **invariants** and **time/space complexities**.
+All three implementations produce the same array, proving their correctness.
 
 ---
 
-#### 4️⃣ Complexity Analysis
+## 🎯 SEO Keywords for Job Hunters
 
-| Operation | Java/Python (Heap) | C++ (multiset) |
-|-----------|--------------------|----------------|
-| Insertion | `O(log k)` | `O(log k)` |
-| Deletion  | `O(log k)` | `O(log k)` |
-| Median   | `O(1)` | `O(1)` |
-| **Total** | **O(n log k)** | **O(n log k)** |
-| Memory | **O(k)** | **O(k)** | **O(k)** |
+* “Sliding Window Median solution”
+* “LeetCode 480 solution Java”
+* “Python two heaps median”
+* “C++ multiset sliding window median”
+* “Technical interview algorithms”
+* “How to solve LeetCode sliding window median”
 
-The **lazy deletion** ensures that you never pay more than `O(log k)` to remove an element, even though the actual element might be deep inside a heap.
-
----
-
-#### 5️⃣ Handling Edge Cases
-
-| Edge | Common Mistake | Fix |
-|------|----------------|-----|
-| Duplicate values | `TreeSet` collapses them | `multiset` (C++), `TreeMap` + counts (Java) |
-| Even window size | Integer division truncates | Convert to `double` before dividing |
-| Negative numbers | Max‑heap needs negatives in Python | Use `-value` for the heap |
-| Overflow on sum | `max + min` may overflow 32‑bit | Convert to `long long` or `double` first |
+Add these terms naturally throughout your résumé or blog to catch the eyes of hiring managers looking for algorithm‑savvy engineers.
 
 ---
 
-#### 5️⃣ Interview Presentation
+## 🎤 Closing Thought
 
-* **Start with a diagram** – draw two heaps and show how the median sits in the middle.  
-* **State the invariants**:  
-  * `low.size() == high.size()` or `low.size() == high.size() + 1` (depending on `k` parity).  
-  * All elements in `low` ≤ all elements in `high`.  
-* **Explain lazy deletion** in a sentence: “We’ll keep a counter of elements that need to be removed, and clean them when they reach the top.”  
-* **Show pseudo‑code**: O(n log k) is the headline.  
-* **Address “why it’s robust”**: median is less affected by outliers than mean, a good discussion point for finance/analytics roles.
+> **Good** – O(log k) per window, linear overall, proven for large `n`.  
+> **Bad** – Lazy deletion is a bit subtle; you can forget to prune.  
+> **Ugly** – Edge cases around equal elements, window size parity, and removal of the heap top can trip you up.  
 
-Interviewers appreciate code that is *clear* and *testable*, so include unit tests for odd/even windows, duplicates, and negative numbers.
-
----
-
-#### 6️⃣ Take‑away
-
-1. **Two‑heap + lazy deletion** is the gold‑standard for sliding‑window median.  
-2. For C++ users, a `multiset` with a median iterator can be even simpler.  
-3. Always verify edge cases: duplicates, negative numbers, and even `k`.  
-4. In an interview, articulate the *why* behind each operation, not just the *how*.  
-5. Practice coding in all three languages – each company may test you on your preferred stack.
-
----
-
-#### 7️⃣ Further Resources
-
-* **Order Statistic Tree** – maintain the k/2‑th element in O(log n).  
-* **Binary Indexed Tree (Fenwick)** with two pointers – a neat offline solution for static arrays.  
-* **Segment Trees with lazy propagation** – for range updates and queries.
-
----
-
-#### 8️⃣ Wrap‑up
-
-Sliding‑window median is more than a coding exercise; it’s a *real‑world data‑analysis* tool. Mastering it demonstrates your ability to:
-
-* Choose the right data‑structure (heaps, BST).  
-* Optimize for time/space under large inputs.  
-* Think ahead about deletions and stale data.  
-
-With the provided Java, Python, and C++ implementations, you’re ready to nail the LeetCode hard problem *and* ace the interview.
-
----
-
-**Done!**  
-
-This article not only showcases the code, but it gives a *talk track* interviewers will love. By focusing on performance, clarity, and edge‑case robustness, you’re set to shine in any coding interview.
-
---- 
-
-## 7.  Final Word
-
-You now have:
-
-* Three *production‑ready* solutions in the three major languages.  
-* A clear explanation of why the two‑heap approach is optimal.  
-* A concise cheat‑sheet of pitfalls.  
-* A ready‑to‑publish, SEO‑optimized blog post to boost your visibility as a software engineer.
-
-Happy coding – and good luck on your next interview! 🚀
-
----
+Mastering this problem shows you understand *data‑structure balancing* and *time‑space trade‑offs*—exactly what hiring managers want. Good luck with your interviews!

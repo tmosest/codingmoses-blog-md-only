@@ -7,211 +7,251 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. 3‑Language Solutions for **LeetCode 3271 – Hash Divided String**
-
-Below you’ll find clean, production‑ready code in **Java, Python, and C++** that solves the problem in O(n) time and O(n/k) space.  
-Feel free to copy‑paste into your IDE, unit‑test, and ship!  
-
-| Language | File / Class Name | Main Function |
-|----------|-------------------|---------------|
-| Java     | `Solution.java`   | `public String stringHash(String s, int k)` |
-| Python   | `solution.py`     | `def stringHash(s: str, k: int) -> str` |
-| C++      | `solution.cpp`    | `string stringHash(string s, int k)` |
+        # 3271 – Hash Divided String  
+**Java / Python / C++ Solutions + SEO‑Optimized Blog Post**
 
 ---
 
-### Java – `Solution.java`
+## TL;DR
+
+| Language | Time | Space |
+|----------|------|-------|
+| **Java** | *O(n)* | *O(n/k)* |
+| **Python** | *O(n)* | *O(n/k)* |
+| **C++** | *O(n)* | *O(n/k)* |
+
+> *n = |s| (always a multiple of k)*  
+
+---
+
+## 1. Problem Recap (LeetCode 3271)
+
+You are given a string `s` of lowercase letters and an integer `k` such that `k` divides `|s|`.  
+1. Split `s` into `|s| / k` contiguous substrings, each of length `k`.  
+2. For every substring, compute the sum of the alphabet positions of its characters (`a → 0, b → 1, …, z → 25`).  
+3. Take that sum modulo 26 → `hashedChar`.  
+4. Convert `hashedChar` back to a letter (`0 → a`, `25 → z`) and append it to the result string.
+
+Return the final string of length `|s| / k`.
+
+---
+
+## 2. Solution Overview
+
+- **Single Pass** – Iterate once over the characters, maintaining a rolling sum for the current block of size `k`.  
+- **Modulo on the Fly** – After finishing a block, apply `% 26` and convert to a character.  
+- **Constant‑time Operations** – All operations are `O(1)`, so the overall complexity is linear in the input size.
+
+This is the most straightforward approach and runs in *O(n)* time, *O(1)* extra space besides the output.
+
+---
+
+## 3. Code
+
+### 3.1 Java
 
 ```java
-// 3271. Hash Divided String
-// Java 17 (compatible with Java 8+)
+import java.util.*;
 
-class Solution {
+public class Solution {
     public String stringHash(String s, int k) {
-        StringBuilder result = new StringBuilder();
-        int n = s.length();
+        StringBuilder sb = new StringBuilder();
+        int sum = 0;                 // running sum for current block
 
-        for (int i = 0; i < n; i += k) {
-            int sum = 0;
-            for (int j = i; j < i + k; ++j) {
-                sum += s.charAt(j) - 'a';   // 0‑based alphabet index
+        for (int i = 0; i < s.length(); i++) {
+            sum += s.charAt(i) - 'a';   // convert char to 0‑based index
+            if ((i + 1) % k == 0) {     // end of block
+                int hashed = sum % 26;
+                sb.append((char) ('a' + hashed));
+                sum = 0;                // reset for next block
             }
-            int hashedChar = sum % 26;        // wrap around alphabet
-            result.append((char) ('a' + hashedChar));
         }
-        return result.toString();
+        return sb.toString();
+    }
+
+    // Simple main for quick testing
+    public static void main(String[] args) {
+        Solution sol = new Solution();
+        System.out.println(sol.stringHash("abcd", 2)); // bf
+        System.out.println(sol.stringHash("mxz", 3));  // i
     }
 }
 ```
 
-**Why this is good:**
-
-* **Time‑linear** – each character is processed exactly once.
-* **Readable** – nested loops mirror the “divide into k‑sized blocks” logic.
-* **Safe** – no off‑by‑one errors; the inner loop uses the explicit boundary `i + k`.
-
----
-
-### Python – `solution.py`
+### 3.2 Python
 
 ```python
-# 3271. Hash Divided String
-# Python 3.10+
+class Solution:
+    def stringHash(self, s: str, k: int) -> str:
+        res = []
+        total = 0
+        for i, ch in enumerate(s):
+            total += ord(ch) - ord('a')
+            if (i + 1) % k == 0:
+                hashed = total % 26
+                res.append(chr(ord('a') + hashed))
+                total = 0
+        return ''.join(res)
 
-def stringHash(s: str, k: int) -> str:
-    result = []
-    n = len(s)
-    for i in range(0, n, k):
-        block_sum = sum(ord(ch) - ord('a') for ch in s[i:i + k])
-        hashed = block_sum % 26
-        result.append(chr(ord('a') + hashed))
-    return "".join(result)
+# quick test
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.stringHash("abcd", 2))  # bf
+    print(sol.stringHash("mxz", 3))   # i
 ```
 
-**Why this is good:**
-
-* Uses Python’s `range` step to jump by `k`, eliminating an inner counter.
-* List‑appending and `join` keep memory usage linear and avoid string concatenation overhead.
-
----
-
-### C++ – `solution.cpp`
+### 3.3 C++
 
 ```cpp
-// 3271. Hash Divided String
-// C++17 (G++17)
-
-#include <string>
+#include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
 public:
     string stringHash(string s, int k) {
-        string result;
-        int n = s.size();
-        result.reserve(n / k);          // pre‑allocate for speed
-
-        for (int i = 0; i < n; i += k) {
-            int sum = 0;
-            for (int j = i; j < i + k; ++j)
-                sum += s[j] - 'a';
-            int hashed = sum % 26;
-            result.push_back('a' + hashed);
+        string res;
+        int sum = 0;
+        for (int i = 0; i < (int)s.size(); ++i) {
+            sum += s[i] - 'a';
+            if ((i + 1) % k == 0) {
+                int hashed = sum % 26;
+                res.push_back('a' + hashed);
+                sum = 0;
+            }
         }
-        return result;
+        return res;
     }
 };
+
+int main() {
+    Solution sol;
+    cout << sol.stringHash("abcd", 2) << endl; // bf
+    cout << sol.stringHash("mxz", 3)  << endl; // i
+    return 0;
+}
 ```
 
-**Why this is good:**
+---
 
-* `reserve` prevents reallocations of the result string.
-* Using raw loops keeps the code fast and easy to audit.
+## 4. Complexity Analysis
+
+| Metric | Java | Python | C++ |
+|--------|------|--------|-----|
+| **Time** | *O(n)* – each character processed once | *O(n)* | *O(n)* |
+| **Space** | *O(n/k)* – output string | *O(n/k)* | *O(n/k)* |
+| **Auxiliary** | *O(1)* | *O(1)* | *O(1)* |
+
+Because `n` is up to 1000, any linear solution easily passes the limits.
 
 ---
 
-## 2. Blog Article – “Hash Divided String: The Good, The Bad, and the Ugly”
+## 5. Blog Post: “Hash Divided String – The Good, The Bad, The Ugly”
 
-> **SEO Tags**: LeetCode 3271, Hash Divided String, interview coding, Java solution, Python solution, C++ solution, algorithm analysis, time complexity, string manipulation, coding interview prep.
-
----
-
-### Introduction
-
-If you’ve ever stared at **LeetCode #3271 – “Hash Divided String”**, you know that string manipulation can be deceptively tricky. The problem asks you to:
-
-1. Split a string `s` of length `n` into `n / k` blocks, each of length `k`.
-2. For every block, sum the 0‑based alphabet positions of its characters.
-3. Take that sum modulo 26 and map it back to a lowercase letter.
-4. Concatenate those letters to form the final hash.
-
-At first glance it looks like a simple sliding window, but subtle bugs (off‑by‑ones, integer overflow, and wrong alphabet offsets) bite many developers. Let’s walk through the **good** approaches, the **bad** pitfalls, and the **ugly** trade‑offs that often appear in real‑world code.
+> **Keywords**: *LeetCode 3271*, *Hash Divided String*, *Java solution*, *Python solution*, *C++ solution*, *coding interview*, *algorithm interview*, *job interview*, *coding challenge*, *string hashing*, *problem solving*
 
 ---
 
-### The Good: Clean, Linear Solutions
+### 5.1 Introduction
 
-| Language | Time | Space | Highlights |
-|----------|------|-------|------------|
-| Java | O(n) | O(n/k) | `StringBuilder` and explicit indices |
-| Python | O(n) | O(n/k) | List comprehension + `join` |
-| C++ | O(n) | O(n/k) | Pre‑allocated string and raw loops |
+When recruiters look at your LeetCode portfolio, they’re not only interested in the number of solved problems but also in how you explain them. **Hash Divided String (LeetCode #3271)** is a perfect case study to showcase your ability to:
 
-**Key takeaways:**
+1. Understand a problem quickly  
+2. Come up with a clean, efficient algorithm  
+3. Translate that algorithm into multiple languages  
 
-1. **Linear traversal** – no nested loops that multiply time by `k`.  
-2. **Single pass per character** – each character is read exactly once.  
-3. **Avoiding repeated modulus** – compute once after summing a block.  
-4. **Memory efficiency** – pre‑allocate output or use `StringBuilder`.
-
-These patterns make your solution robust against the worst constraints (`n = 1000`, `k = 1` → 1000 iterations).
+Below is a “blog‑style” walkthrough that you can copy into your personal blog or LinkedIn article. It’s SEO‑friendly and includes the code snippets in Java, Python, and C++.
 
 ---
 
-### The Bad: Common Traps and Why They Fail
+### 5.2 The Good – Why This Problem is a Winner
 
-| Mistake | Why it’s bad | Example |
-|---------|--------------|---------|
-| **Off‑by‑one in inner loop** | The inner loop sometimes runs `k + 1` times, leading to an `IndexOutOfBoundsException` in Java or `IndexError` in Python. | `for (int j = i; j <= i + k; ++j)` instead of `< i + k`. |
-| **Using `% 97` to get alphabet index** | `97` is the ASCII code for `'a'`, but `% 97` is not equivalent to “subtract 97”. It produces wrong values for characters beyond `'a'`. | `'b' % 97` → 98 % 97 = 1, works by luck, but `'z' % 97` → 25, okay – still fragile. |
-| **Not resetting the sum for each block** | A running sum across blocks corrupts the hash. | `int sum = 0; for (...) { sum += ...; }` – missing `sum = 0;` at block start. |
-| **Using `+=` on strings in a loop** | In Java/Python, strings are immutable, so each `+=` creates a new string → O(n²). | `result += newChar;` inside a loop of length `n/k`. |
-| **Ignoring `k` could be zero** | `k = 0` would divide by zero – although the problem guarantees `k >= 1`, defensive programming saves debugging time. | Add a guard: `if (k <= 0) return "";` |
+| Feature | Why It’s Helpful |
+|---------|------------------|
+| **Simplicity** | The logic is linear and easy to reason about, making it an excellent teaching tool. |
+| **Language Agnostic** | Works in any major language – great for interviews where you might be asked to code in Java, Python, or C++. |
+| **Real‑world Analogy** | The “hashing” step mirrors checksum or cryptographic hash concepts. |
+| **Clear Output Size** | Result length is always `n/k`, so memory usage is predictable. |
 
----
-
-### The Ugly: Performance Tweaks That Obscure Logic
-
-Sometimes a coder will add micro‑optimisations that make the code unreadable:
-
-* **Unrolled loops** – manually writing 5–10 iterations to cut a tiny fraction of runtime, at the cost of maintenance.  
-* **Bit‑twiddling tricks** – e.g., using bitwise shift instead of `% 26` because `26` is not a power of two.  
-* **Complex stream pipelines** in Java 8 – nested `map`, `reduce`, and `collect` that are elegant but hard to debug when a bug surfaces.
-
-If the interview question is a warm‑up and you’re looking for a *clean* solution, skip the ugly. If you’re in a performance‑critical production environment, consider the trade‑off: does the micro‑optimization actually change real‑world throughput? Often it doesn’t.
+**Takeaway**: It demonstrates that you can solve a problem with a single pass and constant‑space auxiliary data.
 
 ---
 
-### Why This Problem is a Gold‑Mine for Interviews
+### 5.3 The Bad – Common Pitfalls
 
-* **Demonstrates mastery of basic arithmetic & modulus.**  
-* **Tests your ability to handle edge cases** (e.g., `k = n`).  
-* **Highlights your choice of data structures** (`StringBuilder`, `list`, `std::string`).  
-* **Shows your awareness of time‑space trade‑offs** – a perfect interview talking‑point.
+| Pitfall | How to Avoid It |
+|---------|-----------------|
+| **Off‑by‑One Errors** | Remember that the block ends when `(index + 1) % k == 0`. |
+| **Wrong Alphabet Index** | Use `char - 'a'` (or `ord(ch) - ord('a')`) instead of hard‑coding 97. |
+| **Modding After Each Addition** | Modding inside the loop isn’t needed; only after the block is finished. |
+| **Mutable vs Immutable Strings** | In Java, always use `StringBuilder`; in Python, build a list then `''.join`. |
 
-Be ready to explain:
-
-* “Why did I use a `StringBuilder`?”  
-* “What happens if I forget to reset the sum?”  
-* “How would you modify this if `k` were not a divisor of `n`?”
+**Pro Tip**: Write a quick unit test (`s="abcd",k=2 → "bf"`) before you submit.
 
 ---
 
-### SEO‑Optimised Take‑away
+### 5.4 The Ugly – Advanced Variations
 
-If you want to climb the LinkedIn‑to‑Interview ladder, mention **LeetCode 3271** in your resume and portfolio:
+> “The ugly” is where interviewers ask you to twist the problem.
 
-* **Java** – “Implemented a linear `stringHash` solution using `StringBuilder` that passed all 1000‑length tests in <1 ms.”
-* **Python** – “Designed a list‑based hash function with `O(n)` complexity, using generator expressions for readability.”
-* **C++** – “Optimized `stringHash` with pre‑allocation and raw loops, ensuring cache friendliness.”
+1. **Variable Block Size** – `k` not guaranteed to divide `n`.  
+   *Solution*: Process the last partial block separately or pad with `a`.  
+2. **Non‑lowercase Alphabets** – Uppercase or digits.  
+   *Solution*: Map via `string.ascii_lowercase` or a custom dictionary.  
+3. **Multiple Test Cases in One Call** – Some interview platforms require you to process several inputs in a single run.  
+   *Solution*: Wrap the logic in a helper function and loop over test cases.  
 
-Include these snippets on your GitHub repo and add a tag in your README:  
-
-```md
-# LeetCode 3271 – Hash Divided String
-Java, Python, C++ solutions | Time: O(n) | Space: O(n/k)
-```
-
-Search engines love concise tags, so your repo shows up when recruiters filter by “LeetCode 3271” or “string hash”.
+Showing that you can adapt the core idea to these scenarios signals flexibility and depth.
 
 ---
 
-### Conclusion
+### 5.4 Implementation in Three Languages
 
-Hash Divided String is an excellent showcase problem:
+> Insert the code blocks from section **3.** above here.  
+> Add a short explanation for each snippet so readers know why you used `StringBuilder`, `list`, or `string` concatenation.
 
-* **The Good** – clean, linear solutions that are easy to audit.  
-* **The Bad** – avoid off‑by‑one errors, immutable string concatenation, and incorrect ASCII math.  
-* **The Ugly** – micro‑optimisations that hide bugs; focus on readability unless you have a hard‑real‑time requirement.
+---
 
-Feel confident that you can talk about this problem in an interview, explain your design choices, and demonstrate both **algorithmic fluency** and **clean‑code principles**. Good luck landing that next big role!
+### 5.5 Interview Preparation Checklist
+
+1. **Read the constraints** – 1000 chars, `k | n`.  
+2. **Sketch** the algorithm on paper – a running sum and block delimiter.  
+3. **Implement** in your “comfort language” first.  
+4. **Translate** into the other required languages – this shows linguistic agility.  
+5. **Explain** the complexity and why it’s optimal.  
+6. **Answer “why” questions** – e.g., “Could we have used a dictionary for lookup?” (Answer: No, because alphabet indices are contiguous.)
+
+---
+
+### 5.6 How to Use This Article in a Job Application
+
+1. **LinkedIn Pulse** – Tag recruiters, use the headline “Solved LeetCode 3271 – Hash Divided String”.
+2. **Portfolio** – Add the code under a “Coding Challenges” section with the LeetCode link.  
+3. **Interview Recap** – During the interview, say something like: “I solved #3271 with a single pass and presented the solution in Java, Python, and C++.”  
+4. **Cover Letter** – Mention that you regularly tackle string‑hashing problems, which improves your problem‑solving toolkit.
+
+---
+
+### 5.7 Conclusion
+
+Hash Divided String is not just another LeetCode problem; it’s a showcase of clean algorithm design, cross‑language implementation, and interview‑ready explanation. The code you’ll see in the snippets above is *production‑ready* and ready to paste into your coding interview.  
+
+If you want to impress recruiters, remember to:
+
+- **Explain** the *why* behind each line of code.  
+- **Show** your adaptability with multiple languages.  
+- **Highlight** the time/space trade‑offs.  
+
+Happy coding—and happy interviewing!  
+
+---
+
+### 5.8 References
+
+- **LeetCode Problem**: <https://leetcode.com/problems/hash-divided-string/>  
+- **Java Discussion**: <https://leetcode.com/problems/hash-divided-string/solutions/3271/java/>  
+- **Python Discussion**: <https://leetcode.com/problems/hash-divided-string/solutions/3271/python/>  
+- **C++ Discussion**: <https://leetcode.com/problems/hash-divided-string/solutions/3271/cpp/>
+
+---  
+
+Feel free to adapt the wording, add screenshots, or embed the code into your personal website. Good luck landing that coding‑interview call!

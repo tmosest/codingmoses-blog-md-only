@@ -9,212 +9,316 @@ hideToc: true
 ---
         **Solution Explanation**
 
-For every triplet of indices `i < j < k` the condition
+For every position `j` we need two numbers
+
+* `L[j]` – the maximum profit of a valid *earlier* position  
+  (`i < j` and `price[i] < price[j]`)
+
+* `R[j]` – the maximum profit of a valid *later* position  
+  (`k > j` and `price[k] > price[j]`)
+
+If both `L[j]` and `R[j]` are known, the best triple that ends at `j`
+is
 
 ```
-price[j] > price[i] > price[k]
+best(j) = L[j] + profit[j] + R[j]
 ```
 
-must hold.  
-The sum we want to maximise is
-
-```
-profit[i] + profit[j] + profit[k]
-```
-
-The arrays are at most `1000` long – an `O(n²)` solution is already fast
-enough.  
-The key idea is to pre‑compute, for every possible *left* index `i`,
-the best possible profit of the *right* partner `k`:
-
-```
-rightBest[i] = max{ profit[k] | k > i and price[k] < price[i] }
-```
-
-Once `rightBest` is known we only have to look at a middle index `j` and
-try all possible left indices `i` that satisfy `price[i] < price[j]`.  
-If `rightBest[i]` exists, the candidate value is
-
-```
-profit[i] + profit[j] + rightBest[i]
-```
-
-and we keep the maximum over all such candidates.
+The answer is the maximum of all `best(j)` that exist
+(when no triple exists the answer is `0`).
 
 --------------------------------------------------------------------
 
-#### Algorithm
+#### 1.   Pre–processing – coordinate compression
+
+The prices can be as large as 10^9, but we only need their relative
+order.  
+Let
+
 ```
-n ← price.length
-rightBest ← array of size n, all values = −∞          // no partner found
+values = sorted(set(price[0 … n‑1]))
+rank[price] = index in values   (1‑based)
+```
 
-// 1) compute best right partner for every left index i
-for i = 0 … n-1
-        best ← −∞
-        for k = i+1 … n-1
-                if price[k] < price[i]
-                        best ← max(best , profit[k])
-        rightBest[i] ← best
+`rank[x]` is in `[1 … m]` where `m` is the number of distinct prices
+(`m ≤ n`).  
+After compression the “price <” / “price >” condition becomes
+`rank[i] < rank[j]` / `rank[i] > rank[j]`, i.e. a normal range on
+indices `1 … m`.
 
-// 2) search for the best middle index j
-answer ← −∞
+--------------------------------------------------------------------
+
+#### 2.   Fenwick tree for range maximum
+
+A Fenwick tree (Binary Indexed Tree) is normally used for prefix sums,
+but it can also store a prefix *maximum* if we replace the “add” by
+“take the larger of the two values”.
+
+```
+update(idx, val)      // val will replace the old value if it is larger
+query(idx)            // maximum on prefix [1 … idx]
+```
+
+All tree values are initialised to **negative infinity** because
+profits may be negative.
+
+--------------------------------------------------------------------
+
+#### 3.   Compute `L[j]`  (left side)
+
+```
+bit = array[1 … m] initialised to -INF
 for j = 0 … n-1
-        for i = 0 … j-1
-                if price[i] < price[j]  and  rightBest[i] ≠ −∞
-                        candidate ← profit[i] + profit[j] + rightBest[i]
-                        answer ← max(answer , candidate)
-
-return answer          // (use 64‑bit integer)
+        r = rank[price[j]]
+        L[j] = query(r-1)          // maximum profit with smaller price
+        update(r, profit[j])
 ```
+
+`query(r-1)` looks only at ranks `< r`, i.e. prices `< price[j]`.
 
 --------------------------------------------------------------------
 
-#### Correctness Proof  
+#### 4.   Compute `R[j]`  (right side)
 
-We prove that the algorithm returns the maximum possible profit.
+We use a *reverse* traversal.
+For “later price > current price” we need a suffix query.
+A Fenwick tree can give a suffix query if we map the rank
+`r` to a new index `rev = m - r + 1` :
+
+```
+rev(r) = m - r + 1          // now  price >  ⇔  rev > rev_current
+```
+
+```
+bit = array[1 … m] initialised to -INF
+for j = n-1 … 0
+        r = rank[price[j]]
+        rev = m - r + 1
+        R[j] = query(rev-1)        // maximum profit with larger price
+        update(rev, profit[j])
+```
+
+Now `query(rev-1)` returns the best profit among all
+later positions with `price > price[j]`.
+
+--------------------------------------------------------------------
+
+#### 5.   Final answer
+
+```
+answer = 0
+for j = 0 … n-1
+        if L[j] > -INF  and  R[j] > -INF
+                answer = max(answer, L[j] + profit[j] + R[j])
+print(answer)
+```
+
+If no triple exists both `L[j]` or `R[j]` are `-INF` and the loop
+does nothing – the answer stays `0`.
+
+--------------------------------------------------------------------
+
+#### 5.   Correctness Proof  
+
+We prove that the algorithm outputs the maximum possible profit.
 
 ---
 
 ##### Lemma 1  
-For every index `i` the value `rightBest[i]` computed in step 1 equals  
-`max{ profit[k] | k > i and price[k] < price[i] }`.  
-If no such `k` exists, `rightBest[i]` is set to `−∞`.
+During the left‑to‑right scan, after processing position `j`
+the Fenwick tree contains the profit of **every** position `i ≤ j`
+with its compressed rank `rank[i]`, and the stored value for a rank
+is the maximum profit among all positions having that rank.
 
 **Proof.**
 
-The inner loop of step 1 examines all indices `k` with `k > i`.  
-Whenever `price[k] < price[i]`, `profit[k]` is considered for the maximum.  
-Thus after the inner loop finishes, `best` equals the maximum profit of
-all indices to the right of `i` whose price is smaller than `price[i]`.  
-Finally `rightBest[i]` is set to that maximum.  
-If no qualifying `k` exists, the inner loop never updates `best`,
-so it stays at `−∞`. ∎
+*Initialization* – before the first iteration all values are `-INF`;
+the lemma holds trivially.
+
+*Induction step.*  
+Assume the lemma is true before processing `j`.
+During the iteration we execute  
+`update(rank[price[j]], profit[j])`.  
+If the tree already stores a value `old` for this index, we keep the
+larger one (`max(old, profit[j])`).  
+All other indices keep their old value.  
+Hence after the update the tree still satisfies the lemma for all
+indices `≤ j`. ∎
 
 
 
 ##### Lemma 2  
-For every middle index `j` and every left index `i < j` with
-`price[i] < price[j]`, if a valid right partner exists,
-`profit[i] + profit[j] + rightBest[i]` is the maximum profit of all
-triplets `(i , j , k)` that use this particular `i` as the left index
-and `j` as the middle index.
+For every position `j`, `L[j]` equals the maximum profit among all
+valid earlier positions `i` (`i < j` and `price[i] < price[j]`).
 
 **Proof.**
 
-Fix `i` and `j`.  
-By Lemma 1, `rightBest[i]` is the maximum `profit[k]` among all
-indices `k > j` satisfying `price[k] < price[i]`.  
-Any triplet `(i , j , k)` with the required price ordering must use
-exactly such a `k`.  
-Thus the best possible third component is `rightBest[i]`,
-and the total profit is `profit[i] + profit[j] + rightBest[i]`. ∎
+During the scan at step `j` the tree contains only positions
+`i < j` (Lemma&nbsp;1).  
+`query(r-1)` returns the maximum value among ranks `< r`,
+i.e. among prices `< price[j]`.  
+Therefore `L[j]` is exactly the maximum profit of a valid earlier
+position. ∎
 
 
 
 ##### Lemma 3  
-During step 2 the algorithm considers every valid triplet
-`(i , j , k)` that satisfies `i < j < k` and `price[j] > price[i] > price[k]`.
+For every position `j`, `R[j]` equals the maximum profit among all
+valid later positions `k` (`k > j` and `price[k] > price[j]`).
 
 **Proof.**
 
-Take any such triplet.  
-During step 2 the outer loop chooses `j` as the middle index.
-The inner loop iterates over all `i` with `i < j`.  
-Since `price[i] < price[j]`, the condition in the inner loop is met.
-For this `i` we also have a valid `k` with `price[k] < price[i]`; thus
-by Lemma 1 `rightBest[i] ≠ −∞`.  
-Consequently the candidate computed for this pair `(i , j)` is
-exactly the profit of the original triplet. ∎
+The right‑to‑left scan processes the positions in reverse order.
+When position `j` is processed, the tree already contains all positions
+`k > j` (Lemma&nbsp;1 applied in reverse).  
+`rev = m - rank[price[j]] + 1` is the compressed rank of `price[j]`
+mirrored on `[1 … m]`.  
+`query(rev-1)` looks only at indices `< rev`, which correspond to
+original prices `> price[j]`.  
+Thus `R[j]` is the maximum profit of a valid later position. ∎
 
 
 
 ##### Lemma 4  
-For every valid pair `(i , j)` the profit of the best triplet that uses
-`i` as the left and `j` as the middle is never smaller than the
-candidate value examined by the algorithm.
+For any valid triple `(i, j, k)` the algorithm considers the value
+`profit[i] + profit[j] + profit[k]` in the loop over `j`.
 
 **Proof.**
 
-By Lemma 2 the candidate value is the maximum profit achievable
-with that fixed `(i , j)`.  
-Therefore no other triplet with the same left and middle indices can
-produce a higher profit. ∎
+For the middle index `j` we have
+
+* `i < j` and `price[i] < price[j]` – by Lemma&nbsp;2
+  `L[j] ≥ profit[i]` (the maximum over all such `i`).
+* `k > j` and `price[k] > price[j]` – by Lemma&nbsp;3
+  `R[j] ≥ profit[k]` (the maximum over all such `k`).
+
+Consequently
+
+```
+L[j] + profit[j] + R[j] ≥ profit[i] + profit[j] + profit[k]
+```
+
+The algorithm takes the maximum over all `j`, so the value of the
+triple is considered. ∎
 
 
 
 ##### Theorem  
-The algorithm returns the maximum possible profit over all triplets
-fulfilling the price ordering.
+The algorithm outputs the maximum possible total profit of a triple
+`(i, j, k)` satisfying the required constraints.
+If no such triple exists the output is `0`.
 
 **Proof.**
 
-Let `OPT` be the optimum profit.
+*Existence:*  
+For every valid triple `(i, j, k)` Lemma&nbsp;4 shows that the
+corresponding sum is evaluated by the algorithm.
+Therefore the algorithm’s maximum is **at least** the optimum.
 
-*Existence.*  
-By Lemma 3 the algorithm evaluates the profit of every valid triplet,
-hence also evaluates the optimum triplet and obtains a candidate
-value of at least `OPT`.  
-So `answer ≥ OPT`.
+*Optimality:*  
+For every `j` for which both `L[j]` and `R[j]` are defined, the sum
+`L[j] + profit[j] + R[j]` is a feasible triple (by construction of
+`L` and `R`).  
+Hence the algorithm never reports a value that cannot be achieved,
+so its maximum is **at most** the optimum.
 
-*Optimality.*  
-The algorithm keeps the maximum of all candidates examined in step 2.
-Every candidate corresponds to some valid triplet (Lemma 4).  
-Thus `answer` cannot be larger than `OPT`.  
-Therefore `answer = OPT`. ∎
+Since it is both at least and at most the optimum, it equals the
+optimum.  
+If no triple exists all `L[j]` or `R[j]` are `-INF`, the loop does not
+update `answer`, which stays `0` – exactly the required output. ∎
 
 
-
---------------------------------------------------------------------
-
-#### Complexity Analysis  
-
-```
-Step 1 :  O(n²) time  ,  O(n) additional memory
-Step 2 :  O(n²) time  ,  O(1) extra memory
-```
-
-With `n ≤ 1000` the program easily meets the limits.
 
 --------------------------------------------------------------------
 
-#### Reference Implementation  (C++)
+#### 5.   Complexity Analysis
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-class Solution {
-public:
-    // use 64‑bit integer for the calculation, return it
-    long long maxProfit(vector<int> price, vector<int> profit) {
-        int n = (int)price.size();
-        const long long NEG_INF = LLONG_MIN / 4;          // safe sentinel
-
-        /* step 1: best right partner for each left index */
-        vector<long long> rightBest(n, NEG_INF);
-        for (int i = 0; i < n; ++i) {
-            long long best = NEG_INF;
-            for (int k = i + 1; k < n; ++k) {
-                if (price[k] < price[i])               // valid right partner
-                    best = max(best, (long long)profit[k]);
-            }
-            rightBest[i] = best;
-        }
-
-        /* step 2: try every middle index */
-        long long answer = NEG_INF;
-        for (int j = 0; j < n; ++j) {
-            for (int i = 0; i < j; ++i) {
-                if (price[i] < price[j] && rightBest[i] != NEG_INF) {
-                    long long cand = (long long)profit[i] + profit[j] + rightBest[i];
-                    answer = max(answer, cand);
-                }
-            }
-        }
-        return answer;           // 64‑bit result
-    }
-};
+```
+Coordinate compression      :  O(n log n)
+Left scan (Fenwick updates) :  O(n log m)   ≤ O(n log n)
+Right scan (Fenwick updates):  O(n log m)   ≤ O(n log n)
+Memory consumption          :  O(n)  (price, profit, L, R, Fenwick tree)
 ```
 
-The implementation follows exactly the algorithm proven correct above
-and satisfies the required time/space bounds.
+--------------------------------------------------------------------
+
+#### 6.   Reference Implementation  (Python 3)
+
+```python
+import sys
+from bisect import bisect_left
+
+INF_NEG = -10**30      # "negative infinity" that safely fits the limits
+
+
+class FenwickMax:
+    """Fenwick tree that keeps the maximum on a prefix."""
+    def __init__(self, size: int):
+        self.n = size
+        self.bit = [INF_NEG] * (size + 1)   # 1‑based indexing
+
+    def update(self, idx: int, val: int) -> None:
+        """Set bit[idx] = max(bit[idx], val) and propagate upwards."""
+        while idx <= self.n:
+            if val > self.bit[idx]:
+                self.bit[idx] = val
+            idx += idx & -idx
+
+    def query(self, idx: int) -> int:
+        """Return maximum on prefix [1 … idx]."""
+        res = INF_NEG
+        while idx > 0:
+            if self.bit[idx] > res:
+                res = self.bit[idx]
+            idx -= idx & -idx
+        return res
+
+
+def solve() -> None:
+    data = sys.stdin.read().strip().split()
+    if not data:
+        return
+    it = iter(data)
+    n = int(next(it))
+    price = [int(next(it)) for _ in range(n)]
+    profit = [int(next(it)) for _ in range(n)]
+
+    # ----- coordinate compression of prices -----
+    values = sorted(set(price))
+    rank = {v: i + 1 for i, v in enumerate(values)}   # 1‑based
+    m = len(values)
+
+    # ----- compute L[j] -----
+    left_tree = FenwickMax(m)
+    L = [INF_NEG] * n
+    for j in range(n):
+        r = rank[price[j]]
+        L[j] = left_tree.query(r - 1)     # only smaller prices
+        left_tree.update(r, profit[j])
+
+    # ----- compute R[j] -----
+    right_tree = FenwickMax(m)
+    R = [INF_NEG] * n
+    for j in range(n - 1, -1, -1):
+        r = rank[price[j]]
+        rev = m - r + 1                   # mirrored index
+        R[j] = right_tree.query(rev - 1)  # only larger prices
+        right_tree.update(rev, profit[j])
+
+    # ----- combine and output -----
+    answer = 0
+    for j in range(n):
+        if L[j] > INF_NEG and R[j] > INF_NEG:
+            total = L[j] + profit[j] + R[j]
+            if total > answer:
+                answer = total
+
+    print(answer)
+
+
+if __name__ == "__main__":
+    solve()
+```
+
+The program follows exactly the algorithm proven correct above and
+conforms to the required input / output format.

@@ -7,243 +7,199 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🛠️ 3‑Way Solution for “Is Array a Preorder of Some Binary Tree”
+        ## 1. LeetCode 2764 – “Is Array a Preorder of Some Binary Tree”
 
-Below you’ll find a **complete, production‑ready implementation** in **Java, Python, and C++**.  
-Each version follows the same stack‑based idea, runs in **O(N)** time and **O(N)** space, and is ready to paste into any LeetCode submission or interview white‑board.
+| Language | Time Complexity | Space Complexity |
+|----------|-----------------|------------------|
+| **Java** |  **O(n)** | **O(n)** |
+| **Python** |  **O(n)** | **O(n)** |
+| **C++** |  **O(n)** | **O(n)** |
 
----
-
-### 📌 Problem Recap
-
-> **Given** a 0‑indexed `nodes` list where each element is `[id, parentId]`  
-> **Determine** if this order could be the **pre‑order traversal** of *some* binary tree.
-
-> *Pre‑order*: visit node → preorder(left) → preorder(right)
-
-> The input guarantees that the pairs form a valid binary tree (one root, no cycles).
+> **Why it matters for your next interview**  
+> Solving this problem demonstrates your understanding of tree traversal, stack simulation, and careful edge‑case handling – all skills recruiters love to see.
 
 ---
 
-## ✅ The Core Idea
+## 2. Problem Summary
 
-We simulate the preorder traversal while walking through the given array:
+You are given a 0‑indexed 2‑D array `nodes`.  
+`nodes[i] = [id, parentId]` – the node with id `id` has a parent `parentId` (or `-1` if it is the root).  
 
-1. **Start** with the root (the first pair – its `parentId` must be `-1`).
-2. Maintain a **stack** of *active ancestors* – those nodes that still have unexplored children.
-3. For each next node `(id, parent)`:
-   * Keep **popping** from the stack until the top equals `parent`.
-   * If the stack becomes empty before we find `parent`, the sequence **cannot** be a preorder.
-   * Push the current `id` onto the stack – it is now an active ancestor.
+The array is *supposed* to be the preorder traversal of **some** binary tree.  
+Return **true** if that is indeed the case, otherwise return **false**.
 
-Because preorder visits a node before all of its descendants, the current node’s parent must always be the **closest** ancestor that hasn't finished its left subtree yet – exactly the top of the stack.
+> **Preorder** – visit current node → preorder of left child → preorder of right child.  
+> The input guarantees that the ids and parent relationships form a valid binary tree (no cycles, unique parent for each node, etc.).
 
 ---
 
-## 📄 Code
+## 3. Intuition
 
-### 1️⃣ Java
+During a preorder walk you always **finish** a subtree before moving to a sibling.  
+If we keep a stack of “still open” ancestors, the current node’s parent must be the *top* of that stack.  
+
+If the parent is **not** on the stack, we have jumped out of the current subtree too early – the array cannot be a preorder traversal.
+
+---
+
+## 4. Algorithm (Stack‑Based)
+
+1. **Initialize** a stack with the root id (`nodes[0][0]`).
+2. **Iterate** over the rest of `nodes` (from index 1):
+   * `curr` = current node id  
+   * `parent` = its parent id
+   * While the stack is non‑empty *and* the top element is **not** `parent`, pop the stack (we are closing sub‑trees).
+   * After the loop, if the stack is empty → `parent` is missing → **return false**.
+   * Push `curr` onto the stack (start exploring its subtree).
+3. **If we finish the loop** without failing, the array is a valid preorder → **return true**.
+
+Because every node is pushed/popped at most once, the time is linear.
+
+---
+
+## 5. Code
+
+### Java (Stack‑Based)
 
 ```java
 import java.util.*;
 
 class Solution {
     public boolean isPreorder(List<List<Integer>> nodes) {
-        int n = nodes.size();
-        if (n == 0) return true;          // trivial case
-
-        // The first node must be the root
-        if (nodes.get(0).get(1) != -1) return false;
-
+        // the stack keeps ids of nodes that are still "open"
         Deque<Integer> stack = new ArrayDeque<>();
-        stack.push(nodes.get(0).get(0));   // push root id
+        stack.push(nodes.get(0).get(0));      // root id
 
-        for (int i = 1; i < n; i++) {
-            int id = nodes.get(i).get(0);
+        for (int i = 1; i < nodes.size(); i++) {
+            int curr  = nodes.get(i).get(0);
             int parent = nodes.get(i).get(1);
 
-            // Move up the stack until we find the parent
+            // close subtrees until the current parent is at the top
             while (!stack.isEmpty() && stack.peek() != parent) {
                 stack.pop();
             }
 
-            if (stack.isEmpty()) return false;  // parent not found
-            stack.push(id);
+            // if stack empty, parent not found -> invalid preorder
+            if (stack.isEmpty()) return false;
+
+            stack.push(curr);
         }
         return true;
     }
 }
 ```
 
-### 2️⃣ Python
+### Python
 
 ```python
 from typing import List
 
 class Solution:
     def isPreorder(self, nodes: List[List[int]]) -> bool:
-        if not nodes:
-            return True
+        stack = [nodes[0][0]]          # root id
 
-        # Root must have parent -1
-        if nodes[0][1] != -1:
-            return False
-
-        stack = [nodes[0][0]]            # start with root id
-
-        for id, parent in nodes[1:]:
-            # pop until parent is on top
+        for i in range(1, len(nodes)):
+            curr, parent = nodes[i]
             while stack and stack[-1] != parent:
                 stack.pop()
 
-            if not stack:               # parent not found
+            if not stack:             # parent not found
                 return False
 
-            stack.append(id)            # current node becomes active ancestor
-
+            stack.append(curr)
         return True
 ```
 
-### 3️⃣ C++
+### C++
 
 ```cpp
 #include <vector>
-using namespace std;
+#include <deque>
 
 class Solution {
 public:
-    bool isPreorder(const vector<vector<int>>& nodes) {
-        int n = nodes.size();
-        if (n == 0) return true;
+    bool isPreorder(const std::vector<std::vector<int>>& nodes) {
+        std::deque<int> stack;          // deque works as a stack
+        stack.push_back(nodes[0][0]);   // root id
 
-        // First node must be the root
-        if (nodes[0][1] != -1) return false;
-
-        vector<int> stack;
-        stack.push_back(nodes[0][0]);   // push root id
-
-        for (int i = 1; i < n; ++i) {
-            int id = nodes[i][0];
+        for (size_t i = 1; i < nodes.size(); ++i) {
+            int curr   = nodes[i][0];
             int parent = nodes[i][1];
 
             while (!stack.empty() && stack.back() != parent) {
-                stack.pop_back();
+                stack.pop_back();        // close subtrees
             }
 
-            if (stack.empty()) return false; // parent not found
-
-            stack.push_back(id);
+            if (stack.empty()) return false; // parent missing
+            stack.push_back(curr);          // start new subtree
         }
         return true;
     }
 };
 ```
 
-> **Why it works** – The stack always represents the current “path” from the root down to the deepest node that still needs its right child processed.  
-> When the next node is visited, its parent must be the most recent ancestor still waiting for a child → the stack top.  
-> If we cannot find that parent, the order violates preorder properties.
+> **Tip** – In all languages the stack can be an `ArrayDeque`, `list`, or `deque` respectively; any LIFO container works.
 
 ---
 
-## 📚 Blog Post – “The Good, the Bad, and the Ugly of Pre‑Order Validation”
+## 6. Complexity Analysis
 
-> **Meta description**:  
-> Learn the stack‑based solution to LeetCode 2764 “Is Array a Preorder of Some Binary Tree”. Dive into the algorithm, edge‑cases, alternatives, and why this approach is a job‑interview win.
-
----
-
-### 1️⃣ Introduction
-
-During an interview, the interviewer may ask you to **validate** if a given list of `(node, parent)` pairs could be the pre‑order traversal of *any* binary tree.  
-It sounds simple, but the trick lies in handling parent relationships efficiently without building the whole tree.
-
-> **Keywords**: LeetCode 2764, preorder traversal, binary tree, stack algorithm, interview prep.
+| Metric | Explanation | Result |
+|--------|-------------|--------|
+| **Time** | Each node is pushed once and popped at most once | **O(n)** |
+| **Space** | Stack holds at most height of tree (≤ n) | **O(n)** |
+| **Why O(n) is optimal** | You have to look at every node at least once, so linear time is the best possible. |
 
 ---
 
-### 2️⃣ Problem Recap
+## 7. Edge‑Case Checklist
 
-We’re given `nodes = [[id, parentId], …]` – a 0‑indexed list that already represents a *valid* binary tree (unique root, no cycles).  
-The task: **Return `true` iff the order is a valid preorder traversal.**
-
-- Pre‑order: node → left subtree → right subtree.
-- Root has `parentId = -1`.
-
----
-
-### 3️⃣ The “Good” – Why the Stack is Perfect
-
-| Benefit | Explanation |
-|---------|-------------|
-| **O(N) Time** | Each node is processed once; stack pops at most once per node. |
-| **O(N) Space** | Stack holds the current ancestor chain; worst‑case depth N (degenerate tree). |
-| **No Tree Construction** | We don’t need adjacency lists or node objects – just indices. |
-| **Clear Intuition** | In preorder you always “step back” to the nearest ancestor that still needs a child. The stack simulates that back‑tracking. |
+| Edge case | Why it matters | How the algorithm handles it |
+|-----------|----------------|-----------------------------|
+| Single node tree (`nodes.length == 1`) | The loop never runs – always true | Stack starts with root, loop skipped |
+| Root id not `0` or non‑sequential ids | Problem statement guarantees uniqueness; algorithm uses ids literally | No assumptions about id ranges |
+| Parent id equals `-1` for non‑root | Impossible because tree is guaranteed valid | `-1` will never be on stack → algorithm returns false (but input never contains this case) |
+| Node appears before its parent | Stack will pop until parent appears → fail | `stack.empty()` becomes true → return false |
 
 ---
 
-### 4️⃣ The “Bad” – Edge Cases & Pitfalls
+## 8. The Good, the Bad, and the Ugly
 
-| Issue | Fix |
-|-------|-----|
-| **Multiple roots** | The first element’s `parentId` must be `-1`. If not, return `false`. |
-| **Missing parent in stack** | While popping, if the stack empties before matching the parent → invalid order. |
-| **Duplicate IDs** | Problem guarantees uniqueness, so no extra check needed. |
-| **Large inputs (1e5)** | Use a fast stack (ArrayDeque in Java, list in Python, vector in C++). Avoid recursion to stay within stack limits. |
-
----
-
-### 5️⃣ The “Ugly” – Why Simpler DFS Might Mislead
-
-A naïve DFS that rebuilds the tree and then simulates preorder can be:
-
-- **O(N²)** in worst‑case if adjacency lists are built by scanning all nodes for each parent.
-- **Memory‑heavy** – storing the whole tree structure when you only need the traversal order.
-
-This “ugly” approach is tempting in an interview but wastes valuable time and resources.
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Intuition** | Clear: preorder implies a stack of open ancestors | Some people still think it requires building the tree | Trying to build the whole tree first is unnecessary overhead |
+| **Complexity** | O(n) time, O(n) space, no recursion | Using recursion may hit stack overflow on deep trees | Naïve simulation with `List` pops in the middle leads to O(n²) |
+| **Readability** | One loop, one stack, few lines | Too many comments can clutter | Over‑engineering with auxiliary maps or parent‑index lookups |
+| **Edge‑case safety** | Handles all valid inputs by construction | Edge‑cases like empty array not needed | Forgetting to check stack emptiness → false positives |
+| **Implementation** | Works in all major languages with minimal changes | Java requires careful use of `ArrayDeque` | C++ may accidentally use `vector` for stack causing O(n²) pops |
 
 ---
 
-### 6️⃣ Alternative Strategies
+## 9. Conclusion & Takeaway
 
-| Approach | Complexity | Pros | Cons |
-|----------|------------|------|------|
-| **Recursive Simulation** | O(N) time, O(N) space (recursion depth) | Very intuitive | Risk of stack overflow for deep trees |
-| **Hash‑Map Parent Map + Stack** | O(N) time, O(N) space | Avoids list indices | Still needs the stack |
-| **Parent‑Index Mapping + Two‑Pointer** | O(N) time, O(1) extra | Slightly less space | Harder to reason, less robust |
+The “Is Array a Preorder of Some Binary Tree” problem boils down to **simulating** a preorder walk with a stack.  
+If the current node’s parent is *not* the current stack top, you’ve jumped out of the wrong subtree – the traversal is invalid.
 
-> In most interviews, the **stack method** is the sweet spot.
+**Why this matters for interviews**
 
----
+* Shows you understand tree traversals beyond the textbook.
+* Demonstrates careful handling of edge‑cases.
+* Highlights clean, linear‑time coding – something recruiters love.
 
-### 7️⃣ SEO‑Ready Takeaway
+### Ready to impress?  
+Copy the snippet in your preferred language, practice with variations (e.g., post‑order, in‑order), and add this to your portfolio. Good luck landing that next coding interview! 🚀
 
-- **Problem ID**: 2764 – “Is Array a Preorder of Some Binary Tree”
-- **Key Terms**: `preorder traversal`, `binary tree validation`, `stack algorithm`, `LeetCode solutions`, `interview prep`
-- **Title**: “Validate a Pre‑Order Traversal: Stack‑Based Solution for LeetCode 2764”
+--- 
 
----
+### SEO Highlights (for your blog post)
 
-### 8️⃣ Conclusion
+- LeetCode 2764
+- Is Array a Preorder of Some Binary Tree
+- Java Python C++ solution
+- Binary tree preorder traversal
+- Interview coding problem
+- Stack-based algorithm
+- O(n) time, O(n) space
+- Coding interview tips
 
-The stack‑based solution is **clean, fast, and scalable**. It mirrors the natural preorder traversal mechanics and sidesteps the overhead of tree construction. Whether you’re coding on LeetCode or writing on a whiteboard, this pattern is a staple in your algorithm toolkit.
-
-> **Pro Tip**: In interviews, start by sketching the stack logic, then write the code. Keep the interviewer informed – “I’ll push the root onto the stack, then for each node I’ll pop until I find its parent…”.
-
----
-
-### 9️⃣ Call to Action
-
-> Try implementing the solution in **Java, Python, or C++** (see code above).  
-> Then, create a **GitHub repo** and add a README with the explanation.  
-> Share it on LinkedIn with the tags **#Algorithm #LeetCode #InterviewPrep** and watch recruiters notice!
-
----
-
-## 🎉 Final Words
-
-- **Good**: Fast, memory‑efficient, clear stack logic.
-- **Bad**: Must handle the root and missing parent cases explicitly.
-- **Ugly**: Rebuilding the tree is overkill and risky.
-
-With this knowledge, you’re not just solving a problem—you’re mastering a pattern that’s useful across many binary‑tree interview questions. Happy coding, and may your next interview be a *pre‑order* of success!
+Feel free to adapt the headings and content to fit your personal blog style or LinkedIn article. Happy coding!

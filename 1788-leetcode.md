@@ -7,165 +7,158 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 1788. Maximize the Beauty of the Garden  
-**Hard – LeetCode** | **Java / Python / C++** | **Interview‑Ready**  
+        ## 1.  Problem Restatement – “Maximize the Beauty of the Garden”  
+**LeetCode #1788 – Hard**
 
----
+You’re given an array `flowers` of length *n* (`2 ≤ n ≤ 10⁵`).  
+`flowers[i]` is an integer in the range `[-10⁴, 10⁴]` and represents the beauty of the *i*‑th flower in a line.
 
-## Blog Title  
-**“Maximize the Beauty of the Garden – 1788 LeetCode: A 3‑Language Solution (Java, Python, C++)”**
+A **valid garden** must satisfy
 
-> **SEO Keywords** – LeetCode 1788, Maximize the Beauty of the Garden, garden problem, prefix sum, dynamic programming, coding interview, Java solution, Python solution, C++ solution, job interview coding challenge
+1. It contains at least two flowers.  
+2. The first and the last flower in the remaining sequence have the **same beauty value**.
 
----
+You may delete any number of flowers (including none) while keeping the relative order of the rest.  
+The beauty of a garden is the sum of the beauty values of its remaining flowers.
 
-## 1. Problem Overview  
+**Goal** – after deletions, obtain a valid garden with the maximum possible beauty, and return that beauty.
 
-You are given an array `flowers` of length `n` (`2 ≤ n ≤ 10⁵`).  
-Each element is the beauty value of a flower and can be negative.  
-You may delete any number of flowers (including none).  
-After deletions you must have a **valid garden**:
+> **Example 1**  
+> Input: `[1,2,3,1,2]` → Output: `8`  
+> One optimal garden: `[2,3,1,2]` (beauty = 2 + 3 + 1 + 2 = 8)
 
-1. At least two flowers remain.  
-2. The first and last flower in the remaining sequence have the **same** beauty value.
+> **Example 3**  
+> Input: `[-1,-2,0,-1]` → Output: `-2`  
+> Optimal garden: `[-1,-1]` (beauty = -1 + (-1) = -2)
 
-The beauty of a garden is the sum of all remaining flowers.  
-Return the **maximum** possible beauty of any valid garden.
+The LeetCode statement guarantees that at least one valid garden can be formed.
 
----
 
-## 2. Intuition – “The First & Last Matter”
 
-Only the first and the last element of the chosen subsequence influence the feasibility of the garden.  
-Everything in between can be kept or removed freely.
+--------------------------------------------------------------------
 
-*If we keep a positive flower between the two equal ends, we gain value; if it is negative, we can drop it without hurting the beauty.*
+## 2.  Key Observations
 
-Hence the optimal strategy is:
+| Observation | Why it matters |
+|-------------|----------------|
+| **We only need the first and the last occurrence of each value.** | Any later occurrence can only give a smaller or equal sub‑sequence because we can delete the earlier ones. |
+| **Between the first and last occurrence we should keep only non‑negative flowers.** | Negative flowers would lower the total beauty; we can delete them arbitrarily. |
+| **The beauty contributed by the first and last flower is `2 × value`.** | Both ends must have the same value. |
+| **The total sum of non‑negative flowers between indices `l` and `r` can be answered with a prefix sum.** | We can pre‑compute an array where `prefix[i]` = sum of `max(0, flowers[j])` for `j ≤ i`. Then the sum between `(l, r)` is `prefix[r‑1] – prefix[l]`. |
 
-1. Pick a value `v`.  
-2. Keep the **first** occurrence of `v` as the left end.  
-3. Keep the **last** occurrence of `v` as the right end.  
-4. Keep every positive flower strictly between those two positions.
+With these observations, the problem collapses to:
 
-This yields the maximum beauty for that particular value `v`.  
-We need to try every distinct value and take the best result.
+```
+For every distinct flower value v:
+    l = first occurrence of v
+    r = last  occurrence of v   (l < r)
+    candidate = 2*v + (prefix[r-1] - prefix[l])
+Take the maximum candidate over all v
+```
 
----
+All steps can be done in linear time.
 
-## 3. Algorithm (O(n) time, O(n) space)
 
-| Step | Detail |
-|------|--------|
-| **1** | Scan `flowers` once to record for each value its first and last index. |
-| **2** | Compute a prefix array `pref[i]` = sum of **positive** flowers up to index `i` (inclusive). |
-| **3** | For every value that appears at least twice (`last > first`):  
-`beauty = 2 * v + (pref[last-1] - pref[first])` |
-| **4** | Keep the maximum of all such beauties. |
 
-*Why the formula works*  
-`pref[last-1] - pref[first]` equals the sum of positive flowers strictly between the two occurrences.  
-Adding `2 * v` accounts for the two equal end flowers.  
-Negative flowers in the interval are simply ignored.
+--------------------------------------------------------------------
 
----
+## 3.  Algorithm (O(n) time, O(n) space)
 
-## 4. Edge Cases
+1. **Scan once to build prefix sums of non‑negative values**  
+   `posPrefix[i] = posPrefix[i-1] + max(0, flowers[i])`
 
-| Case | Explanation |
-|------|-------------|
-| **Only one occurrence of a value** | Cannot form a valid garden → skip. |
-| **All flowers negative** | Still must keep two equal negatives. The formula handles this because the prefix sum between them is 0. |
-| **All positive** | The best garden is the whole array (first and last are the same value, typically the maximum). |
+2. **While scanning, record first and last indices for every value**  
+   Use two hash‑maps (or an array indexed by value after offsetting).
 
----
+3. **Compute the best beauty**  
+   For each value `v` that appears at least twice, compute  
+   `beauty = 2*v + posPrefix[last[v]-1] - posPrefix[first[v]]`  
+   Update the global maximum.
 
-## 5. Code Implementations
+4. **Return the maximum** – guaranteed to exist.
 
-Below are clean, production‑ready implementations in **Java, Python, and C++**.  
-All three use the same O(n) logic and handle 32‑bit integer limits safely by using `long`/`long long` for sums.
+The algorithm is straightforward, but careful handling of indices (`last[v]-1` must be ≥ `first[v]`) and of negative values is essential.
 
-### 5.1 Java
+
+
+--------------------------------------------------------------------
+
+## 4.  Code
+
+Below are clean, idiomatic implementations in **Java 17**, **Python 3.11**, and **C++17**.
+
+### 4.1 Java
 
 ```java
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-class Solution {
+public class Solution {
     public int maximumBeauty(int[] flowers) {
         int n = flowers.length;
 
-        // 1. Record first and last occurrence of each value
+        // 1. Prefix sum of positive contributions
+        int[] posPrefix = new int[n];
+        for (int i = 0; i < n; i++) {
+            int val = Math.max(0, flowers[i]);
+            posPrefix[i] = val + (i == 0 ? 0 : posPrefix[i - 1]);
+        }
+
+        // 2. First and last indices for each value
         Map<Integer, Integer> first = new HashMap<>();
         Map<Integer, Integer> last  = new HashMap<>();
+
         for (int i = 0; i < n; i++) {
             int v = flowers[i];
             if (!first.containsKey(v)) first.put(v, i);
-            last.put(v, i);               // keeps the latest index
+            last.put(v, i);                     // keep updating – the last one
         }
 
-        // 2. Prefix sum of positive values
-        long[] pref = new long[n];
-        pref[0] = Math.max(0, flowers[0]);
-        for (int i = 1; i < n; i++) {
-            pref[i] = pref[i - 1] + Math.max(0, flowers[i]);
-        }
-
-        long best = Long.MIN_VALUE;
-
-        // 3. Try every value that occurs at least twice
+        // 3. Evaluate all candidate pairs
+        int best = Integer.MIN_VALUE;
         for (int v : first.keySet()) {
             int l = first.get(v);
             int r = last.get(v);
-            if (l == r) continue;           // need at least two flowers
+            if (l == r) continue;              // need at least two flowers
 
-            long middle = pref[r - 1] - pref[l];   // positives between l and r
-            long candidate = 2L * v + middle;
+            int inner = posPrefix[r - 1] - posPrefix[l];
+            int candidate = 2 * v + inner;
             best = Math.max(best, candidate);
         }
 
-        return (int) best;   // result fits in int by problem constraints
+        return best;
     }
 }
 ```
 
-### 5.2 Python
+### 4.2 Python
 
 ```python
-from typing import List
-from collections import defaultdict
-
 class Solution:
     def maximumBeauty(self, flowers: List[int]) -> int:
         n = len(flowers)
 
-        # first and last indices
-        first = {}
-        last  = {}
-        for i, v in enumerate(flowers):
-            if v not in first:
-                first[v] = i
-            last[v] = i
+        # Prefix sum of non‑negative values
+        pos_pref = [0] * n
+        for i, x in enumerate(flowers):
+            pos_pref[i] = max(0, x) + (pos_pref[i-1] if i else 0)
 
-        # prefix sum of positives
-        pref = [0] * n
-        pref[0] = max(0, flowers[0])
-        for i in range(1, n):
-            pref[i] = pref[i - 1] + max(0, flowers[i])
+        first, last = {}, {}
+        for i, v in enumerate(flowers):
+            first.setdefault(v, i)   # first occurrence
+            last[v] = i              # keep updating – last occurrence
 
         best = float('-inf')
-
         for v in first:
             l, r = first[v], last[v]
-            if l == r:
-                continue
-            middle = pref[r - 1] - pref[l]
-            candidate = 2 * v + middle
-            best = max(best, candidate)
+            if l == r: continue      # need at least two
+            inner = pos_pref[r-1] - pos_pref[l]
+            best = max(best, 2*v + inner)
 
         return best
 ```
 
-### 5.3 C++
+### 4.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -176,96 +169,87 @@ public:
     int maximumBeauty(vector<int>& flowers) {
         int n = flowers.size();
 
+        // Prefix sum of positive contributions
+        vector<int> posPref(n);
+        for (int i = 0; i < n; ++i) {
+            posPref[i] = max(0, flowers[i]) + (i ? posPref[i-1] : 0);
+        }
+
         unordered_map<int, int> first, last;
         for (int i = 0; i < n; ++i) {
             int v = flowers[i];
-            if (!first.count(v)) first[v] = i;   // first occurrence
-            last[v] = i;                         // latest (last) occurrence
+            if (!first.count(v)) first[v] = i; // first occurrence
+            last[v] = i;                        // last occurrence
         }
 
-        vector<long long> pref(n);
-        pref[0] = max(0LL, flowers[0]);
-        for (int i = 1; i < n; ++i) {
-            pref[i] = pref[i-1] + max(0LL, flowers[i]);
-        }
-
-        long long best = LLONG_MIN;
-
-        for (const auto &kv : first) {
-            int v = kv.first;
-            int l = kv.second;
+        int best = INT_MIN;
+        for (auto &[v, l] : first) {
             int r = last[v];
-            if (l == r) continue;   // need two flowers
-
-            long long middle = pref[r-1] - pref[l];
-            long long cand = 2LL * v + middle;
-            best = max(best, cand);
+            if (l == r) continue;              // need at least two flowers
+            int inner = posPref[r-1] - posPref[l];
+            best = max(best, 2*v + inner);
         }
-
-        return static_cast<int>(best);
+        return best;
     }
 };
 ```
 
-All three codes run in **linear time** (`O(n)`) and use **linear auxiliary space** (`O(n)`).
+All three implementations run in **O(n)** time, use **O(n)** extra space, and correctly handle negative beauty values.
 
----
 
-## 6. Complexity Analysis  
 
-| Metric | Java | Python | C++ |
-|--------|------|--------|-----|
-| **Time** | `O(n)` | `O(n)` | `O(n)` |
-| **Space** | `O(n)` (two maps + prefix array) | `O(n)` | `O(n)` |
-| **Why It’s Acceptable** | `n ≤ 10⁵`, `|flowers[i]| ≤ 10⁴` → sums ≤ 10⁹, safely fit in 32‑bit signed integer. |
+--------------------------------------------------------------------
 
----
+## 5.  The Good, The Bad, and The Ugly
 
-## 7. “Good, Bad, & Ugly” of the Solution
+| Category | What Works | What’s Tricky | How to Avoid Pain |
+|----------|------------|---------------|-------------------|
+| **The Good** | • One‑pass solution. <br>• Only simple arithmetic and hash‑maps. <br>• Handles huge inputs (`n = 10⁵`) comfortably. | – | – |
+| **The Bad** | • Negative values force careful handling – you cannot just sum the subarray. <br>• Forgetting that `last[v]-1` must be ≥ `first[v]` can lead to `IndexOutOfBounds`. | Keep the prefix sum of **non‑negative** numbers; never subtract a negative. | Pre‑write unit tests for edge cases: all negative, all positive, single value repeated many times. |
+| **The Ugly** | • Some naive solutions try to keep track of all pairs or use DP, blowing up to O(n²). <br>• The “beauty” calculation involves a double count (`2*v`) – easy to forget. | Avoid over‑engineering; stick to the two‑map+prefix‑sum idea. | Keep the code short and comment the three key steps; this also helps interviewer confidence. |
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Good** | • Single pass, no recursion. <br>• Handles negative values elegantly. <br>• Uses only built‑in containers → fast & memory‑efficient. |
-| **Bad** | • Requires scanning the array twice (once for indices, once for prefix). <br>• Needs two hash maps – a bit more memory than strictly necessary. |
-| **Ugly** | • Some naive solutions (e.g., “pick any two equal ends and sum everything”) accidentally add negative numbers in the middle, giving sub‑optimal results. <br>• Recursive DP approaches that attempt to evaluate every subsequence explode to exponential time on this scale. |
+> **Takeaway** – The trick is to realize that we only care about the *first* and *last* occurrence of each value, and we can drop every negative between them. Once you see that, the whole problem reduces to a single scan.
 
----
 
-## 8. Alternative Approaches & Why We Avoid Them  
 
-1. **Brute Force (O(n²))** – Enumerate every pair of equal values and sum the positives between. Too slow for `n = 10⁵`.  
-2. **Dynamic Programming (DP)** – The problem is *not* a classic DP (there’s no overlapping sub‑problem structure) – using DP would only add unnecessary complexity.  
-3. **Segment Tree / Binary Indexed Tree** – Overkill; prefix sums already give constant‑time range queries.
+--------------------------------------------------------------------
 
-Thus, the prefix‑sum + first/last trick is the sweet spot.
+## 6.  SEO‑Optimized Blog Title & Meta Description
 
----
+**Title:**  
+*“Master LeetCode 1788 – Maximize the Beauty of the Garden (Hard) – Java, Python, C++ Solutions & Interview Tips”*
 
-## 9. How to Explain This to Interviewers
+**Meta Description:**  
+“Learn the O(n) algorithm to solve LeetCode 1788, ‘Maximize the Beauty of the Garden’. See clean Java, Python, and C++ code, plus interview insights – the good, the bad, and the ugly. Boost your coding interview prep and land your next tech job.”
 
-> **When asked “How would you solve LeetCode 1788?”, you can say:**
->
-> *“I first noticed that only the first and last elements matter. I recorded for each beauty value the earliest and latest index. I then built a prefix sum of only positive flowers, which lets me compute the best sum between two equal ends in O(1). Finally I iterate over all values that occur at least twice and keep the maximum. The algorithm is O(n) and uses O(n) extra space – perfect for 10⁵ elements.”*
+> *Why it works:* The title and description include high‑search keywords (“LeetCode 1788”, “Maximize the Beauty of the Garden”, “O(n) algorithm”, “Java/Python/C++”), directly matching what recruiters and interviewers search for.
 
-This concise explanation shows that you can **abstract the problem**, spot a **pattern**, and apply a **clean O(n) technique** – exactly what interviewers look for.
 
----
 
-## 10. Final Thoughts – Your Next Interview
+--------------------------------------------------------------------
 
-- **Practice**: Implement this solution in your favourite language from scratch.  
-- **Timing**: Run it against 10⁵ random cases to convince yourself of its linearity.  
-- **Explain**: Be ready to discuss the “positive‑only prefix” trick – that’s the key insight.  
+## 7.  Interview‑Friendly Discussion
 
-Mastering this problem gives you a powerful pattern: *“When only boundary conditions matter, keep extremes and greedily include positives inside.”*  
-Apply it to similar subsequence problems you’ll encounter in real interviews.
+| Question | Suggested Answer |
+|----------|------------------|
+| *Why do we only look at the first and last occurrence of each value?* | Any later occurrence can be paired with an earlier one to give a larger or equal subsequence. Keeping the earliest start and latest end maximizes the number of flowers we can keep. |
+| *How do you handle negative beauties?* | We can delete any flower, so we skip all negative flowers between the chosen endpoints. The prefix sum stores only the sum of `max(0, value)` so the inner contribution is always non‑negative. |
+| *What if a value appears only once?* | That value cannot serve as both ends of a garden; we ignore such values in the final pass. |
+| *What’s the time complexity?* | Linear, O(n). Two hash‑maps and a single prefix array are built in one pass. |
+| *Can this be done in O(1) space?* | Not without extra constraints. We need to remember indices for each value, which requires O(n) storage in the worst case. |
 
----
+Being able to answer these succinctly demonstrates a deep understanding of the problem and its constraints.
 
-### 🚀 Takeaway
 
-- **LeetCode 1788** is solvable in *linear time* using *prefix sums*.  
-- The same logic translates to **Java, Python, and C++** with minimal effort.  
-- Understanding the intuition behind “first & last” lets you explain the solution fluently in a coding interview, boosting your confidence and score.  
 
-Happy coding, and may your job interview garden always be *beautiful*!
+--------------------------------------------------------------------
+
+## 8.  Final Thoughts
+
+LeetCode 1788 is an excellent test of *problem reduction* skills. The solution we discussed:
+
+1. **Identifies the crucial pair (first & last occurrence).**  
+2. **Uses a prefix sum of only non‑negative flowers.**  
+3. **Runs in linear time, perfect for production‑grade interview answers.**
+
+With the code snippets and the interview framing above, you’re ready to impress on the next coding challenge or technical interview. Happy coding—and best of luck landing that dream tech role!

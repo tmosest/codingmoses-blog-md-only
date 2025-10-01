@@ -7,225 +7,163 @@ author: moses
 tags: []
 hideToc: true
 ---
-        **Solution Idea**
+        ## Storing a “point‑array” –  x, y, w 
 
-For any two points `p1` and `p2` we can always walk by the grid and the cost is their Manhattan distance
+When you say **2‑D array of points** you usually mean a collection of triples  
+`(x, y, w)` – e.g. a point *P* in a 2‑D plane together with a weight
+or cost *w* that belongs to that point.  
+The exact container you choose depends on the language and on the
+operations you need to perform on the data:
 
+| Use‑case | Language | Suggested container | Why it fits |
+|----------|----------|---------------------|------------|
+| **Fixed size, fast indexing** | C/C++ | `std::array<std::tuple<int,int,int>, N>` (or `int[N][3]`) | Compile‑time size, cache‑friendly |
+| **Dynamic list of points** | C/C++ | `std::vector<std::tuple<int,int,int>>` or `std::vector<Point>` | Push_back, random access |
+| **Fast lookup by (x,y)** | C/C++ | `std::unordered_map<std::pair<int,int>, int>` (with a custom hash) | Constant‑time lookup |
+| **Memory‑critical** | C/C++ | `int* data = new int[N*3];` and index as `data[i*3 + 0/1/2]` | 1‑D array, no overhead |
+| **Object‑oriented** | Java | `class Point { int x, y, w; }` + `ArrayList<Point>` | Readable, encapsulation |
+| **Java 8+** | Java | `List<int[]> list = new ArrayList<>();` | Primitive arrays avoid boxing |
+| **Python** | Python | `list_of_tuples = [(x,y,w), …]` | Simple, native |
+| **Large sparse graph** | Python | `defaultdict(lambda: float('inf'))` | Sparse representation |
+
+---
+
+### 1.  C/C++ examples
+
+#### a) Simple struct + vector
+
+```cpp
+struct Point {
+    int x, y, w;
+};
+
+std::vector<Point> points;
+
+// Add a point
+points.push_back({10, 20, 5});
+
+// Access
+for (const auto& p : points) {
+    std::cout << p.x << "," << p.y << " w=" << p.w << '\n';
+}
 ```
-dist(p1,p2) = |x1-x2| + |y1-y2|
+
+#### b) Using a tuple
+
+```cpp
+std::vector<std::tuple<int,int,int>> pts;
+pts.emplace_back(10, 20, 5);        // equivalent to push_back({10,20,5})
 ```
 
-A *special road* `(a,b,c,d,w)` gives us a *directed* shortcut from `(a,b)` to `(c,d)` with cost `w`.  
-If `w` is not cheaper than the normal Manhattan distance we will never use that road – we can simply walk directly.
+#### c) Map keyed by (x,y)
 
-The problem is therefore a shortest‑path problem on a graph:
+If you frequently look up the weight *w* for a given coordinate pair:
 
-* **Vertices** – all distinct coordinates that appear:
-  * start point
-  * target point
-  * every `(a,b)` and `(c,d)` from all special roads
+```cpp
+struct pair_hash {
+    std::size_t operator()(const std::pair<int,int>& p) const noexcept {
+        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
+    }
+};
 
-  Let the total number of vertices be `N` (`N ≤ 2 + 2·k`, `k ≤ 100`).
+std::unordered_map<std::pair<int,int>, int, pair_hash> point_map;
+point_map[{10,20}] = 5;      // w = 5
+int w = point_map[{10,20}];  // w == 5
+```
 
-* **Edges**  
-  * For every pair of vertices `u , v` add an undirected edge with weight `dist(u,v)` (grid walking).  
-  * For every special road add a directed edge from its start to its end with weight `w`.
-
-Now the answer is simply the length of the shortest path from the start vertex to the target vertex.  
-Because the graph is dense (≈ `N²` edges) we can run **Dijkstra** directly on it – its complexity  
-`O(N² log N)` is more than fast enough for `N ≤ 202`.
-
----
-
-### Algorithm
-1. **Collect all vertices**  
-   Map each unique coordinate to an integer id.  
-2. **Pre‑compute all Manhattan distances**  
-   `mdist[i][j] = |x_i-x_j| + |y_i-y_j|`.
-3. **Build adjacency lists**  
-   * For every pair `i < j` add the undirected edge `(i,j)` with weight `mdist[i][j]`.  
-   * For every special road `(a,b,c,d,w)` add a directed edge from id(a,b) to id(c,d) with weight `w`.  
-4. **Run Dijkstra** from the start vertex.  
-5. Return the distance found to the target vertex.
+The `pair_hash` is required because `std::unordered_map` needs a hash
+function for non‑built‑in keys.
 
 ---
 
-### Correctness Proof  
+### 2.  Java examples
 
-We prove that the algorithm returns the minimal possible travel cost.
+#### a) POJO + ArrayList
 
-**Lemma 1**  
-For any two vertices `u` and `v` the graph contains an edge of weight equal to the minimum
-possible cost of travelling from `u` to `v` using only normal grid moves.
+```java
+public final class Point {
+    public final int x, y, w;
+    public Point(int x, int y, int w) { this.x = x; this.y = y; this.w = w; }
+}
 
-*Proof.*  
-By construction we added an undirected edge between every pair of vertices with weight
-`|x_u-x_v| + |y_u-y_v|`. This is exactly the Manhattan distance, which is the minimum cost
-to walk between `u` and `v` without using a special road. ∎
+List<Point> points = new ArrayList<>();
+points.add(new Point(10, 20, 5));
+for (Point p : points) {
+    System.out.printf("%d,%d w=%d%n", p.x, p.y, p.w);
+}
+```
 
+#### b) int‑array + ArrayList
 
+```java
+List<int[]> points = new ArrayList<>();
+points.add(new int[]{10, 20, 5});     // [x, y, w]
+```
 
-**Lemma 2**  
-For any special road `(a,b)->(c,d,w)` the graph contains a directed edge whose weight
-equals the cost of using that road.
+#### c) Map with pair key (requires a key class)
 
-*Proof.*  
-We added a directed edge from id(a,b) to id(c,d) with weight `w`. ∎
+```java
+class Coord {
+    final int x, y;
+    Coord(int x, int y) { this.x = x; this.y = y; }
+    @Override public boolean equals(Object o) { … }
+    @Override public int hashCode() { … }
+}
 
+Map<Coord, Integer> map = new HashMap<>();
+map.put(new Coord(10,20), 5); // w = 5
+```
 
-
-**Lemma 3**  
-For any walk in the original problem statement there exists a path in the constructed
-graph with exactly the same total cost, and vice‑versa.
-
-*Proof.*  
-A walk consists of alternating segments of grid walking and (possibly) special roads.  
-* A grid‑walking segment between two consecutive vertices `u,v` of the walk
-  can be replaced by the edge `(u,v)` of Lemma&nbsp;1 – the costs match.  
-* A special‑road segment is represented by the corresponding directed edge of
-  Lemma&nbsp;2 – the costs match.  
-Because we inserted edges for *every* pair of vertices that can appear in a walk,
-the whole walk maps to a graph path of equal cost.  
-The inverse direction is trivial: any graph path translates back into a walk in the
-original setting because every graph edge is realizable either by walking or by a special
-road. ∎
-
-
-
-**Lemma 4**  
-Dijkstra’s algorithm returns the length of the shortest path in the graph from the start
-to the target.
-
-*Proof.*  
-All edge weights are non‑negative, so the standard correctness argument for Dijkstra applies. ∎
-
-
-
-**Theorem**  
-The algorithm outputs the minimum possible travel cost from the start point to the
-target point.
-
-*Proof.*  
-By Lemma&nbsp;3 the set of feasible walks in the original problem is in one‑to‑one
-correspondence with the set of paths in the constructed graph, preserving total cost.  
-By Lemma&nbsp;4 Dijkstra finds the minimum‑cost path in the graph.  
-Therefore the cost returned by the algorithm equals the optimum in the original problem. ∎
-
-
+(Implement `equals` and `hashCode` – or use `javafx.util.Pair` if
+available.)
 
 ---
 
-### Complexity Analysis  
-
-Let `k` be the number of special roads (`k ≤ 100`).  
-Number of vertices `N = 2 + 2·k ≤ 202`.
-
-* Pre‑computing Manhattan distances: `O(N²)` time, `O(N²)` memory.  
-* Building adjacency lists: also `O(N²)` edges.  
-* Dijkstra: `O(E log V)` with `E = Θ(N²)` → `O(N² log N)` time.  
-* Memory consumption: adjacency lists + distance array → `O(N²)`.
-
-With `N ≤ 202` this is far below the limits for a 2 s time limit.
-
----
-
-### Reference Implementation (Python 3)
+### 3.  Python example
 
 ```python
-import sys
-import heapq
+points = []          # list of triples
+points.append((10, 20, 5))    # (x, y, w)
 
-def solve() -> None:
-    data = sys.stdin.read().strip().split()
-    if not data:
-        return
-    it = iter(data)
-    sx, sy, tx, ty = map(int, (next(it), next(it), next(it), next(it)))
-    k = int(next(it))
-
-    # collect all distinct coordinates
-    coord_to_id = {}
-    coords = []
-
-    def get_id(x, y):
-        if (x, y) not in coord_to_id:
-            coord_to_id[(x, y)] = len(coords)
-            coords.append((x, y))
-        return coord_to_id[(x, y)]
-
-    start_id = get_id(sx, sy)
-    target_id = get_id(tx, ty)
-
-    special_edges = []          # (u_id, v_id, weight)
-    for _ in range(k):
-        a, b, c, d, w = map(int, (next(it), next(it), next(it), next(it), next(it)))
-        if w < abs(a - c) + abs(b - d):   # useful road only
-            u = get_id(a, b)
-            v = get_id(c, d)
-            special_edges.append((u, v, w))
-
-    n = len(coords)            # number of vertices
-
-    # pre‑compute Manhattan distances
-    mdist = [[0] * n for _ in range(n)]
-    for i in range(n):
-        xi, yi = coords[i]
-        for j in range(i + 1, n):
-            xj, yj = coords[j]
-            d = abs(xi - xj) + abs(yi - yj)
-            mdist[i][j] = mdist[j][i] = d
-
-    # build adjacency lists
-    adj = [[] for _ in range(n)]
-    # grid walking edges (undirected)
-    for i in range(n):
-        for j in range(i + 1, n):
-            w = mdist[i][j]
-            adj[i].append((j, w))
-            adj[j].append((i, w))
-    # special road edges (directed)
-    for u, v, w in special_edges:
-        adj[u].append((v, w))
-
-    # Dijkstra
-    INF = 10**18
-    dist = [INF] * n
-    dist[start_id] = 0
-    pq = [(0, start_id)]
-
-    while pq:
-        d, u = heapq.heappop(pq)
-        if d != dist[u]:
-            continue
-        if u == target_id:
-            break
-        for v, w in adj[u]:
-            nd = d + w
-            if nd < dist[v]:
-                dist[v] = nd
-                heapq.heappush(pq, (nd, v))
-
-    print(dist[target_id])
-
-if __name__ == "__main__":
-    solve()
+for x, y, w in points:
+    print(f"{x},{y} w={w}")
 ```
 
-**Input format**
+Or, if you need fast lookup by `(x, y)`:
 
-```
-sx sy tx ty
-k
-a1 b1 c1 d1 w1
-...
-ak bk ck dk wk
+```python
+point_map = {(10,20): 5}      # key = (x, y), value = w
 ```
 
-**Output**
+---
 
-```
-minimum_cost
-```
+## Choosing the right container
 
-The program follows exactly the algorithm proven correct above and runs comfortably
-within the limits.
+| Need | Container | Pros | Cons |
+|------|-----------|------|------|
+| **Frequent random access by index** | `vector` (C++) / `ArrayList` (Java) | O(1) access | Requires known size |
+| **Dynamic growth** | `vector` / `ArrayList` | amortised O(1) push_back | Some overhead per element |
+| **Lookup by (x,y)** | `unordered_map` / `HashMap` | O(1) expected | Extra memory, need hash |
+| **Minimal memory** | Raw array (`int[N*3]` or `int[][]`) | No object overhead | Harder to read, no bounds check |
+| **Readability & safety** | Struct/class | Named fields | Slightly more code, small overhead |
+
+For a Dijkstra‑style algorithm where you *often* need to look up a
+point’s weight by its coordinates, the `unordered_map` (C++) or
+`HashMap` (Java) keyed on a pair is usually the most convenient.
+
+If the point set is tiny (e.g. ≤ 10 000) or you just need a list, a
+plain `vector`/`ArrayList` of structs/objects is often simpler.
+
+---
+
+### TL;DR
+
+* **Point = triple (x, y, w)**  
+* In **C++**: `struct Point{int x,y,w;}` + `vector<Point>` (fast)  
+  or `unordered_map<pair<int,int>,int,hash>` for O(1) lookup.  
+* In **Java**: `class Point{int x,y,w;}` + `ArrayList<Point>`  
+  or `HashMap<Coord,Integer>` for lookup.  
+* In **Python**: `list` of `tuple`s or a `dict` keyed on `(x,y)`.
+
+Pick the container that matches your performance/memory needs and
+keeps the code readable. Happy coding!

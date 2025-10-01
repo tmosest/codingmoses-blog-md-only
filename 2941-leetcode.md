@@ -7,190 +7,253 @@ author: moses
 tags: []
 hideToc: true
 ---
-        **Problem**  
-Given an array `nums` (1 ≤ len(nums) ≤ 2·10⁵) and an integer `k` (1 ≤ k ≤ len(nums)), find a contiguous sub‑array whose length is at least `k` that maximises  
+        **Solution Explanation**
+
+For every prefix `A[0 … i]` we want to know the best product
 
 ```
-(sum of its elements) × (GCD of its elements)
+      (sum of the subarray) × (gcd of the subarray)
 ```
 
-Return the maximum value (use 64‑bit arithmetic).
+among all subarrays that end at position `i`.  
+After we have the best product for the prefix, the answer for the whole
+array is the maximum of all these values.
 
 --------------------------------------------------------------------
 
-### Observations
+#### 1.  Observation – only the leftmost start matters
 
-* For a fixed right end `r`, all GCDs of sub‑arrays that end at `r` form a very small set.  
-  The GCD can only **decrease** when we extend the sub‑array leftwards, and each
-  time it changes the value must divide the previous one.  
-  For the numbers that occur in the array, the number of distinct GCDs that can
-  appear at any point is bounded by **O(log V)** where `V = max(nums)`.  
-  In practice for `V ≤ 10⁶` it never exceeds 20.
-
-* Because of the above, we can keep at most one entry for each possible GCD
-  while scanning the array.  
-  For each GCD we store the **longest** sub‑array (i.e. the one with the largest
-  sum) that has this GCD and ends at the current position.
+All array values are **positive**.
+If two subarrays end at the same position and have the same gcd,
+the longer one has the larger sum, therefore the larger product.
+Consequently for every possible gcd we only have to keep the
+*earliest* start index of a subarray that ends at the current
+position.
 
 --------------------------------------------------------------------
 
-### Algorithm (GCD‑List + Prefix sums)
+#### 2.  Dynamic construction of the gcd list
+
+Let  
 
 ```
-max_val = 0
-store = {}                      // divisor -> (sum, length)
-
-for i, x in enumerate(nums):
-    new = {}                    // state after adding nums[i]
-    
-    // sub‑array consisting only of nums[i]
-    new[x] = (x, 1)
-    if k == 1:
-        max_val = max(max_val, x * x)
-
-    // extend every previously stored sub‑array with nums[i]
-    for g, (s, l) in store.items():
-        ng = gcd(g, x)           // new GCD after adding x
-        ns = s + x
-        nl = l + 1
-        if nl >= k:
-            max_val = max(max_val, ng * ns)
-
-        // keep only the longest sub‑array for this GCD
-        if ng not in new or new[ng][1] < nl:
-            new[ng] = (ns, nl)
-
-    store = new
-
-return max_val
+dp[i] = vector of pairs (g, l)
 ```
+
+where
+
+* `g` – gcd of a subarray that ends at position `i`
+* `l` – the **leftmost** start index among all subarrays that end at `i`
+  and have gcd `g`.
+
+The vector contains at most 20 elements because
+gcds can only decrease, and once they reach 1 they never increase again.
+
+*Base case*  
+`dp[0]` consists of the single subarray `[A[0]]`:
+```
+dp[0] = { (A[0], 0) }
+```
+
+*Transition*  
+Assume `dp[i-1]` is already known.
+To build `dp[i]` we
+
+```
+1. start with (A[i], i)          // subarray consisting only of A[i]
+2. for every pair (g, l) in dp[i-1]
+       new_g = gcd(A[i], g)
+       if new_g equals the last element of the vector
+              keep the smaller start index (earlier start)
+       else  append (new_g, l)
+```
+
+The loop over `dp[i-1]` is performed from the last element to the first,
+so that when we encounter a duplicate gcd we can easily keep the
+earliest start index with `min`.
 
 --------------------------------------------------------------------
 
-### Correctness Proof  
+#### 3.  Evaluating candidates
 
-We prove that the algorithm returns the maximum possible GCD‑sum.
+While constructing `dp[i]` we already know the start indices and the gcd
+for **every** subarray ending at position `i`.
+For each pair `(g, l)` in the vector
+
+```
+length  = i - l + 1
+if length >= K
+        sum = prefix_sum[i+1] - prefix_sum[l]
+        answer = max(answer, sum * g)
+```
+
+The prefix sums are stored as `long long` to avoid overflow.
+
+--------------------------------------------------------------------
+
+#### 4.  Correctness Proof  
+
+We prove that the algorithm returns the maximum possible
+`(subarray sum) × (subarray gcd)`.
 
 ---
 
-#### Lemma 1  
-At the beginning of the loop iteration for index `i`, `store` contains, for
-each possible divisor `d`, a pair `(s, l)` where `s` is the sum and `l` is
-the length of **the longest** sub‑array ending at position `i‑1` whose GCD is
-`d`.
+##### Lemma 1  
+For every position `i` the vector `dp[i]` contains, for each possible
+gcd of a subarray ending at `i`, the smallest start index of such a
+subarray.
 
-*Proof.*  
-Initialization (`i = 0`) is trivial: `store` is empty.  
-Assume the lemma holds for index `i`.  
-During the next iteration we construct `new` as follows:
+**Proof.**
 
-* For each entry `(s, l)` in `store` we extend that sub‑array with
-  `nums[i]`.  The new GCD is `gcd(d, nums[i])`.  
-  We keep only the entry with the **maximum** length for each resulting GCD,
-  so after processing all entries `new` satisfies the lemma for index `i`.
+Induction over `i`.
 
-* We also insert the sub‑array of length 1 ending at `i`; this is the only
-  sub‑array whose GCD equals `nums[i]` that ends at `i`.  
-  Hence the lemma also holds after setting `store = new`. ∎
+*Base (`i = 0`)*  
+`dp[0]` contains exactly one subarray `[A[0]]`.  
+Its gcd is `A[0]` and its start index is `0`, which is obviously the
+smallest possible start.
 
-
-
-#### Lemma 2  
-During the processing of index `i` the algorithm examines the value
-`G × S` for **every** sub‑array that ends at `i`, where  
-`G = GCD(sub‑array)` and `S = sum(sub‑array)`.
-
-*Proof.*  
-Consider any sub‑array `nums[l … i]`.  
-By Lemma&nbsp;1 when the loop for `i` is entered, `store` contains an entry
-with GCD equal to `gcd(nums[l … i‑1])` and length `i‑l`.  
-When we extend this entry with `nums[i]`, the GCD becomes `gcd(G, nums[i])`,
-which is exactly the GCD of the whole sub‑array.  
-Its length increases to `i‑l+1` and its sum to `S`.  
-Thus the algorithm will compute `G × S` for this sub‑array. ∎
+*Induction step*  
+Assume the statement holds for `i-1`.  
+During construction of `dp[i]` we process the pairs of `dp[i-1]`
+in reverse order.  
+For a pair `(g, l)` in `dp[i-1]` we form the subarray `[A[l … i]]`
+whose gcd is `gcd(A[i], g)` and start index `l`.  
+If this gcd already appears as the last element of the building
+vector we replace its stored start with  
+`min(old_start, l)`.  
+Thus the stored start is the minimum among all subarrays with that gcd
+ending at `i`.  
+No other subarray ending at `i` has the same gcd, because every
+possible gcd appears exactly once during this construction.
+∎
 
 
 
-#### Lemma 3  
-For each sub‑array of length at least `k` the algorithm updates
-`max_val` with its GCD‑sum.
+##### Lemma 2  
+For every position `i` and for every subarray that ends at `i`,
+the algorithm evaluates its product `(sum × gcd)`.
 
-*Proof.*  
-By Lemma&nbsp;2 the algorithm computes `G × S` for the sub‑array.
-The check `if nl >= k` guarantees that we only consider sub‑arrays of
-required length before updating `max_val`. ∎
+**Proof.**
 
-
-
-#### Theorem  
-After the last iteration `max_val` equals the maximum possible
-`(sum of elements) × (GCD of elements)` over all contiguous sub‑arrays of
-length at least `k`.
-
-*Proof.*  
-From Lemma&nbsp;3 every eligible sub‑array contributes its value to
-`max_val`, so `max_val` is **at least** the optimum.  
-Conversely, `max_val` is updated only with values of eligible sub‑arrays,
-hence it is **at most** the optimum.  
-Therefore the two are equal. ∎
+Consider an arbitrary subarray `A[l … i]`.  
+While building `dp[i]` the pair `(g, l)` with
+`g = gcd(A[l … i])` is produced from the corresponding pair in
+`dp[l]` (by induction) and is kept in the final vector
+(because the start index never changes afterwards).
+Consequently this subarray’s product is evaluated when the
+vector `dp[i]` is processed.
+∎
 
 
 
---------------------------------------------------------------------
+##### Lemma 3  
+Among all subarrays ending at a fixed position `i` the maximum product
+is attained by one of the pairs stored in `dp[i]`.
 
-### Complexity Analysis
+**Proof.**
 
-Let `V = max(nums)`.
+By Lemma&nbsp;2 every subarray ending at `i` appears in `dp[i]`
+exactly once (its gcd and start index).  
+The algorithm evaluates the product of each of these subarrays and
+keeps the maximum.  
+Therefore the maximum product for this prefix is found. ∎
 
-* `gcd` runs in `O(log V)` time.  
-* Each element is combined with at most `O(log V)` distinct GCDs (the set
-  size never exceeds ~20 for 10⁶).  
-  Thus each iteration costs `O(log V)`.
 
-```
-Time   :  O(n · log V)   ≈ 1.3·10⁶ operations for n = 2·10⁵
-Memory :  O(log V)       (the dictionary of GCDs)
-```
 
-Both bounds easily satisfy the limits.
+##### Theorem  
+The algorithm outputs the maximum value of  
+`(sum of a subarray) × (gcd of the same subarray)`
+over all subarrays with length at least `K`.
+
+**Proof.**
+
+For every position `i` (from `0` to `N-1`) the algorithm
+examines every subarray that ends at `i` (Lemma&nbsp;2) and keeps the
+largest product that satisfies the length condition
+(Lemma&nbsp;3).  
+The global answer is the maximum of all these local maxima,
+hence it is the maximum over **all** subarrays of length at least `K`.
+∎
+
+
 
 --------------------------------------------------------------------
 
-### Reference Implementation (Python 3)
+#### 5.  Complexity Analysis
 
-```python
-from math import gcd
-from collections import defaultdict
-from typing import List
+`dp[i]` contains at most 20 pairs (the gcd can only decrease and
+once it becomes `1` it never changes).
 
-def max_gcd_sum(nums: List[int], k: int) -> int:
-    max_val = 0
-    store = {}                     # divisor -> (sum, length)
-
-    for x in nums:
-        nxt = defaultdict(lambda: (0, 0))
-
-        # sub‑array of length 1
-        nxt[x] = (x, 1)
-        if k == 1:
-            max_val = max(max_val, x * x)
-
-        # extend all previously stored sub‑arrays
-        for g, (s, l) in store.items():
-            ng = gcd(g, x)
-            ns = s + x
-            nl = l + 1
-            if nl >= k:
-                max_val = max(max_val, ng * ns)
-
-            # keep only the longest sub‑array for this divisor
-            if nxt[ng] < (ns, nl):
-                nxt[ng] = (ns, nl)
-
-        store = nxt
-
-    return max_val
+```
+time   :  O(N × 20)   ≈ 2·10^6 operations for N = 2·10^5
+memory :  O(20)       (plus the prefix sum array)
 ```
 
-The function follows exactly the algorithm proven correct above and
-runs in the required time for the given constraints.
+Both limits easily fit into the required constraints.
+
+--------------------------------------------------------------------
+
+#### 6.  Reference Implementation  (C++17)
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    
+    int N, K;
+    if (!(cin >> N >> K)) return 0;
+    vector<long long> A(N);
+    for (int i = 0; i < N; ++i) cin >> A[i];
+
+    /* prefix sums */
+    vector<long long> pref(N + 1, 0);
+    for (int i = 0; i < N; ++i)
+        pref[i + 1] = pref[i] + A[i];
+
+    long long answer = 0;
+
+    /* dp vector for the previous position (initially for i = -1) */
+    vector<pair<long long, int>> prev;           // empty for i = -1
+
+    for (int i = 0; i < N; ++i) {
+        vector<pair<long long, int>> cur;
+        /* step 1: subarray consisting only of A[i] */
+        cur.emplace_back(A[i], i);
+
+        /* step 2: extend all subarrays from previous prefix */
+        for (int idx = (int)prev.size() - 1; idx >= 0; --idx) {
+            long long g = prev[idx].first;
+            int start   = prev[idx].second;
+            long long new_g = std::gcd(A[i], g);
+            if (cur.back().first == new_g) {
+                /* duplicate gcd – keep earlier start */
+                cur.back().second = min(cur.back().second, start);
+            } else {
+                cur.emplace_back(new_g, start);
+            }
+        }
+
+        /* step 3: evaluate all candidates */
+        for (const auto &p : cur) {
+            long long g   = p.first;
+            int start     = p.second;
+            int len       = i - start + 1;
+            if (len >= K) {
+                long long sum = pref[i + 1] - pref[start];
+                answer = max(answer, sum * g);
+            }
+        }
+
+        prev.swap(cur);   // dp[i] becomes the previous vector
+    }
+
+    cout << answer << '\n';
+    return 0;
+}
+```
+
+The program follows exactly the algorithm proven correct above
+and conforms to the C++17 standard.

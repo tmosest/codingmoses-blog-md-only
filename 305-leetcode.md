@@ -7,124 +7,267 @@ author: moses
 tags: []
 hideToc: true
 ---
-        **Problem**
+        **Solution Overview**
 
-You are given an initially‑all‑water `m × n` grid and a list of positions where a
-water cell is turned into land (`grid[i][j] = 1`).  
-After each conversion you must report the current number of islands.  
-Two cells are part of the same island if they are 4‑connected (up, down, left,
-right). Duplicate conversions do nothing – the island count remains unchanged.
+For every new land cell we have to know
 
-**Observation**
+* whether this cell is a duplicate of a previous one,
+* how many *different* islands touch it,
+* and if any of them merge into a single island.
 
-Every island is a *disjoint set* of land cells.  
-When a new cell is added it is a new set.  
-If any of its four neighbours is already land we must *union* the sets of
-the new cell and the neighbour(s).  
-The number of islands therefore decreases by the number of merges that occur.
+A classic way to keep track of “disjoint sets” (here: islands) is **Union‑Find** (Disjoint Set Union, DSU).  
+With path compression and union by size/rank the operations are almost constant time  
+(α – the inverse Ackermann function).
 
-**Data structure – Union‑Find**
+We represent the 2‑D grid as a 1‑D slice of length `m*n`.  
+For a cell `(x,y)` its index is `x*n + y`.  
+A value of `-1` means “water”; otherwise the index of its root in the DSU.
 
-We need a fast set data structure that supports:
+--------------------------------------------------------------------
 
-* `add(p)` – add a new element and start a new set
-* `find(p)` – find the representative of the set containing `p`
-* `union(p,q)` – merge the two sets (decreasing the total count)
-* `count` – current number of sets (islands)
+#### Algorithm
+```
+parent[i]  : parent pointer of DSU element i, -1 for water
+size[i]    : size of the component whose root is i
+islandCnt  : current number of islands
+ans        : result slice
 
-To avoid allocating `m*n` memory for very large grids that contain far fewer
-land cells, we use a dictionary (`dict`) to store the parent and size of only
-the cells that have been turned into land.
+for each position (x,y) in positions:
+    idx = x*n + y
+    if parent[idx] != -1:          // duplicate land
+        append islandCnt to ans
+        continue
 
-The usual *weighted quick‑union with path compression* gives almost‑linear
-performance: each operation is `α(N)` where `α` is the inverse Ackermann
-function (≤ 5 for all practical inputs).
+    // new land → new island for now
+    parent[idx] = idx
+    size[idx]   = 1
+    islandCnt++
 
-**Complexity**
+    // look at the four neighbours
+    for (dx,dy) in {(1,0),(-1,0),(0,1),(0,-1)}:
+        nx, ny = x+dx , y+dy
+        if out of bounds or parent[nx*n+ny]==-1:  continue
 
-*Time*: `O(k α(mn))` where `k` is the number of positions (≈ `k` operations).
-*Space*: `O(k)` – one entry per land cell.
+        rootIdx   = find(idx)
+        rootNeigh = find(nx*n+ny)
+        if rootIdx != rootNeigh:
+            union(rootIdx, rootNeigh)
+            islandCnt--          // two islands merged
 
-**Python 20‑line solution**
-
-```python
-class UnionFind:
-    def __init__(self):
-        self.parent = {}          # element -> parent
-        self.size   = {}          # root -> component size
-        self.count  = 0           # number of components
-
-    def add(self, p):
-        """Add a new element as its own set."""
-        self.parent[p] = p
-        self.size[p]   = 1
-        self.count    += 1
-
-    def find(self, p):
-        """Return the root of p with path compression."""
-        while p != self.parent[p]:
-            self.parent[p] = self.parent[self.parent[p]]
-            p = self.parent[p]
-        return p
-
-    def union(self, p, q):
-        """Merge the sets of p and q (if different)."""
-        rootP, rootQ = self.find(p), self.find(q)
-        if rootP == rootQ:
-            return
-        # weighted: attach smaller tree to larger
-        if self.size[rootP] < self.size[rootQ]:
-            rootP, rootQ = rootQ, rootP
-        self.parent[rootQ] = rootP
-        self.size[rootP]  += self.size[rootQ]
-        self.count       -= 1
-
-
-class Solution:
-    # 4‑direction deltas
-    DIRS = [(1,0),(-1,0),(0,1),(0,-1)]
-
-    def numIslands2(self, m: int, n: int, positions: list[list[int]]) -> list[int]:
-        uf = UnionFind()
-        ans = []
-
-        for r, c in positions:
-            pos = (r, c)
-            # duplicate conversion → nothing changes
-            if pos in uf.parent:
-                ans.append(uf.count)
-                continue
-
-            uf.add(pos)                     # new island
-            for dr, dc in self.DIRS:
-                nr, nc = r + dr, c + dc
-                nb = (nr, nc)
-                if 0 <= nr < m and 0 <= nc < n and nb in uf.parent:
-                    uf.union(pos, nb)       # merge with neighbour
-
-            ans.append(uf.count)
-
-        return ans
+    append islandCnt to ans
+return ans
 ```
 
-**Explanation of the code**
+`find` uses path compression, `union` uses size‑based union.
 
-1. `UnionFind` keeps only land cells in its dictionaries.
-2. When a new position `(r,c)` is processed:
-   * If it is already land, we simply record the current count.
-   * Otherwise we create a new set for this cell (`uf.add`).
-   * For each of the four neighbours we check whether it is land
-     (`nb in uf.parent`).  
-     If so we union the new cell with that neighbour.
-3. The number of islands after each operation is the current `uf.count`.
+--------------------------------------------------------------------
 
-**Running example**
+#### Correctness Proof  
 
-```python
->>> s = Solution()
->>> s.numIslands2(3,3,[[0,0],[0,1],[1,2],[2,1]])
-[1,1,2,3]
+We prove that the algorithm outputs the correct number of islands after each
+addition.
+
+---
+
+##### Lemma 1  
+`parent` and `size` always maintain a correct Union‑Find structure for all
+currently land cells.
+
+**Proof.**  
+When a new land cell `(x,y)` appears we initialise `parent[idx]=idx` and
+`size[idx]=1`.  
+No union is performed before this, so the DSU contains a single element.  
+During the loop over neighbours we only call `find` and `union` on indices
+that are already land (`parent[nei] != -1`), thus they are valid DSU nodes.  
+`union` merges two disjoint components by linking the smaller one to the
+larger, updating the component size, and decreasing the component counter.
+No other DSU structure is modified.  
+Therefore after each iteration the DSU invariants hold. ∎
+
+
+
+##### Lemma 2  
+After processing a position `(x,y)` the set of DSU components
+exactly corresponds to the set of distinct islands on the grid.
+
+**Proof.**  
+We proceed by induction over the processed positions.
+
+*Base*: Before any position the grid is empty, no component exists – true.
+
+*Induction step*: Assume the statement holds after processing the first
+`k-1` positions.  
+Consider position `k` at cell `c = (x,y)`.
+
+* If `c` is already land, we do nothing and the set of islands is unchanged,
+  thus the statement still holds.
+
+* Otherwise we create a new DSU node for `c`.  
+  For each of the four neighbours that are land we merge the
+  corresponding DSU components.  
+  Every union merges exactly two previously distinct islands that become one
+  after adding `c`, which is exactly what happens in the grid.
+  No other islands are affected.  
+  Hence after all unions the DSU components are in bijection with the real
+  islands.
+
+Thus the lemma holds for all processed positions. ∎
+
+
+
+##### Lemma 3  
+`islandCnt` maintained by the algorithm equals the number of DSU components.
+
+**Proof.**  
+`islandCnt` is increased by one when a new land cell is added.
+Each time `union` merges two components, `islandCnt` is decreased by one.
+Because, by Lemma&nbsp;1, the DSU components are precisely the components
+of the Union‑Find structure, the counter always equals the number of
+components. ∎
+
+
+
+##### Theorem  
+After each operation the algorithm appends the correct number of islands to
+the answer list.
+
+**Proof.**  
+By Lemma&nbsp;2 the DSU components after the operation are exactly the real
+islands on the grid.  
+By Lemma&nbsp;3 `islandCnt` equals the number of these components.  
+The algorithm appends `islandCnt` to the answer, therefore the value is
+correct. ∎
+
+
+
+--------------------------------------------------------------------
+
+#### Complexity Analysis  
+
+Let `k` be the number of positions.
+
+* `find` and `union` run in `α(mn)` time (inverse Ackermann),
+  practically constant.
+* For each position we inspect at most 4 neighbours.
+
+```
+Time   :  O(k · α(mn))          ≈ O(k)
+Memory :  O(m·n)   (parent, size slices)
 ```
 
-The code runs in well below 100 ms on the official LeetCode tests and
-conforms to the required `O(k α(mn))` time complexity.
+The implementation uses only arrays, no hash maps, thus it works
+efficiently even for large grids.
+
+--------------------------------------------------------------------
+
+#### Reference Implementation  (Go 1.17)
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+// DSU for a 2‑D grid
+type DSU struct {
+	parent []int // parent pointer, -1 for water
+	size   []int // component size
+	cnt    int   // number of components
+}
+
+func NewDSU(m, n int) *DSU {
+	total := m * n
+	p := make([]int, total)
+	s := make([]int, total)
+	for i := range p {
+		p[i] = -1 // water
+	}
+	return &DSU{parent: p, size: s}
+}
+
+// find with path compression
+func (d *DSU) find(i int) int {
+	if d.parent[i] == i {
+		return i
+	}
+	d.parent[i] = d.find(d.parent[i])
+	return d.parent[i]
+}
+
+// union by size, decreases component counter
+func (d *DSU) union(a, b int) {
+	ra := d.find(a)
+	rb := d.find(b)
+	if ra == rb {
+		return
+	}
+	if d.size[ra] < d.size[rb] {
+		ra, rb = rb, ra
+	}
+	d.parent[rb] = ra
+	d.size[ra] += d.size[rb]
+	d.cnt--
+}
+
+// add a new land cell at idx (already knows that this cell was water)
+func (d *DSU) add(idx int) {
+	d.parent[idx] = idx
+	d.size[idx] = 1
+	d.cnt++
+}
+
+func numIslands2(m, n int, positions [][]int) []int {
+	dsu := NewDSU(m, n)
+	dirX := []int{1, -1, 0, 0}
+	dirY := []int{0, 0, 1, -1}
+
+	ans := make([]int, 0, len(positions))
+	for _, pos := range positions {
+		x, y := pos[0], pos[1]
+		idx := x*n + y
+
+		// duplicate land
+		if dsu.parent[idx] != -1 {
+			ans = append(ans, dsu.cnt)
+			continue
+		}
+
+		// new land
+		dsu.add(idx)
+
+		// neighbours
+		for d := 0; d < 4; d++ {
+			nx, ny := x+dirX[d], y+dirY[d]
+			if nx < 0 || nx >= m || ny < 0 || ny >= n {
+				continue
+			}
+			neiIdx := nx*n + ny
+			if dsu.parent[neiIdx] == -1 {
+				continue
+			}
+			// merge components if they are different
+			if dsu.find(idx) != dsu.find(neiIdx) {
+				dsu.union(idx, neiIdx)
+			}
+		}
+
+		ans = append(ans, dsu.cnt)
+	}
+	return ans
+}
+
+func main() {
+	m := 3
+	n := 3
+	positions := [][]int{{0, 0}, {0, 1}, {1, 2}, {2, 1}}
+	fmt.Println(numIslands2(m, n, positions)) // [1 1 2 3]
+
+	// another test with duplicates
+	positions2 := [][]int{{0, 0}, {0, 0}, {1, 1}, {1, 1}}
+	fmt.Println(numIslands2(2, 2, positions2)) // [1 1 2 2]
+}
+```
+
+The program implements exactly the algorithm proven correct above.
+It uses only built‑in types and works with Go 1.17.

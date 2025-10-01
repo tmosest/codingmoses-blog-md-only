@@ -7,121 +7,103 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🚀 LeetCode 444 – Sequence Reconstruction  
-**A Topological‑Sort + Uniqueness Check that Works in Java, Python & C++**
+        ## 444. **Sequence Reconstruction** – A Complete Interview‑Ready Guide  
 
-> **Keywords**: LeetCode 444, Sequence Reconstruction, Topological Sort, Unique Topological Order, BFS/Kahn, DFS, Graph Theory, Coding Interview, Java, Python, C++.
-
----
-
-## 1. Problem Recap
-
-> **Given**  
-> - `nums` – a permutation of `[1 … n]`  
-> - `sequences` – a list of subsequences that appear in `nums`  
-
-> **Return** `true` **iff** `nums` is *the only* shortest super‑sequence that contains every subsequence in `sequences`.
-
-The challenge is to decide whether the ordering in `nums` is *uniquely determined* by the pairwise precedence constraints implied by `sequences`. If it is, the only valid shortest super‑sequence is exactly `nums`; otherwise there is at least one other valid ordering.
+> **LeetCode 444 – Sequence Reconstruction (Medium)**  
+> **Keywords**: LeetCode, Sequence Reconstruction, Topological Sort, Graph Algorithms, Java, Python, C++, Interview Prep, Algorithmic Thinking, Job Interview  
 
 ---
 
-## 2. Why a Topological Sort?
+### 1. Problem Summary
 
-Each subsequence `[a, b, c]` tells us that  
+Given
+
+| Input | Description |
+|-------|-------------|
+| `nums` | A permutation of `[1 … n]` (length `n`). |
+| `sequences` | An array of subsequences of `nums`. Each `sequences[i]` is a list of integers that appears in the same order inside `nums`. |
+
+**Goal**:  
+Return `true` if `nums` is *the only* shortest supersequence that contains **every** subsequence in `sequences`; otherwise return `false`.
+
+> **Examples**  
+> *Input* `nums = [1,2,3]`, `sequences = [[1,2],[1,3]]` → **false**  
+> *Input* `nums = [1,2,3]`, `sequences = [[1,2],[1,3],[2,3]]` → **true**
+
+---
+
+### 2. Why This Problem Rocks the Interview
+
+- **Graph‑theory meets ordering** – It forces you to think of permutations as a directed acyclic graph (DAG).
+- **Topological sort uniqueness** – Many candidates confuse *valid* ordering with *unique* ordering.  
+- **Large constraints** – `n` and total length of all subsequences can reach `10⁵`, so a linear‑time solution is essential.
+- **Real‑world relevance** – Topological ordering appears in build systems, task scheduling, and data‑pipeline orchestration.
+
+---
+
+### 3. High‑Level Insight
+
+Each pair of consecutive elements in a subsequence gives a *directed edge* in the DAG:
+
 ```
-a → b → c
+1 → 2   (from subsequence [1,2])
 ```
-is a directed edge set in a graph of `n` nodes (the numbers).  
-The problem asks whether **the graph has a unique topological ordering** that equals `nums`.  
 
-If the graph’s topological order is unique, it must be the same as `nums`.  
-If it isn’t unique, there exist at least two valid super‑sequences and `nums` can’t be the only shortest one.
+If we can build the DAG and then perform **Kahn’s algorithm** (BFS topological sort) while ensuring that at every step only **one** node has indegree `0`, we guarantee:
 
----
+1. The order produced is a valid topological order of the graph.
+2. The order is *unique* – no alternative shortest supersequence exists.
+3. The produced order must equal the given `nums`; otherwise `nums` is not the only shortest supersequence.
 
-## 3. Algorithm Overview
-
-1. **Build the graph & indegree array**  
-   For every pair of consecutive elements in each subsequence, add a directed edge and update indegrees.
-
-2. **Kahn’s BFS topological sort with uniqueness check**  
-   * Maintain a queue of nodes with indegree 0.  
-   * At each step, if the queue has **more than one** node, the ordering is *not* unique → return `false`.  
-   * Pop the single node, append it to `order`, and decrease indegrees of its neighbors, enqueueing any that drop to 0.
-
-3. **Validate**  
-   * If the final `order` length ≠ `n`, the graph was incomplete (some nodes never appear in `sequences`), return `false`.  
-   * Compare `order` with `nums`. If they match, `true`; otherwise `false`.
+If we encounter a node with indegree `0` that is **not** the next element of `nums`, we know `nums` is not the unique shortest supersequence.
 
 ---
 
-## 4. Correctness Proof
+### 4. Algorithm in Detail
 
-We prove that the algorithm returns `true` **iff** `nums` is the only shortest super‑sequence.
+| Step | Action |
+|------|--------|
+| **1. Build adjacency & indegree** | For each subsequence `seq`: for every consecutive pair `(u, v)` add `v` to `adj[u]` and increment `indeg[v]`. |
+| **2. Initialize queue** | Put all nodes with `indeg == 0` into a queue. |
+| **3. Process nodes** | For index `i` from `0` to `n-1`:  
+&nbsp;&nbsp;• If queue size > 1 → multiple choices → return `false`.  
+&nbsp;&nbsp;• Dequeue `cur`. If `cur != nums[i]` → wrong ordering → return `false`.  
+&nbsp;&nbsp;• Decrease indegree of all neighbors; enqueue those that become zero. |
+| **4. Final check** | If we processed all `n` nodes → return `true`; otherwise a cycle or missing edge → return `false`. |
 
-### Lemma 1  
-If the algorithm returns `false` because the queue ever contains ≥ 2 nodes, then the partial order defined by `sequences` admits more than one topological ordering.
-
-*Proof.*  
-At that step, two distinct nodes `x` and `y` have indegree 0, meaning no precedence constraints dictate their relative order. Therefore both `[ …, x, y, … ]` and `[ …, y, x, … ]` are valid extensions, yielding two different super‑sequences. ∎
-
-### Lemma 2  
-If the algorithm finishes with a unique order `order`, then `order` is the *only* topological ordering of the graph.
-
-*Proof.*  
-Kahn’s algorithm explores all edges. The uniqueness check ensures that at each step only one node is eligible, so the relative order of any two nodes is fixed by earlier decisions. Thus no alternative ordering exists. ∎
-
-### Lemma 3  
-If the unique topological order equals `nums`, then `nums` is the only shortest super‑sequence.
-
-*Proof.*  
-Any super‑sequence must respect the edges. A topological ordering is a shortest super‑sequence of the graph because it contains every vertex exactly once. Since there is only one such ordering and it equals `nums`, no other shortest super‑sequence can exist. ∎
-
-### Lemma 4  
-If `nums` is the only shortest super‑sequence, then the algorithm will return `true`.
-
-*Proof.*  
-Assume the contrary: algorithm returns `false`.  
-- Either queue had ≥ 2 nodes ⇒ by Lemma 1 more than one super‑sequence exists ⇒ contradiction.  
-- Or final order length ≠ n ⇒ some vertex never appears in `sequences`; then we could insert that vertex anywhere without breaking subsequences, giving another super‑sequence ⇒ contradiction.  
-Thus algorithm must return `true`. ∎
-
-Combining Lemmas 2–4 gives the *if and only if* statement. ∎
+**Time Complexity**: `O(n + E)` where `E` is total edges (`<= sum of lengths of sequences` ≤ `10⁵`).  
+**Space Complexity**: `O(n + E)` for adjacency list and indegree array.
 
 ---
 
-## 5. Complexity Analysis
+### 5. Edge Cases & Pitfalls
 
-| Step | Time | Space |
-|------|------|-------|
-| Build graph (all edges) | **O(∑|sequences[i]|)** ≤ 10⁵ | **O(n + E)** |
-| Kahn’s BFS | **O(n + E)** | **O(n + E)** |
-| Total | **O(n + E)** | **O(n + E)** |
-
-With `n ≤ 10⁴` and `∑|sequences[i]| ≤ 10⁵`, the solution comfortably fits within limits.
-
----
-
-## 6. Edge‑Case Handling
-
-| Case | Why it matters | Code guard |
-|------|----------------|------------|
-| `nums` not permutation | Problem guarantees, but guard avoids crashes | None |
-| A number never appears in any subsequence | Graph node has indegree 0 and outdegree 0 → algorithm returns `false` | `if (order.size() != n) return false;` |
-| Empty `sequences` | No edges → any ordering valid → algorithm returns `false` | Same guard above |
-| Duplicate edges | We use a `Set` per node or check before adding | `if (adj[u].add(v)) indeg[v]++;` |
+| Common Mistake | Why it breaks | Fix |
+|----------------|---------------|-----|
+| Not handling repeated edges | `adj` may grow unnecessarily, wasting time | Use a `Set` or guard against adding duplicate edges (e.g., `if (!adj[u].contains(v))`). |
+| Assuming the first element of `nums` has indegree 0 | Some inputs may start with an element that has incoming edges | Kahn’s algorithm naturally handles this; the queue will contain the correct starting nodes. |
+| Failing to check `nums` alignment during BFS | You might return `true` even if `nums` is different | Explicitly compare `cur` to `nums[i]` at each step. |
+| Ignoring isolated nodes | If a number never appears in any subsequence, it will have indegree 0 but still must match `nums` | Kahn’s algorithm covers this – isolated nodes will appear in the queue, and we still compare order. |
 
 ---
 
-## 7. Implementation
+### 6. The “Good, the Bad, the Ugly”
 
-Below are clean, production‑ready implementations in **Java**, **Python**, and **C++**.  
-All three use the same logic and run in the same asymptotic time.
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Clarity** | Kahn’s algorithm is intuitive once you see the graph representation. | The problem statement can be confusing about “shortest” vs. “only”. | Misreading “shortest” as “any supersequence” leads to wrong implementations. |
+| **Efficiency** | Linear time; works for `10⁵` elements. | Implementing DFS for uniqueness is possible but more complex. | Over‑optimizing with bitsets or fancy data structures adds unnecessary code. |
+| **Robustness** | Handles all corner cases: isolated nodes, multiple valid orders, cycles. | Requires careful indegree updates to avoid off‑by‑one errors. | Forgetting to convert 1‑based labels to 0‑based indices in some languages causes subtle bugs. |
 
 ---
 
-### 7.1 Java
+## 7. Code Snapshots
+
+Below you’ll find clean, ready‑to‑paste solutions in **Java, Python, and C++**. All follow the same algorithmic idea and include ample comments.
+
+---
+
+### 7.1 Java (LeetCode Signature)
 
 ```java
 import java.util.*;
@@ -129,43 +111,47 @@ import java.util.*;
 public class Solution {
     public boolean sequenceReconstruction(int[] nums, List<List<Integer>> sequences) {
         int n = nums.length;
-        List<Set<Integer>> adj = new ArrayList<>(n + 1);
+        // adjacency list
+        List<List<Integer>> adj = new ArrayList<>(n + 1);
+        for (int i = 0; i <= n; i++) adj.add(new ArrayList<>());
+        // indegree array
         int[] indeg = new int[n + 1];
-        for (int i = 0; i <= n; i++) adj.add(new HashSet<>());
-
         // Build graph
         for (List<Integer> seq : sequences) {
             for (int i = 0; i + 1 < seq.size(); i++) {
                 int u = seq.get(i);
                 int v = seq.get(i + 1);
-                if (adj.get(u).add(v)) indeg[v]++;
+                // avoid duplicate edges
+                if (!adj.get(u).contains(v)) {
+                    adj.get(u).add(v);
+                    indeg[v]++;
+                }
             }
         }
 
-        // Kahn with uniqueness check
+        // Queue of nodes with indegree 0
         Deque<Integer> q = new ArrayDeque<>();
         for (int i = 1; i <= n; i++) {
-            if (indeg[i] == 0) q.offer(i);
+            if (indeg[i] == 0) q.add(i);
         }
 
-        int idx = 0;
-        while (!q.isEmpty()) {
-            if (q.size() > 1) return false;   // multiple choices -> not unique
+        // Process nodes one by one
+        for (int i = 0; i < n; i++) {
+            if (q.size() != 1) return false; // multiple choices -> not unique
             int cur = q.poll();
-            if (cur != nums[idx]) return false; // order mismatch
-            idx++;
-            for (int nei : adj.get(cur)) {
-                if (--indeg[nei] == 0) q.offer(nei);
+            if (cur != nums[i]) return false; // order mismatch
+            for (int nxt : adj.get(cur)) {
+                if (--indeg[nxt] == 0) q.add(nxt);
             }
         }
-        return idx == n; // ensure all nodes processed
+        return true;
     }
 }
 ```
 
 ---
 
-### 7.2 Python
+### 7.2 Python 3
 
 ```python
 from collections import defaultdict, deque
@@ -184,28 +170,26 @@ class Solution:
                     adj[u].add(v)
                     indeg[v] += 1
 
-        # Kahn with uniqueness check
+        # Queue of nodes with indegree 0
         q = deque([i for i in range(1, n + 1) if indeg[i] == 0])
-        idx = 0
 
-        while q:
-            if len(q) > 1:
-                return False                      # non‑unique ordering
+        for i, expected in enumerate(nums):
+            if len(q) != 1:
+                return False          # ambiguous ordering
             cur = q.popleft()
-            if cur != nums[idx]:
-                return False                      # order mismatch
-            idx += 1
-            for nei in adj[cur]:
-                indeg[nei] -= 1
-                if indeg[nei] == 0:
-                    q.append(nei)
+            if cur != expected:
+                return False          # wrong sequence
+            for nxt in adj[cur]:
+                indeg[nxt] -= 1
+                if indeg[nxt] == 0:
+                    q.append(nxt)
 
-        return idx == n
+        return True
 ```
 
 ---
 
-### 7.3 C++
+### 7.3 C++17
 
 ```cpp
 #include <bits/stdc++.h>
@@ -215,79 +199,102 @@ class Solution {
 public:
     bool sequenceReconstruction(vector<int>& nums, vector<vector<int>>& sequences) {
         int n = nums.size();
-        vector<unordered_set<int>> adj(n + 1);
+        vector<vector<int>> adj(n + 1);
         vector<int> indeg(n + 1, 0);
 
         // Build graph
-        for (auto &seq : sequences) {
+        for (const auto& seq : sequences) {
             for (size_t i = 0; i + 1 < seq.size(); ++i) {
                 int u = seq[i], v = seq[i + 1];
-                if (adj[u].insert(v).second)   // inserted successfully
+                if (find(adj[u].begin(), adj[u].end(), v) == adj[u].end()) {
+                    adj[u].push_back(v);
                     ++indeg[v];
+                }
             }
         }
 
-        // Kahn with uniqueness check
         queue<int> q;
         for (int i = 1; i <= n; ++i)
             if (indeg[i] == 0) q.push(i);
 
-        int idx = 0;
-        while (!q.empty()) {
-            if (q.size() > 1) return false;          // multiple candidates
+        for (int i = 0; i < n; ++i) {
+            if (q.size() != 1) return false;          // ambiguous
             int cur = q.front(); q.pop();
-            if (cur != nums[idx]) return false;      // order mismatch
-            ++idx;
-            for (int nei : adj[cur]) {
-                if (--indeg[nei] == 0) q.push(nei);
+            if (cur != nums[i]) return false;          // order mismatch
+            for (int nxt : adj[cur]) {
+                if (--indeg[nxt] == 0) q.push(nxt);
             }
         }
-        return idx == n;
+        return true;
     }
 };
 ```
 
 ---
 
-## 8. Good, Bad, & Ugly
+## 8. SEO‑Optimized Blog Post
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Time** | Linear in `n + E` | None | None |
-| **Space** | `O(n + E)` | None | None |
-| **Readability** | Clear separation of graph build & Kahn | Slight verbosity in Java (sets, arrays) | None |
-| **Edge‑Case Handling** | Explicit guard for `order.size() != n` | None | None |
-| **Common Pitfall** | Forgetting to compare with `nums` during BFS | Overlooking the uniqueness check (`q.size() > 1`) | Using DFS without cycle detection → false positives |
+> **Title**: “Master LeetCode 444 – Sequence Reconstruction | Topological Sort + Interview Strategy”
+
+> **Meta Description**: “Learn how to crack LeetCode 444 – Sequence Reconstruction. Dive into topological sort, graph construction, and the unique ordering check. Get ready for your next coding interview with Java, Python, and C++ solutions.”
+
+### 8.1 Introduction
+
+When preparing for a technical interview, you’ll quickly encounter problems that look like puzzles but are actually **graph theory** in disguise. One such classic is LeetCode’s *Sequence Reconstruction* (Problem 444). It asks you to verify whether a given permutation is the **unique** shortest supersequence that respects a set of subsequences. If you can solve this in O(n) time and explain the logic clearly, you’ll impress any hiring manager.
+
+### 8.2 Why This Problem Is Interview Gold
+
+- **Graph Insight**: Turns an abstract “order” problem into a directed acyclic graph (DAG).  
+- **Topological Sort**: Familiar to many candidates, but uniqueness is the twist.  
+- **Multiple Languages**: Solved in Java, Python, and C++—showcasing versatility.  
+- **Edge Cases**: A good candidate anticipates isolated nodes, duplicate edges, and cycles.
+
+### 8.3 Walkthrough of the Optimal Solution
+
+Start by imagining each number in `nums` as a node. For every subsequence, draw edges from each element to its successor. If `seq = [1, 3, 2]`, you’ll add edges `1→3` and `3→2`. After building the graph, Kahn’s algorithm gives you a topological order. To guarantee uniqueness, the queue must never contain more than one node at any step. Moreover, you must match this order with the input `nums`.
+
+Here’s a **step‑by‑step** diagram:
+
+1. Build adjacency list & indegree → O(n)  
+2. Initialize queue with nodes of indegree 0  
+3. For each position in `nums`:  
+   - If queue > 1 → return false  
+   - If dequeued node ≠ `nums[i]` → return false  
+   - Update neighbors  
+
+If you finish the loop without hitting a conflict, the answer is *true*.
+
+### 8.3 Common Pitfalls (and How to Avoid Them)
+
+- Duplicate edges can inflate your adjacency list.  
+- Forgetting to compare with `nums` during the BFS.  
+- Misinterpreting “shortest” as any supersequence.  
+
+Highlight these in your answer; it shows you’re thinking about correctness, not just performance.
+
+### 8.4 Ready‑to‑Use Code in Your Favorite Language
+
+Insert the Java, Python, and C++ snippets here (see section 7). Provide them with a quick comment block so recruiters can copy‑paste and run.
+
+### 8.5 Interview Tips
+
+1. **Explain Your Thought Process**: Start with “I’ll treat each consecutive pair in a subsequence as a directed edge.”  
+2. **Talk About Uniqueness**: “If at any step the queue has >1 node, that means there’s more than one valid topological ordering.”  
+3. **Validate Alignment**: “I’ll compare the dequeued node to the corresponding element in the given `nums` array.”  
+4. **Stress Test**: Show how you’d manually test cases with isolated nodes or duplicate edges.
+
+### 8.6 Takeaway
+
+LeetCode 444 isn’t just a problem—it’s a showcase of how you can **translate problem constraints into a graph**, apply a well‑known algorithm, and extend it with an additional correctness check. Mastering this not only gives you a solid O(n) solution but also demonstrates your ability to think critically about algorithmic nuances.
+
+### 8.7 Call‑to‑Action
+
+Ready to impress? Try implementing the solution on your local machine in Java, Python, or C++ and then explain it to a friend or a mock interview platform. Once you’re comfortable, add the solution to your portfolio and mention it in your next coding interview.
+
+> **End of Blog Post**
 
 ---
 
-## 9. Why This Matters in Interviews
+### 9. Final Words
 
-- **Graph fundamentals**: Understanding directed edges, indegree, topological sort.
-- **Uniqueness check**: A subtle twist beyond a plain topological sort.
-- **Complexity**: Real‑world data may reach 10⁵ edges; you must stay linear.
-- **Coding skills**: Clean Java/Python/C++ implementations show mastery of language features (sets, deques, unordered_set).
-
-Show this solution on your portfolio or during a technical interview to demonstrate both algorithmic insight and practical coding skill.
-
----
-
-## 10. SEO‑Optimized Wrap‑Up
-
-If you’re prepping for a coding interview, mastering **LeetCode 444 – Sequence Reconstruction** gives you a **unique advantage**.  
-- **Java** lovers: see a clean `Set`‑based adjacency list.  
-- **Python** pros: a one‑liner `deque` plus `defaultdict`.  
-- **C++** gurus: `unordered_set` and `queue` make the logic crisp.
-
-Remember the **two‑step** process:  
-1. **Build a directed graph from subsequences**.  
-2. **Apply Kahn’s algorithm with a uniqueness guard**.
-
-Your final answer will be fast, memory‑efficient, and robust against all edge cases.  
-Add this to your résumé, GitHub repo, or interview notes—*sequence* your way to success!
-
-Happy coding! 🚀
-
---- 
-
-*End of solution.*
+LeetCode 444 may look like a “reorder” problem at first glance, but once you recognize the underlying DAG and the uniqueness requirement, it becomes a straight‑forward Kahn’s algorithm application. By covering the edge cases and explaining your reasoning, you’ll deliver a concise, efficient, and interview‑ready answer—whether you code in Java, Python, or C++. Happy coding and good luck with your next interview!

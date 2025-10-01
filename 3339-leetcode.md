@@ -7,375 +7,297 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Solution Overview
-
-For every pair of adjacent elements  
-`(arr[i] , arr[i+1])` we compute  
-
-```
-(arr[i] * arr[i+1]) – arr[i] – arr[i+1]
-```
-
-The value is **even** iff the two numbers have the **same parity**  
-(either both even or both odd).  
-So a *k‑even* array is an array of length `n` that contains exactly `k` adjacent
-pairs of the same parity.
-
-The problem reduces to counting how many ways we can build an array of
-length `n` where the number of adjacent equal‑parity pairs is exactly `k`.
+        # 3339 – Find the Number of K‑Even Arrays  
+> **Java | Python | C++** implementations + a *blog‑style guide* that explains the “good, the bad, and the ugly” of solving this LeetCode problem.  
 
 ---
 
-### 1.1  DP state
+## 1. Problem Recap
+
+You’re given three integers `n`, `m` and `k`.  
+An array `arr` of length `n` is **k‑even** if there are **exactly `k` indices** `i` (`0 ≤ i < n‑1`) such that  
 
 ```
-dp[pos][cnt][prev]   (0 ≤ pos ≤ n, 0 ≤ cnt ≤ k, prev ∈ {0,1})
+(arr[i] * arr[i+1]) – arr[i] – arr[i+1]   is even
 ```
 
-* `pos` – how many elements have already been chosen (`0 … n`)
-* `cnt` – how many “good” pairs we have built so far
-* `prev` – parity of the element placed at position `pos‑1`  
-  (`0 = odd`, `1 = even`)
+All elements must be in `[1, m]`.  
+Return the number of possible k‑even arrays modulo **1 000 000 007**.
 
-Transition for the next element:
+*Constraints*  
 
-* If we place an **even** number  
-  *newCnt = cnt + (prev == 1 ? 1 : 0)*  
-  There are `m/2` even numbers available.
-* If we place an **odd** number  
-  *newCnt = cnt* (because the pair can’t be “good” if one side is odd)  
-  There are `(m+1)/2` odd numbers available.
-
-The answer is `dp[n][k][0] + dp[n][k][1] (mod MOD)`.
-
-The DP runs in **O(n · k)** time and **O(n · k · 2)** memory,
-well within the limits (`n ≤ 750`, `k ≤ n‑1`).
+```
+1 ≤ n ≤ 750
+0 ≤ k ≤ n‑1
+1 ≤ m ≤ 1000
+```
 
 ---
 
-## 2.  Reference Implementations
+## 2. Observations (The “Good”)
 
-### 2.1  Java (top‑down memoization)
+1. **The expression is even only when both numbers are even.**  
+   If you plug any parity combinations into the expression, only the pair **(even, even)** gives an even result.  
+   So a *k‑even index* simply means “the adjacent pair consists of two even numbers”.
+
+2. **Parity is the only thing that matters.**  
+   For each position we only need to know whether the number is even or odd, not its actual value.
+
+3. **Dynamic programming fits perfectly.**  
+   The state can be described as:  
+   *position* (`i`), *how many k‑even indices we’ve seen so far* (`cnt`), *parity of the previous number* (`prevParity`).  
+   Transition: pick an even/odd number for the current position and update `cnt` if `prevParity` and current parity are both `1`.
+
+4. **Number of choices per parity is known.**  
+   - Even numbers in `[1, m]` → `evenCnt = m / 2`  
+   - Odd numbers in `[1, m]`  → `oddCnt  = (m + 1) / 2`
+
+With these insights the DP recurrence is straightforward and runs in `O(n · k · 2)` time and `O(k · 2)` memory (by keeping only two layers).
+
+---
+
+## 3. The Algorithm (Pseudo‑code)
+
+```
+evenCnt = m / 2
+oddCnt  = (m + 1) / 2
+MOD = 1_000_000_007
+
+# curr[cnt][prevParity]  (prevParity: 0=even, 1=odd)
+curr = array[k+1][2] initialized to 0
+
+# base: first element
+curr[0][0] = evenCnt
+curr[0][1] = oddCnt
+
+for pos in 1 .. n-1:
+    next = array[k+1][2] initialized to 0
+    for cnt in 0 .. k:
+        for prev in 0 .. 1:
+            val = curr[cnt][prev]
+            if val == 0: continue
+
+            # choose current even
+            newCnt = cnt + (prev == 1 ? 1 : 0)
+            if newCnt <= k:
+                next[newCnt][0] = (next[newCnt][0] + val * evenCnt) % MOD
+
+            # choose current odd
+            next[cnt][1] = (next[cnt][1] + val * oddCnt) % MOD
+    curr = next
+
+answer = (curr[k][0] + curr[k][1]) % MOD
+```
+
+Edge case `n == 1`: the loop never runs, and the answer is simply `evenCnt + oddCnt` if `k == 0`, otherwise `0`. The algorithm handles this automatically.
+
+---
+
+## 4. Reference Implementations
+
+### 4.1 Java
 
 ```java
 import java.util.*;
 
 public class Solution {
     private static final long MOD = 1_000_000_007L;
-    private long[][][] memo;
-    private int m;
 
     public int countOfArrays(int n, int m, int k) {
-        this.m = m;
-        memo = new long[n][k + 1][2];
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j <= k; j++)
-                Arrays.fill(memo[i][j], -1L);
-        return (int) dfs(0, 0, 0, k);
+        long evenCnt = m / 2L;
+        long oddCnt  = (m + 1L) / 2L;
+
+        long[][] curr = new long[k + 1][2];
+        curr[0][0] = evenCnt % MOD; // first element even
+        curr[0][1] = oddCnt % MOD;  // first element odd
+
+        for (int pos = 1; pos < n; pos++) {
+            long[][] next = new long[k + 1][2];
+            for (int cnt = 0; cnt <= k; cnt++) {
+                for (int prev = 0; prev <= 1; prev++) {
+                    long val = curr[cnt][prev];
+                    if (val == 0) continue;
+
+                    // choose current even
+                    int newCnt = cnt + (prev == 1 ? 1 : 0);
+                    if (newCnt <= k) {
+                        next[newCnt][0] =
+                            (next[newCnt][0] + val * evenCnt) % MOD;
+                    }
+
+                    // choose current odd
+                    next[cnt][1] =
+                        (next[cnt][1] + val * oddCnt) % MOD;
+                }
+            }
+            curr = next;
+        }
+
+        return (int) ((curr[k][0] + curr[k][1]) % MOD);
     }
 
-    private long dfs(int pos, int cnt, int prev, int k) {
-        if (pos == 0) {                     // no previous element
-            return cnt == k ? 1 : 0;        // should never happen
-        }
-        if (pos == 0) return 0;             // safety
-        if (cnt > k) return 0;              // pruning
-        if (pos == 0) return 0;             // dummy guard
-
-        if (memo[pos - 1][cnt][prev] != -1L)
-            return memo[pos - 1][cnt][prev];
-
-        long res = 0;
-        // place an even number
-        int newCnt = cnt + (prev == 1 ? 1 : 0);
-        res += ((m / 2L) * dfs(pos + 1, newCnt, 1, k)) % MOD;
-
-        // place an odd number
-        res += (((m + 1L) / 2L) * dfs(pos + 1, cnt, 0, k)) % MOD;
-
-        memo[pos - 1][cnt][prev] = res % MOD;
-        return memo[pos - 1][cnt][prev];
+    // Quick test harness
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        System.out.println(s.countOfArrays(3, 4, 2)); // 8
+        System.out.println(s.countOfArrays(5, 1, 0)); // 1
+        System.out.println(s.countOfArrays(7, 7, 5)); // 5832
     }
 }
 ```
 
-> **Why memoization?**  
-> The state space is small, but recursive calls explode without caching.  
-> Storing results turns the exponential recursion into linear DP.
-
----
-
-### 2.2  Python (iterative DP)
+### 4.2 Python
 
 ```python
 MOD = 1_000_000_007
 
 def countOfArrays(n: int, m: int, k: int) -> int:
-    evens = m // 2
-    odds  = (m + 1) // 2
+    even_cnt = m // 2
+    odd_cnt = (m + 1) // 2
 
-    # dp[pos][cnt][prev]  prev: 0 odd, 1 even
-    dp = [[[0, 0] for _ in range(k + 1)] for _ in range(n + 1)]
-    # first element – no pair yet
-    dp[1][0][0] = odds
-    dp[1][0][1] = evens
+    curr = [[0, 0] for _ in range(k + 1)]
+    curr[0][0] = even_cnt % MOD   # first element even
+    curr[0][1] = odd_cnt % MOD    # first element odd
 
-    for pos in range(2, n + 1):
+    for _ in range(1, n):
+        nxt = [[0, 0] for _ in range(k + 1)]
         for cnt in range(k + 1):
-            # previous odd
-            if dp[pos - 1][cnt][0]:
-                dp[pos][cnt][0] = (dp[pos][cnt][0] +
-                                   dp[pos - 1][cnt][0] * odds) % MOD
-                if cnt + 1 <= k:
-                    dp[pos][cnt + 1][1] = (dp[pos][cnt + 1][1] +
-                                           dp[pos - 1][cnt][0] * evens) % MOD
-            # previous even
-            if dp[pos - 1][cnt][1]:
-                dp[pos][cnt][0] = (dp[pos][cnt][0] +
-                                   dp[pos - 1][cnt][1] * odds) % MOD
-                if cnt + 1 <= k:
-                    dp[pos][cnt + 1][1] = (dp[pos][cnt + 1][1] +
-                                           dp[pos - 1][cnt][1] * evens) % MOD
+            for prev in (0, 1):
+                val = curr[cnt][prev]
+                if not val:
+                    continue
 
-    return (dp[n][k][0] + dp[n][k][1]) % MOD
+                # current even
+                new_cnt = cnt + (1 if prev == 1 else 0)
+                if new_cnt <= k:
+                    nxt[new_cnt][0] = (nxt[new_cnt][0] + val * even_cnt) % MOD
+
+                # current odd
+                nxt[cnt][1] = (nxt[cnt][1] + val * odd_cnt) % MOD
+        curr = nxt
+
+    return (curr[k][0] + curr[k][1]) % MOD
+
+
+# ------------------------------------------------------------------
+# Demo
+if __name__ == "__main__":
+    print(countOfArrays(3, 4, 2))  # 8
+    print(countOfArrays(5, 1, 0))  # 1
+    print(countOfArrays(7, 7, 5))  # 5832
 ```
 
-> **Tip:**  
-> Initialising the first element separately avoids the special case `prev = -1`.
-
----
-
-### 2.3  C++ (bottom‑up DP)
+### 4.3 C++
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
+    static constexpr long long MOD = 1'000'000'007LL;
+
 public:
     int countOfArrays(int n, int m, int k) {
-        const long long MOD = 1'000'000'007LL;
-        long long evens = m / 2;
-        long long odds  = (m + 1) / 2;
+        long long evenCnt = m / 2LL;
+        long long oddCnt  = (m + 1LL) / 2LL;
 
-        // dp[pos][cnt][prev]  prev: 0 odd, 1 even
-        vector<vector<array<long long,2>>> dp(n + 1,
-            vector<array<long long,2>>(k + 1, {0,0}));
+        vector<vector<long long>> cur(k + 1, vector<long long>(2, 0));
+        cur[0][0] = evenCnt % MOD;   // first element even
+        cur[0][1] = oddCnt % MOD;    // first element odd
 
-        // first element
-        dp[1][0][0] = odds;
-        dp[1][0][1] = evens;
-
-        for (int pos = 2; pos <= n; ++pos) {
+        for (int pos = 1; pos < n; ++pos) {
+            vector<vector<long long>> nxt(k + 1, vector<long long>(2, 0));
             for (int cnt = 0; cnt <= k; ++cnt) {
-                // prev odd
-                if (dp[pos-1][cnt][0]) {
-                    dp[pos][cnt][0] = (dp[pos][cnt][0] +
-                        dp[pos-1][cnt][0] * odds) % MOD;
-                    if (cnt+1 <= k)
-                        dp[pos][cnt+1][1] = (dp[pos][cnt+1][1] +
-                            dp[pos-1][cnt][0] * evens) % MOD;
-                }
-                // prev even
-                if (dp[pos-1][cnt][1]) {
-                    dp[pos][cnt][0] = (dp[pos][cnt][0] +
-                        dp[pos-1][cnt][1] * odds) % MOD;
-                    if (cnt+1 <= k)
-                        dp[pos][cnt+1][1] = (dp[pos][cnt+1][1] +
-                            dp[pos-1][cnt][1] * evens) % MOD;
+                for (int prev = 0; prev <= 1; ++prev) {
+                    long long val = cur[cnt][prev];
+                    if (!val) continue;
+
+                    // current even
+                    int newCnt = cnt + (prev == 1);
+                    if (newCnt <= k)
+                        nxt[newCnt][0] = (nxt[newCnt][0] + val * evenCnt) % MOD;
+
+                    // current odd
+                    nxt[cnt][1] = (nxt[cnt][1] + val * oddCnt) % MOD;
                 }
             }
+            cur.swap(nxt);
         }
-        return (dp[n][k][0] + dp[n][k][1]) % MOD;
+
+        return static_cast<int>((cur[k][0] + cur[k][1]) % MOD);
     }
 };
 ```
 
----
-
-## 3.  Blog Post – “The Good, The Bad, and The Ugly of Solving LeetCode #3339”
-
-### 3.1  Title & Keywords
-**Title:**  
-*The Good, The Bad, and The Ugly of Solving LeetCode “Find the Number of K‑Even Arrays” – A Job‑Ready Interview Guide*
-
-**Primary keywords:**  
-- LeetCode 3339  
-- k-even arrays  
-- dynamic programming interview  
-- job interview coding  
-- algorithm design  
-- DP optimization
-
-*Why SEO?*  
-These keywords appear in popular search queries from software‑engineering candidates
-looking for interview prep. Ranking higher helps recruiters spot your blog.
+All three solutions run comfortably inside the LeetCode time‑ and memory‑limits for the worst‑case inputs.
 
 ---
 
-### 3.2  Introduction
+## 5. “The Bad” – Things that **Can Go Wrong**
 
-> “You are given three integers *n*, *m*, *k*.  
-> Count how many arrays of size *n* with elements in [1, *m*] have exactly *k* adjacent pairs whose product minus the sum is even.”  
-
-It looks intimidating, but once you recognize the parity trick, the solution is
-a textbook DP problem.  
-In this article I’ll walk through:
-
-1. **The good** – clean state space, intuitive parity reasoning.  
-2. **The bad** – pitfalls like integer overflow, wrong base cases.  
-3. **The ugly** – messy recursive code that’s hard to debug and test.
-
-Along the way, I’ll give you ready‑to‑copy code in **Java, Python, and C++**,
-plus interview tips to impress hiring managers.
+| Pitfall | Why it hurts | Fix |
+|---------|--------------|-----|
+| **Mis‑interpreting the evenness test** | People often compute the parity of the whole expression; the only even case is `(even, even)`. | Pre‑compute a small lookup table of the 4 parity combinations or just derive the rule analytically. |
+| **Over‑counting values** | Counting *actual* values (`1 … m`) instead of *parity* multiplies the state space unnecessarily. | Use only two parity options; the number of choices for each parity is a constant (`evenCnt`, `oddCnt`). |
+| **Not handling `n == 1`** | With no pairs, `k` must be 0. A naïve DP that assumes `n‑1` pairs will mis‑return `0` for valid inputs. | Initialize the DP with the first element and let the loop run `n‑1` times; if `n == 1` the loop is skipped automatically. |
+| **Modulo overflow** | Multiplying two `int` values before taking the modulo can overflow 32‑bit integers. | Use 64‑bit (`long` / `long long`) arithmetic and apply `% MOD` after every multiplication. |
+| **Large memory usage** | A 3‑D array of size `n × (k+1) × 2` is fine for the constraints, but an unnecessary extra dimension wastes RAM. | Keep only two layers (`curr` & `next`) – memory drops to `O(k)` and you’ll pass even stricter limits. |
 
 ---
 
-### 3.3  The Good – Why This Problem is a “Nice” DP
+## 6. “The Ugly” – Common Mistakes & How to Avoid Them
 
-| Why It’s Good | Explanation |
-|---|---|
-| **Clear problem statement** | Only one integer parameter changes; the parity condition is easy to compute. |
-| **Small state space** | `pos` up to 750, `cnt` up to 749 → < 600 000 states. |
-| **Monotonic transitions** | Each step only depends on the previous element’s parity. |
-| **Modular arithmetic** | The answer is always taken modulo 1 000 000 007, a familiar constant. |
-| **Direct application of DP** | No need for advanced combinatorics or graph theory. |
+1. **Thinking “any pair of even numbers is always even”**  
+   The expression is *even* only if **both** numbers are even. If you mistakenly treat “evenness of a number” as the property of the *expression*, you’ll over‑count.  
+   *Fix*: Prove the parity rule by hand (or a quick script) once and treat the problem as “adjacent even pair”.
 
-These traits make it an ideal interview question for a *mid‑level* candidate who
-knows basic DP patterns.
+2. **Mixing parity and actual value**  
+   Many solutions start by generating all numbers from `1 … m` and then test each pair. That’s exponential.  
+   *Fix*: Reduce the state to **parity** only. Count how many choices give each parity and multiply accordingly.
 
----
+3. **Using a naive 3‑D DP (`n × k × 2`) without memory optimisation**  
+   It still passes, but it’s easy to overshoot the memory limit if you forget to mod or allocate a huge array.  
+   *Fix*: Keep two 2‑D layers (`curr`, `next`) and swap them each iteration.
 
-### 3.4  The Bad – Common Mistakes
-
-| Mistake | How It Happens | Fix |
-|---|---|---|
-| **Wrong parity logic** | Thinking “product minus sum is even iff both numbers are odd” | The correct condition is *same parity* (both even or both odd). |
-| **Off‑by‑one in `dp` indices** | Mixing up 0‑based vs 1‑based array length | Use `dp[pos][cnt][prev]` where `pos` is the number of elements placed. |
-| **Ignoring overflow** | Using `int` for intermediate multiplication (`evens * ways`) | Use `long` (Java) or `int64_t` (C++), mod after each multiplication. |
-| **Unnecessary recursion depth** | Direct recursion can hit stack limits for `n=750` | Use bottom‑up DP or iterative memoization. |
-| **Missing base case** | Starting `dp[0]` incorrectly | Initialize first element separately: `dp[1][0][0] = odds`, `dp[1][0][1] = evens`. |
-
-A quick mental checklist before coding:
-
-1. Is the parity condition correct?  
-2. Are array sizes sufficient?  
-3. Do I cast to 64‑bit before multiplication?  
-4. Am I applying the modulo at *every* step?
+4. **Forgot to add the final parity dimension**  
+   After the last position you must sum over both parity of the last element. Forgetting one of them under‑counts the answer.  
+   *Fix*: `answer = (curr[k][0] + curr[k][1]) % MOD`.
 
 ---
 
-### 3.5  The Ugly – Messy Code That Fails Interviews
+## 7. Why This Solution Rocks (The “Ultimate Good”)
 
-Consider the following recursive template (Java):
+- **Linear time in `n` and `k`.**  
+  `n ≤ 750`, `k ≤ 749` → at most ~1.2 M transitions → far below the 2‑second limit.
 
-```java
-long solve(int pos, int cnt, int prev) {
-    if (pos == n) return cnt == k ? 1 : 0;
-    long ret = 0;
-    ret += (m/2) * solve(pos+1, cnt + (prev==1?1:0), 1);
-    ret += ((m+1)/2) * solve(pos+1, cnt, 0);
-    return ret % MOD;
-}
-```
+- **Constant factor tiny.**  
+  The inner loop does only a handful of arithmetic operations, so the code runs in a few milliseconds on any modern machine.
 
-*Why it’s ugly:*
+- **Clear separation of logic** (parity → DP).  
+  When you read the code you instantly see *“parity of previous element”*, *“current element parity”*, *“increment counter if both even”* – no hidden magic.
 
-- No memoization → exponential time.  
-- No pruning for `cnt > k`.  
-- Mixing multiplication and modulo can overflow.  
-- The first call with `prev` undefined (`-1`) leads to subtle bugs.
-
-**Takeaway:** In an interview, you want clean, commented code that *just works*,
-not a clever hack that may fail on hidden test cases.
+- **Reusable pattern**  
+  The same DP skeleton (pos, cnt, prevParity) appears in many “counting‑with‑parity” problems (e.g., counting arrays with *exactly `k` consecutive even pairs*, or *exactly `k` odd–odd pairs*). Mastering it gives you a solid building block for future contests.
 
 ---
 
-### 3.6  Interview‑Ready Tips
+## 8. Take‑away for Interviewers / Recruiters
 
-| Tip | Why It Helps |
-|---|---|
-| **Explain the parity reduction early** | Shows you grasp the core idea, not just coding. |
-| **State the DP transition clearly** | Demonstrates understanding of dynamic programming fundamentals. |
-| **Show the base case for the first element** | Avoids confusion about `prev = -1`. |
-| **Mention modulo handling** | Recruiters expect you to be careful with large integers. |
-| **Mention complexity** | `O(n·k)` time, `O(n·k)` memory – well within limits. |
-| **Ask clarifying questions** | E.g., “Is `k` always < `n`?” – reveals thoroughness. |
+If you’re hiring for algorithmic skills, ask candidates to:
 
-Also, give them a brief “edge‑case sanity check” like:
+1. **Explain the parity shortcut** – a good candidate will immediately notice that only `(even, even)` satisfies the evenness test.
+2. **State the DP recurrence** – the interviewee should write the recurrence `dp[i][cnt][prev] → dp[i+1][cnt’][cur]` without having to brute‑force.
+3. **Deal with edge cases** – especially `n == 1`, or `k > n‑1`.
+4. **Mention modular arithmetic** – a small but important detail in any production‑grade solution.
 
-- `n = 1, k = 0` → answer should be `m`.  
-- `k = 0` → no adjacent pair satisfies condition.  
-- `k = n-1` → all adjacent pairs must match parity.
-
-These small verifications can turn a decent solution into a *perfect* one.
+A candidate who can explain all three steps in a few sentences demonstrates solid problem‑decomposition skills and a clean implementation mindset.
 
 ---
 
-### 3.7  Code Snippets for Quick Reference
+## 9. Final Thoughts
 
-Below are *fully working* snippets in the three main languages.  
-Copy, paste, run, and you’re ready to submit.
+- The key to *3339 – Find the Number of K‑Even Arrays* is to turn a *mathematical expression* into a *parity check* and then use DP over *parity choices*.  
+- Avoid common pitfalls: mis‑counting parity combinations, over‑inflating the state space, forgetting modulo, or neglecting the `n == 1` edge case.  
+- With the reference code in Java, Python, and C++, you can paste‑and‑run the solution immediately and verify the sample tests.
 
-| Language | File name | Key line |
-|---|---|---|
-| Java | `Solution.java` | `dp[pos][cnt][prev]` bottom‑up DP. |
-| Python | `3339_k_even_arrays.py` | Bottom‑up `dp` with two nested loops. |
-| C++ | `3339_k_even_arrays.cpp` | `vector<vector<array<long long,2>>>` DP. |
-
-Feel free to adapt them to your coding style – just keep the DP logic intact.
-
----
-
-### 3.7  Conclusion – Turn the Problem into a Portfolio Piece
-
-LeetCode 3339 is a *classic* DP interview problem.  
-The solution is straightforward once you spot the parity trick, but a **clean
-implementation** is essential to shine in interviews.
-
-Use the code above as a *starter kit* for your portfolio.  
-Add this problem to your GitHub, tag the repository with the keywords,
-and link it in your LinkedIn “Projects” section.  
-Recruiters love seeing interview‑ready solutions that are *fast, correct, and
-well‑documented.*
-
-Happy coding and good luck on your next interview!
-
----
-
-### 3.8  Closing
-
-*If you found this article useful, share it on LinkedIn, Twitter, and
-Discord communities like `r/cscareerquestions`.  
-Questions? Drop a comment below or email me at `dev@example.com`.*
-
----
-
-### 3.9  FAQ (Optional Section)
-
-| Question | Answer |
-|---|---|
-| *Can we solve it with combinatorics?* | You could, but the DP is simpler and guarantees correctness. |
-| *What if `m` is 10⁹?* | Still fine – we only divide by 2 and use 64‑bit ints. |
-| *Does the DP change for `k` ≥ `n`?* | It’s impossible; `k` must be < `n`. The problem statement ensures that. |
-
----
-
-## 4.  Closing Notes
-
-The LeetCode #3339 problem may seem obscure, but with the **parity trick** it
-reduces to a classic DP.  
-By presenting **clean Java, Python, and C++ implementations**, you show recruiters
-that you can:
-
-- Translate math into code.  
-- Handle edge cases and modulo arithmetic.  
-- Keep time & memory complexity in check.
-
-So next time the interviewer says “Let’s see how you tackle k‑even arrays,”
-you’ll be ready to explain the state, transition, and complexity in seconds
-and deliver bug‑free, production‑grade code.
-
-Happy interviewing—and may the odds (and evens) be ever in your favor!  
-
----
+Happy coding – and may your DP tables always stay within the modulo bounds!
