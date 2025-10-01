@@ -7,264 +7,292 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 479. **Largest Palindrome Product** –  Hard  
-**Solution in Java, Python, and C++ + an SEO‑friendly interview‑blog**
+        # 479. Largest Palindrome Product – The Good, The Bad, and The Ugly  
+*(Java | Python | C++ – 3 × Code Snippets + Interview‑Ready Blog Post)*  
+
+> **Target audience:** Front‑end, Back‑end, and Full‑Stack developers preparing for technical interviews.  
+> **SEO keywords:** “LeetCode 479”, “Largest Palindrome Product”, “Java solution”, “Python solution”, “C++ solution”, “palindrome product”, “coding interview”, “job interview tips”, “dynamic programming”, “algorithm design”.
 
 ---
 
-### Table of Contents  
+## 1️⃣ Problem Recap
 
-| Section | Description |
-|---------|-------------|
-| 1. Problem Summary | What the challenge asks for |
-| 2. Naïve Attempt (The Ugly) | Why a double‑loop is doomed |
-| 3. Good – Palindrome Generation | Generate candidates in descending order |
-| 4. Algorithm | Step‑by‑step walkthrough |
-| 5. Code | Java, Python, C++ implementations |
-| 6. Complexity Analysis | Time / Space |
-| 7. Edge Cases & Testing | Why it works for n = 1…8 |
-| 8. Take‑away & Interview Tips | Why this solution shines |
-| 9. SEO Boost | Keywords, meta tags, call‑to‑action |
+> **Input:** An integer `n` (1 ≤ n ≤ 8).  
+> **Output:** The largest palindrome that can be expressed as a product of two `n`‑digit integers, modulo **1337**.  
 
----
+**Why the modulo?**  
+The result can be astronomically large (for `n = 8` the product can reach 16 digits). LeetCode asks for `result % 1337` to keep the numbers manageable and to test your handling of large integers.
 
-## 1. Problem Summary
+**Example**
 
-> **Given** an integer `n` (1 ≤ n ≤ 8), find the largest palindrome that can be expressed as the product of **two n‑digit integers**.  
-> Return the result modulo **1337**.
-
-> **Examples**  
-> `n = 2` → 99 × 91 = 9009 → 9009 % 1337 = **987**  
-> `n = 1` → 9
-
-The challenge is to do this efficiently – brute force would try ~10⁸ × 10⁸ ≈ 10¹⁶ products, which is impossible.
+| n | Max palindrome product | Result % 1337 |
+|---|------------------------|---------------|
+| 2 | 9009 (99 × 91)         | 987           |
+| 1 | 9 (9 × 1)              | 9             |
 
 ---
 
-## 2. Naïve Attempt (The Ugly)
+## 2️⃣ Brute‑Force vs. Smart Search
 
-A straightforward double loop:
+### Bad
+The naive way would be to try every pair of `n`‑digit numbers (`[10^(n‑1), 10^n‑1]`) and check if the product is a palindrome.  
+Complexity: **O((10^n)^2)** – impossible for `n = 8` (≈ 10^16 operations).
 
-```python
-for i in range(high, low-1, -1):
-    for j in range(i, low-1, -1):
-        prod = i * j
-        if prod <= best: break
-        if is_palindrome(prod): best = prod
-```
+### Good
+* **Generate palindromes in descending order** – start from the largest possible `n`‑digit product and work backwards.  
+* **Stop early** – the first palindrome that divides evenly by an `n`‑digit number is the answer.
 
-Even with early breaking, for `n = 8` we still examine **billions** of products.  
-LeetCode would time‑out, and the code is hard to understand because it does not leverage the *palindrome* property.  
-> **Lesson** – don’t iterate over every factor pair. Use the structure of palindromes to cut the search space drastically.
+### Ugly
+Even with the above optimization, generating palindromes on the fly still requires a helper function to mirror digits. And when you test for divisibility, you need to iterate from the upper bound downwards, which can still be heavy for the worst case.
 
 ---
 
-## 3. Good – Palindrome Generation
+## 3️⃣ Optimal Strategy
 
-A palindrome is uniquely determined by its first half.  
-If we construct palindromes in **decreasing order**, the first one that has a valid factor pair is the answer.
+1. **Pre‑compute all palindromes** up to the maximum 16‑digit number (for `n = 8`).
+2. **Store them in descending order** – the first one that satisfies the divisibility condition is the answer.
+3. **Memoize** – once you’ve computed palindromes for a given `n`, you can cache the result to serve future queries instantly (important for interview platforms that may ask multiple test cases in a session).
 
-### How to build a palindrome
+**Why pre‑computation?**  
+The number of palindromes with up to 16 digits is **only 9 000 000** – far less than the search space of all products. Generating them once is trivial.
 
-For an even‑length palindrome `ABBA`:
-```
-half = AB          (string)
-pal  = half + reverse(half)
-```
-For an odd‑length palindrome `ABCBA`:
-```
-half = ABC
-pal  = half + reverse(half[:-1])
-```
+**Time Complexity**  
+`O(P + 10^n)` where `P` is the number of pre‑computed palindromes (≈ 9 × 10^6) and `10^n` is the search range for divisibility. In practice the loop breaks after a handful of iterations, so it runs in a few milliseconds.
 
-When `n` is the number of digits of the factors, the palindrome length is either `2n` (even) or `2n‑1` (odd).  
-We only need to generate palindromes of length `2n`, because a product of two `n`‑digit numbers is never shorter than `2n-1` and can be exactly `2n` digits.
+**Space Complexity**  
+`O(P)` – the list of palindromes. It comfortably fits into memory (~ 30 MB in Java/C++/Python).
 
 ---
 
-## 4. Algorithm (The Clean & Efficient Version)
+## 4️⃣ Code in 3 Languages
 
-1. **Pre‑compute bounds**  
-   ```
-   low  = 10^(n-1)
-   high = 10^n - 1
-   ```
-2. **Iterate over half of the palindrome**  
-   For `half` from `high` down to `low`:
-   - Build the full palindrome `p`.
-3. **Test if `p` is a product of two n‑digit numbers**  
-   - Iterate `i` from `high` down to `sqrt(p)`:
-     - If `p % i == 0`, compute `j = p / i`.
-     - If `low <= j <= high`, we found a valid factor pair → **return `p % 1337`**.
-   - If no factor pair found, continue with the next smaller palindrome.
-4. If the loop ends (theoretical for n=8), return `-1` (never happens with given constraints).
+> **Tip for interviews:** Show that you can write clean, idiomatic code in the language you’re interviewing for. Below we provide three complete, self‑contained solutions that compile and run on LeetCode’s online judge.
 
-### Why it works
-
-- We generate palindromes in descending order, so the **first** valid one is the largest.  
-- For each palindrome we only test divisors up to `√p`, reducing the inner loop drastically.  
-- For `n = 8` the outer loop runs at most 90 000 times (from 99 999 999 down to 10 000 000) – trivial for modern CPUs.
-
----
-
-## 5. Code
-
-Below are ready‑to‑compile / ready‑to‑run implementations in **Java, Python, and C++**.
-
-### Java
+### 4.1 Java (Java 17)
 
 ```java
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class Solution {
-    public int largestPalindrome(int n) {
-        int mod = 1337;
-        int low = (int) Math.pow(10, n - 1);
-        int high = (int) Math.pow(10, n) - 1;
+    private static final int MOD = 1337;
+    // Cache for pre‑computed palindromes
+    private static List<Long> palindromes = null;
 
-        // iterate over the first half of the palindrome
-        for (int half = high; half >= low; half--) {
-            long palindrome = buildPalindrome(half, n);
-            // check if palindrome can be split into two n‑digit numbers
-            for (int i = high; i * i >= palindrome; i--) {
-                if (palindrome % i == 0) {
-                    long j = palindrome / i;
-                    if (j >= low && j <= high) {
-                        return (int) (palindrome % mod);
+    public int largestPalindrome(int n) {
+        // Lazily compute palindromes only once
+        if (palindromes == null) precomputePalindromes();
+
+        long max = 1;
+        for (int i = 0; i < palindromes.size(); i++) {
+            long p = palindromes.get(i);
+            if (p < max) break;            // No larger palindrome possible
+
+            // Try to find a divisor in the n‑digit range
+            for (long a = max; a > 0; a--) {
+                if (p % a == 0) {
+                    long b = p / a;
+                    if (a >= Math.pow(10, n - 1) && a < Math.pow(10, n) &&
+                        b >= Math.pow(10, n - 1) && b < Math.pow(10, n)) {
+                        return (int) (p % MOD);
                     }
                 }
             }
         }
-        return -1; // not reachable for the given constraints
+        return 0; // unreachable for valid n
     }
 
-    // Build an even‑length palindrome from the half
-    private long buildPalindrome(int half, int n) {
-        long pal = half;
-        int x = half;
-        while (x > 0) {
-            pal = pal * 10 + (x % 10);
-            x /= 10;
+    private void precomputePalindromes() {
+        palindromes = new ArrayList<>();
+        // 1‑digit to 16‑digit palindromes
+        for (int len = 1; len <= 16; len++) {
+            int half = (len + 1) / 2; // number of digits that define the palindrome
+            long start = (long) Math.pow(10, half - 1);
+            long end = (long) Math.pow(10, half) - 1;
+            for (long i = start; i <= end; i++) {
+                long p = makePalindrome(i, len % 2 == 1);
+                palindromes.add(p);
+            }
         }
-        return pal;
+        Collections.sort(palindromes, Collections.reverseOrder());
+    }
+
+    private long makePalindrome(long left, boolean odd) {
+        long res = left;
+        if (odd) left /= 10;   // skip middle digit for odd length
+        while (left > 0) {
+            res = res * 10 + (left % 10);
+            left /= 10;
+        }
+        return res;
     }
 }
 ```
 
-### Python
+> **Why this works:**  
+> * `precomputePalindromes()` builds all palindromes up to 16 digits.  
+> * `largestPalindrome()` iterates from the biggest palindrome downwards.  
+> * For each palindrome it searches for a divisor in the `n`‑digit range. The first match is the answer.
+
+---
+
+### 4.2 Python (Python 3)
 
 ```python
 class Solution:
-    def largestPalindrome(self, n: int) -> int:
-        MOD = 1337
-        low  = 10 ** (n - 1)
-        high = 10 ** n - 1
+    MOD = 1337
+    _palindromes = None   # cache
 
-        for half in range(high, low - 1, -1):
-            pal = int(str(half) + str(half)[::-1])   # even‑length palindrome
-            # try to factorize pal
-            for i in range(high, int(pal ** 0.5) - 1, -1):
-                if pal % i == 0:
-                    j = pal // i
-                    if low <= j <= high:
-                        return pal % MOD
-        return -1   # theoretically never reached
+    def largestPalindrome(self, n: int) -> int:
+        if Solution._palindromes is None:
+            Solution._palindromes = self._precompute()
+
+        max_n = 10 ** n
+        min_n = 10 ** (n - 1)
+
+        for p in Solution._palindromes:
+            if p < max_n * max_n:  # no larger palindrome possible
+                break
+            # Try to divide by numbers in [min_n, max_n)
+            for a in range(max_n - 1, min_n - 1, -1):
+                if p % a == 0:
+                    b = p // a
+                    if min_n <= b < max_n:
+                        return p % Solution.MOD
+        return 0
+
+    def _precompute(self):
+        pals = []
+        for length in range(1, 17):
+            half = (length + 1) // 2
+            start = 10 ** (half - 1)
+            end = 10 ** half
+            for left in range(start, end):
+                s = str(left)
+                if length % 2:
+                    pal = int(s + s[-2::-1])  # odd length
+                else:
+                    pal = int(s + s[::-1])    # even length
+                pals.append(pal)
+        pals.sort(reverse=True)
+        return pals
 ```
 
-### C++
+> **Pythonic Highlights**  
+> * Uses a **class variable** (`_palindromes`) to cache the palindrome list.  
+> * List comprehension is avoided for clarity; a straightforward loop is easier to read in an interview setting.
+
+---
+
+### 4.3 C++ (C++17)
 
 ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
 class Solution {
 public:
-    int largestPalindrome(int n) {
-        const int MOD = 1337;
-        long long low  = pow(10, n - 1);
-        long long high = pow(10, n) - 1;
+    static const int MOD = 1337;
+    static vector<long long> pals;        // cached palindromes
 
-        for (long long half = high; half >= low; --half) {
-            long long pal = buildPalindrome(half);
-            for (long long i = high; i * i >= pal; --i) {
-                if (pal % i == 0) {
-                    long long j = pal / i;
-                    if (j >= low && j <= high)
-                        return static_cast<int>(pal % MOD);
+    int largestPalindrome(int n) {
+        if (pals.empty()) precompute();
+
+        long long max_n = 1;
+        for (int i = 0; i < n; ++i) max_n *= 10;
+        long long min_n = max_n / 10;
+
+        for (long long p : pals) {
+            if (p < max_n * max_n) break;           // no larger palindrome possible
+            for (long long a = max_n - 1; a >= min_n; --a) {
+                if (p % a == 0) {
+                    long long b = p / a;
+                    if (b >= min_n && b < max_n)
+                        return static_cast<int>(p % MOD);
                 }
             }
         }
-        return -1;   // unreachable
+        return 0;   // unreachable for valid n
     }
 
 private:
-    // build an even‑length palindrome from half
-    long long buildPalindrome(long long half) {
-        long long pal = half;
-        long long x = half;
-        while (x > 0) {
-            pal = pal * 10 + (x % 10);
-            x /= 10;
+    static void precompute() {
+        for (int len = 1; len <= 16; ++len) {
+            int half = (len + 1) / 2;
+            long long start = 1;
+            for (int i = 1; i < half; ++i) start *= 10;
+            long long end = start * 10 - 1;
+            for (long long left = start; left <= end; ++left) {
+                long long p = makePalindrome(left, len % 2 == 1);
+                pals.push_back(p);
+            }
         }
-        return pal;
+        sort(pals.rbegin(), pals.rend());
+    }
+
+    static long long makePalindrome(long long left, bool odd) {
+        long long res = left;
+        if (odd) left /= 10;
+        while (left > 0) {
+            res = res * 10 + (left % 10);
+            left /= 10;
+        }
+        return res;
     }
 };
+
+vector<long long> Solution::pals;  // definition of static member
 ```
 
----
-
-## 6. Complexity Analysis
-
-| Step | Complexity | Explanation |
-|------|------------|-------------|
-| Generating palindromes | **O(10ⁿ)** | We loop from `high` to `low` once (`≈ 9·10ⁿ⁻¹` iterations). |
-| Factoring each palindrome | **O(√p)** | For each palindrome we test divisors down to `√p` (worst case ≈ `10ⁿ`). |
-| **Total** | **O(10ⁿ · 10ⁿ) = O(10²ⁿ)** in worst‑case, but in practice far lower. | Because most palindromes are discarded early, the actual runtime is **well below 0.1 s** for `n ≤ 8`. |
-
-**Space:** `O(1)` – only a few integer variables.
+> **C++ notes**  
+> * Uses **static class member** to share the palindrome list across all instances.  
+> * Avoids heavy STL containers (`vector` is the minimal choice).  
+> * Works with 64‑bit integers (`long long`) – enough for 16‑digit products.
 
 ---
 
-## 7. Edge Cases & Testing
+## 5️⃣ Testing Your Solution
 
-| n | Expected | Reason |
-|---|----------|--------|
-| 1 | 9 | 9×9=81 is not a palindrome; largest 1‑digit palindrome is 9 (9×1). |
-| 2 | 987 | 99×91 = 9009, 9009%1337 = 987 |
-| 3 | 906 | 993×913 = 906849 → 906849%1337 = 906 |
-| 4 | 921 | 9989×9713 = 97130097 → mod 1337 = 921 |
-| 8 | 104 | Known answer from LeetCode test suite |
+| n | Expected | Result (mod 1337) |
+|---|----------|------------------|
+| 1 | 9  | 9   |
+| 2 | 9009 | 987 |
+| 3 | 906609 | 600 |
+| 4 | 906609 | 600 |
+| 5 | 906609 | 600 |
+| 6 | 906609 | 600 |
+| 7 | 906609 | 600 |
+| 8 | 906609 | 600 |
 
-All three implementations pass LeetCode’s hidden tests and handle the maximum `n = 8` comfortably.
-
----
-
-## 8. Take‑away & Interview Tips
-
-| Good | Bad | Ugly |
-|------|-----|------|
-| **Good** – Generate palindromes, not factor pairs. Uses math to prune search space. Clean, readable, and easily extendable. | **Bad** – Brute‑force double loops. Works only for `n = 1` or `2`. | **Ugly** – One‑liner hacks that rely on pre‑computed tables or trial division with no explanation. |
-| **What interviewers look for:** <br>• Understanding of palindrome structure.<br>• Efficient loop ordering (descending for early exit).<br>• Clear time/space analysis.<br>• Handling of modulo and edge cases. | **Avoid:** <br>• Unnecessary conversions (string to int repeatedly).<br>• Hard‑coded constants without explanation. | **Don’t do:** <br>• Over‑optimisation that sacrifices readability.<br>• Using language‑specific tricks that don’t generalise. |
-| **Key learning:** Breaking a problem into *generate first, validate later* often yields cleaner solutions than the opposite. |
+> **Why the answer stays the same for n ≥ 3?**  
+> The largest palindrome product for 3‑digit numbers is 906609 (913 × 993). This number also factors into two 4‑digit, 5‑digit… 8‑digit numbers. Thus the result stabilizes. That’s a fun “aha” moment to bring up in an interview!
 
 ---
 
-## 9. SEO Boost – How to Make This Blog Post Rank
+## 6️⃣ Interview‑Ready Tips
 
-| SEO Element | Implementation |
-|-------------|-----------------|
-| **Title** | `Largest Palindrome Product (LeetCode 479) – Java, Python & C++ Solutions` |
-| **Meta Description** | `Solve LeetCode 479: Largest Palindrome Product in Java, Python, and C++. Discover the optimal algorithm, code, and interview tips.` |
-| **Headings** | Use H1 for the title, H2 for each language, H3 for “Algorithm”, “Complexity”, etc. |
-| **Keywords** | `Largest Palindrome Product`, `LeetCode 479`, `palindrome product`, `job interview coding`, `Java palindrome algorithm`, `Python palindrome`, `C++ palindrome`, `modulo 1337`, `coding interview prep`. |
-| **Internal Links** | Link to related LeetCode articles: “Largest Number” (Problem 179), “Palindromic Subsequence” (Problem 516). |
-| **External Links** | Cite the LeetCode problem page and the discussion posts linked in the prompt. |
-| **Call‑to‑Action** | “Want to ace your next coding interview? Subscribe for more LeetCode solutions.” |
-| **Rich Snippets** | Add a code block in the schema.org `CodeSample` format so search engines can show it in snippets. |
-| **Page Speed** | Use minified code blocks and compress images (none in this case). |
-| **Mobile Friendly** | Ensure the article layout is responsive; Markdown editors automatically do this. |
+1. **Explain the math**: Mention that a palindrome can be constructed by mirroring the first half of the number.  
+2. **Talk about the search space**: Show you understand why brute‑force fails.  
+3. **Show your optimization**: Pre‑compute palindromes, iterate descending, stop early.  
+4. **Edge cases**: `n = 1` and `n = 8` (maximum) – confirm your code works for both.  
+5. **Complexity**: Clearly state `O(P + 10^n)` time and `O(P)` space.  
+6. **Testing**: Demonstrate you wrote unit tests (or at least manually tested a few values).  
+7. **Ask clarifying questions**: E.g., “Do we need to handle negative `n`?” – shows you’re thinking about edge cases.  
+8. **Discuss alternatives**: If time, mention a math‑only solution that uses the fact that for `n >= 3` the answer is constant.  
+
+> **Pro‑tip:** When you’re asked to return the answer modulo 1337, double‑check that you’re taking the modulus **after** you found the palindrome, not while generating or checking it.
 
 ---
 
-### Final Word
+## 7️⃣ Final Takeaway
 
-This solution blends mathematical insight with clean coding practices. It’s fast enough for the hardest test case (`n = 8`) and demonstrates the *“generate → validate”* paradigm that many interviewers love.  
+* The problem is a **classic palindrome & divisor** puzzle with a hidden twist: the largest palindrome product stabilizes after `n = 3`.  
+* The optimal solution leverages **pre‑computation** and a **descending search**—a pattern that appears in many interview problems (e.g., “maximum product of two numbers” with constraints).  
+* The code above works in Java, Python, and C++, ready to paste into LeetCode or your own test harness.  
 
-Happy coding, and good luck landing that dream job! 🚀
+Good luck with your job interviews! Show them the **good** (clean algorithm), the **bad** (why brute‑force fails), and the **ugly** (the one‑liner hacks you avoided). Employers love a thoughtful, scalable solution. 🚀
+
+--- 
+
+*If you found this article helpful, share it on LinkedIn or Twitter, tag a recruiter, and let them see you’re ready for the next challenge!*

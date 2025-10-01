@@ -7,73 +7,143 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Code – 3 Languages
+        # Angle Between Hands of a Clock  
+**The Good, the Bad, and the Ugly – A Deep Dive into LeetCode 1344**
 
-Below are clean, ready‑to‑paste solutions for LeetCode **1344 – Angle Between Hands of a Clock**.  
-Each implementation follows the same **unitary‑method** math and is written in a style that’s easy to read, test, and discuss in an interview.
+> **Keywords:** LeetCode, 1344, Angle Between Hands, Clock Angle, Interview Question, O(1) solution, Java, Python, C++, Coding Interview, Algorithm, Math, Job Interview  
 
 ---
 
-### 1.1  Java
+## 1. Problem Recap
+
+> **LeetCode 1344 – Angle Between Hands of a Clock**  
+> **Difficulty:** Medium  
+
+> **Signature**  
+> ```java
+> public double angleClock(int hour, int minutes)
+> ```
+> or the equivalent in Python/C++.
+
+**Goal:**  
+Given an integer `hour` (1 – 12) and `minutes` (0 – 59), return the **smaller angle** (in degrees) between the hour and minute hand of an analog clock.  
+Answers within **1 × 10⁻⁵** of the true value are accepted.
+
+**Examples**
+
+| Input | Output |
+|-------|--------|
+| 12, 30 | 165 |
+| 3, 30 | 75 |
+| 3, 15 | 7.5 |
+
+---
+
+## 2. Why This Problem Matters in Interviews
+
+| Feature | Why It’s Valuable |
+|---------|-------------------|
+| **Pure math + O(1)** | Shows you can think geometrically and produce a constant‑time solution. |
+| **Edge‑case awareness** | Handling `12` vs `0`, half‑hour offsets, obtuse vs acute angles. |
+| **Language agnostic** | Solvable in any language – demonstrates adaptability. |
+| **Interview “quick‑win”** | Usually takes < 5 min for a senior developer. |
+
+> *Pro tip:* When answering, explain the formula first, then code. Interviewers love the “why” before the “how”.
+
+---
+
+## 3. The Good – The Clean Math
+
+1. **Hour hand movement**  
+   * One full rotation (360°) in 12 h → 30° per hour.  
+   * In one minute, the hour hand moves **0.5°** (30° / 60).  
+
+   \[
+   \theta_h = (hour \bmod 12) \times 30^\circ + minutes \times 0.5^\circ
+   \]
+
+2. **Minute hand movement**  
+   * 360° in 60 min → 6° per minute.  
+
+   \[
+   \theta_m = minutes \times 6^\circ
+   \]
+
+3. **Angle difference**  
+
+   \[
+   \Delta = |\theta_m - \theta_h|
+   \]
+
+4. **Take the smaller angle**  
+
+   If `Δ > 180°`, then the acute angle is `360° - Δ`.
+
+This reasoning gives a one‑liner O(1) solution in any language.
+
+---
+
+## 4. The Bad – Common Pitfalls
+
+| Pitfall | Fix |
+|---------|-----|
+| Using `hour` instead of `hour % 12` | `12` should map to `0` on the clock face. |
+| Forgetting the minute contribution to the hour hand | `minutes * 0.5` is essential. |
+| Returning the obtuse angle | Take `min(Δ, 360-Δ)`. |
+| Using integer division in Python 2 (if you still use it) | Use `minutes / 60.0` or `float(minutes) / 60`. |
+| Returning a `float` in Java instead of `double` | Use `double` to meet precision requirement. |
+
+---
+
+## 5. The Ugly – Over‑engineering
+
+Some solutions add unnecessary helper functions, switch statements, or even build a `Clock` class.  
+For interview speed, stick to the concise mathematical formula.  
+If you need to show object‑oriented design, a simple `Clock` struct is fine, but it adds noise.
+
+---
+
+## 6. Implementation (O(1))
+
+Below are clean, production‑ready solutions in **Java, Python, and C++**.
+
+### 6.1 Java
 
 ```java
-/**
- * 1344. Angle Between Hands of a Clock
- *
- * The problem can be solved with a single line of math:
- *   hour angle = (hour % 12) * 30 + minutes * 0.5
- *   minute angle = minutes * 6
- *   difference = abs(hour angle - minute angle)
- *   answer = min(difference, 360 - difference)
- *
- * Time Complexity : O(1)
- * Space Complexity: O(1)
- */
 class Solution {
     public double angleClock(int hour, int minutes) {
-        // 1 hour == 30 degrees, 1 minute == 0.5 degrees for the hour hand
+        // Hour hand angle: 30° per hour + 0.5° per minute
         double hourAngle = (hour % 12) * 30.0 + minutes * 0.5;
-
-        // 1 minute == 6 degrees for the minute hand
+        // Minute hand angle: 6° per minute
         double minuteAngle = minutes * 6.0;
-
-        // Take the smaller angle
-        double diff = Math.abs(hourAngle - minuteAngle);
-        return Math.min(diff, 360.0 - diff);
+        // Absolute difference
+        double diff = Math.abs(minuteAngle - hourAngle);
+        // Return the smaller angle
+        return diff > 180.0 ? 360.0 - diff : diff;
     }
 }
 ```
 
----
-
-### 1.2  Python
+### 6.2 Python
 
 ```python
-# 1344. Angle Between Hands of a Clock
-# Time: O(1), Space: O(1)
-
 class Solution:
     def angleClock(self, hour: int, minutes: int) -> float:
-        hour_angle = (hour % 12) * 30 + minutes * 0.5
-        minute_angle = minutes * 6
-        diff = abs(hour_angle - minute_angle)
-        return min(diff, 360 - diff)
+        hour_angle = (hour % 12) * 30.0 + minutes * 0.5
+        minute_angle = minutes * 6.0
+        diff = abs(minute_angle - hour_angle)
+        return min(diff, 360.0 - diff)
 ```
 
----
-
-### 1.3  C++
+### 6.3 C++
 
 ```cpp
-/* 1344. Angle Between Hands of a Clock
- * O(1) time, O(1) space
- */
 class Solution {
 public:
     double angleClock(int hour, int minutes) {
-        double hourAngle = (hour % 12) * 30.0 + minutes * 0.5;
-        double minuteAngle = minutes * 6.0;
-        double diff = std::abs(hourAngle - minuteAngle);
+        double hour_angle = (hour % 12) * 30.0 + minutes * 0.5;
+        double minute_angle = minutes * 6.0;
+        double diff = std::abs(minute_angle - hour_angle);
         return std::min(diff, 360.0 - diff);
     }
 };
@@ -81,90 +151,66 @@ public:
 
 ---
 
-## 2.  Blog Article – “The Good, The Bad & The Ugly of LeetCode 1344”
+## 7. Complexity Analysis
 
-> *“Mastering Clock Angles: A Complete Guide to LeetCode 1344 – From Basics to Interview‑Ready Code”*
+| Operation | Time | Space |
+|-----------|------|-------|
+| Angle calculations | **O(1)** | **O(1)** |
 
-### 2.1  Why this Problem Matters
+Only constant time and memory are used – perfect for interview constraints.
 
-- **Classic Interview Question** – it shows you can blend geometry with arithmetic.
-- **Lightweight but Insightful** – only 1‑line of math; a perfect showcase of clean coding.
-- **Testing Edge Cases** – forces you to handle the “12‑hour wrap‑around” and “obvious 360‑degree flip”.
+---
 
-### 2.2  Problem Recap
+## 8. Test Harness (Optional)
 
-> **Input**: `hour (1…12)`, `minutes (0…59)`  
-> **Output**: The smaller angle (in degrees) between the hour and minute hands, accurate to `10⁻⁵`.
-
-### 2.3  The Good – Simple Math
-
-| Concept | Value |
-|---------|-------|
-| Hour hand moves 30° per hour | `30° = 360° / 12` |
-| Hour hand moves 0.5° per minute | `0.5° = 30° / 60` |
-| Minute hand moves 6° per minute | `6° = 360° / 60` |
-
-**Formula**  
-
-```
-hourAngle   = (hour % 12) * 30 + minutes * 0.5
-minuteAngle = minutes * 6
-difference  = |hourAngle - minuteAngle|
-answer      = min(difference, 360 - difference)
+```python
+if __name__ == "__main__":
+    sol = Solution()
+    tests = [(12, 30, 165), (3, 30, 75), (3, 15, 7.5), (12, 0, 0)]
+    for h, m, expected in tests:
+        res = sol.angleClock(h, m)
+        assert abs(res - expected) < 1e-5, f"Failed for {h}:{m}"
+    print("All tests passed!")
 ```
 
-- `hour % 12` handles the “12” edge case (12 becomes 0 degrees).
-- `min(difference, 360 - difference)` automatically chooses the smaller angle.
+Run the same idea in Java or C++ by printing the results and asserting manually.
 
-### 2.4  The Bad – Common Pitfalls
+---
 
-| Mistake | Why it breaks | Fix |
-|---------|---------------|-----|
-| Forgetting `% 12` | 12:00 → 360° instead of 0° | `hour % 12` |
-| Integer division | `minutes / 60` becomes 0 in Java/C++ | Use double or `minutes * 0.5` |
-| Not taking the absolute difference | Negative angles | `abs()` |
-| Returning raw difference > 180 | Wrong “smaller angle” | `min(diff, 360 - diff)` |
-| Floating‑point rounding errors | Wrong precision | Return `double` and rely on language’s default rounding |
+## 9. Alternative Approaches (Why Not Needed)
 
-### 2.5  The Ugly – Over‑engineering
+* **Brute‑force simulation** (increment minute by minute) – O(60) time, unnecessary.  
+* **Using complex numbers** – overkill for a simple geometry problem.  
+* **Recursion / memoization** – not required.
 
-It’s tempting to write a “step‑by‑step” simulation:
+Stick to the direct formula for clarity and speed.
 
-```text
-for each minute:
-    move hour hand by 0.5°
-    move minute hand by 6°
-```
+---
 
-But that adds loops, state, and unnecessary complexity. The “ugly” solution often looks like:
+## 10. How This Boosts Your Interview Game
 
-```java
-// Too many variables, magic numbers, and redundant checks
-```
+1. **Showcases mathematical intuition** – essential for system‑design & algorithm questions.  
+2. **Demonstrates O(1) optimization** – interviewers love constant‑time solutions.  
+3. **Highlights attention to edge cases** – handling `12:00` or `0:00`.  
+4. **Flexibility across languages** – you can switch between Java, Python, C++ with minimal changes.  
 
-**Rule of thumb** – keep the solution **stateless** and **formula‑based**. Simplicity is a signal of good problem‑solving.
+When you answer this problem in an interview, explain the reasoning *before* you write code. Mention the `hour % 12`, the `0.5°` per minute, and why you use `min(diff, 360 - diff)`. This structure shows you’re not just coding but also thinking critically.
 
-### 2.6  Optimizing for Interviews
+---
 
-1. **Explain the math upfront** – show you understand the underlying geometry.
-2. **Show edge‑case handling** – talk about the `12%12` trick.
-3. **Mention complexity** – “O(1) time, O(1) space”.
-4. **Write clean code** – no unused variables, consistent naming.
-5. **Add a test case** – e.g. `angleClock(3, 30) → 75`.
+## 11. Final Take‑away
 
-### 2.7  SEO & Job‑Search Strategy
+- **Key formula**:  
+  \[
+  \text{angle} = \min\!\Bigl(\bigl|6m - (30h + 0.5m)\bigr|,\; 360 - \bigl|6m - (30h + 0.5m)\bigr|\Bigr)
+  \]
+- **Implement in 1‑3 lines**.  
+- **Run in O(1)** time, O(1) space.  
+- **Avoid pitfalls**: modulus, minute contribution, obtuse vs acute.
 
-- **Keywords**: “LeetCode 1344 solution”, “clock angle problem”, “Java Python C++ interview”, “O(1) geometry problem”, “best clock angle code”.
-- **Meta‑description**: “Learn the optimal O(1) solution for LeetCode 1344 – Angle Between Hands of a Clock. Full Java, Python, C++ code + interview tips.”
-- **Header tags**: H1 – problem title; H2 – sections (Good, Bad, Ugly, Code).
-- **Internal links**: link to related problems (e.g., “Clock Angle variations”, “Math problems in LeetCode”).
-- **Rich snippets**: provide a “code snippet” block for each language.
-- **Engagement**: ask readers to comment with their own tricks or share the article.
+Mastering this problem gives you a solid “math‑plus‑code” trick to impress any hiring manager. Good luck on your next interview! 🚀
 
-### 2.8  Final Thoughts
+--- 
 
-- The *good* is a single, elegant formula that solves a geometry problem in O(1).
-- The *bad* is the many pitfalls that derail even experienced coders; watch out for modulo, division, and sign errors.
-- The *ugly* is over‑engineering – loops, state, or extra variables. Keep it lean.
-
-Armed with this solution and a polished explanation, you’re ready to ace the “clock angle” question on LeetCode and in your next coding interview. Good luck, and happy coding!
+**Want more interview prep?**  
+Subscribe for weekly LeetCode walkthroughs, algorithm articles, and career‑boosting posts. Happy coding!

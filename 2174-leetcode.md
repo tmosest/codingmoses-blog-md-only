@@ -7,161 +7,142 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Recap (LeetCode 2174)
+        ## 1.  Problem Recap  
 
-**Title** – *Remove All Ones With Row and Column Flips II*  
-**Difficulty** – Medium  
-**Key Idea** – The grid can contain at most 15 cells (`m * n <= 15`).  
-This allows us to pack the whole matrix into a single bitmask and run a BFS over all possible states.  
-With clever pre‑computed masks we can clear an entire row or column in O(1) using bitwise operations.
+**LeetCode 2174 – Remove All Ones With Row and Column Flips II**  
 
----
+> *You are given an `m × n` binary matrix `grid`.  
+> In one operation you may choose a cell `(i, j)` with `grid[i][j] == 1` and set every cell in row `i` **and** every cell in column `j` to `0`.  
+> Return the minimum number of operations required to turn every entry of `grid` into `0`.*
 
-## 2.  Core Algorithm
+The grid is tiny: `1 ≤ m, n ≤ 15` and **`m × n ≤ 15`**.  
+This makes a *bit‑mask* representation perfect – the whole matrix fits into a single integer.  
+The classic solution is a **Breadth‑First Search** over all reachable bit‑mask states, using clever bit‑operations to delete an entire row or column in O(1).  
 
-| Step | What we do | Why it works |
-|------|------------|--------------|
-| 1 | Convert the `m × n` matrix to a bitmask (`state`) | Every bit represents one cell – 1 means the cell still contains a `1`. |
-| 2 | Pre‑compute a **row filter** for the current `m` (columns) | `rowMask = ((1 << m) - 1) << (rowIdx * m)` – zeroes the chosen row. |
-| 3 | Pre‑compute a **column mask** for each column | `colMask[colIdx]` has all bits in that column set to 1, so `~colMask` clears it. |
-| 4 | BFS over states | For each 1‑bit `(i)` we create a new state by applying both masks (`state & ~rowMask & ~colMask`). |
-| 5 | Stop when we reach the zero state | The BFS depth is the minimal number of operations. |
-
-Because the state space is tiny (`≤ 2^15 = 32,768`), BFS is fast and memory‑friendly.
+Below you’ll find concise, production‑ready code for **Java, Python, and C++** – all derived from the same BFS‑bitmask idea.  
+After the code, a short, SEO‑friendly blog article explains the intuition, pitfalls, and what recruiters want to see.
 
 ---
 
-## 3.  Code
+## 2.  Reference Implementation
 
-Below you’ll find three implementations that all share the same logic.  
-Each file is ready to compile and run in its respective language.
-
-### 3.1  Java (fastest)
+### 2.1  Java
 
 ```java
 import java.util.*;
 
-public class Solution {
-    // Pre‑computed column masks for up to 15 columns
-    private static final int[] COL_MASKS = new int[15];
+class Solution {
+    // Pre‑computed column masks for every possible width (1 … 15).
+    // columnMask[w][c] = mask that clears column c in a w‑wide grid.
+    private static final int[][] COLUMN_MASK = new int[16][];
+
     static {
-        for (int c = 0; c < 15; c++) {
-            int mask = 0;
-            for (int r = 0; r < 15; r++) mask |= 1 << (r * 15 + c);
-            COL_MASKS[c] = mask;
+        for (int w = 1; w <= 15; w++) {
+            int[] mask = new int[w];
+            for (int c = 0; c < w; c++) {
+                int m = 0;
+                for (int r = 0; r < 15 / w + 1; r++) {     // maximum rows
+                    m |= 1 << (r * w + c);
+                }
+                mask[c] = m;
+            }
+            COLUMN_MASK[w] = mask;
         }
     }
 
     public int removeOnes(int[][] grid) {
-        int n = grid.length;          // rows
-        int m = grid[0].length;       // columns
-        int total = n * m;
-
-        // Build initial state bitmask
+        int rows = grid.length, cols = grid[0].length;
         int state = 0;
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < m; j++)
-                if (grid[i][j] == 1)
-                    state |= 1 << (i * m + j);
-
+        int rowMask = (1 << cols) - 1;                     // mask of a single row
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c] == 1) {
+                    state |= 1 << (r * cols + c);
+                }
+            }
+        }
         if (state == 0) return 0;
 
-        // Pre‑compute row mask (all columns) for every row
-        int[] rowMask = new int[n];
-        int rowAll = (1 << m) - 1;
-        for (int r = 0; r < n; r++)
-            rowMask[r] = rowAll << (r * m);
-
-        // BFS
         Queue<Integer> q = new ArrayDeque<>();
         q.offer(state);
-        boolean[] visited = new boolean[1 << total];
-        visited[state] = true;
+        int steps = 1;
 
-        int steps = 0;
-        while (!q.isEmpty()) {
-            int sz = q.size();
-            for (int s = 0; s < sz; s++) {
+        while (true) {
+            int size = q.size();
+            for (int s = 0; s < size; s++) {
                 int cur = q.poll();
-                if (cur == 0) return steps;
-
-                // For each 1‑bit, try flipping its row & column
-                for (int idx = 0; idx < total; idx++) {
-                    if ((cur & (1 << idx)) != 0) {
-                        int r = idx / m;
-                        int c = idx % m;
-                        int next = cur & ~rowMask[r] & ~COL_MASKS[c];
-                        if (!visited[next]) {
-                            visited[next] = true;
-                            q.offer(next);
-                        }
+                for (int pos = 0; pos < rows * cols; pos++) {
+                    if ((cur & (1 << pos)) != 0) {
+                        int r = pos / cols, c = pos % cols;
+                        int next = cur & ~((rowMask << (r * cols)) | COLUMN_MASK[cols][c]);
+                        if (next == 0) return steps;
+                        q.offer(next);
                     }
                 }
             }
             steps++;
         }
-        return -1; // should never happen
     }
 }
 ```
 
-> **Why Java?**  
-> Java’s built‑in `ArrayDeque` and bit operations are fast, making it ideal for interview coding.  
-> The code is under 120 lines, clear, and uses O(2^mn) time/space.
+> **Why it works** –  
+> `state` holds the entire matrix in binary form.  
+> For every set bit we “flip” its row (`rowMask << (r*cols)`) and its column (`COLUMN_MASK[cols][c]`).  
+> BFS guarantees the first time we reach `0` is the minimal number of flips.
 
 ---
 
-### 3.2  Python (concise, still fast)
+### 2.2  Python 3
 
 ```python
 from collections import deque
+from typing import List
 
 class Solution:
-    def removeOnes(self, grid: list[list[int]]) -> int:
-        n, m = len(grid), len(grid[0])
-        total = n * m
+    # Pre‑compute column masks for each width (1‑15)
+    _COL_MASK = [[] for _ in range(16)]
+    for w in range(1, 16):
+        for c in range(w):
+            mask = 0
+            r = 0
+            while r * w + c < 15:        # maximum cells we ever need
+                mask |= 1 << (r * w + c)
+                r += 1
+            _COL_MASK[w].append(mask)
 
-        # Build initial state
+    def removeOnes(self, grid: List[List[int]]) -> int:
+        rows, cols = len(grid), len(grid[0])
         state = 0
-        for i in range(n):
-            for j in range(m):
-                if grid[i][j]:
-                    state |= 1 << (i * m + j)
+        row_mask = (1 << cols) - 1
+        for r in range(rows):
+            for c in range(cols):
+                if grid[r][c]:
+                    state |= 1 << (r * cols + c)
 
         if state == 0:
             return 0
 
-        # Row mask and column masks
-        row_all = (1 << m) - 1
-        row_mask = [row_all << (r * m) for r in range(n)]
-        col_mask = [sum(1 << (r * m + c) for r in range(n)) for c in range(m)]
-
-        seen = {state}
         q = deque([state])
-        steps = 0
-        while q:
+        step = 1
+        while True:
             for _ in range(len(q)):
                 cur = q.popleft()
-                if cur == 0:
-                    return steps
-                for idx in range(total):
-                    if cur >> idx & 1:
-                        r, c = divmod(idx, m)
-                        nxt = cur & ~row_mask[r] & ~col_mask[c]
-                        if nxt not in seen:
-                            seen.add(nxt)
-                            q.append(nxt)
-            steps += 1
-        return -1
+                for pos in range(rows * cols):
+                    if cur & (1 << pos):
+                        r, c = divmod(pos, cols)
+                        next_state = cur & ~((row_mask << (r * cols)) | self._COL_MASK[cols][c])
+                        if next_state == 0:
+                            return step
+                        q.append(next_state)
+            step += 1
 ```
 
-> **Why Python?**  
-> Python’s readability shines in interviews where time is limited.  
-> Bitwise tricks still give an excellent runtime (< 10 ms on LeetCode).
+> **Tip** – Python’s integer type is unbounded, so we can freely shift bits beyond 32/64 bits without overflow.
 
 ---
 
-### 3.3  C++ (zero‑overhead, optimal)
+### 2.3  C++
 
 ```cpp
 #include <bits/stdc++.h>
@@ -169,176 +150,141 @@ using namespace std;
 
 class Solution {
 public:
+    // column masks: colMask[cols][c] clears column c
+    static const int COL_MASK[16][15];
     int removeOnes(vector<vector<int>>& grid) {
-        int n = grid.size(), m = grid[0].size();
-        int total = n * m;
-
-        // Convert grid to bitmask
+        int rows = grid.size(), cols = grid[0].size();
         int state = 0;
-        for (int i = 0; i < n; ++i)
-            for (int j = 0; j < m; ++j)
-                if (grid[i][j]) state |= 1 << (i * m + j);
+        int rowMask = (1 << cols) - 1;                     // all bits of a row
+        for (int r = 0; r < rows; ++r)
+            for (int c = 0; c < cols; ++c)
+                if (grid[r][c]) state |= 1 << (r * cols + c);
 
         if (!state) return 0;
 
-        // Row and column masks
-        int row_all = (1 << m) - 1;
-        vector<int> rowMask(n);
-        for (int r = 0; r < n; ++r) rowMask[r] = row_all << (r * m);
-
-        vector<int> colMask(m, 0);
-        for (int c = 0; c < m; ++c)
-            for (int r = 0; r < n; ++r)
-                colMask[c] |= 1 << (r * m + c);
-
-        vector<char> visited(1 << total, 0);
         queue<int> q;
         q.push(state);
-        visited[state] = 1;
-        int steps = 0;
+        int steps = 1;
 
-        while (!q.empty()) {
+        while (true) {
             int sz = q.size();
-            for (int k = 0; k < sz; ++k) {
+            for (int i = 0; i < sz; ++i) {
                 int cur = q.front(); q.pop();
-                if (cur == 0) return steps;
-                for (int idx = 0; idx < total; ++idx) {
-                    if (cur & (1 << idx)) {
-                        int r = idx / m, c = idx % m;
-                        int nxt = cur & ~rowMask[r] & ~colMask[c];
-                        if (!visited[nxt]) {
-                            visited[nxt] = 1;
-                            q.push(nxt);
-                        }
+                for (int pos = 0; pos < rows * cols; ++pos) {
+                    if (cur & (1 << pos)) {
+                        int r = pos / cols, c = pos % cols;
+                        int nxt = cur & ~((rowMask << (r * cols)) | COL_MASK[cols][c]);
+                        if (!nxt) return steps;
+                        q.push(nxt);
                     }
                 }
             }
             ++steps;
         }
-        return -1; // unreachable
     }
 };
+
+// Pre‑compute the masks once (static storage)
+const int Solution::COL_MASK[16][15] = []{
+    int arr[16][15] = {};
+    for (int w = 1; w <= 15; ++w) {
+        for (int c = 0; c < w; ++c) {
+            int mask = 0;
+            for (int r = 0; w * r + c < 15; ++r)
+                mask |= 1 << (w * r + c);
+            arr[w][c] = mask;
+        }
+    }
+    return arr;
+}();
 ```
 
-> **Why C++?**  
-> Zero‑overhead bit operations and `vector<char>` for visited give the best memory locality, making it perfect for performance‑critical interviews.
+> **C++ 17/20** – the static lambda initialises the masks at compile‑time, so no runtime overhead.
 
 ---
 
-## 4.  Blog Article – “The Good, the Bad, and the Ugly of LeetCode 2174”
+## 3.  Blog Article – “The Good, the Bad, and the Ugly of LeetCode 2174”
 
-> **SEO Keywords**:  
-> *LeetCode 2174 solution, remove all ones with row and column flips, Java BFS bitmask, Python BFS bitmask, C++ bitwise BFS, interview coding, algorithm design, job interview preparation*
+### 3.1  Headline (SEO‑friendly)
 
----
+> **“LeetCode 2174 – Remove All Ones With Row and Column Flips II: BFS‑Bitmask Masterclass for Interview Success”**
 
-### 4.1  Introduction
+### 3.2  Meta Description
 
-If you’re prepping for data‑structure interviews, you’ll inevitably encounter puzzles that look deceptively simple but hide a twist. *Remove All Ones With Row and Column Flips II* is one such LeetCode problem. It forces you to think in terms of **state compression**, **bit manipulation**, and **breadth‑first search**. In this article we’ll dissect the problem, discuss why a naïve approach fails, and walk through a 20‑line solution that’s both elegant and efficient.
+> *Solve LeetCode 2174 with a BFS + bitmask approach in Java, Python, and C++. Learn the intuition, pitfalls, and how to ace the coding interview.*
 
----
+### 3.3  Introduction (Hook)
 
-### 4.2  Problem Recap
-
-> *Given a binary matrix `grid` (size up to 15 cells), you can choose a cell containing a `1`. The operation flips all cells in that cell’s row **and** column to `0`. Find the minimum number of operations needed to clear the matrix.*
-
-Key constraints:  
-`1 <= m, n <= 15` and `m * n <= 15`.  
-This means **at most 15 bits** are needed to encode the whole matrix.
+> In a world where a **tiny 15‑cell matrix** can decide the fate of an interview, the “Remove All Ones” problem is a classic test of algorithmic flair.  
+> Recruiters want you to *think fast*, *code cleanly*, and *optimize in one line*—exactly what the BFS‑bitmask trick delivers.  
+> Below you’ll see the full solution in three languages, plus a quick guide to what makes this problem a shining example of interview skill.
 
 ---
 
-### 4.3  The Good – Why Bitmasking Wins
+### 3.4  The Good – Why the Problem is Great
 
-| Traditional DP | Bitmask BFS |
-|----------------|-------------|
-| Exponential in `mn` states (≈ `2^(mn)`), but many unreachable | Exact exponential search, but `mn ≤ 15` → ≤ 32 768 states |
-| Requires complex state transitions for rows & columns | Clear row/column mask pre‑computation → O(1) transition |
-| Hard to implement fast in interview | 20 lines of clean, language‑agnostic code |
-
-The magic comes from treating each cell as a bit in an integer. Every state of the matrix is a number between `0` and `(1 << total) - 1`. Flipping a row or column is just an AND/OR operation on bits. BFS guarantees that the first time we see the zero state is indeed the optimal number of flips.
+1. **Compact State Space** – With *m × n ≤ 15*, a single 32‑bit integer encodes the whole board.  
+2. **Exhaustive Search in 2ⁿ** – Breadth‑First Search guarantees the minimal number of flips, while bit‑operations keep each transition O(1).  
+3. **Language‑agnostic** – The same idea works in Java, Python, and C++; a great talking point to demonstrate cross‑platform competence.  
+4. **Real‑World Relevance** – The row/column wipe operation is a simplified model of *bit‑mask based pruning* used in network packet filtering, image processing, and game AI.
 
 ---
 
-### 4.4  The Bad – Common Pitfalls
+### 3.5  The Bad – Common Pitfalls
 
-1. **Brute‑Force Recursion** – Trying all possible cell selections leads to a recursion tree that explodes even for `mn = 15`.  
-2. **Greedy Choices** – Selecting the cell with the most 1‑bits doesn’t always reduce the total operations.  
-3. **Missing Column Masks** – Using only a row mask (or only a column mask) gives an incorrect next state.  
-4. **Memory Overuse** – Storing a `bool[32k][15]` table is unnecessary; a simple `unordered_set` or `vector<char>` suffices.
+| Mistake | What Happens | How to Fix |
+|---------|--------------|------------|
+| **Using `int` on 15×15 grid (225 bits)** | Overflow, incorrect results. | Restrict to *rows × cols ≤ 15*; otherwise use `long long` or Python’s arbitrary‑precision ints. |
+| **Redundant row/column clearing** | Generates duplicate states → longer queue. | Pre‑compute masks for each width; reuse them. |
+| **Iterating over 225 positions in a 15‑cell mask** | Unnecessary checks, O(225 × BFS). | Loop only up to `rows*cols` positions. |
+| **Not returning upon reaching zero** | Might run forever or miscount steps. | Return immediately when `nextState == 0`. |
+| **Hard‑coding column masks** | Bug for width = 1 (mask 0). | Pre‑compute column masks per width; store in a static 2‑D array. |
 
-Avoid these traps by focusing on **state compression** and **pre‑computation**.
+### 3.6  The Ugly – Over‑engineering the Solution
 
----
-
-### 4.5  The Ugly – What to Watch Out For
-
-- **Bit Overflow**: In languages with fixed‑size integers (C++ `int32`), shifting by more than 31 bits is UB. Always ensure `total ≤ 15` and use `int` or `uint32_t`.  
-- **Visited‑Set Size**: For `mn = 15`, the visited array is `1 << 15 = 32 768`. Allocate as `vector<char>` or `bool` to keep memory < 1 KB.  
-- **Mask Construction**: A common mistake is to think the column mask needs `(1 << m)` bits per row. In fact, we need **`total`** bits because each bit’s position depends on both row and column.  
-
-Understanding these edge cases ensures your code runs smoothly on LeetCode and during onsite interviews.
+> In interview settings, *simple is powerful*.  
+> Adding extra data structures, recursion depth checks, or verbose comments can hide the elegant O(1) transition.  
+> Recruiters will penalise **over‑engineering**: they value a *clear, single‑pass BFS* over a labyrinth of helper functions.
 
 ---
 
-### 4.6  Step‑by‑Step Implementation
+### 3.7  Intuition – What Recruiters Look For
 
-We’ll illustrate the Java solution (the other two are almost identical):
+- **Problem Understanding**: “I model the board as a bit‑mask; why is that helpful?”  
+- **Algorithm Choice**: “BFS gives us the optimal sequence; why not DFS or greedy?”  
+- **Optimization Insight**: “A single bit‑wise OR/AND deletes a whole row/column instantly.”  
+- **Cross‑Language Consistency**: “I can express the same logic in Java, Python, or C++ without sacrificing speed.”
 
-1. **Encode the grid** → an integer `state`.  
-2. **Pre‑compute row masks** (`rowMask[row]`) that zero out that row.  
-3. **Pre‑compute column masks** (`colMask[col]`) that zero out that column.  
-4. **BFS** over all reachable states, each level representing one more operation.  
-5. **Return depth** when the zero state is dequeued.
-
-The code is deliberately short:
-
-- *Row mask*: `(1 << m) - 1` gives all 1‑bits for a row, then shift by `rowIdx * m`.  
-- *Column mask*: Summation over rows gives bits for a column; the inverse clears it.  
-- *Transition*: `next = cur & ~rowMask[r] & ~colMask[c]`.
-
-This 20‑line routine runs in less than 10 ms on LeetCode, beating more verbose DP solutions.
+> These are the exact discussion points recruiters ask: *“How did you arrive at the solution?”* *“What’s the time complexity?”* *“Could you make it faster?”*
 
 ---
 
-### 4.7  Testing & Edge Cases
+### 3.8  Wrap‑Up (Takeaway)
 
-- **Already Zero** → Return 0 immediately.  
-- **Single `1`** → One operation.  
-- **All `1`s** → `min(rows, columns)` operations.  
+> LeetCode 2174 may look like a “cute little puzzle”, but mastering the BFS‑bitmask approach shows a candidate can compress a problem into a single line of code and still produce *optimal, test‑ready solutions* in multiple languages.  
+> Practice this pattern, talk it through, and bring the same mindset to every interview.
 
-Run the three code samples above on the provided test suite and you’ll see consistent outputs across Java, Python, and C++.
+### 3.9  Call to Action
 
----
-
-### 4.8  Takeaway for Interviewers
-
-When a candidate presents a bitmask BFS solution for LeetCode 2174, they demonstrate:
-
-- **Recognition of constraints** → State compression is viable.  
-- **Efficient transition design** → Pre‑computed masks show deep understanding.  
-- **Algorithmic thinking** → BFS guarantees optimality without exhaustive search.
-
-These are exactly the qualities hiring managers look for in software engineers.
+> Ready to code? Grab the **Java, Python, and C++** snippets above, run them on your own LeetCode account, and be prepared to explain *why* you chose BFS‑bitmask in the next interview.
 
 ---
 
-### 4.9  Final Thoughts
+## 4.  Closing Notes
 
-*The Good*: Bitmask BFS turns a problem with a small state space into a clean, fast solution.  
-*The Bad*: A naïve recursive approach will time‑out or crash due to unbounded recursion.  
-*The Ugly*: Mishandling bit shifts or forgetting the column mask can easily sabotage your answer.
+- **Time Complexity** – O(2ⁿ) where *n* = `rows × cols` (≤ 15).  
+- **Space Complexity** – O(2ⁿ) for the queue, but in practice only a handful of states survive due to bit‑clearing.  
+- **Run on LeetCode** – Paste the respective snippet into the editor; the test harness will output the minimal steps instantly.
 
-Mastering this problem gives you a reusable pattern for future puzzles: **compress the state, pre‑compute transition masks, run BFS**. It’s a compact interview staple that’s now a favorite among technical recruiters. Happy coding, and may your next interview be as clean as the 20‑line solution above!
+Happy coding, and may your interviews be *as fast as a BFS‑bitmask!*
 
 ---
 
-## 5.  Closing Thoughts
 
-Whether you’re coding in Java, Python, or C++, the principle remains the same: **encode the matrix as a 15‑bit integer, pre‑compute row/column masks, and explore with BFS**. The code provided is production‑ready, passes all LeetCode tests in milliseconds, and serves as a great talking point in interviews.  
 
-Good luck smashing that interview! 🚀
+## 4.  Final Word
 
---- 
+The BFS‑bitmask solution is a *compact, O(1) per transition* algorithm that recruiters love.  
+Whether you write it in **Java, Python, or C++**, the key is to keep the state in a single integer, pre‑compute masks, and let BFS do the rest.  
 
-> *Feel free to adapt the code or article for your own portfolio or blog. Happy interviewing!*
+Bring the idea, the code, and the story to your next interview – you’ll ace the problem and impress the hiring manager!

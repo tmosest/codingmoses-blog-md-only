@@ -7,152 +7,109 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## Wildcard Matching – LeetCode 44  
-**Hard | 2000 ≤ |s|, |p| ≤ 2000 | DP / Greedy | Java / Python / C++**
-
-> “The best interview questions are the ones you can answer confidently and explain clearly.” – *Job‑hunt 101*
+        # Wildcard Matching – LeetCode 44  
+> “Good, Bad & Ugly” – A deep‑dive into the classic pattern‑matching problem  
 
 ---
 
-### 1.  Problem Overview
+## 1. Problem Recap
 
-| Field | Details |
-|-------|---------|
-| **Name** | Wildcard Matching |
-| **LeetCode ID** | 44 |
-| **Difficulty** | Hard |
-| **Input** | Two strings `s` (text) and `p` (pattern) |
-| **Output** | `true` if `p` matches the *entire* `s`, `false` otherwise |
-| **Wildcard rules** | `?` → any single character<br>`*` → any sequence (including empty) |
-| **Constraints** | `0 ≤ s.length, p.length ≤ 2000`<br>`s` only lowercase English letters<br>`p` only lowercase English letters, `?`, `*` |
+You are given two strings:
 
-> Example  
-> `s = "aa"`, `p = "*" → true`  
-> `s = "cb"`, `p = "?a" → false`
+| String | Meaning |
+|--------|---------|
+| `s` | the text you want to match |
+| `p` | the pattern that can contain two wildcards |
+| `?` | matches **exactly one** arbitrary character |
+| `*` | matches **zero or more** arbitrary characters |
 
----
-
-### 2.  Intuition
-
-We need to know **whether the two strings can “align”** when we replace `?` and `*` with the appropriate characters.
-
-The problem is a classic dynamic‑programming on strings:
+Your task: **return `true` iff the whole string `s` matches the whole pattern `p`.**
 
 ```
-dp[i][j]  = does s[0..i) match p[0..j)?
+Examples
+---------
+s = "aa",  p = "a"   → false
+s = "aa",  p = "*"   → true
+s = "cb",  p = "?a"  → false
 ```
 
-* `i` is the length of the considered prefix of `s`
-* `j` is the length of the considered prefix of `p`
-
-With this recurrence we can explore all possibilities **once** and get linear‑time space.
+Constraints: `0 ≤ s.length, p.length ≤ 2000`, only lower‑case English letters and the two wildcards appear.
 
 ---
 
-### 3.  Four Ways to Solve
+## 2. Why is this problem hard?
 
-| Approach | Idea | Complexity | Pros | Cons |
-|----------|------|------------|------|------|
-| **Recursive** | Try every choice when encountering `*`. | O(2^n) time | Very intuitive | Exponential time, stack overflow |
-| **Memoized** | Same as recursive + cache | O(n m) time, O(n m) space | Fast, still readable | Still uses recursion stack |
-| **Tabulation** | Bottom‑up DP table | O(n m) time, O(n m) space | No recursion, easier to debug | Memory heavy for 2000 × 2000 |
-| **Space‑Optimized DP** | Keep only the previous row | O(n m) time, **O(m)** space | 4 MB in C++/Java, 2000 * 2000 ≈ 4 MB | Slightly more logic for the first column |
+- `*` can match *any* length, so a naive recursion explores an exponential number of possibilities.
+- You need to decide whether *every* character of `s` is consumed, which forces a global view of the match.
+- The pattern may contain long runs of `*`, which are essentially “skip‑or‑consume” decisions.
 
-> **Bonus** – a *greedy* linear‑time, constant‑space solution that scans from left to right and backtracks when needed.  
-> In practice, the DP solution is what most interviewers expect, but the greedy trick can be a neat “gotcha” answer.
+The classic “dynamic programming” solution reduces the problem from exponential to quadratic time, but the DP itself can be written in several different ways.  
+Below we present four styles:
 
-Below are the three code versions you’ll want on your resume and in your GitHub portfolio.
+| Approach | Complexity | Space | Pros / Cons |
+|----------|------------|-------|-------------|
+| **Recursive** (exponential) | `O(2^n)` | `O(n+m)` | Very clear, but impractical for big inputs. |
+| **Memoized Recursion** | `O(n*m)` | `O(n+m) + O(n*m)` | Removes repetition, still recursion overhead. |
+| **Bottom‑Up DP (tabulation)** | `O(n*m)` | `O(n*m)` | Easy to understand, works well for 2000×2000. |
+| **Space‑Optimized DP** | `O(n*m)` | `O(n)` | Saves memory, still linear in pattern length. |
 
----
-
-## 4.  Reference Implementations
-
-> **Tip** – Keep a copy of the “clean” DP code on your GitHub, and mention that you *understood* the recurrence when asked.
+We’ll focus on the *Space‑Optimized DP* – the most production‑ready approach – but the code for the other variants is also provided (see the appendix).
 
 ---
 
-#### 4.1  Java – Bottom‑Up DP (2‑D)  
+## 3. Intuition & Step‑by‑Step Walk‑through
 
-```java
-// 44. Wildcard Matching – LeetCode
-public class Solution {
-    /**
-     * Classic DP: dp[i][j] == true if s[0..i) matches p[0..j)
-     * We use (n+1) x (m+1) boolean table, where n = s.length(), m = p.length()
-     */
-    public boolean isMatch(String s, String p) {
-        int n = s.length(), m = p.length();
-        boolean[][] dp = new boolean[n + 1][m + 1];
-        dp[0][0] = true;          // empty pattern matches empty string
+### 3.1  What does a DP cell mean?
 
-        /* First row: s is empty – only leading '*' in p can match */
-        for (int j = 1; j <= m; j++) {
-            if (p.charAt(j - 1) == '*') dp[0][j] = dp[0][j - 1];
-        }
+Let `dp[i][j]` be `true` if the **prefix** of the text `s[0…i‑1]` matches the **prefix** of the pattern `p[0…j‑1]`.  
+The final answer is `dp[s.length()][p.length()]`.
 
-        /* Fill the table */
-        for (int i = 1; i <= n; i++) {
-            for (int j = 1; j <= m; j++) {
-                char pc = p.charAt(j - 1);
-                if (pc == '*') {
-                    dp[i][j] = dp[i - 1][j] || dp[i][j - 1];
-                } else if (pc == '?' || pc == s.charAt(i - 1)) {
-                    dp[i][j] = dp[i - 1][j - 1];
-                } else {
-                    dp[i][j] = false;
-                }
-            }
-        }
-        return dp[n][m];
-    }
-}
+We build this table from the back (suffixes) because `*` refers to “consuming the next text character” or “moving to the next pattern character”.
+
+```
+   j = 0  1  2  3 ...
+i = 0  X  X  X  X ...
+   1  X  X  X  X ...
+   2  X  X  X  X ...
 ```
 
-*Time*: **O(n m)**  
-*Space*: **O(n m)** – for 2000 × 2000 this is ~4 MB, fine for LeetCode.
+### 3.2  Transition Rules
 
----
+| Condition | Transition | Explanation |
+|-----------|------------|-------------|
+| `s[i-1] == p[j-1]` **or** `p[j-1] == '?'` | `dp[i][j] = dp[i-1][j-1]` | Consume one character from both strings. |
+| `p[j-1] == '*'` | `dp[i][j] = dp[i-1][j] OR dp[i][j-1]` | *Consume* a character (`dp[i-1][j]`) **or* *skip* a character (`dp[i][j-1]`). |
+| otherwise | `dp[i][j] = false` | Characters differ and pattern contains no wildcard. |
 
-#### 4.2  Python – Space‑Optimized DP  
+### 3.3  Handling the “empty text” row
 
-```python
-# 44. Wildcard Matching – Python 3
-def is_match(s: str, p: str) -> bool:
-    n, m = len(s), len(p)
+For `i = 0` (empty `s`) we can only match if the pattern is also empty or consists entirely of `*`.  
+So we initialise the first row:
 
-    # prev[j] is dp[i-1][j] from the previous row
-    prev = [False] * (m + 1)
-    prev[0] = True
-
-    # Initialize the first row (empty s)
-    for j in range(1, m + 1):
-        if p[j - 1] == '*':
-            prev[j] = prev[j - 1]
-
-    for i in range(1, n + 1):
-        curr = [False] * (m + 1)
-        curr[0] = False          # non‑empty s cannot match empty pattern
-        for j in range(1, m + 1):
-            if p[j - 1] == '*':
-                curr[j] = prev[j] or curr[j - 1]
-            elif p[j - 1] == '?' or p[j - 1] == s[i - 1]:
-                curr[j] = prev[j - 1]
-            else:
-                curr[j] = False
-        prev = curr
-
-    return prev[m]
+```
+dp[0][0] = true
+dp[0][j] = dp[0][j-1]  if p[j-1] == '*'
 ```
 
-*Space*: **O(m)** (≈ 2001 booleans ≈ 2 KB)  
-*Time*: **O(n m)** (≈ 4 million operations – trivial for CPython).
+This sets the base for the rest of the DP.
 
 ---
 
-#### 4.3  C++ – Bottom‑Up DP with 1‑D Arrays  
+## 4. The Final, Space‑Optimised DP (C++ / Java / Python)
+
+Below you’ll find a single‑source‑of‑truth implementation that:
+
+1. Runs in `O(n*m)` time – well below the 4 million‑cell limit for 2000×2000.  
+2. Uses only `O(p.length)` memory – a single `vector<bool>` per row in C++ / two `boolean[]` in Java / two `List[bool]` in Python.
+
+> **Tip** – Before you compile, copy the file into your IDE, paste the `Solution` class, and run `main` with test cases.  
+> **Caution** – The code uses `0‑based` indices, so be careful when you switch from the textbook description to implementation.
+
+---
+
+### C++ (GNU‑C++17)
 
 ```cpp
-// 44. Wildcard Matching – C++17
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -161,123 +118,248 @@ public:
     bool isMatch(string s, string p) {
         int n = s.size(), m = p.size();
         vector<bool> prev(m + 1, false), curr(m + 1, false);
-        prev[0] = true;                 // empty pattern matches empty string
+        prev[0] = true;                                 // empty pattern matches empty text
 
-        // Empty text, only leading '*' can match
+        // initial row for empty text
         for (int j = 1; j <= m; ++j)
-            if (p[j - 1] == '*') prev[j] = prev[j - 1];
+            if (p[j-1] == '*')
+                prev[j] = prev[j-1];
+            else
+                break;                                  // first non-* stops the chain
 
         for (int i = 1; i <= n; ++i) {
-            curr[0] = false;            // non‑empty text cannot match empty pattern
+            curr[0] = false;                            // empty pattern cannot match non‑empty text
             for (int j = 1; j <= m; ++j) {
-                if (p[j - 1] == '*')
-                    curr[j] = prev[j] || curr[j - 1];
-                else if (p[j - 1] == '?' || p[j - 1] == s[i - 1])
-                    curr[j] = prev[j - 1];
+                if (p[j-1] == '*')
+                    curr[j] = curr[j-1] || prev[j];    // skip or consume
+                else if (p[j-1] == '?' || p[j-1] == s[i-1])
+                    curr[j] = prev[j-1];                // exact match
                 else
-                    curr[j] = false;
+                    curr[j] = false;                    // mismatch
             }
-            prev.swap(curr);
+            prev.swap(curr);                            // move to next row
         }
         return prev[m];
     }
 };
 ```
 
-*Space*: **O(m)**  
-*Time*: **O(n m)** – again ~4 million ops, fast enough even in a tight interview.
-
 ---
 
-### 4.4  Greedy Linear‑Time, Constant‑Space Solution
+### Java (Java 17)
 
-> **Why talk about greedy?**  
-> In many interview panels, a *single‑pass* solution is a “wow” factor. The greedy algorithm is also the *canonical* interview answer for this problem.
+```java
+class Solution {
+    public boolean isMatch(String s, String p) {
+        int n = s.length(), m = p.length();
+        boolean[] prev = new boolean[m + 1];
+        boolean[] curr = new boolean[m + 1];
 
-```text
-Walk through s and p once.
-Keep two pointers:
-    i – current index in s
-    j – current index in p
-Keep track of:
-    starIndex – the most recent '*' in p (or -1 if none)
-    iAfterStar – index in s when the last '*' was matched
+        prev[0] = true;                                   // empty pattern vs empty text
 
-If characters match or p[j] == '?', advance both.
-If p[j] == '*', remember the positions and skip '*'.
-If mismatch and we have a previous '*', backtrack:
-    j = starIndex + 1  (reuse the '*')
-    i = iAfterStar + 1  (consume one more char from s)
-    iAfterStar = i
-If mismatch and no '*', return false.
+        // initialise for empty text
+        for (int j = 1; j <= m; ++j) {
+            if (p.charAt(j - 1) == '*')
+                prev[j] = prev[j - 1];
+            else
+                break;
+        }
+
+        for (int i = 1; i <= n; ++i) {
+            curr[0] = false;                               // non‑empty text vs empty pattern
+            for (int j = 1; j <= m; ++j) {
+                char pc = p.charAt(j - 1);
+                if (pc == '*') {
+                    curr[j] = curr[j - 1] || prev[j];
+                } else if (pc == '?' || pc == s.charAt(i - 1)) {
+                    curr[j] = prev[j - 1];
+                } else {
+                    curr[j] = false;
+                }
+            }
+            // swap references for next iteration
+            boolean[] tmp = prev;
+            prev = curr;
+            curr = tmp;
+        }
+        return prev[m];
+    }
+}
 ```
 
-*Time*: **O(n + m)**  
-*Space*: **O(1)**  
-*Good for interviews*: you can explain the reasoning in 3‑5 minutes.
+---
 
-> **Caveat** – Greedy only works for this exact wildcard grammar (`?` and `*`). For other wildcards it may fail.
+### Python (Python 3.9+)
+
+```python
+class Solution:
+    def isMatch(self, s: str, p: str) -> bool:
+        n, m = len(s), len(p)
+        prev = [False] * (m + 1)
+        curr = [False] * (m + 1)
+        prev[0] = True
+
+        # init for empty string s
+        for j in range(1, m + 1):
+            if p[j - 1] == '*':
+                prev[j] = prev[j - 1]
+            else:
+                break
+
+        for i in range(1, n + 1):
+            curr[0] = False
+            for j in range(1, m + 1):
+                pc = p[j - 1]
+                if pc == '*':
+                    curr[j] = curr[j - 1] or prev[j]
+                elif pc == '?' or pc == s[i - 1]:
+                    curr[j] = prev[j - 1]
+                else:
+                    curr[j] = False
+            prev, curr = curr, prev        # reuse the arrays
+
+        return prev[m]
+```
 
 ---
 
-### 4.  Trade‑offs – Good, Bad, Ugly
+## 4. What’s “Good”, “Bad” & “Ugly” about the DP?
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Readability** | Recursive memoization is simplest | DP table can be huge | Greedy needs careful pointer juggling |
-| **Performance** | Greedy is linear | DP uses O(n m) memory (≈ 4 MB) | Exponential recursion can stack‑overflow |
-| **Edge‑cases** | All `*` in pattern → matches empty string | Need to handle empty strings separately | Off‑by‑one bugs are common in manual DP |
-| **Interview perception** | DP shows understanding of string DP | Greedy demonstrates algorithmic creativity | Recursive can be seen as “lazy” and not optimal |
+| Style | What’s Good | What’s Bad | Where it gets Ugly |
+|-------|-------------|------------|--------------------|
+| **Recursive** | *Clear, almost a straight translation of the problem*. | Exponential time, stack overflow for 2000‑character strings. | “It works on paper” but dies on real data. |
+| **Memoized Recursion** | Avoids recomputation, still simple. | Recursion overhead, still harder to understand for newcomers. | The recursion stack can blow up for deeply nested patterns. |
+| **Bottom‑Up DP** | **Deterministic, predictable** – no recursion, all indices are explicit. | 4 million booleans ≈ 4 MB – fine but not optimal. | Easy to debug but the 2‑D array is a bit heavy for tight‑memory interviews. |
+| **Space‑Optimised DP** | **Lean** – only two rows of `bool` (≈ 2000 bits). | Still O(n*m) time, but the constant factor is lower. | Some people argue it “obscures” the logic a bit; but the code is short and very fast. |
 
-> **Key Takeaway** – *Always start with the simplest working solution (recursive), then “upgrade” it to a production‑ready DP. In interviews, the upgrade step (adding memoization or tabulation) demonstrates problem‑solving skills.*
-
----
-
-### 5.  Interview‑Ready Checklist
-
-1. **Clarify “entire match”** – pattern must cover *all* of `s`.
-2. **Explain wildcard semantics** – write them out explicitly.
-3. **Ask about time/space constraints** – confirm 2000×2000 fits in memory.
-4. **Show the DP recurrence** – draw the `dp[i][j]` grid.
-5. **Write code in the interview language** – use Java/Python/C++ as requested.
-6. **Mention the greedy trick** – sometimes interviewers want you to think outside DP.
-7. **Walk through a non‑trivial example** – e.g., `s="abbcd", p="*b?d"` to demonstrate state transitions.
-8. **Ask clarifying questions** – e.g., “What about patterns with multiple consecutive `*`?” – to show deep understanding.
-9. **Discuss edge cases** – empty strings, all `*`, or pattern starts with `*`.
-10. **Time‑space complexity** – always state them and compare.
+> **Bottom‑Line:**  
+> If you’re prepping for an interview, the *Space‑Optimised DP* is the sweet spot – it runs in the worst‑case limits of LeetCode 44, uses a tiny amount of memory, and is straightforward to write and test.
 
 ---
 
-### 6.  Final Thoughts
+## 5. Bonus – A Greedy “One‑Pass” Alternative
 
-Wildcard Matching is one of those “Hard” problems that **shifts from brute force to elegant DP**. Mastering it gives you:
+It turns out there is a linear‑time, constant‑space solution that is **not** dynamic programming:
 
-- A solid understanding of **string DP** that applies to many LeetCode problems (e.g., “Regular Expression Matching”, “Decode Ways”).
-- A ready‑to‑use **space‑optimized DP** template you can drop into any interview.
-- The ability to pitch a **greedy solution** when you need to impress.
+1. Keep two pointers: `i` for the text, `j` for the pattern.  
+2. When you hit a `*`, remember its position (`starIdx`) and the position in `s` (`sTmpIdx`).  
+3. If a mismatch occurs and you previously saw a `*`, rewind `j` to the character after the last `*` and increment `sTmpIdx`.  
+4. If you hit the end of the pattern and `*` was not seen, return `false`.
 
-Add the reference implementations to your portfolio, write a quick blog post or a short video explaining the algorithm, and you'll be well‑positioned to score high on both technical screens and coding tests.
+This greedy method is concise, runs in `O(n+m)`, and uses `O(1)` memory.  
+However, many people overlook it, and the DP solutions are often the “canonical” LeetCode answer.  
 
-Good luck with your coding journey and the next interview!
-
----
-
-## 7.  Bibliography & Further Reading
-
-- **LeetCode Problem 44** – [Wildcard Matching](https://leetcode.com/problems/wildcard-matching/)
-- **Cracking the Coding Interview – String DP** – Chapters on “Dynamic Programming” and “Regular Expressions”.
-- **GeeksforGeeks – Wildcard Matching** – provides the greedy walkthrough.
+> **Use‑Case:** When you’re in a hurry or when the pattern is *known* to have at most a handful of wildcards.  
 
 ---
 
-**Meta‑note** – If you’re preparing a video or blog post, embed the code snippets with syntax highlighting. Recruiters love seeing a clean, well‑commented solution.  
+## 6. Summary & Take‑Home Points
 
-Happy coding! 🚀
+| Question | Answer |
+|----------|--------|
+| **What is the fastest DP?** | Space‑Optimised DP – `O(n*m)` time, `O(p.length)` memory. |
+| **Is the greedy solution viable?** | Yes – `O(n+m)` time, `O(1)` memory, but can be subtle. |
+| **Why do interviewers prefer DP?** | It demonstrates understanding of state‑transitions and careful handling of edge‑cases. |
+| **What’s the simplest to understand?** | Bottom‑Up DP – no recursion, explicit table. |
+
+When you’re coding on LeetCode, remember:
+
+- Initialise the “empty text” row properly.  
+- Use `0‑based` indices throughout.  
+- Always check the boundary conditions (`'*'` chain at the start).  
+
+Happy coding, and good luck cracking LeetCode 44!
+
+---
+
+## 7. Appendix – Unused DP Variants (for reference)
+
+> In the “Appendix” below, we provide the other DP variants that you can drop in to experiment.  
+> They are **fully working** but are not the chosen final answer in the main section.
+
+> **C++ – Full 2‑D DP**  
+> **Java – Full 2‑D DP**  
+> **Python – Full 2‑D DP**  
+> (All three use a 2‑D `vector<vector<bool>>` / `boolean[][]` / `List[List[bool]]` respectively.)
+
+Feel free to copy, paste, or even create a `main` to test them.  
+They’re great for visualising the DP process.
+
+---
+
+## 7. Appendix – Full 2‑D DP for Learning Purposes
+
+> **C++**
+
+```cpp
+vector<vector<bool>> dp(n+1, vector<bool>(m+1, false));
+dp[0][0] = true;
+for (int j = 1; j <= m; ++j)
+    dp[0][j] = dp[0][j-1] && p[j-1] == '*';
+
+for (int i = 1; i <= n; ++i)
+    for (int j = 1; j <= m; ++j) {
+        if (p[j-1] == '*')
+            dp[i][j] = dp[i][j-1] || dp[i-1][j];
+        else if (p[j-1] == '?' || p[j-1] == s[i-1])
+            dp[i][j] = dp[i-1][j-1];
+        else
+            dp[i][j] = false;
+    }
+return dp[n][m];
+```
+
+> **Java**
+
+```java
+boolean[][] dp = new boolean[n+1][m+1];
+dp[0][0] = true;
+for (int j = 1; j <= m; ++j)
+    dp[0][j] = dp[0][j-1] && p.charAt(j-1) == '*';
+
+for (int i = 1; i <= n; ++i) {
+    for (int j = 1; j <= m; ++j) {
+        char pc = p.charAt(j-1);
+        if (pc == '*')
+            dp[i][j] = dp[i][j-1] || dp[i-1][j];
+        else if (pc == '?' || pc == s.charAt(i-1))
+            dp[i][j] = dp[i-1][j-1];
+        else
+            dp[i][j] = false;
+    }
+}
+return dp[n][m];
+```
+
+> **Python**
+
+```python
+dp = [[False]*(m+1) for _ in range(n+1)]
+dp[0][0] = True
+for j in range(1, m+1):
+    dp[0][j] = dp[0][j-1] and p[j-1] == '*'
+
+for i in range(1, n+1):
+    for j in range(1, m+1):
+        pc = p[j-1]
+        if pc == '*':
+            dp[i][j] = dp[i][j-1] or dp[i-1][j]
+        elif pc == '?' or pc == s[i-1]:
+            dp[i][j] = dp[i-1][j-1]
+        else:
+            dp[i][j] = False
+return dp[n][m]
+```
+
+---
+
+### Final Words
+
+> **If you’re reading this for interview preparation**, run the space‑optimised solution, add the greedy one to your “toolbox”, and memorize the transition rules.  
+> **If you’re coding for a competition** or a production system that uses pattern matching, the greedy method is a great choice – it’s literally “O(1)” in memory and “O(n+m)” in time.
+
+Good luck, and may your `*` always be greedy enough!
 
 --- 
 
-**SEO Keywords**: LeetCode 44 Wildcard Matching, Java DP solution, Python wildcard regex, C++ 1D array DP, greedy algorithm for wildcard, interview tips, string dynamic programming, time complexity, space optimization. 
-
---- 
-
-*(End of reference guide – feel free to adapt or extend with unit tests or JUnit in Java.)*
+*This article blends theoretical explanation, concrete code, and interview‑style insights to help you master LeetCode 44 – Wildcard Matching.*

@@ -7,304 +7,160 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Problem Overview  
-
-**LeetCode 3009 – Maximum Number of Intersections on the Chart**  
-
-> We have a line chart consisting of `n` points  
->   `(k, y[k])`  (1‑indexed).  
-> No two consecutive points share the same y‑coordinate.  
->  
-> We may draw a horizontal line `y = h`.  
-> How many points of intersection can that line have with the chart?  
-> Return the **maximum** possible number of intersections.
-
-Typical constraints  
-
-```
-2 ≤ n ≤ 1e5
-1 ≤ y[i] ≤ 1e9
-y[i] ≠ y[i+1]   for all i
-```
-
-The function signature in the three languages below is
-
-```java
-int maxIntersectionCount(int[] y)
-```
-```python
-def maxIntersectionCount(self, y: List[int]) -> int
-```
-```cpp
-int maxIntersectionCount(vector<int>& y);
-```
+        # 🚀 3009 – Maximum Number of Intersections on the Chart  
+> **A deep dive into the hard LeetCode challenge with Java, Python & C++ solutions, a “good‑bad‑ugly” analysis, and an SEO‑optimized blog post that will get you noticed by hiring managers.**
 
 ---
 
-## 2.  Naïve Approach – why it fails  
+## 1.  Problem Recap
 
-The obvious brute‑force idea:
+You’re given a 1‑indexed array `y` (`y[1] … y[n]`).  
+The `k`‑th point of a line chart is `(k, y[k])` and consecutive points are **never** on the same horizontal line (`y[i] ≠ y[i+1]`).
 
-1.  For every pair of consecutive points `(i,i+1)`  
-    *if* `y[i] < y[i+1]`  
-    iterate through every integer `h` from `y[i]+1` to `y[i+1]-1` and
-    increment a counter for that `h`.  
-    Do the same when `y[i] > y[i+1]`.  
-2.  Also count the endpoints `y[i]` themselves.  
-3.  Take the maximum counter.
-
-Complexities  
-- **Time** – O(n · m) where *m* is the span of the y‑axis (up to `1e9`!),  
-- **Space** – O(m) for the counter array.
-
-Obviously this is impossible for the given limits.
+> **Task** – Draw a single horizontal line anywhere.  
+> Find the **maximum number of intersection points** between that line and the chart.
 
 ---
 
-## 3.  Insight –  The function is piece‑wise constant  
+## 2.  Intuition
 
-For any real number `h`, the number of intersections of `y = h` with the chart
-is:
+For a particular height `H`:
+
+1. **Vertices** – Every point `y[k] == H` is an intersection.
+2. **Crossings** – Every segment that *strictly* crosses `H` (its two endpoints lie on opposite sides of `H`) is also an intersection.
+
+So, for each distinct y‑value `H`, the answer is
 
 ```
-(# of indices i with y[i] == h)            // endpoints
-+ (# of segments (i,i+1) with min < h < max) // crossing the segment
+count_of_points_equal_to_H  +  count_of_segments_crossing_H
 ```
 
-The only moments when this count can change are when `h`
-equals one of the endpoints.  
-Between two consecutive distinct y‑values the count stays **exactly the same**.
-Therefore the maximum will be achieved at either
-
-* an integer height that appears in `y`, or  
-* any real number strictly between two consecutive distinct values of `y`.
-
-So we only need to know, for each *integer* height that matters,  
-how many segments cross it.
+The challenge is to compute the second term for *all* distinct heights in **O(n log n)** time.
 
 ---
 
-## 4.  Sweep‑Line + Difference Map  
+## 3.  Optimal Approach – Sweep Line + Difference Array
 
-**Step 1 – Count endpoints**  
-```
-freq[h]  = number of indices i with y[i] == h
-```
+1. **Collect & sort all distinct y‑values** → array `vals[0…m-1]`.
+2. **Count vertices** – frequency map `freq[H]`.
+3. **Process every segment (y[i], y[i+1])**  
+   * Let `low  = min(y[i], y[i+1])`, `high = max(y[i], y[i+1])`.
+   * All heights strictly between `low` and `high` receive **+1** crossing.
+   * Using a difference array `diff[0…m]` we can mark the range in O(1):
+     ```
+     diff[index(low)+1] += 1
+     diff[index(high)]   -= 1
+     ```
+4. **Prefix sum over `diff`** → `cross[i]` = number of crossings for `vals[i]`.
+5. **Answer** – maximum over all `i` of `freq[i] + cross[i]`.
 
-**Step 2 – Mark segments that cross an integer height**  
-For every consecutive pair `(i,i+1)`  
-let `low  = min(y[i], y[i+1])`  
-`high = max(y[i], y[i+1])`  
+Why it works  
+*Every segment that has its two endpoints on different sides of `H` adds exactly one to all heights inside `(low, high)`. The difference array trick guarantees that we add +1 to the correct range without touching the endpoints themselves.*
 
-If `low + 1 <= high - 1` then every integer `h` in
-`[low+1 , high-1]` is strictly between the two endpoints.
-Using a *difference map* we can add `+1` for that whole interval:
+### Complexity  
 
-```
-diff[low+1]   += 1          // start adding from low+1
-diff[high]    -= 1          // stop adding before high
-```
+*Sorting distinct heights* – `O(m log m)` ( `m ≤ n` )  
+*Processing segments* – `O(n)`  
+*Prefix sum* – `O(m)`  
 
-If `low+1 == high` the interval is empty – no integer height exists between
-the two endpoints and we skip it.
-
-**Step 2 – Prefix sum over all relevant heights**  
-All heights that ever appear in the map (`low+1`, `high`, or an endpoint)
-are sorted (a `TreeMap` / `std::map` / Python `sorted(dict)` does that for
-free).  
-We sweep in ascending order, keeping a running prefix sum `cur`:
-
-```
-cur += diff[height]          // how many segments currently cross this height
-answer = max(answer, cur + freq.get(height,0))
-```
-
-That gives us the number of intersections at that particular height.
-The maximum over the sweep is the answer.
+Overall **O(n log n)** time, **O(n)** auxiliary memory.
 
 ---
 
-## 5.  Correctness Proof  
+## 4.  Code
 
-We prove that the algorithm returns the maximum possible number of
-intersections.
+Below are clean, fully‑commented implementations in **Java, Python, and C++**.  
+All three follow the same algorithm.
 
----
-
-### Lemma 1  
-For every integer height `h` that occurs in the array `y`,
-the algorithm counts exactly the number of segments `(i,i+1)` with  
-`min(y[i],y[i+1]) < h < max(y[i],y[i+1])`.
-
-**Proof.**
-
-During Step 1 we processed each segment once.  
-For a segment with low `l` and high `r` (`l < r`) we performed
-
-```
-diff[l+1] += 1
-diff[r]   -= 1
-```
-
-If `h` lies strictly between `l` and `r`, i.e. `l+1 ≤ h ≤ r-1`, then  
-`h` lies in the *prefix* range where `cur` has already been increased by 1.
-If `h` is outside that range, the two delta updates cancel each other out.
-Thus `cur` contains the exact count of segments crossing `h`. ∎
-
-
-
-### Lemma 2  
-For any real number `h` not equal to an endpoint,  
-the intersection count equals the count of a neighbouring integer height
-(e.g. `floor(h)` or `ceil(h)`).
-
-**Proof.**
-
-Let `v` and `w` be the two consecutive distinct values of `y` such that
-`v < h < w`.  
-No endpoint lies between `v` and `w`.  
-Therefore `freq[h] = 0` and the set of crossing segments is the same for **every**
-height in the open interval `(v,w)`.  
-Taking `h` as any integer inside that interval (if one exists) or
-as `v+ε` for infinitesimal `ε` gives the same number of intersections. ∎
-
-
-
-### Lemma 3  
-The algorithm’s `answer` is the maximum over all real heights.
-
-**Proof.**
-
-The algorithm evaluates the intersection count at each height that
-can possibly change the count: all endpoint heights, and all
-integer boundaries that start or end an “in‑between” interval
-(`low+1` and `high`).  
-By Lemma&nbsp;2 any real height that is not an endpoint has the same
-intersection count as one of the evaluated integer heights.
-Thus the maximum intersection count over all real heights is attained
-by one of the heights examined by the algorithm, so the algorithm’s
-maximum is the global maximum. ∎
-
-
-
-### Theorem  
-`maxIntersectionCount` returned by the algorithm equals the maximum
-possible number of intersections of a horizontal line with the chart.
-
-**Proof.**
-
-By Lemma&nbsp;1 the algorithm counts correctly the number of segments crossing
-each evaluated height.  
-By construction it also adds the number of endpoints at that height.
-Therefore for every height examined the algorithm computes the true
-intersection count.  
-By Lemma&nbsp;3 the maximum of these counts is the global optimum. ∎
-
-
-
----
-
-## 5.  Implementation – Java / Python / C++
-
-Below you will find **fully‑commented** source code in the three
-languages requested.  
-All use *O(n log n)* time and *O(n)* space.
-
-> **Note** – All three codes are ready to paste into the LeetCode editor
-> (just drop them into the `Solution` class).
-
-### 5.1  Java (Java 17)
+### 4.1 Java (O(n log n))
 
 ```java
 import java.util.*;
 
 public class Solution {
     public int maxIntersectionCount(int[] y) {
-        // 1) frequency of every endpoint
-        Map<Integer, Integer> freq = new HashMap<>();
-        for (int v : y) {
-            freq.put(v, freq.getOrDefault(v, 0) + 1);
+        int n = y.length;
+        // 1. Collect distinct values & frequency
+        TreeMap<Integer, Integer> freqMap = new TreeMap<>();
+        for (int val : y) {
+            freqMap.put(val, freqMap.getOrDefault(val, 0) + 1);
         }
 
-        // 2) difference map for "crossing" intervals
-        TreeMap<Integer, Integer> diff = new TreeMap<>();
-        for (int i = 0; i + 1 < y.length; i++) {
+        // Convert to list/array for index lookup
+        int m = freqMap.size();
+        Integer[] vals = freqMap.keySet().toArray(new Integer[0]);
+
+        // 2. Diff array for crossings
+        int[] diff = new int[m + 1];          // one extra slot for easy suffix
+        for (int i = 0; i < n - 1; i++) {
             int low  = Math.min(y[i], y[i + 1]);
             int high = Math.max(y[i], y[i + 1]);
 
-            // there must be an integer strictly between low and high
-            if (low + 1 <= high - 1) {
-                diff.merge(low + 1, 1, Integer::sum);
-                diff.merge(high, -1, Integer::sum);
-            }
+            // indices of low and high in sorted vals
+            int il = Arrays.binarySearch(vals, low);
+            int ir = Arrays.binarySearch(vals, high);
+
+            // Add +1 to all heights strictly between low and high
+            diff[il + 1] += 1;
+            diff[ir]     -= 1;
         }
 
-        // 3) sweep in ascending order, keep running sum of diff
-        int cur = 0;
-        int best = 0;
-        for (Map.Entry<Integer, Integer> e : diff.entrySet()) {
-            int height = e.getKey();
-            cur += e.getValue();                      // #segments crossing this height
-            int intersections = cur + freq.getOrDefault(height, 0);
-            best = Math.max(best, intersections);
+        // 3. Prefix sum to get crossings per height
+        int[] cross = new int[m];
+        int running = 0;
+        for (int i = 0; i < m; i++) {
+            running += diff[i];
+            cross[i] = running;
         }
 
-        // Also consider heights that appear only as endpoints
-        // (they may not be present in the diff map)
-        for (Map.Entry<Integer, Integer> e : freq.entrySet()) {
-            int height = e.getKey();
-            int intersections = e.getValue();         // segments crossing = 0
-            best = Math.max(best, intersections);
+        // 4. Find maximum intersections
+        int answer = 0;
+        for (int i = 0; i < m; i++) {
+            int intersections = freqMap.get(vals[i]) + cross[i];
+            answer = Math.max(answer, intersections);
         }
-
-        return best;
+        return answer;
     }
 }
 ```
 
----
-
-### 5.2  Python (Python 3.10)
+### 4.2 Python (O(n log n))
 
 ```python
-from collections import defaultdict
+from bisect import bisect_left
+from collections import Counter
 from typing import List
 
 class Solution:
     def maxIntersectionCount(self, y: List[int]) -> int:
-        # 1) endpoint frequencies
-        freq = defaultdict(int)
-        for v in y:
-            freq[v] += 1
+        n = len(y)
+        # 1. frequency map
+        freq = Counter(y)
+        # sorted unique heights
+        vals = sorted(freq)
+        m = len(vals)
+        # 2. diff array
+        diff = [0] * (m + 1)
 
-        # 2) difference map
-        diff = defaultdict(int)
-        for a, b in zip(y, y[1:]):
-            low, high = (a, b) if a < b else (b, a)
-            if low + 1 <= high - 1:
-                diff[low + 1] += 1
-                diff[high]   -= 1
+        for i in range(n - 1):
+            low, high = (y[i], y[i + 1]) if y[i] < y[i + 1] else (y[i + 1], y[i])
+            il = bisect_left(vals, low)
+            ir = bisect_left(vals, high)
+            diff[il + 1] += 1
+            diff[ir] -= 1
 
-        # 3) sweep in sorted order
-        cur = 0
-        best = 0
-        for height in sorted(diff):
-            cur += diff[height]
-            intersections = cur + freq.get(height, 0)
-            if intersections > best:
-                best = intersections
+        # 3. prefix sum for crossings
+        cross = [0] * m
+        running = 0
+        for i in range(m):
+            running += diff[i]
+            cross[i] = running
 
-        # 4) heights that appear only as endpoints
-        for height, count in freq.items():
-            if count > best:
-                best = count
-
-        return best
+        # 4. maximum intersections
+        return max(freq[h] + cross[i] for i, h in enumerate(vals))
 ```
 
----
-
-### 5.3  C++ (GNU‑C++17)
+### 4.3 C++ (O(n log n))
 
 ```cpp
 #include <bits/stdc++.h>
@@ -313,110 +169,172 @@ using namespace std;
 class Solution {
 public:
     int maxIntersectionCount(vector<int>& y) {
-        // 1) count endpoints
+        int n = y.size();
+        // frequency of each height
         unordered_map<int, int> freq;
         for (int v : y) freq[v]++;
 
-        // 2) difference map (sorted)
-        map<int, int> diff;
-        for (size_t i = 0; i + 1 < y.size(); ++i) {
+        // sorted distinct heights
+        vector<int> vals;
+        for (auto &p : freq) vals.push_back(p.first);
+        sort(vals.begin(), vals.end());
+        int m = vals.size();
+
+        vector<int> diff(m + 1, 0);
+
+        for (int i = 0; i < n - 1; ++i) {
             int low  = min(y[i], y[i + 1]);
             int high = max(y[i], y[i + 1]);
-            if (low + 1 <= high - 1) {
-                diff[low + 1] += 1;
-                diff[high]   -= 1;
-            }
+
+            int il = lower_bound(vals.begin(), vals.end(), low) - vals.begin();
+            int ir = lower_bound(vals.begin(), vals.end(), high) - vals.begin();
+
+            diff[il + 1] += 1;
+            diff[ir]     -= 1;
         }
 
-        // 3) sweep
-        int cur = 0;
-        int best = 0;
-        for (auto [height, delta] : diff) {
-            cur += delta;
-            int intersections = cur + freq[height];
-            best = max(best, intersections);
+        // prefix sum to get crossings
+        vector<int> cross(m, 0);
+        int running = 0;
+        for (int i = 0; i < m; ++i) {
+            running += diff[i];
+            cross[i] = running;
         }
 
-        // 4) heights that exist only as endpoints
-        for (auto [height, cnt] : freq) {
-            best = max(best, cnt);
+        int answer = 0;
+        for (int i = 0; i < m; ++i) {
+            answer = max(answer, freq[vals[i]] + cross[i]);
         }
-
-        return best;
+        return answer;
     }
 };
 ```
 
 ---
 
-## 6.  Complexity Analysis  
+## 5.  “Good – Bad – Ugly” Analysis
 
-| Step | Time | Space |
-|------|------|-------|
-| Endpoint frequency | `O(n)` | `O(k)` where `k` is number of distinct y‑values (≤ n) |
-| Difference map | `O(n log k)` | `O(k)` |
-| Sweep & max | `O(k log k)` | `O(1)` extra |
-| **Total** | `O(n log n)` | `O(n)` |
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Time Complexity** | O(n log n) – optimal for this problem | O(n²) brute‑force would time‑out | None |
+| **Space Complexity** | O(n) auxiliary (maps, diff array) | O(1) *in‑place* attempts ignore crossings | Unnecessary duplication of data |
+| **Clarity** | Clear separation of frequency & crossings | Complex sweep line implementations (e.g., priority queues) | Using floating‑point midpoints (e.g., 1.5) leads to precision bugs |
+| **Maintainability** | Small, well‑documented functions | Deep nested loops with side‑effects | Mixing data structures with index logic (mixing lists, dicts, and arrays) |
+| **Robustness** | Handles all integer heights, no float math | Over‑using `binarySearch` inside a tight loop without caching indices | Mutable global state, static variables – race conditions |
 
-The algorithm comfortably fits within LeetCode’s limits even for the
-maximum test sizes.
+### What to Avoid (the “Ugly” part)
 
----
-
-## 7.  Edge Cases & Test Coverage  
-
-| Test | Description | Expected Output |
-|------|-------------|-----------------|
-| `y = [1]` | Single point | `1` |
-| `y = [1, 2]` | Two points with one integer between | `1` |
-| `y = [1, 1, 1]` | All equal | `3` |
-| `y = [1, 3, 2, 5]` | Mixed highs/lows | `2` |
-| `y = [1, 1000000000]` | Large gap | `1` |
-
-The provided solutions handle all of the above and more.
+1. **Floating‑point hacks** – LeetCode tests are all integers. If you try to evaluate “height = 1.5” you’ll get rounding errors for very large numbers.
+2. **Segment‑by‑segment priority queue** – Works, but adds `O(n log n)` *overhead* for an `O(n)` solution that we can do in O(1) per segment.
+3. **In‑place modification of the input array** – You might think it saves memory, but you lose the original frequency map.
 
 ---
 
-## 7.  Real‑world Analogy  
+## 6.  SEO‑Optimized Blog Post (Target Keywords)
 
-Imagine a **river** with banks at heights `y[i]`.  
-A **ferry** (the horizontal line) can cross the river at any water level.
-The algorithm figures out:
-
-1. **How many ferries are standing on a bank** (endpoints).
-2. **How many segments of the river are wide enough** for the ferry to cross
-   at a given level (difference map).
-3. **Which level gives the maximum number of ferries**.
-
-It does so by cleverly marking intervals instead of checking every
-possible level individually, much like a **difference array** that keeps
-track of changes at start and end points.
+> *3009 LeetCode, Maximum Number of Intersections on the Chart, Java O(n log n), Python solution, C++ solution, hard LeetCode problem, algorithm interview, data structure, frequency map, difference array, sweep line, job interview preparation, coding interview, LeetCode 3009, interview algorithm, algorithmic thinking.*
 
 ---
 
-## 8.  Final Words  
+### 6.1 Title
 
-The key idea is to **compress** the problem:
-we do not need to evaluate an infinite number of real heights; only a
-finite set of integer boundaries matter.  
-The difference map turns each segment into a pair of updates, and a single
-sweep gives the final answer.
+**“3009 – Maximum Number of Intersections on the Chart – A Step‑by‑Step O(n log n) Solution in Java, Python & C++”**
 
-Feel free to copy, run, and test the snippets.  
-Happy coding, and good luck on LeetCode! 🚀
+---
 
----  
+### 6.2 Meta Description
 
-### 📌 Keywords for Search / Tags  
-- `intersections of horizontal line`
-- `difference array`
-- `prefix sum`
-- `tree map`
-- `interval crossing`
-- `segment crossing`
-- `maximum intersections`
-- `O(n log n) algorithm`
+> Learn the **hardest** LeetCode problem (3009) with an **O(n log n)** solution.  
+> Get Java, Python, and C++ code, performance analysis, pitfalls to avoid, and interview‑ready explanations.  
 
----  
+---
 
-Enjoy solving!
+### 6.3 Full Post
+
+```markdown
+# 3009 – Maximum Number of Intersections on the Chart  
+**Hard LeetCode Problem | Java O(n log n) | Python | C++ | Interview Strategy**
+
+## Problem Overview
+LeetCode 3009 asks you to draw a single horizontal line on a chart defined by a 1‑indexed array `y`.  
+The goal is to maximize the number of intersection points between that line and the chart.
+
+### Key Insight
+For a height `H`:
+- Every point `y[i] == H` is an intersection.
+- Every segment that straddles `H` (its endpoints are on opposite sides) adds one more intersection.
+
+So we need **vertex counts** *plus* **crossing counts** for every distinct height.
+
+### Optimal O(n log n) Approach
+1. **Collect all distinct heights** → `vals[0…m-1]`.  
+2. **Count vertices** with a frequency map.  
+3. **Sweep every segment** `(y[i], y[i+1])` and use a **difference array** to increment all heights strictly inside `(low, high)` in O(1).  
+4. **Prefix sum** gives the crossing count for each height.  
+5. The answer is `max(freq[H] + cross[H])`.
+
+> **Why is this optimal?**  
+> Any other solution (e.g., priority queue based sweep line) ends up with the same asymptotic complexity but adds constant factors. This difference‑array trick reduces per‑segment work to *constant* time.
+
+### Complexity
+- **Time**: `O(n log n)` (sorting distinct heights)  
+- **Space**: `O(n)` (frequency map + diff array)
+
+### Java Implementation
+```java
+public int maxIntersectionCount(int[] y) {
+    // ... (code from section 4.1)
+}
+```
+
+### Python Implementation
+```python
+class Solution:
+    def maxIntersectionCount(self, y: List[int]) -> int:
+        # ... (code from section 4.2)
+```
+
+### C++ Implementation
+```cpp
+class Solution {
+public:
+    int maxIntersectionCount(vector<int>& y) {
+        // ... (code from section 4.3)
+    }
+};
+```
+
+### “Good – Bad – Ugly”
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Complexity** | O(n log n) – optimal | O(n²) brute‑force times out | No performance gains |
+| **Clarity** | Clean frequency + crossings separation | Nested loops + priority queue complicate reasoning | Using floating‑point midpoints leads to precision bugs |
+| **Maintainability** | Small, well‑commented | Deep stateful sweeps | Duplicate data, over‑engineering |
+
+### Takeaway for Interviewers
+- **Explain the intuition** first (vertices + crossings).  
+- **Show the difference‑array trick** – it’s the *aha* moment many candidates miss.  
+- **Discuss edge cases** – crossing *strictly* inside a segment, not on the endpoints.  
+
+### TL;DR
+*3009 is a perfect showcase of algorithmic thinking:  
+- A clear mathematical decomposition,  
+- A sweep‑line implementation that’s both fast and easy to reason about,  
+- And clean code that a hiring manager can read and review in minutes.*
+
+---
+
+## 6.4 Call to Action
+
+> **Want to impress recruiters?**  
+> Post this solution on your portfolio, write a blog (like this one), or add it to your GitHub readme.  
+> Include the tags `#LeetCode #3009 #AlgorithmInterview #Java #Python #C++` and watch recruiters start pinging you!
+
+--- 
+
+## 6.5  Final Thoughts
+
+*LeetCode 3009 is not just a hard problem – it’s a showcase problem.  
+A concise, optimal solution demonstrates mastery of data structures (maps, binary search), algorithmic techniques (sweep line, difference array), and the ability to write production‑ready code.  
+
+With the code above and a well‑structured blog post, you’ll stand out as a candidate who can solve hard problems *efficiently* and *elegantly*. Happy coding, and good luck on your next interview!*

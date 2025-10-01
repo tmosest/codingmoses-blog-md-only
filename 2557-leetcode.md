@@ -7,122 +7,94 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 2557. Maximum Number of Integers to Choose From a Range II  
-### Interview‑ready Solution (Java / Python / C++)  
-### Blog post – “The Good, the Bad, and the Ugly of Solving LeetCode 2557”
+        ## 2557. Maximum Number of Integers to Choose From a Range II  
+
+> **Goal** – choose the largest possible set of distinct numbers from  
+> `[1 … n]` that are *not* in the `banned` list and whose sum does not exceed `maxSum`.
+
+Below you’ll find ready‑to‑copy implementations in **Java**, **Python 3**, and **C++**.  
+After the code you’ll read a short blog article that explains the trade‑offs of the two common solutions (binary‑search vs greedy), gives practical tips for interviews, and is SEO‑optimized so recruiters can find it quickly.
 
 ---
 
-### Problem Recap
-
-You’re given:
-
-| Input | Meaning |
-|-------|---------|
-| `banned` | array of distinct integers that cannot be chosen |
-| `n` | the upper bound of the range `[1, n]` |
-| `maxSum` | the maximum sum you may reach |
-
-Choose as many distinct integers as possible from `[1, n] \ banned` such that the sum of the chosen integers does not exceed `maxSum`.
-
-Return that maximum number of integers.
-
-
-
----
-
-## 1.  What makes this problem interesting?
-
-| Good | Bad | Ugly |
-|------|-----|------|
-| *Huge input range*: `n` can be as large as 10<sup>9</sup>. Brute‑force enumeration is impossible. | *Large sum*: `maxSum` can be 10<sup>15</sup>, so we must use 64‑bit integers (`long` / `long long`). | *Banned list size*: up to 10<sup>5</sup>, so iterating over it for each candidate would kill performance if not done carefully. |
-
-The challenge is to decide which integers to pick *without* iterating over all numbers up to `n`.
-
----
-
-## 2.  Core Idea – Binary Search on the Count
-
-Let `k` be the number of integers we *would* pick if there were **no** banned numbers.  
-If we pick the smallest `k` numbers (i.e., `1, 2, …, k`) the sum is
-
-```
-S(k) = k * (k + 1) / 2
-```
-
-If `S(k) > maxSum`, we cannot pick `k` numbers.  
-If `S(k) ≤ maxSum`, we can pick `k` numbers *and* we may be able to pick a few more.
-
-Because `S(k)` grows monotonically with `k`, we can binary search the largest `k`
-with `S(k) ≤ maxSum`.  
-That takes `O(log n)` time.
-
-**What about banned numbers?**  
-After finding the candidate `k`, we just subtract from `S(k)` every banned number
-that is ≤ `k`.  
-If the resulting sum still stays within `maxSum`, the answer is `k` minus the
-count of banned numbers ≤ `k`.  
-If the sum becomes too large, the binary search will shrink `k` appropriately.
-
-This approach runs in `O(log n + m)` time where `m = banned.length` (each banned
-number is inspected only once during the binary search).  
-Space usage is `O(1)` (or `O(m)` if we want to keep a hash‑set for faster look‑ups,
-but it’s not necessary).
-
----
-
-## 3.  Full Code (Java / Python / C++)
-
-### 3.1 Java
+## 1. Java Solution – Binary Search
 
 ```java
 import java.util.*;
 
 class Solution {
     public int maxCount(int[] banned, int n, long maxSum) {
-        // Binary search over the number of chosen integers
-        int lo = 0, hi = n;
+        // sort once to use binary‑search for sum reduction
+        Arrays.sort(banned);
+
+        int lo = 0, hi = n;          // [lo, hi] is the candidate size
         while (lo < hi) {
-            int mid = lo + (hi - lo + 1) / 2;           // upper mid
-            long total = (long)mid * (mid + 1) / 2;     // sum of 1..mid
-            for (int x : banned) {
-                if (x <= mid) total -= x;               // remove banned
+            int mid = lo + (hi - lo + 1) / 2;     // candidate number of picks
+            long sum = (long) mid * (mid + 1) / 2; // 1+2+…+mid
+
+            // subtract every banned number <= mid
+            int idx = Arrays.binarySearch(banned, mid);
+            int pos = idx >= 0 ? idx : -idx - 1;   // first > mid
+            for (int i = 0; i < pos; ++i) {
+                sum -= banned[i];
             }
-            if (total <= maxSum) lo = mid; else hi = mid - 1;
+
+            if (sum <= maxSum) lo = mid;   // mid is feasible, try larger
+            else                hi = mid - 1;
         }
 
-        // lo is the maximum k with sum <= maxSum after subtracting banned
-        int bannedCnt = 0;
-        for (int x : banned) if (x <= lo) bannedCnt++;
-        return lo - bannedCnt;
+        // remove the banned numbers that are <= lo
+        int bad = 0;
+        for (int b : banned) {
+            if (b <= lo) bad++;
+            else break;          // banned is sorted
+        }
+        return lo - bad;
     }
 }
 ```
 
-### 3.2 Python 3
+> **Complexity** – `O( |banned| log n )` time, `O(1)` extra space  
+> (`banned` is sorted in‑place). Works for `n` up to `10^9` and `maxSum` up to `10^15`.
+
+---
+
+## 2. Python 3 Solution – Binary Search
 
 ```python
+from bisect import bisect_right
+from math import sqrt, floor
 from typing import List
 
 class Solution:
     def maxCount(self, banned: List[int], n: int, maxSum: int) -> int:
+        banned.sort()                     # O(b log b)
         lo, hi = 0, n
+
         while lo < hi:
-            mid = (lo + hi + 1) // 2          # upper mid
-            total = mid * (mid + 1) // 2      # sum 1..mid
-            for x in banned:
-                if x <= mid:
-                    total -= x
+            mid = lo + (hi - lo + 1) // 2
+            total = mid * (mid + 1) // 2   # 1+2+…+mid
+
+            # all banned numbers <= mid
+            pos = bisect_right(banned, mid)
+            for i in range(pos):
+                total -= banned[i]
+
             if total <= maxSum:
                 lo = mid
             else:
                 hi = mid - 1
 
-        banned_cnt = sum(1 for x in banned if x <= lo)
-        return lo - banned_cnt
+        # subtract banned numbers <= lo
+        bad = bisect_right(banned, lo)
+        return lo - bad
 ```
 
-### 3.3 C++
+> **Complexity** – `O( |banned| log n )` time, `O(1)` extra space.
+
+---
+
+## 3. C++ Solution – Binary Search
 
 ```cpp
 #include <bits/stdc++.h>
@@ -131,111 +103,145 @@ using namespace std;
 class Solution {
 public:
     int maxCount(vector<int>& banned, int n, long long maxSum) {
+        sort(banned.begin(), banned.end());
         int lo = 0, hi = n;
+
         while (lo < hi) {
-            int mid = lo + (hi - lo + 1) / 2;           // upper mid
-            long long total = 1LL * mid * (mid + 1) / 2; // sum 1..mid
-            for (int x : banned) {
-                if (x <= mid) total -= x;               // subtract banned
-            }
-            if (total <= maxSum) lo = mid; else hi = mid - 1;
+            int mid = lo + (hi - lo + 1) / 2;
+            long long total = 1LL * mid * (mid + 1) / 2;  // 1+2+…+mid
+
+            // subtract banned numbers <= mid
+            auto it = upper_bound(banned.begin(), banned.end(), mid);
+            for (auto itr = banned.begin(); itr != it; ++itr)
+                total -= *itr;
+
+            if (total <= maxSum) lo = mid;
+            else                 hi = mid - 1;
         }
 
-        long long bannedCnt = 0;
-        for (int x : banned) if (x <= lo) ++bannedCnt;
-        return lo - (int)bannedCnt;
+        // remove banned numbers <= lo
+        int bad = upper_bound(banned.begin(), banned.end(), lo) - banned.begin();
+        return lo - bad;
     }
 };
 ```
 
-All three solutions use the *same* O(log n + m) strategy and pass the official
-LeetCode tests in a few milliseconds.
-
-
+> **Complexity** – `O( |banned| log n )` time, `O(1)` extra space.
 
 ---
 
-## 4.  Complexity Analysis
+## 4. Blog Article – “The Good, the Bad, and the Ugly of LeetCode 2557”
 
-| Approach | Time | Space |
-|----------|------|-------|
-| Binary‑search + simple subtraction | **O(log n + m)** | **O(1)** |
-| Greedy (pick intervals between banned numbers) | O(m log m) or O(m) after sorting | O(m) |
+> **Keywords**: LeetCode 2557, Maximum Number of Integers to Choose From a Range II, interview problem, binary search, greedy, algorithm design, time complexity, space complexity, job interview, software engineer.
 
-With `n ≤ 10⁹`, `log n ≈ 30`, so the binary‑search component is negligible
-compared to iterating over the banned list once.  
-The overall running time is dominated by `m` (≤ 100 000) which is fine.
+### 4.1 Problem Overview  
+LeetCode 2557 asks you to pick the most numbers from `[1…n]` subject to two constraints:  
+* the numbers must be distinct and not in `banned`,  
+* the total sum must stay ≤ `maxSum`.  
 
----
+The challenge is **scale** – `n` can be a billion, while `maxSum` can be fifteen quadrillion. You need an algorithm that works in **logarithmic time** relative to `n`, not linear.
 
-## 5.  Edge Cases & Pitfalls
+### 4.2 Constraints that Shape the Design  
+* `|banned|` ≤ 10⁵ – a relatively small array.  
+* `n` ≤ 10⁹ – you cannot build a prefix sum array of length `n`.  
+* `maxSum` ≤ 10¹⁵ – 64‑bit arithmetic is required.  
 
-| Pitfall | Fix |
-|---------|-----|
-| **Overflow** when computing `mid * (mid + 1) / 2` | Use 64‑bit (`long` in Java, `long long` in C++, or `int` * `int` cast to `long` in Java). |
-| **Empty banned array** | Works out of the box; `bannedCnt` will be 0. |
-| **All numbers banned** | The binary search still finds a `k` but the final subtraction will turn the answer into `0`. |
-| **maxSum == 0** | The binary search stops at `k = 0`, answer is 0. |
-| **Large `maxSum` that can fit all non‑banned numbers** | The algorithm correctly picks `n - m` integers. |
+These constraints push you toward **mathematical insight** (closed‑form sums) and **efficient data structures** (sorted arrays, binary search, hash sets).
 
----
+### 4.3 Approach #1 – Binary Search (Prefix‑Sum + Filtering)
 
-## 6.  Alternative Approaches
+**Good**  
+* **Deterministic** – guarantees the optimal answer in log n steps.  
+* **Mathematically clean** – uses the closed‑form sum `mid*(mid+1)/2`.  
+* **Scalable** – works for the maximum input sizes LeetCode allows.
 
-| Strategy | Pros | Cons |
-|----------|------|------|
-| **Greedy + Prefix Sums** – sort `banned` and process each interval `[prev+1, next-1]` with an arithmetic‑progression formula. | Linearithmic: `O(m log m)` for sorting, then `O(m)` for processing. | Slightly more complex arithmetic, requires handling many intervals. |
-| **Quadratic Equation** – solve `x(x+1)/2 ≤ remainingSum` for each segment. | Avoids binary search but still needs sorting. | Still requires `O(m log m)` due to sorting. |
-| **Prefix‑sum + Binary Search on Sum** – binary search on the *sum* rather than the *count*. | Intuitive for “budget” problems. | Still needs to subtract banned numbers each time, so similar complexity to the binary‑search‑on‑count. |
+**Bad**  
+* **O(|banned|)** work per binary‑search step because you need to subtract every banned value that falls inside `[1…mid]`.  
+* Implementation‑heavy: you have to handle sorting, binary search, and careful 64‑bit arithmetic.
 
-The binary‑search‑on‑count approach is the simplest to reason about and to code
-correctly, so it is the *preferred* interview solution.
+**Ugly**  
+* When `|banned|` is close to `n`, the loop that subtracts banned numbers becomes expensive.  
+* Sorting `banned` takes `O(|banned| log |banned|)` time, which can be a nuisance in a tight interview slot.
 
+> **Interview Tip** – *Explain that the “binary‑search” part really searches for the largest feasible count, not for a particular number.*  
+> *Show the interviewer the math that turns the sum of an interval into a quadratic inequality, then solve it with a square‑root trick if you need a pure‑math version.*
 
+### 4.4 Approach #2 – Greedy (Segment‑by‑Segment)
 
----
+**Good**  
+* **Linear in |banned|** – no logarithmic factor, so it runs faster on average.  
+* Very intuitive: process each forbidden “gap” separately.  
 
-## 7.  Test Cases to Verify
+**Bad**  
+* You need to **sort `banned`** anyway, so the asymptotic cost is still `O(|banned| log |banned|)` if you do not have a sorted array to begin with.  
+* Requires careful handling of edge cases: empty segments, overflow in arithmetic progression sums.
 
-| Test | banned | n | maxSum | Expected |
-|------|--------|---|--------|----------|
-| 1 | [2,4] | 5 | 6 | 2  (pick 1 & 3) |
-| 2 | [] | 5 | 15 | 5  (all numbers 1‑5) |
-| 3 | [1,2,3] | 5 | 10 | 2  (pick 4 & 5) |
-| 4 | [1,3,5,7] | 10 | 20 | 3  (pick 2,4,6) |
-| 5 | [2] | 2 | 1 | 1  (pick 1) |
-| 6 | [] | 10<sup>9</sup> | 10<sup>15</sup> | 1414213562  (largest k such that k(k+1)/2 ≤ 10^15) |
+**Ugly**  
+* The math behind the square‑root solution can be intimidating; many interviewers expect a clean, step‑by‑step explanation, not a “jump‑to‑equation” trick.  
+* You must guard against floating‑point inaccuracies when using `sqrt`. A small error can change the final count.
 
-The last case demonstrates the power of the binary search: we never touch
-individual numbers up to `10⁹`.
+#### The Greedy Core (C++‑style pseudocode)
 
----
+```text
+sort(banned)
+low = 1
+count = 0
+for every banned[i] (including a sentinel at n+1):
+    high = banned[i] (or n+1 if i == size)
+    segmentSize = high - low
+    segmentSum  = (low + high - 1) * segmentSize / 2
 
-## 8.  Take‑away Tips for Interviews
+    if segmentSum > maxSum:
+        // solve x^2 + x <= 2*maxSum + low^2 - low
+        maxLen = floor( sqrt(2*maxSum + low*low - low + 0.25) - 0.5 )
+        count += maxLen - low + 1
+        break
+    else:
+        count += segmentSize
+        maxSum -= segmentSum
+    low = high + 1
+```
 
-1. **Exploit monotonicity** – If a function is monotonic, a binary search on the
-   *value* (here, the count) is often the key.
-2. **Use 64‑bit arithmetic** – Java’s `long`, C++’s `long long`, Python’s
-   built‑in `int`.  
-   Failing to do so results in silent overflow bugs.
-3. **Iterate over banned numbers only once** – If you need to subtract banned
-   values each time you evaluate a candidate, do it inside the binary‑search loop
-   and stop as soon as the candidate `mid` is found.  
-   This keeps the solution `O(log n + m)`.
+*Time:* `O(|banned|)`  
+*Space:* `O(1)` (in‑place sort only)
 
----
+### 4.5 Edge‑Case Checklist
 
-## 9.  SEO‑Ready Summary
+| Case | What to Test | Why it matters |
+|------|---------------|----------------|
+| All numbers banned | `banned = [1,2,…,n]` | Result must be `0` |
+| No banned numbers | `banned = []` | Works with the binary‑search formula directly |
+| `maxSum` very small | e.g. `maxSum = 1` | Only the number `1` (if not banned) |
+| `maxSum` huge | e.g. `maxSum = 10^15` | You may pick every non‑banned number |
+| `n` very large, banned near `n` | `n=10^9`, banned near 10^9 | Avoid integer overflow |
 
-- **LeetCode 2557** – “Maximum Number of Integers to Choose From a Range II”  
-- **Interview‑ready algorithm** – binary search on the count, subtract banned
-  values, `O(log n + m)`  
-- **Code examples** in **Java**, **Python**, and **C++** – ready for copy‑paste.  
-- **Performance**: Works for `n ≤ 10⁹`, `maxSum ≤ 10¹⁵`, `|banned| ≤ 10⁵`.  
+### 4.6 Complexity Summary
 
-If you’re prepping for a technical interview, remember this problem: it tests
-your ability to think outside the “small input” mindset, use 64‑bit arithmetic,
-and combine a classic binary‑search trick with a small set of “forbidden”
-elements.  
+| Method | Time | Extra Space |
+|--------|------|-------------|
+| Binary Search | `O(|banned| log n)` | `O(1)` |
+| Greedy (Segment) | `O(|banned|)` | `O(1)` |
+| Sort `banned` (once) | `O(|banned| log |banned|)` | `O(1)` |
 
-Happy coding! 🚀
+### 4.7 Interview‑Ready Checklist
+
+1. **State the problem clearly** – mention the two constraints (`banned` and `maxSum`).  
+2. **Discuss the dominant challenge** – the huge range `[1…n]`.  
+3. **Offer two approaches** – binary‑search (optimal in worst‑case) and greedy (fast in practice).  
+4. **Explain edge‑case handling** – sorted `banned`, binary‑search bounds, 64‑bit sums.  
+5. **Show the code** in the language the interviewer prefers.  
+6. **Be ready to justify your choice** – if time is tight, use greedy; if accuracy matters, binary‑search.
+
+### 4.8 SEO‑Friendly Meta Description
+
+> “Learn how to crack LeetCode 2557 – Maximum Number of Integers to Choose From a Range II.  
+> Detailed binary‑search and greedy solutions in Java, Python 3, and C++.  
+> Interview tips, complexity analysis, and edge‑case handling – perfect for software‑engineering job interviews.”
+
+### 4.9 Final Thoughts
+
+LeetCode 2557 is a classic *interval‑sum* problem where a naïve approach would be `O(n)` and thus impossible for the given constraints.  
+By either **binary‑searching the answer** or **processing the allowed intervals greedily**, you can solve it comfortably within the limits.  
+
+Bring both solutions to your interview and be ready to discuss the trade‑offs.  
+Happy coding, and good luck landing that software‑engineering role!

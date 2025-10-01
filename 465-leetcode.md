@@ -7,252 +7,311 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  Code Solutions
+        # 465. Optimal Account Balancing – A Complete Guide  
+*(Java / Python / C++ solutions + a job‑interview‑ready blog post)*  
 
-Below you’ll find **ready‑to‑run** implementations for the LeetCode Hard problem *Optimal Account Balancing* (problem 465) in **Java 17**, **Python 3.11**, and **C++17**.  
-All three versions use the same core idea:  
-1. Compute every person’s net balance.  
-2. Keep only the non‑zero balances.  
-3. Use backtracking + memoization (bit‑mask DP) to find the minimum number of settlements.
-
-> ⚡️ *Tip*: The recursive DFS is guaranteed to finish in a few milliseconds for the given constraints (`transactions.length ≤ 8`), so it’s perfect for interview practice.
+> **Keywords:** LeetCode 465, Optimal Account Balancing, debt settlement, backtracking, bitmask DP, min transfers, Java, Python, C++, interview prep  
 
 ---
 
-### Java 17
+## 1. Problem Recap  
+
+You’re given a list of money transfers between people:
+
+```text
+transactions[i] = [from_i, to_i, amount_i]
+```
+
+- `from_i` gives `amount_i` dollars to `to_i`.  
+- All IDs are 0‑based, up to 12 unique people.  
+- `1 ≤ transactions.length ≤ 8`, so the input is tiny.
+
+**Goal**:  
+Return the *minimum* number of additional transactions needed to settle every debt (i.e., make all balances zero).
+
+---
+
+## 2. Why Is It Hard?
+
+* **Exponential combinations:**  
+  With up to 8 edges the number of possible settlement paths grows exponentially.
+
+* **State compression needed:**  
+  A naïve BFS/DP over all possible balances is impossible (10^12 states).  
+
+* **Backtracking + pruning** is the standard trick – but you need a good insight to prune aggressively.
+
+---
+
+## 3. The Core Insight  
+
+After aggregating all transactions, every person ends up with a net balance:
+
+```text
+balance[person] = total_received – total_sent
+```
+
+Only people with non‑zero balances matter.  
+If there are `k` such people (`k ≤ 12`), we can represent the whole problem by a vector of length `k`.
+
+The goal is to zero‑out this vector using the fewest pairwise transfers.  
+**Key Observation**:  
+When we settle a pair `(i, j)`, we simply adjust `balance[i]` and `balance[j]`.  
+Thus we can think of the problem as **combining debts until all are cancelled**.
+
+---
+
+## 4. Two Popular Approaches
+
+| Approach | Idea | Complexity | When to use |
+|----------|------|------------|-------------|
+| **Backtracking with pruning** | Recursively pick the first non‑zero balance, settle it with every other opposite‑sign balance, and backtrack. | `O(k!)` worst‑case, but *very* fast in practice (`k ≤ 8`). | Standard interview answer, easy to implement. |
+| **Bitmask DP (subset‑sum)** | Count the maximum number of people that can be grouped into a *zero‑sum* subset; answer = `k - maxZeroSumGroupCount`. | `O(2^k * k)` ~ 256 × 8 = 2 k ops for `k ≤ 8`. | Great for demonstrating clever DP; slightly harder to explain. |
+
+Both give the same answer. The blog below focuses on the **backtracking** version because it’s the most interview‑friendly, but we also show the DP solution in Java, Python, and C++ for completeness.
+
+---
+
+## 5. The Backtracking Algorithm (Python)
+
+```python
+from collections import defaultdict
+from typing import List
+
+class Solution:
+    def minTransfers(self, transactions: List[List[int]]) -> int:
+        # 1. Aggregate balances
+        balances = defaultdict(int)
+        for frm, to, amt in transactions:
+            balances[frm] += amt
+            balances[to] -= amt
+
+        # 2. Keep only non‑zero balances
+        debt = [b for b in balances.values() if b != 0]
+        if not debt:               # already settled
+            return 0
+
+        # 3. Recursive helper
+        def dfs(start: int) -> int:
+            # Skip settled people
+            while start < len(debt) and debt[start] == 0:
+                start += 1
+            if start == len(debt):          # all settled
+                return 0
+
+            min_tx = float('inf')
+            for i in range(start + 1, len(debt)):
+                # Only settle opposite sign balances
+                if debt[start] * debt[i] < 0:
+                    # settle `start` with `i`
+                    debt[i] += debt[start]
+                    min_tx = min(min_tx, 1 + dfs(start + 1))
+                    # backtrack
+                    debt[i] -= debt[start]
+                    # Prune: if we found a perfect match, break early
+                    if debt[i] + debt[start] == 0:
+                        break
+            return min_tx
+
+        return dfs(0)
+```
+
+### How It Works
+
+1. **Balance Compression** – All people with zero net balance are ignored.  
+2. **DFS + Pruning** –  
+   * `start` is the first unsettled index.  
+   * Try to settle `debt[start]` with every later `debt[i]` of opposite sign.  
+   * After each settlement, recurse on the next unsettled index.  
+   * The recursion depth never exceeds `k`.  
+3. **Backtracking** – Restores `debt[i]` after each recursive call.  
+4. **Early Exit** – If the settlement makes `debt[i]` exactly zero, no further splits are possible, so break early.
+
+---
+
+## 6. The Bitmask DP Approach (Java)
 
 ```java
 import java.util.*;
 
-public class Solution {
+class Solution {
     public int minTransfers(int[][] transactions) {
-        // 1️⃣  Build net balances
-        Map<Integer, Integer> bal = new HashMap<>();
+        // 1. Compute net balances
+        Map<Integer, Integer> net = new HashMap<>();
         for (int[] t : transactions) {
-            bal.merge(t[0], t[2], Integer::sum);
-            bal.merge(t[1], -t[2], Integer::sum);
+            net.put(t[0], net.getOrDefault(t[0], 0) + t[2]);
+            net.put(t[1], net.getOrDefault(t[1], 0) - t[2]);
         }
 
-        // 2️⃣  Keep only the non‑zero balances
-        List<Integer> debts = new ArrayList<>();
-        for (int v : bal.values())
-            if (v != 0) debts.add(v);
+        // 2. Filter zeros
+        List<Integer> debt = new ArrayList<>();
+        for (int b : net.values())
+            if (b != 0) debt.add(b);
 
-        int n = debts.size();
-        // 3️⃣  Memoization table: dp[mask] = minimal #settlements for this subset
-        int[] memo = new int[1 << n];
-        Arrays.fill(memo, -1);
-        memo[0] = 0;                       // empty set needs 0 transactions
+        int n = debt.size();
+        if (n == 0) return 0;
 
-        return n - dfs((1 << n) - 1, debts, memo);
-    }
+        int totalMask = (1 << n) - 1;
+        int[] dp = new int[1 << n];
+        Arrays.fill(dp, -1);
+        dp[0] = 0;                 // empty set -> 0 people in zero‑sum groups
 
-    // DFS with memoization
-    private int dfs(int mask, List<Integer> debts, int[] memo) {
-        if (memo[mask] != -1) return memo[mask];
+        // 3. DP over subsets
+        for (int mask = 1; mask <= totalMask; mask++) {
+            int sum = 0;
+            for (int i = 0; i < n; i++)
+                if ((mask & (1 << i)) != 0) sum += debt.get(i);
 
-        int balanceSum = 0, best = 0;
-        for (int i = 0; i < debts.size(); i++) {
-            int bit = 1 << i;
-            if ((mask & bit) != 0) {
-                balanceSum += debts.get(i);
-                best = Math.max(best, dfs(mask ^ bit, debts, memo));
+            // if subset balances to zero, it forms a group
+            if (sum == 0) {
+                dp[mask] = Integer.bitCount(mask); // all members in this group
+                continue;
+            }
+
+            // try removing one element to reuse already computed subsets
+            dp[mask] = 0;
+            for (int i = 0; i < n; i++) {
+                if ((mask & (1 << i)) != 0)
+                    dp[mask] = Math.max(dp[mask], dp[mask ^ (1 << i)]);
             }
         }
-        // If the sum of the subset is zero we can settle them together in 1 txn
-        memo[mask] = best + (balanceSum == 0 ? 1 : 0);
-        return memo[mask];
+
+        // 4. Result: k - maxZeroGroupCount
+        return n - dp[totalMask];
     }
 }
 ```
 
----
+### Explanation
 
-### Python 3.11
-
-```python
-from typing import List
-from functools import lru_cache
-from collections import Counter
-
-class Solution:
-    def minTransfers(self, transactions: List[List[int]]) -> int:
-        # 1️⃣ Build net balance per person
-        bal = Counter()
-        for frm, to, amt in transactions:
-            bal[frm] += amt
-            bal[to] -= amt
-
-        # 2️⃣ Keep only non‑zero balances
-        debts = [v for v in bal.values() if v]
-        n = len(debts)
-
-        @lru_cache(None)
-        def dfs(mask: int) -> int:
-            """Return max number of zero‑sum groups we can form from subset `mask`."""
-            if mask == 0:
-                return 0
-            balance_sum = 0
-            best = 0
-            for i in range(n):
-                bit = 1 << i
-                if mask & bit:
-                    balance_sum += debts[i]
-                    best = max(best, dfs(mask ^ bit))
-            return best + (1 if balance_sum == 0 else 0)
-
-        # 3️⃣ Result: n - maximal #zero‑sum groups
-        return n - dfs((1 << n) - 1)
-```
+* `dp[mask]` = **maximum number of people** in `mask` that can be partitioned into zero‑sum subsets.  
+* For every subset, if the sum is zero, the whole subset is a zero‑sum group.  
+* Otherwise, we can drop any single element and take the best of the remaining subsets – this is the classic subset DP recurrence.  
+* The answer is `k - maxZeroGroupCount` because each zero‑sum group needs `size-1` transactions, so total transactions = `k - (#groups)`.
 
 ---
 
-### C++17
+## 7. C++ Implementation (Backtracking)
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
 
 class Solution {
 public:
-    int minTransfers(vector<vector<int>>& transactions) {
-        unordered_map<int, long long> bal;
+    int minTransfers(std::vector<std::vector<int>>& transactions) {
+        std::unordered_map<int, int> balance;
         for (auto &t : transactions) {
-            bal[t[0]] += t[2];
-            bal[t[1]] -= t[2];
+            balance[t[0]] += t[2];
+            balance[t[1]] -= t[2];
         }
 
-        vector<long long> debts;
-        for (auto &p : bal)
-            if (p.second) debts.push_back(p.second);
+        std::vector<int> debt;
+        for (auto &kv : balance)
+            if (kv.second != 0) debt.push_back(kv.second);
 
-        int n = debts.size();
-        vector<int> memo(1 << n, -1);
-        memo[0] = 0;                      // empty set needs 0 txns
+        if (debt.empty()) return 0;
+        return dfs(debt, 0);
+    }
 
-        function<int(int)> dfs = [&](int mask) -> int {
-            if (memo[mask] != -1) return memo[mask];
-            long long sum = 0;
-            int best = 0;
-            for (int i = 0; i < n; ++i) {
-                if (mask & (1 << i)) {
-                    sum += debts[i];
-                    best = max(best, dfs(mask ^ (1 << i)));
-                }
+private:
+    int dfs(std::vector<int>& debt, int start) {
+        int n = debt.size();
+        while (start < n && debt[start] == 0) ++start;
+        if (start == n) return 0;          // all settled
+
+        int best = INT_MAX;
+        for (int i = start + 1; i < n; ++i) {
+            if (debt[start] * debt[i] < 0) {
+                debt[i] += debt[start];
+                best = std::min(best, 1 + dfs(debt, start + 1));
+                debt[i] -= debt[start];   // backtrack
+
+                if (debt[i] + debt[start] == 0) break; // perfect match
             }
-            memo[mask] = best + (sum == 0 ? 1 : 0);
-            return memo[mask];
-        };
-
-        return n - dfs((1 << n) - 1);
+        }
+        return best;
     }
 };
 ```
 
 ---
 
-## 2.  Blog Article – “Optimal Account Balancing: The Good, The Bad, and The Ugly”
+## 8. Complexity Analysis  
 
-> **SEO Keywords**: LeetCode 465, Optimal Account Balancing, hard algorithm, backtracking, DFS, bitmask DP, interview preparation, software engineer interview, Java solution, Python solution, C++ solution, job interview tips.
+| Step | Operation | Cost |
+|------|----------|------|
+| Balance aggregation | `O(m)` (`m ≤ 8`) | trivial |
+| Build debt vector | `O(p)` (`p ≤ 12`) | trivial |
+| DFS (Python/C++) | Worst‑case `O(k!)` but with pruning far less | Practical < 1 ms for `k ≤ 8` |
+| Bitmask DP (Java) | `O(2^k * k)` | ≤ 2048 operations for `k = 8` |
 
----
-
-### Introduction
-
-When you hit LeetCode 465 – *Optimal Account Balancing* – you’re staring at a classic **minimum‑transaction** problem that feels deceptively simple but is actually a **Hard** problem. In a real interview you’ll need to explain *why* a backtracking approach works, how you prune the search space, and why the solution is efficient enough for the constraints.
-
-Below we walk through the **good** (why the problem is a great interview topic), the **bad** (what pitfalls often trip candidates), and the **ugly** (the naive code that will time‑out). We’ll end with a polished, production‑ready solution in **Java**, **Python**, and **C++**.
-
----
-
-### The Good: Why This Problem Matters
-
-| Aspect | Why It’s Useful |
-|--------|-----------------|
-| **Graph of Debt** | The problem can be visualized as a weighted directed graph. It tests understanding of *net flow* concepts. |
-| **Backtracking + Memoization** | Demonstrates mastery of recursion, pruning, and DP on subsets – core skills for any senior role. |
-| **Small Input, Exponential Search** | Shows that *time‑complexity* matters more than *space*; the interviewee must recognise the O(2^n) nature and optimise. |
-| **Language‑agnostic** | You can solve it in Java, Python, C++, Rust… the logic stays the same, proving algorithmic thinking over language fluency. |
-| **Job‑Search Edge** | Solving this problem cleanly is a common interview benchmark for fintech, fintech‑like startups, and any data‑heavy role. A polished solution gets noticed on your GitHub. |
+**Space**  
+* DFS: `O(k)` recursion stack + `O(k)` debt list.  
+* DP: `O(2^k)` array (256 ints when `k = 8`).
 
 ---
 
-### The Bad: Common Pitfalls
+## 8. Edge Cases & Test Harness
 
-| Pitfall | Why It Fails |
-|---------|--------------|
-| **Treating Each Person as a Node** | Counting `from` and `to` separately can lead to 12 nodes, but the number of *effective* people is ≤ 8. Forgetting to collapse the graph adds useless work. |
-| **Not Pruning** | A naïve DFS that tries every pair of people in every step explores `n!` possibilities – unacceptable for `n = 8`. |
-| **Using Maps for Memoization** | Using `Map<Integer, Integer>` with a *string key* for subsets leads to hashing overhead; a bitmask array is faster. |
-| **Returning the Wrong Value** | Mixing up “minimal transactions” vs “maximal zero‑sum groups” – the correct answer is `n - maxZeroGroups`. |
-| **Over‑Recursion** | For large `n`, the recursion depth can hit Java’s stack limit or Python’s recursion limit. A tail‑recursive or iterative approach is safer. |
+| # | Input | Expected |
+|---|-------|----------|
+| 1 | `[[0,1,10],[2,0,5],[1,2,5]]` | `1` |
+| 2 | `[[0,1,10],[1,2,5],[2,0,5]]` | `2` |
+| 3 | `[[0,1,1],[0,2,1],[0,3,1],[1,4,1],[2,4,1],[3,4,1]]` | `3` |
+| 4 | `[]` | `0` |
+| 5 | `[[0,1,1],[1,0,1]]` | `0` (already balanced) |
 
----
-
-### The Ugly: A Naïve, Time‑Out Code
+**Quick Test Script (Python)**
 
 ```python
-# Ugly, O(n!) Python
-def minTransfers(transactions):
-    balances = Counter()
-    for f, t, amt in transactions:
-        balances[f] += amt
-        balances[t] -= amt
-    debts = [v for v in balances.values() if v]
-    n = len(debts)
-    best = n
-    def dfs(i, cur):
-        nonlocal best
-        if i == n:
-            best = min(best, cur)
-            return
-        dfs(i+1, cur+1)               # try settling this person alone
-        for j in range(i+1, n):
-            if debts[i] + debts[j] == 0:
-                dfs(i+1, cur)          # settle i with j together
-    dfs(0, 0)
-    return best
+def test():
+    sol = Solution()
+    assert sol.minTransfers([[0,1,10],[2,0,5],[1,2,5]]) == 1
+    assert sol.minTransfers([[0,1,10],[1,2,5],[2,0,5]]) == 2
+    assert sol.minTransfers([]) == 0
+    print("All tests passed!")
+
+test()
 ```
 
-This code tries every possible grouping of people. With `n = 8` it may do **40320** recursive calls, and with a heavy Counter/loop overhead it will exceed the 2 second limit on LeetCode. It’s *ugly* because it looks clean but fails in practice.
+---
+
+## 9. Interview Tips  
+
+1. **Explain the *balance compression* first.**  
+   Show you understand that only non‑zero nets matter.
+
+2. **Show the recursive thought process.**  
+   “Pick the first person who still owes money and try to offset it with each creditor/ debtor.”  
+
+3. **Highlight pruning tricks.**  
+   * Skip settled indices.  
+   * Only pair opposite signs.  
+   * Break early if a perfect cancellation is found.
+
+4. **Mention the DP trick if asked for a *more optimal* solution.**  
+   “We can view the problem as partitioning the debt vector into zero‑sum groups; the number of groups determines the transaction count.”
+
+5. **Time‑space complexity**  
+   *Backtracking* – factorial but practically linear because `k ≤ 8`.  
+   *Bitmask DP* – `O(2^k * k)` – a nice showcase of state compression.
+
+6. **Real‑world analogy**  
+   Think of the problem as a *knapsack* of money balances: we’re trying to fill a “zero‑balance” bucket.
+
+7. **Ask clarifying questions**  
+   *“Do people IDs repeat across transactions?”* – helps you justify the `Map` aggregation.  
+   *“Can I use recursion?”* – ensures the interviewer is comfortable with your chosen approach.
 
 ---
 
-### The Clean, Polished Solution
+## 10. Summary  
 
-All three languages below follow the *same* optimal strategy:
+* **Optimal Account Balancing** is a small‑input, exponential‑state problem that’s a favourite for interviewers because it tests your ability to think in terms of *state compression* and *backtracking*.
+* The **DFS with pruning** solution is short, easy to explain, and runs in a few microseconds for the given constraints.
+* The **bitmask DP** version demonstrates clever use of subset DP and can impress interviewers who appreciate dynamic‑programming tricks.
+* All three languages (Java, Python, C++) are provided; pick the one you’re most comfortable with, or keep all three handy for a multi‑language interview.
 
-1. **Net the balances** (`from` + `amt`, `to` – `amt`).  
-2. **Keep only non‑zero debts** – at most `n ≤ 8`.  
-3. **Bit‑mask DP** (`dp[mask]`) stores the maximum number of zero‑sum groups we can collapse for a given subset.  
-4. The final answer is `n - dp[(1<<n)-1]`.  
-
-#### Why This Works
-
-*Every settlement that brings the sum of a subset to **0** can be resolved with a single transaction. By *maximising* the number of such zero‑sum groups, we minimise the required transactions.*  
-
-The complexity is **O(2^n · n)** – for `n = 8` that is only **512** states times a tiny inner loop, which is < 1 ms in Java and < 0.5 ms in Python on modern hardware.
-
----
-
-### Complexity Analysis
-
-| Language | Time | Space |
-|----------|------|-------|
-| **Java** | **O(2^n · n)** (`n ≤ 8`) | **O(2^n)** for memo table + `O(n)` recursion stack |
-| **Python** | **O(2^n · n)** (cached) | **O(2^n)** for LRU cache |
-| **C++** | **O(2^n · n)** (array DP) | **O(2^n)** for vector<int> memo |
-
-Because `n` is capped at 8, the solution is practically *instant*.
-
----
-
-### Conclusion & Take‑aways
-
-* Optimal Account Balancing is a **must‑solve** problem for anyone applying to data‑heavy or fintech roles.  
-* Avoid the common mistakes: collapse the graph, prune aggressively, use bitmask memoization, and return `n - maxZeroGroups`.  
-* The three code snippets above are **clean, testable, and language‑agnostic** – perfect for adding to your portfolio.  
-
-> 🚀 **Job‑Search Tip**: Put your Java, Python, and C++ solutions in a single repo on GitHub, tag them `leetcode-465`, and add a small README explaining the algorithm. Recruiters love a clear, well‑commented solution.  
-
-Happy coding – and may your interviewees always come out on top!
+Good luck, and remember: *the key is to zero‑out balances, not to simulate every possible transaction.* Happy coding!

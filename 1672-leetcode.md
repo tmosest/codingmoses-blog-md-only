@@ -7,124 +7,103 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 📌 1672 – Richest Customer Wealth  
-### Easy – LeetCode | Java | Python | C++ | Interview‑Ready Solution  
+        ## 🚀 Richest Customer Wealth – LeetCode 1672  
+### The Good, the Bad, and the Ugly (with Java, Python & C++ solutions)
 
 ---
 
-### TL;DR  
-* **Goal** – Find the maximum wealth among all customers.  
-* **Idea** – Sum each customer’s balances, keep the highest sum.  
-* **Complexity** – **O(m × n)** time, **O(1)** extra space.  
-* **Why it matters** – A classic “scan‑and‑compare” problem that shows you can handle 2‑D arrays, loops, and basic math – perfect for a technical interview.
+### Problem Recap
+
+> **LeetCode 1672 – Richest Customer Wealth**  
+> Given an `m × n` integer matrix `accounts` where `accounts[i][j]` represents the amount of money customer *i* has in bank *j*, find the **maximum wealth** among all customers.  
+> A customer’s wealth = sum of all bank balances for that customer.
+
+| Constraints | 1 ≤ m, n ≤ 50 | 1 ≤ accounts[i][j] ≤ 100 |
+|-------------|---------------|---------------------------|
+
+> **Return** the wealth of the richest customer.
 
 ---
 
-## Table of Contents  
+## 1️⃣ Algorithm Overview (The “Good”)
 
-| Section | What you’ll learn |
-|---------|-------------------|
-| ✅ Problem Statement | Clear definition & examples |
-| 🚦 Constraints | Edge‑case checklist |
-| 💡 Solution | Simple O(m × n) algorithm |
-| 📊 Complexity | Time / Space |
-| 📦 Code | Java / Python / C++ |
-| 🔧 Common Pitfalls | Avoiding the “gotchas” |
-| 🧩 Variations | How to adapt for different interview twists |
-| 🎯 Interview Tips | What the interviewer cares about |
-| 📈 SEO Boost | Keywords that recruiters search for |
-| 💬 Final Thought | Why mastering this helps land a job |
+The task is straightforward:
+
+1. **Iterate over each customer** (row of `accounts`).
+2. **Sum** all balances in that row – that is the customer's total wealth.
+3. Keep a running maximum of these sums.
+4. Return the maximum after all rows are processed.
+
+Because we only scan the matrix once, the algorithm runs in **O(m × n)** time and uses **O(1)** extra space.
 
 ---
 
-## 1. Problem Statement
+## 2️⃣ “Bad” – Where Things Go Wrong
 
-**Richest Customer Wealth**  
-You are given a 2‑D integer grid `accounts` where `accounts[i][j]` is the amount of money the *i‑th* customer has in the *j‑th* bank.  
-Return the wealth of the richest customer.
-
-> **Wealth of a customer** = sum of all his bank balances.
-
-### Example
-
-| accounts | richest wealth |
-|----------|----------------|
-| `[[1,2,3],[3,2,1]]` | 6 |
-| `[[1,5],[7,3],[3,5]]` | 10 |
-| `[[2,8,7],[7,1,3],[1,9,5]]` | 17 |
+| Potential Pitfall | Why it fails | Fix |
+|-------------------|--------------|-----|
+| **Using `int` overflow** | Max possible sum = 50 × 100 = 5000 – fits in `int`, but novices might use `long` unnecessarily. | `int` is fine; keep an eye on language limits if constraints grow. |
+| **Not handling empty rows** | LeetCode guarantees at least one customer & bank, but defensive coding helps. | Add checks or rely on the problem guarantees. |
+| **Mis‑reading the matrix orientation** | Accidentally summing columns instead of rows leads to wrong answer. | Explicitly iterate `for (int[] customer : accounts)` in Java, `for (row in accounts)` in Python, etc. |
 
 ---
 
-## 2. Constraints & Edge Cases
+## 3️⃣ “Ugly” – Over‑Engineered or Unnecessary
 
-| Constraint | Reason |
-|------------|--------|
-| `1 ≤ m, n ≤ 50` | Small grid, but we still aim for linear scan. |
-| `1 ≤ accounts[i][j] ≤ 100` | All values positive – no negative totals. |
-| **Edge case** – single customer or single bank | Still works with O(1) logic. |
+- **Functional‑style, lambda‑heavy code** (e.g., `sum(map(sum, accounts))`) may hide the core logic.
+- **Using heavy libraries** (`numpy`, `streams`, etc.) where a simple loop suffices.
+- **Excessive comments** that clutter readability.
+- **Hard‑coding values** instead of dynamic loops.
 
----
-
-## 3. Solution Overview
-
-1. **Iterate** over each customer (row).  
-2. **Sum** all balances in that row.  
-3. **Track** the maximum sum encountered.  
-4. Return the maximum.
-
-Because all numbers are positive, no need to handle zero or negative sums.  
-The algorithm is essentially a *nested loop* – one loop for customers, an inner loop for banks.
+The clean, imperative style is the best way to shine in interviews.
 
 ---
 
-## 4. Complexity Analysis
+## 4️⃣ Code Implementations
 
-| Metric | Calculation | Result |
-|--------|-------------|--------|
-| **Time** | `O(m × n)` – every cell is visited once | **Linear** |
-| **Space** | Constant auxiliary variables | **O(1)** |
-
----
-
-## 5. Code Implementations
-
-Below are clean, production‑ready solutions in **Java**, **Python**, and **C++**. Each uses the same logic but is idiomatic for its language.
-
-### Java
+### 📜 Java (LeetCode Signature)
 
 ```java
-/**
- * 1672. Richest Customer Wealth
- * LeetCode easy problem
- */
 public class Solution {
     public int maximumWealth(int[][] accounts) {
         int maxWealth = 0;
         for (int[] customer : accounts) {
-            int wealth = 0;
-            for (int balance : customer) {
-                wealth += balance;
+            int sum = 0;
+            for (int money : customer) {
+                sum += money;
             }
-            maxWealth = Math.max(maxWealth, wealth);
+            maxWealth = Math.max(maxWealth, sum);
         }
         return maxWealth;
     }
 }
 ```
 
-### Python
+> **Complexity**:  
+> - Time: `O(m * n)`  
+> - Space: `O(1)`
+
+---
+
+### 📜 Python (LeetCode Signature)
 
 ```python
 class Solution:
     def maximumWealth(self, accounts: List[List[int]]) -> int:
         max_wealth = 0
         for customer in accounts:
-            wealth = sum(customer)          # built‑in sum is efficient
+            wealth = sum(customer)
             max_wealth = max(max_wealth, wealth)
         return max_wealth
 ```
 
-### C++
+> **Complexity**:  
+> - Time: `O(m * n)`  
+> - Space: `O(1)` (the built‑in `sum` is linear but uses constant extra memory)
+
+---
+
+### 📜 C++ (LeetCode Signature)
 
 ```cpp
 class Solution {
@@ -132,64 +111,74 @@ public:
     int maximumWealth(vector<vector<int>>& accounts) {
         int maxWealth = 0;
         for (const auto& customer : accounts) {
-            int wealth = 0;
-            for (int balance : customer) wealth += balance;
-            maxWealth = max(maxWealth, wealth);
+            int sum = 0;
+            for (int money : customer) sum += money;
+            maxWealth = max(maxWealth, sum);
         }
         return maxWealth;
     }
 };
 ```
 
-All three codes run in **O(m × n)** time and use **O(1)** extra memory.
+> **Complexity**:  
+> - Time: `O(m * n)`  
+> - Space: `O(1)`
 
 ---
 
-## 6. Common Pitfalls
+## 5️⃣ Testing the Solutions
 
-| Pitfall | Fix |
-|---------|-----|
-| **Using `int[]` vs `int[][]` in Java** | Always treat the outer array as a list of rows. |
-| **Summing into `int` but values may overflow** | In this problem it’s safe (`m*n*100 ≤ 250,000`), but for larger constraints consider `long`. |
-| **Skipping the first customer’s wealth** | Initialize `maxWealth` with `0` or compute the first sum first. |
-| **Using `Collections.max` on a list of sums** | Avoid extra overhead; use a simple loop. |
+| Input | Expected Output |
+|-------|-----------------|
+| `[[1,2,3],[3,2,1]]` | `6` |
+| `[[1,5],[7,3],[3,5]]` | `10` |
+| `[[2,8,7],[7,1,3],[1,9,5]]` | `17` |
 
----
-
-## 7. Variations & Extensions
-
-| Variation | How to adjust |
-|-----------|---------------|
-| **Find the k‑th richest customer** | Use a min‑heap of size `k` while iterating. |
-| **Allow negative balances** | Still works; just don’t assume positivity. |
-| **Large input (1e5 × 1e5)** | Need streaming or parallel sum; but typical interview constraints are small. |
+Run the above tests on each implementation; all should return the expected value instantly.
 
 ---
 
-## 8. Interview Tips
+## 6️⃣ SEO‑Friendly Blog Wrap‑Up
 
-1. **Clarify** – confirm whether customers and banks can be 1‑based or 0‑based indices.  
-2. **Edge‑case** – ask what to return if the matrix is empty (though constraints forbid it).  
-3. **Complexity** – explain the O(m × n) time and why you cannot do better without extra information.  
-4. **Optimizations** – discuss using a built‑in `sum()` in Python for clarity, but keep a manual loop in Java/C++ for fine control.  
-5. **Testing** – propose a few test cases: single row, single column, all equal balances, varying sizes.
+### Title (SEO‑optimized)
+> “LeetCode 1672 – Richest Customer Wealth: Java, Python & C++ Solutions for Your Interview Prep”
+
+### Meta Description
+> Master LeetCode 1672 (Richest Customer Wealth) with concise Java, Python, and C++ solutions. Understand the O(m × n) algorithm, test cases, and interview‑ready insights.
+
+### Suggested Keywords
+- Richest Customer Wealth  
+- LeetCode 1672  
+- Java solution  
+- Python solution  
+- C++ solution  
+- interview algorithm  
+- O(m*n) time complexity  
+- job interview coding
+
+### Blog Sections
+
+1. **Problem Statement** – concise recap.
+2. **Why It Matters** – explain how this simple matrix‑summing problem is a staple in coding interviews.
+3. **Solution Strategy** – walk through the linear scan, highlight why no extra data structures are needed.
+4. **Code Snippets** – Java, Python, C++ (as above).
+5. **Complexity Analysis** – clear O(m × n) explanation.
+6. **Edge Cases & Pitfalls** – avoid common mistakes.
+7. **Testing Your Code** – provide example inputs/outputs.
+8. **Takeaway for Interviews** – how to explain this in 2‑3 minutes during a live interview.
+9. **Next Steps** – link to related LeetCode problems (e.g., “Maximum Subarray”, “Plus One”) that share similar patterns.
+
+### Final Call‑to‑Action
+
+> *“Ready to ace your next coding interview? Practice the Richest Customer Wealth problem, share your solution on GitHub, and showcase it in your portfolio. Good luck!”*
 
 ---
 
-## 9. SEO‑Optimized Summary
+## 🎉 Key Takeaways
 
-- **Keywords**: LeetCode 1672, Richest Customer Wealth, Java solution, Python solution, C++ solution, interview algorithm, coding interview, job interview prep, algorithm design, time complexity, space complexity.
-- **Meta Description** (for a blog post):  
-  “Solve LeetCode 1672 – Richest Customer Wealth in Java, Python, and C++. Learn the optimal O(m×n) algorithm, edge‑case handling, and interview‑ready tips to ace coding interviews.”
+- The simplest **row‑sum + max** approach wins – O(m × n) time, O(1) space.
+- Clean, imperative code is interview‑friendly.
+- Avoid over‑engineering; keep the logic visible.
+- Use the solution in your portfolio; it demonstrates matrix handling, time complexity reasoning, and language proficiency.
 
----
-
-## 10. Final Thought
-
-Richest Customer Wealth may be labeled “Easy,” but mastering it demonstrates key interview strengths:
-
-* **Matrix traversal** – an essential skill for many real‑world problems.  
-* **Time/Space analysis** – shows you can balance performance with simplicity.  
-* **Clean code** – clear logic, minimal bugs, and language‑specific idioms.
-
-Use the provided snippets as a reference, practice writing them from scratch, and you’ll feel confident tackling similar problems in any technical interview. Happy coding and good luck landing that dream job! 🚀
+Good luck landing that tech job—now go crack LeetCode 1672!

@@ -7,119 +7,158 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 Longest Happy Prefix – LeetCode 1392  
-**Algorithm, Code (Java / Python / C++), and a SEO‑Optimized Blog Post**  
+        # The Longest Happy Prefix – From Theory to Job‑Ready Code  
+*(Java | Python | C++)*  
 
 ---
 
-### 1️⃣ Problem Recap  
+## 1️⃣ Problem Overview  
 
-| Item | Detail |
-|------|--------|
-| **LeetCode ID** | 1392 |
-| **Title** | Longest Happy Prefix |
-| **Difficulty** | Hard |
-| **Definition** | A *happy prefix* is a **non‑empty** prefix of `s` that is also a suffix (but not the whole string). |
-| **Goal** | Return the longest happy prefix of the given string `s`. Return `""` if none exists. |
-| **Constraints** | `1 ≤ s.length ≤ 10⁵`  <br> `s` contains only lowercase English letters. |
+> **LeetCode 1392 – Longest Happy Prefix**  
+> A *happy prefix* is a non‑empty prefix of a string that is also a suffix **excluding the entire string itself**.  
+>  
+> **Input**: `s` (1 ≤ |s| ≤ 10⁵, lowercase letters)  
+> **Output**: The longest happy prefix; if none exists return `""`.  
 
-> **Example**  
-> `s = "ababab"` → longest happy prefix = `"abab"`  
+```text
+Example
+Input : "ababa"
+Output: "aba"
+```
 
----
-
-## 2️⃣ Why the Naïve O(n²) Brute Force Fails  
-
-The simplest idea is to check every prefix against every suffix, which takes **O(n²)** time.  
-With `n = 10⁵`, that’s ≈ 10¹⁰ operations – far beyond the limits for an online judge or a real interview.
+Why does this matter?  
+- String manipulation appears in **every** senior‑level interview.  
+- The optimal solution demonstrates mastery of *prefix function* (KMP) – a classic algorithm that employers love.  
 
 ---
 
-## 3️⃣ The Winning Approach – KMP / LPS Array  
+## 2️⃣ Why Brute‑Force Fails  
 
-### 📌 Key Insight  
-The longest prefix that is also a suffix is exactly the last value of the **Longest Prefix‑Suffix (LPS)** array from the KMP string matching algorithm.
+A naïve solution checks all prefixes against all suffixes:  
 
-- **LPS[i]** = length of the longest proper prefix of `s[0…i]` that is also a suffix of this substring.  
-- The answer is simply `s.substr(0, LPS[n‑1])`.
+```python
+for length in range(len(s)-1, 0, -1):
+    if s[:length] == s[-length:]:
+        return s[:length]
+return ""
+```
 
-### 🛠️ Algorithm Steps  
+Time complexity: **O(n²)** – impossible for *n = 100 000*.  
+Space: O(1).  
 
-1. **Build the LPS array** in a single left‑to‑right scan.  
-   - `len` keeps the current LPS length.  
-   - When `s[i] == s[len]` → `len++` and set `lps[i] = len`.  
-   - Otherwise shrink `len` to `lps[len-1]` until a match or `len==0`.  
-2. **Return** the substring `s[0: lps[n-1]]`.  
-
-### 📈 Complexity  
-- **Time**: `O(n)` – one pass over the string.  
-- **Space**: `O(n)` – the LPS array.  
-  (A constant‑space version is possible but unnecessary for `n ≤ 10⁵`.)
+> **Bad**: It will TLE on LeetCode and looks lazy in an interview.
 
 ---
 
-## 4️⃣ Code in Three Languages  
+## 3️⃣ The “Good” – KMP Prefix Function  
 
-Below are ready‑to‑run implementations.  
-All follow the same logic – build LPS, return prefix.
+The *Longest Proper Prefix which is also Suffix (LPS)* array from KMP gives exactly what we need.  
 
-### Java  
+### 3.1  What is LPS?  
+
+For every position `i` (1‑based), `lps[i]` stores the length of the longest proper prefix of `s[0…i]` that is also a suffix of that substring.  
+
+- `lps[0] = 0` (no proper prefix).  
+- The array is built in **O(n)** time by reusing previously computed values.  
+
+### 3.2  Build LPS in One Pass  
+
+```text
+len = 0                     // current lps length
+i   = 1
+while i < n
+    if s[i] == s[len]
+        len += 1
+        lps[i] = len
+        i += 1
+    else if len > 0
+        len = lps[len-1]    // fall back to shorter lps
+    else
+        lps[i] = 0
+        i += 1
+```
+
+The last value `lps[n-1]` is the length of the longest happy prefix.  
+
+### 3.3  Complexity  
+
+- **Time**: `O(n)` – each index processed once.  
+- **Space**: `O(n)` for the `lps` array.  
+
+This is the “good” algorithm that passes all tests instantly and showcases efficient thinking.
+
+---
+
+## 4️⃣ “The Ugly” – Common Pitfalls  
+
+| Issue | Explanation | Fix |
+|-------|-------------|-----|
+| Off‑by‑one errors | Using 1‑based vs 0‑based indices incorrectly | Stick to 0‑based (`i = 1`, `len = 0`). |
+| Forgetting to skip the whole string | `lps[n-1]` might equal `n` if the string is composed of a single repeating character | The LPS definition guarantees it will never be `n` (proper prefix). |
+| Not handling empty string | Problem guarantees length ≥ 1, but defensive code is nice | Return `""` if `n == 0`. |
+| Using substring on negative index | If `lps[n-1] == 0` ensure substring call `s[:0]` returns `""` | No special case needed; language handles it. |
+
+---
+
+## 5️⃣ The Code (All Three Languages)
+
+Below are clean, commented implementations that you can paste into LeetCode or your IDE.
+
+---
+
+### 5.1 Java
 
 ```java
 public class Solution {
     public String longestPrefix(String s) {
         int n = s.length();
         int[] lps = new int[n];
-        int len = 0;          // length of previous longest prefix suffix
+        int len = 0;          // length of previous longest prefix-suffix
         int i = 1;
-
         while (i < n) {
             if (s.charAt(i) == s.charAt(len)) {
                 len++;
                 lps[i] = len;
                 i++;
+            } else if (len > 0) {
+                len = lps[len - 1];
             } else {
-                if (len != 0) {
-                    len = lps[len - 1];
-                } else {
-                    lps[i] = 0;
-                    i++;
-                }
+                lps[i] = 0;
+                i++;
             }
         }
-        // longest happy prefix is the first lps[n-1] characters
-        return s.substring(0, lps[n - 1]);
+        return s.substring(0, lps[n - 1]);  // longest happy prefix
     }
 }
 ```
 
-### Python  
+---
+
+### 5.2 Python
 
 ```python
 class Solution:
     def longestPrefix(self, s: str) -> str:
         n = len(s)
         lps = [0] * n
-        length = 0   # length of previous longest prefix suffix
+        length = 0
         i = 1
-
         while i < n:
             if s[i] == s[length]:
                 length += 1
                 lps[i] = length
                 i += 1
+            elif length > 0:
+                length = lps[length - 1]
             else:
-                if length != 0:
-                    length = lps[length - 1]
-                else:
-                    lps[i] = 0
-                    i += 1
-
-        # longest happy prefix
-        return s[:lps[n - 1]]
+                lps[i] = 0
+                i += 1
+        return s[:lps[-1]]
 ```
 
-### C++  
+---
+
+### 5.3 C++
 
 ```cpp
 class Solution {
@@ -127,122 +166,64 @@ public:
     string longestPrefix(string s) {
         int n = s.size();
         vector<int> lps(n, 0);
-        int len = 0;   // length of previous longest prefix suffix
+        int len = 0;   // current lps length
         int i = 1;
-
         while (i < n) {
             if (s[i] == s[len]) {
                 ++len;
                 lps[i] = len;
                 ++i;
+            } else if (len > 0) {
+                len = lps[len - 1];
             } else {
-                if (len != 0) {
-                    len = lps[len - 1];
-                } else {
-                    lps[i] = 0;
-                    ++i;
-                }
+                lps[i] = 0;
+                ++i;
             }
         }
-        return s.substr(0, lps[n - 1]);
+        return s.substr(0, lps[n - 1]);  // longest happy prefix
     }
 };
 ```
 
-> **Test**  
-> ```java
-> Solution sol = new Solution();
-> System.out.println(sol.longestPrefix("ababa")); // prints "ab"
-> ```  
+---
+
+## 6️⃣ Edge‑Case Checklist  
+
+| Edge Case | Expected Output | Reason |
+|-----------|-----------------|--------|
+| `"a"` | `""` | No proper prefix. |
+| `"aaaa"` | `"aaa"` | Prefix “aaa” matches suffix “aaa”. |
+| `"abca"` | `""` | No common prefix/suffix. |
+| `"ababab"` | `"abab"` | Overlap allowed. |
 
 ---
 
-## 5️⃣ The Good, The Bad, and The Ugly  
+## 7️⃣ Interview‑Ready Tips  
 
-| Aspect | Good | Bad | Ugly |
-|--------|------|-----|------|
-| **Algorithmic elegance** | KMP gives an *O(n)* solution – the ultimate interview “wow” factor. | The brute‑force O(n²) approach is elegant in its simplicity but practically unusable for big strings. | Mis‑implementing the LPS update (off‑by‑one errors) can silently give wrong results, especially when the entire string is a repetition of a smaller pattern. |
-| **Code readability** | Clear variable names (`len`, `lps`, `i`) help future maintainers. | Over‑complicated macros or hidden global state can hide bugs. | Using a one‑liner `lps[i] = s.substr(...)` inside the loop creates unnecessary substrings, hurting performance. |
-| **Edge‑case safety** | Handles strings of length 1 → returns `""`. | Forgetting to handle `len == 0` in the else branch leads to infinite loops. | Not checking that the returned prefix is *strictly* smaller than the original string can misclassify the whole string as a happy prefix (invalid per problem). |
-| **Memory usage** | `O(n)` array is negligible for `n ≤ 10⁵`. | Storing a full 2‑D DP table would be overkill. | Attempting to reduce memory to `O(1)` by discarding the LPS array is possible but adds complexity that is rarely worth it. |
-| **Reusability** | The LPS function is a classic sub‑routine used in many pattern‑matching problems. | Writing a custom brute‑force check for each interview is redundant. | Over‑engineering a “super‑generic” LPS library that handles patterns of different character sets can obfuscate the core logic. |
+1. **Explain the intuition**: “We’re basically looking for the longest border of the string.”  
+2. **Mention KMP**: “KMP’s LPS array is built exactly for this purpose.”  
+3. **Time/Space**: State `O(n)` time, `O(n)` space.  
+4. **Edge Cases**: Highlight single‑character strings, repeated patterns.  
+5. **Show test coverage**: Provide a few unit tests.  
 
----
-
-## 6️⃣ SEO‑Optimized Blog Article
-
-> **Title**: *Longest Happy Prefix (LeetCode 1392) – KMP in Java, Python, C++ | Interview Prep Guide*  
-
-> **Meta Description**: Master the “Longest Happy Prefix” problem with a clean KMP solution. Get ready for coding interviews with Java, Python, and C++ code snippets, plus an SEO‑friendly guide.
+> **SEO Bonus**: Use keywords like “LeetCode 1392”, “Longest Happy Prefix”, “KMP algorithm”, “string prefix suffix interview”, “coding interview tips”.
 
 ---
 
-### 📚 Understanding the Longest Happy Prefix
+## 8️⃣ Summary – The Good, The Bad, The Ugly  
 
-When interviewers ask for the longest prefix that is also a suffix (excluding the whole string), they’re essentially testing your familiarity with string algorithms, particularly the Knuth‑Morris‑Pratt (KMP) algorithm. Mastery of KMP unlocks a whole class of problems—from pattern matching to computing border lengths in DNA sequences.
+- **Good**: KMP LPS is linear, elegant, and shows algorithmic depth.  
+- **Bad**: Brute‑force O(n²) is too slow and indicates shallow understanding.  
+- **Ugly**: Off‑by‑one bugs and forgetting to exclude the whole string can break the solution.  
 
-### ✅ Why KMP Beats Brute‑Force
-
-- **Linear Time**: `O(n)` versus `O(n²)` for naive checks.  
-- **Predictable Performance**: Handles the worst‑case (e.g., `"aaaa…a"`) efficiently.  
-- **Widely Recognized**: Demonstrates you understand algorithmic fundamentals.
-
-### 🛠️ Implementing LPS in Your Favorite Language
-
-| Language | Quick Code | Notes |
-|----------|------------|-------|
-| **Java** | *See Java snippet above* | Use `String.charAt()` for O(1) char access. |
-| **Python** | *See Python snippet above* | List comprehension for `lps` is fine, but the loop keeps memory usage low. |
-| **C++** | *See C++ snippet above* | `vector<int>` is the most natural container for LPS. |
-
-### 📈 Step‑by‑Step Walkthrough
-
-1. **Initialize** `lps[0] = 0`, `len = 0`, `i = 1`.  
-2. **Loop** while `i < n`:  
-   - **Match** → `len++`, set `lps[i] = len`, `i++`.  
-   - **Mismatch** → if `len > 0` → `len = lps[len-1]`; else `lps[i] = 0`, `i++`.  
-3. **Result**: `s.substr(0, lps[n-1])`.  
-
-### 📌 Edge Cases to Watch
-
-- Single‑character strings → no happy prefix.  
-- Entire string is a repeated pattern → answer is the largest proper prefix/suffix.  
-- Empty string input is disallowed by constraints but still worth guarding against in production code.
-
-### 📈 Performance Summary
-
-| Complexity | Explanation |
-|------------|-------------|
-| **Time** | `O(n)` – each character is examined at most twice. |
-| **Space** | `O(n)` – the LPS array. |
-
-### 🚀 How to Nail This Problem in an Interview
-
-1. **Explain the intuition**: "The problem is a classic LPS query."
-2. **Show the algorithm**: Outline the KMP construction and the final slice.
-3. **Code in the interviewer's language**: Provide a clean, tested implementation.
-4. **Validate edge cases**: Ask about single characters or repeated patterns.
-5. **Discuss extensions**: Mention how the same LPS logic solves border queries in other problems.
-
-### 🎯 SEO‑Friendly Keywords
-
-- Longest Happy Prefix  
-- LeetCode 1392 solution  
-- KMP algorithm  
-- LPS array  
-- String algorithm interview  
-- Java string matching  
-- Python coding interview  
-- C++ interview problems  
-- Algorithmic interview prep  
-- Efficient string solutions  
-
-Use these keywords naturally in headings, bullet points, and the meta description to attract recruiters looking for algorithmic talent.
+By mastering the LPS approach, you’ll not only ace this LeetCode problem but also demonstrate proficiency in **string algorithms**, a highly‑valued skill for backend, full‑stack, and data‑engineering roles.
 
 ---
 
-## 7️⃣ Final Takeaway  
+## 9️⃣ Ready for the Next Challenge  
 
-The **Longest Happy Prefix** problem is a textbook application of the **KMP LPS array**. With a single linear scan you can return the longest proper prefix that is also a suffix. The clean Java, Python, and C++ solutions above should help you ace the interview and land that tech role.
+Now that you’ve got the Longest Happy Prefix solved, try the next *Hard* string problems:  
+- 1708. Longest Constant‑Repetition Subsequence  
+- 1695. Maximum Erasure Value  
 
-Happy coding! 🚀
+Happy coding, and good luck landing that dream job! 🚀

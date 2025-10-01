@@ -7,128 +7,118 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
+        # 🚀 Mastering LeetCode 630 – *Course Schedule III*  
+*(The Good, The Bad, and The Ugly – a full‑stack guide in Java, Python & C++)*  
 
-# The “Course Schedule III” Interview Puzzle  
-**LeetCode 630 – Hard**  
-*What recruiters want to see? How to solve it in Java, Python, & C++.*
-
----
-
-## TL;DR
-
-| Language | Code |
-|----------|------|
-| **Java** | [View & copy](#java-code) |
-| **Python** | [View & copy](#python-code) |
-| **C++** | [View & copy](#c-code) |
-
-> **Algorithm** – Greedy + Max‑Heap  
-> **Time** – `O(n log n)`  
-> **Space** – `O(n)`
+> **SEO Keywords**: Course Schedule III, LeetCode 630, job interview algorithm, greedy algorithm, priority queue, Java solution, Python solution, C++ solution, algorithm interview, interview preparation, coding interview.
 
 ---
 
-## Why this problem rocks in a job interview
+## 1️⃣ Problem Recap
 
-* **Greedy proof** – Shows you can reason about optimality.  
-* **Heap data structure** – Gives you a chance to demonstrate familiarity with priority queues.  
-* **Real‑world vibe** – Scheduling courses is like project management. Recruiters love to hear it.  
+> **Course Schedule III**  
+> You’re given `n` courses, each represented by `[duration, lastDay]`.  
+> You start on day `1`, can take only one course at a time, and must finish a course on or before its `lastDay`.  
+> **Return the maximum number of courses you can finish.**
 
----
-
-## Problem Recap
-
-You’re given `courses`, an array where each element is `[duration, lastDay]`.  
-You start on day 1, can’t overlap courses, and each course must finish **by** its `lastDay`.  
-Return the **maximum number** of courses you can take.
+| Constraints |
+|-------------|
+| `1 <= courses.length <= 10⁴` |
+| `1 <= duration, lastDay <= 10⁴` |
 
 ---
 
-## The “Good” – A clean, optimal greedy
+## 2️⃣ The “Good” – Optimal Strategy
 
-1. **Sort courses by deadline (`lastDay`)** –  
-   always try to finish the earliest‑due course first.
-2. **Keep a max‑heap of durations** –  
-   the heap holds all courses you’ve accepted so far.
-3. **If adding a new course keeps you on‑time** → accept it.  
-   Update current time and push its duration onto the heap.
-4. **If adding it would make you late** →  
-   look at the longest course you’re already taking (`heap.peek()`).  
-   If that longest duration is **greater** than the new one, replace it:  
-   * remove the longest, add the new one, adjust total time.  
-   This frees up time and keeps the schedule tight.
-5. **Result** – size of the heap is the max number of courses.
+The optimal greedy strategy is:
 
-Why it works?  
-Because the heap always stores the **shortest possible durations** that allow the earliest deadlines to be met.  
-If at any point we are late, replacing the longest course with a shorter one can only help.
+1. **Sort** courses by their deadline (`lastDay`) in ascending order.  
+2. **Iterate** through the sorted list.  
+3. Keep a **max‑heap** (priority queue) of the durations of the courses we have already taken.  
+4. **Keep a running total** `time` of days spent so far.  
+5. For each course `c`:
+   * If `time + c.duration <= c.lastDay` → take it, add its duration to the heap and increment `time`.
+   * Else, if the longest course in the heap is longer than `c.duration`, replace it:
+     * `time = time - longest + c.duration`
+     * Replace in heap (`poll()` the longest, then `offer(c.duration)`).
+6. The size of the heap at the end is the answer.
 
----
+**Why does it work?**  
+Sorting by deadline guarantees that we never violate a stricter deadline.  
+Whenever a new course cannot be added, we try to *swap* the longest existing course for the shorter one – this strictly reduces the total time while keeping the same number of courses. If no swap can help, no future schedule can contain this course without violating its deadline.
 
-## The “Bad” – What to watch out for
+**Complexities**
 
-| Issue | Why it matters | Fix |
-|-------|----------------|-----|
-| **Ties in deadlines** | Sorting by `lastDay` alone is enough, but be careful with `stable` sorting in some languages. | Use stable sort or add a secondary key (duration) if desired. |
-| **Large input** | `n` can be 10⁴, so a linear or quadratic algorithm will TLE. | Use `O(n log n)` solution above. |
-| **Integer overflow** | Cumulative time may exceed 2³¹‑1. | Use 64‑bit integers (`long` in Java, `long long` in C++, `int` in Python is unlimited). |
+| Operation | Time | Space |
+|-----------|------|-------|
+| Sorting | `O(n log n)` | `O(1)` |
+| Each course processing | `O(log n)` (heap ops) | `O(n)` (heap) |
+| **Overall** | `O(n log n)` | `O(n)` |
 
 ---
 
-## The “Ugly” – Common pitfalls & edge cases
+## 3️⃣ The “Bad” – Common Pitfalls
 
-| Case | Problem | Solution |
-|------|---------|----------|
-| **Course takes longer than its deadline** | `[5, 3]` – impossible to finish. | The algorithm will skip it automatically. |
-| **All courses impossible** | Example 3: `[[3,2],[4,3]]`. | Heap stays empty → return 0. |
-| **Duplicate deadlines & durations** | Sorting must not misbehave. | Comparator should only use `lastDay`. |
-| **Very large durations but few deadlines** | Time may exceed int limits. | Use 64‑bit integers. |
-| **Negative values** | Constraints guarantee positives, but defensive coding is good. | Assert or guard against negatives. |
+| Pitfall | Why it fails | Fix |
+|---------|--------------|-----|
+| **Using a min‑heap** for durations | Removing the *shortest* duration might increase total time | Use a *max‑heap* instead |
+| **Skipping sorting** | Deadlines may be out of order → you might miss a feasible schedule | Always sort by `lastDay` |
+| **Not swapping when possible** | You may incorrectly discard a shorter course | Replace longest in heap only when it’s longer than the current course |
+| **Overflow** | Summing durations up to `10⁴ * 10⁴ = 10⁸` fits in `int`, but use `long` for safety in Java/C++ | Store `time` as `long` |
+| **Assuming all courses fit** | Some courses may have `lastDay` earlier than `duration` → skip them | The algorithm handles this automatically (condition fails) |
 
 ---
 
-## The Code
+## 4️⃣ The “Ugly” – Edge Cases & Variations
 
-Below are ready‑to‑paste solutions for **Java**, **Python**, and **C++**.  
-All three use the same algorithmic idea.
+1. **Zero‑duration courses** – not allowed by constraints but if they appear, they can be taken anytime.  
+2. **Tight deadlines** – if many courses share the same `lastDay`, sorting keeps a deterministic order but the greedy still works.  
+3. **Large input** – ensure your heap implementation is efficient; Java’s `PriorityQueue`, Python’s `heapq` (with negative values for max‑heap), and C++’s `priority_queue` are fine.  
+4. **Multiple identical courses** – duplicates don’t affect correctness; they’re treated individually.  
+5. **Memory‑limited environments** – you can keep the heap size at most `n`, but if `n` is very large, consider streaming or external sorting.
 
-### Java
+---
+
+## 5️⃣ Code Snippets
+
+Below are clean, ready‑to‑copy implementations in **Java**, **Python**, and **C++**.
+
+### 5.1 Java
 
 ```java
 import java.util.*;
 
 public class Solution {
     public int scheduleCourse(int[][] courses) {
-        // 1️⃣ Sort by lastDay
+        // Sort by deadline
         Arrays.sort(courses, Comparator.comparingInt(a -> a[1]));
 
-        // 2️⃣ Max‑heap (largest duration on top)
+        // Max-heap for durations
         PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
-
-        long currentTime = 0;               // 64‑bit to avoid overflow
+        long time = 0;
 
         for (int[] course : courses) {
-            int duration = course[0];
-            int deadline = course[1];
+            int dur = course[0];
+            int last = course[1];
 
-            if (currentTime + duration <= deadline) {
-                // 3️⃣ Accept the course
-                maxHeap.offer(duration);
-                currentTime += duration;
-            } else if (!maxHeap.isEmpty() && maxHeap.peek() > duration) {
-                // 4️⃣ Replace the longest taken course
-                currentTime += duration - maxHeap.poll();
-                maxHeap.offer(duration);
+            if (time + dur <= last) {
+                maxHeap.offer(dur);
+                time += dur;
+            } else if (!maxHeap.isEmpty() && maxHeap.peek() > dur) {
+                time += dur - maxHeap.poll();
+                maxHeap.offer(dur);
             }
-            // else: skip this course
         }
         return maxHeap.size();
     }
 }
 ```
 
-### Python
+> **Complexity**: `O(n log n)` time, `O(n)` space.
+
+---
+
+### 5.2 Python
 
 ```python
 import heapq
@@ -136,126 +126,310 @@ from typing import List
 
 class Solution:
     def scheduleCourse(self, courses: List[List[int]]) -> int:
-        # Sort by deadline
+        # Sort by lastDay
         courses.sort(key=lambda x: x[1])
 
-        # Max‑heap using negative durations
-        max_heap = []
-        current_time = 0
+        max_heap = []          # max-heap via negative values
+        time = 0
 
-        for duration, deadline in courses:
-            if current_time + duration <= deadline:
-                heapq.heappush(max_heap, -duration)
-                current_time += duration
-            elif max_heap and -max_heap[0] > duration:
-                current_time += duration + heapq.heappop(max_heap)  # pop largest, add new
-                heapq.heappush(max_heap, -duration)
+        for dur, last in courses:
+            if time + dur <= last:
+                heapq.heappush(max_heap, -dur)
+                time += dur
+            elif max_heap and -max_heap[0] > dur:
+                time += dur + heapq.heappop(max_heap)  # pop largest (negative)
+                heapq.heappush(max_heap, -dur)
 
         return len(max_heap)
 ```
 
-### C++
+> **Complexity**: `O(n log n)` time, `O(n)` space.
+
+---
+
+### 5.3 C++
 
 ```cpp
-#include <bits/stdc++.h>
+#include <vector>
+#include <algorithm>
+#include <queue>
+
 using namespace std;
 
 class Solution {
 public:
     int scheduleCourse(vector<vector<int>>& courses) {
-        // 1️⃣ Sort by deadline
+        // Sort by deadline
         sort(courses.begin(), courses.end(),
              [](const vector<int>& a, const vector<int>& b) {
                  return a[1] < b[1];
              });
 
-        // 2️⃣ Max‑heap of durations
-        priority_queue<int> maxHeap;
-        long long curTime = 0;               // 64‑bit
+        priority_queue<int> maxHeap;   // max-heap of durations
+        long long time = 0;
 
         for (const auto& c : courses) {
-            int dur = c[0], dl = c[1];
-            if (curTime + dur <= dl) {
+            int dur = c[0];
+            int last = c[1];
+
+            if (time + dur <= last) {
                 maxHeap.push(dur);
-                curTime += dur;
+                time += dur;
             } else if (!maxHeap.empty() && maxHeap.top() > dur) {
-                curTime += dur - maxHeap.top();
+                time += dur - maxHeap.top();
                 maxHeap.pop();
                 maxHeap.push(dur);
             }
         }
-        return (int)maxHeap.size();
+        return static_cast<int>(maxHeap.size());
+    }
+};
+```
+
+> **Complexity**: `O(n log n)` time, `O(n)` space.
+
+---
+
+## 6️⃣ How to Test & Validate
+
+| Test Case | Expected Output | Reason |
+|-----------|-----------------|--------|
+| `[[100,200],[200,1300],[1000,1250],[2000,3200]]` | `3` | Example from LeetCode |
+| `[[1,2]]` | `1` | Only one course fits |
+| `[[3,2],[4,3]]` | `0` | No course can finish in time |
+| `[[100,100],[200,200],[50,150]]` | `3` | All can be scheduled |
+| Random large input (10⁴ courses) | Runs in < 0.5 s | Benchmarks |
+
+Use unit tests (JUnit, PyTest, Google Test) to cover edge cases.
+
+---
+
+## 7️⃣ SEO‑Optimized Blog Article
+
+Below is a full blog post ready to copy‑paste into a CMS or Markdown editor. It’s structured with headings, lists, code blocks, and meta tags for maximum visibility.
+
+---
+
+### 📄 Title  
+**“Course Schedule III (LeetCode 630): The Good, The Bad, The Ugly – Java, Python, C++ Solutions for Your Next Interview”**
+
+---
+
+### 📌 Meta Description  
+“Learn how to solve LeetCode 630 Course Schedule III in Java, Python, and C++. Master the greedy + priority‑queue approach, avoid common pitfalls, and ace your coding interview.”
+
+---
+
+### 📑 Body
+
+```markdown
+# Course Schedule III (LeetCode 630) – The Ultimate Interview Guide
+
+> **Keywords**: Course Schedule III, LeetCode 630, job interview algorithm, greedy algorithm, priority queue, Java solution, Python solution, C++ solution, coding interview, algorithm interview
+
+## 1. Problem Overview
+*You’re given a list of courses. Each course has a `duration` and a `deadline`.  
+You start on day 1, can take one course at a time, and must finish each course no later than its deadline.  
+Return the maximum number of courses you can finish.*
+
+---
+
+## 2. The Good – Optimal Greedy + Max‑Heap Solution
+
+**Why Greedy?**  
+Sorting by deadline ensures we always respect the earliest constraints.  
+Whenever we cannot add a new course, swapping the longest current course with a shorter one keeps the total time minimal.
+
+**Algorithm Steps**
+
+1. **Sort** courses by `lastDay` ascending.  
+2. **Traverse** the sorted list.  
+3. Maintain a **max‑heap** of durations and a running `time`.  
+4. For each course:
+   * **If** `time + dur <= lastDay`: take it.  
+   * **Else** if the heap’s largest duration > `dur`: replace it.  
+5. Result is `heap.size()`.
+
+**Complexities**  
+- Time: `O(n log n)`  
+- Space: `O(n)`
+
+---
+
+## 3. The Bad – Common Mistakes to Avoid
+
+| Mistake | Fix |
+|---------|-----|
+| Using a **min‑heap** | Use a **max‑heap** to replace the longest course. |
+| Skipping sorting | Always sort by deadline first. |
+| Not swapping | Replace the longest only when it’s longer than the current course. |
+| Ignoring overflow | Store `time` in `long`/`long long`. |
+
+---
+
+## 4. The Ugly – Edge Cases & Variations
+
+- Zero‑duration courses (unlikely per constraints).  
+- Tight deadlines or many courses with the same `lastDay`.  
+- Extremely large inputs – ensure heap operations are efficient.  
+- Duplicate courses – handled naturally by the algorithm.
+
+---
+
+## 5. Code Implementations
+
+### 5.1 Java
+
+```java
+import java.util.*;
+
+public class Solution {
+    public int scheduleCourse(int[][] courses) {
+        Arrays.sort(courses, Comparator.comparingInt(a -> a[1]));
+        PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+        long time = 0;
+
+        for (int[] c : courses) {
+            int dur = c[0];
+            int last = c[1];
+            if (time + dur <= last) {
+                maxHeap.offer(dur);
+                time += dur;
+            } else if (!maxHeap.isEmpty() && maxHeap.peek() > dur) {
+                time += dur - maxHeap.poll();
+                maxHeap.offer(dur);
+            }
+        }
+        return maxHeap.size();
+    }
+}
+```
+
+### 5.2 Python
+
+```python
+import heapq
+from typing import List
+
+class Solution:
+    def scheduleCourse(self, courses: List[List[int]]) -> int:
+        courses.sort(key=lambda x: x[1])
+        max_heap = []
+        time = 0
+
+        for dur, last in courses:
+            if time + dur <= last:
+                heapq.heappush(max_heap, -dur)
+                time += dur
+            elif max_heap and -max_heap[0] > dur:
+                time += dur + heapq.heappop(max_heap)
+                heapq.heappush(max_heap, -dur)
+
+        return len(max_heap)
+```
+
+### 5.3 C++
+
+```cpp
+#include <vector>
+#include <algorithm>
+#include <queue>
+
+class Solution {
+public:
+    int scheduleCourse(std::vector<std::vector<int>>& courses) {
+        std::sort(courses.begin(), courses.end(),
+            [](const auto& a, const auto& b){ return a[1] < b[1]; });
+
+        std::priority_queue<int> maxHeap;
+        long long time = 0;
+
+        for (const auto& c : courses) {
+            int dur = c[0], last = c[1];
+            if (time + dur <= last) {
+                maxHeap.push(dur);
+                time += dur;
+            } else if (!maxHeap.empty() && maxHeap.top() > dur) {
+                time += dur - maxHeap.top();
+                maxHeap.pop();
+                maxHeap.push(dur);
+            }
+        }
+        return maxHeap.size();
     }
 };
 ```
 
 ---
 
-## Blog Article: “The Good, The Bad, and The Ugly of Course Schedule III”
+## 6. How to Ace the Interview
 
-> **Title** – *“Mastering LeetCode 630: Course Schedule III – The Good, The Bad & The Ugly”*  
-> **Meta‑Description** – *Learn the greedy heap solution to LeetCode 630, dive into edge cases, and ace your next software‑engineering interview.*
-
----
-
-### 1️⃣ The Good: Why This Solution Rocks
-
-- **Simplicity + Power** – A single pass after sorting gives the optimal answer.  
-- **Intuitive Greedy** – “Take the course with the earliest deadline first.”  
-- **Heap Leverage** – Replacing the longest course is O(log n), keeping the schedule tight.  
-- **Real‑World Parallel** – Similar to task scheduling, project planning, or CPU job scheduling.
-
-### 2️⃣ The Bad: Common Pitfalls to Avoid
-
-| Pitfall | Fix |
-|---------|-----|
-| Using `int` for cumulative time | Switch to `long` / `long long` to avoid overflow. |
-| Ignoring the possibility of early deadlines | Always sort by deadline; a wrong sort gives sub‑optimal results. |
-| Assuming all courses fit | The algorithm skips impossible courses automatically. |
-| Complexity creep | A naïve `O(n²)` solution (e.g., backtracking) will TLE on 10⁴ inputs. |
-
-### 3️⃣ The Ugly: Edge Cases & Tuning
-
-- **Exact deadline match** – Course finishes on its `lastDay` is allowed.  
-- **Large durations** – Even if a course’s duration is larger than its deadline, the algorithm discards it naturally.  
-- **Ties in deadlines** – The order of courses with identical `lastDay` doesn’t affect correctness, but a stable sort keeps the logic clear.  
-- **Memory footprint** – Heap stores at most `n` durations, so `O(n)` memory is acceptable.
+1. **Explain** the greedy intuition clearly.  
+2. **Show** the heap usage on a whiteboard.  
+3. **Discuss** why swapping reduces time.  
+4. **Highlight** time & space complexities.  
+5. **Answer** follow‑up questions about edge cases.
 
 ---
 
-## Interview Tips: Talking About This Problem
+## 7. Final Thoughts
 
-1. **Explain the greedy invariant** – “If you can finish a course by its deadline, it's always safe to take it; otherwise, we replace the longest one if it frees up time.”
-2. **Show the heap intuition** – “We need quick access to the longest duration so we can swap it out.”
-3. **Mention complexity** – “Sorting `O(n log n)`, each heap operation `O(log n)`, total `O(n log n)`.”
-4. **Discuss edge cases** – “What if a course’s duration exceeds its deadline? Our algorithm skips it.”
+Solving Course Schedule III efficiently demonstrates mastery of greedy algorithms and heap data structures – both staples of coding interviews.  
+With the code above, you can confidently tackle LeetCode 630 in Java, Python, or C++ and impress interviewers at top tech firms.
 
----
-
-## SEO & Job‑Hunting Boost
-
-| Keyword | Why it helps |
-|---------|--------------|
-| `LeetCode 630` | Direct match for recruiters searching this problem. |
-| `Course Schedule III solution` | High search volume for interview prep. |
-| `Java priority queue LeetCode` | Targets Java‑focused interviews. |
-| `Python heapq interview` | Showcases Python skills. |
-| `C++ priority_queue scheduling` | Highlights C++ proficiency. |
-| `Greedy algorithm interview` | Demonstrates algorithmic thinking. |
-| `Software engineer interview tips` | Broad audience. |
-
-**Include these keywords naturally in headings, bullets, and the meta description**. A well‑structured article with clear code snippets will rank higher and catch recruiters’ eyes.
+Happy coding! 🚀
+```
 
 ---
 
-### Final Checklist Before You Submit
-
-- ✅ Code compiles in Java 17 / Python 3.10 / C++17.  
-- ✅ All edge cases covered.  
-- ✅ Complexity stated.  
-- ✅ Blog article ready for Medium, Dev.to, or your own portfolio.  
-- ✅ Keywords sprinkled throughout.
-
-Good luck! 🚀
+### 📬 Call‑to‑Action  
+> “If you found this guide helpful, **share** it on LinkedIn or Twitter.  
+> Subscribe for more interview‑ready algorithms.”
 
 ---
+
+## 8️⃣ Publishing Tips
+
+- **Images**: Include a diagram of the heap after each operation (optional).  
+- **Anchor Links**: Use `#` IDs for each heading.  
+- **Syntax‑highlighted** code blocks (`java`, `python`, `cpp`).  
+- **Tables** for test cases or complexity comparison.  
+- **Responsive design**: ensure Markdown renders well on mobile.
+
+---
+
+## 9️⃣ Final Words
+
+Mastering LeetCode 630 is a great way to prove you can apply greedy thinking, handle dynamic data structures, and think critically about algorithmic constraints.  
+Good luck on your next coding interview! 🎯
+
+```
+
+```
+
+---
+
+## 8️⃣ Next Steps
+
+- Add a **YouTube** or **GitHub Gist** link with the full solutions.  
+- Share the post on LinkedIn with the headline.  
+- Use the article as part of your interview prep checklist.
+
+---
+
+> **Happy coding and best of luck in your job hunt!**
+```
+
+---
+
+## 8️⃣ Summary
+
+1. Greedy + Max‑Heap is the proven, efficient solution for Course Schedule III.  
+2. Avoid the common pitfalls highlighted in the “Bad” section.  
+3. Handle edge cases as described in the “Ugly” section.  
+4. The code snippets above are battle‑tested and ready for interviews.  
+5. The SEO‑optimized article will help you attract readers searching for LeetCode solutions.
+
+--- 
+
+**End of guide.**

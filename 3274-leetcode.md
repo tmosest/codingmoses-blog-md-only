@@ -7,162 +7,207 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 3274. Check if Two Chessboard Squares Have the Same Color  
-*(LeetCode – Easy)*  
-
-> **Goal** – Given two chess‑board coordinates (e.g., `"a1"` and `"c3"`), return `true` if the two squares have the same color (both black or both white) and `false` otherwise.  
-
-| Language | Time | Space |
-|----------|------|-------|
-| Java | O(1) | O(1) |
-| Python | O(1) | O(1) |
-| C++ | O(1) | O(1) |
+        # 3274 – “Check if Two Chessboard Squares Have the Same Color”  
+## 🧩 A Quick, 3‑Line Solution in Java, Python & C++ + A Job‑Seeking Blog
 
 ---
 
-## 1️⃣  The Idea – A One‑Line Math Trick
-
-On a standard 8 × 8 board the color pattern alternates like a checkerboard.  
-If we convert a coordinate to a single integer:
-
-```
-value = (column letter) + (row number)
-```
-
-* the column letter can be turned into its ASCII value (`'a'` → 97, `'b'` → 98, …),
-* the row number is already a digit 1‑8.
-
-All **even** values correspond to one color (say black) and all **odd** values to the other color.  
-Therefore two squares have the same color **iff** the parity of their values matches.
-
-```text
-value1 % 2 == value2 % 2   →   same color
-```
-
-That’s it – 3 lines of code.
+## Table of Contents  
+1. [Problem Recap](#problem-recap)  
+2. [Intuition & Key Insight](#intuition)  
+3. [Solution Overview](#solution-overview)  
+4. [Reference Implementations](#implementations)  
+   - Java  
+   - Python  
+   - C++  
+5. [Complexity Analysis](#complexity)  
+6. [Common Pitfalls & Edge Cases](#pitfalls)  
+7. [Extending the Idea](#extensions)  
+8. [Conclusion & Job‑Search Tips](#conclusion)  
+9. [Meta & SEO Checklist](#seo)
 
 ---
 
-## 2️⃣  Implementation
+<a name="problem-recap"></a>
+## 1. Problem Recap  
+**LeetCode 3274 – Check if Two Chessboard Squares Have the Same Color**  
+Given two valid chessboard coordinates (`"a1"`‑`"h8"`), determine if both squares share the same color (both black or both white).
 
-### ✅ Java
+> **Return** `true` if they have the same color, otherwise `false`.
 
+---
+
+<a name="intuition"></a>
+## 2. Intuition & Key Insight  
+A chessboard alternates colors like a checkerboard.  
+If we assign an integer value to each square, the parity (even/odd) of that value tells us the color:
+
+| Column | ASCII | Row | Sum | Parity | Color |
+|--------|-------|-----|-----|--------|-------|
+| `a`    | 97    | 1   | 98  | Even   | Black |
+| `b`    | 98    | 1   | 99  | Odd    | White |
+| `c`    | 99    | 1   | 100 | Even   | Black |
+
+**Rule**  
+> Two squares have the same color **iff** the sums `(letter + number)` have the **same parity**.
+
+This gives a one‑liner:  
+`(c1 % 2) == (c2 % 2)`.
+
+---
+
+<a name="solution-overview"></a>
+## 3. Solution Overview  
+
+1. **Extract** the letter and number from each coordinate.  
+2. **Convert** the letter to its ASCII code (`'a'` → 97).  
+3. **Convert** the number character to an integer.  
+4. **Add** the two values → a single integer per coordinate.  
+5. **Check** parity (even/odd) for both sums.  
+6. **Return** `true` if parity matches, else `false`.
+
+The algorithm runs in **O(1)** time and uses **O(1)** extra space.
+
+---
+
+<a name="implementations"></a>
+## 4. Reference Implementations  
+
+> All snippets can be dropped into your LeetCode/IDE environment.  
+> Test harness is optional but shown for completeness.
+
+### Java  
 ```java
-class Solution {
+public class Solution {
+    /**
+     * LeetCode 3274
+     *
+     * @param coordinate1 first square (e.g., "a1")
+     * @param coordinate2 second square (e.g., "c3")
+     * @return true if both squares share the same color
+     */
     public boolean checkTwoChessboards(String coordinate1, String coordinate2) {
-        int v1 = coordinate1.charAt(0) + Character.getNumericValue(coordinate1.charAt(1));
-        int v2 = coordinate2.charAt(0) + Character.getNumericValue(coordinate2.charAt(1));
-        return (v1 & 1) == (v2 & 1);          // same parity → same color
+        int sum1 = coordinate1.charAt(0) + (coordinate1.charAt(1) - '0');
+        int sum2 = coordinate2.charAt(0) + (coordinate2.charAt(1) - '0');
+        return (sum1 % 2) == (sum2 % 2);
+    }
+
+    // Optional: quick test runner
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        System.out.println(s.checkTwoChessboards("a1", "c3")); // true
+        System.out.println(s.checkTwoChessboards("a1", "h3")); // false
     }
 }
 ```
 
-> **Why `& 1`?**  
-> It’s a tiny micro‑optimization: bitwise AND is faster than `% 2`.
-
----
-
-### ✅ Python 3
-
+### Python  
 ```python
 class Solution:
     def checkTwoChessboards(self, coordinate1: str, coordinate2: str) -> bool:
-        v1 = ord(coordinate1[0]) + int(coordinate1[1])
-        v2 = ord(coordinate2[0]) + int(coordinate2[1])
-        return v1 % 2 == v2 % 2
+        """
+        LeetCode 3274
+        :param coordinate1: str, e.g., "a1"
+        :param coordinate2: str, e.g., "c3"
+        :return: bool, True if same color
+        """
+        sum1 = ord(coordinate1[0]) + int(coordinate1[1])
+        sum2 = ord(coordinate2[0]) + int(coordinate2[1])
+        return (sum1 % 2) == (sum2 % 2)
+
+# Demo
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.checkTwoChessboards("a1", "c3"))  # True
+    print(sol.checkTwoChessboards("a1", "h3"))  # False
 ```
 
----
-
-### ✅ C++
-
+### C++  
 ```cpp
 class Solution {
 public:
     bool checkTwoChessboards(string coordinate1, string coordinate2) {
-        int v1 = coordinate1[0] + (coordinate1[1] - '0');
-        int v2 = coordinate2[0] + (coordinate2[1] - '0');
-        return (v1 & 1) == (v2 & 1);
+        int sum1 = coordinate1[0] + (coordinate1[1] - '0');
+        int sum2 = coordinate2[0] + (coordinate2[1] - '0');
+        return (sum1 % 2) == (sum2 % 2);
     }
 };
+
+/* Optional test harness
+#include <iostream>
+int main() {
+    Solution s;
+    std::cout << std::boolalpha
+              << s.checkTwoChessboards("a1", "c3") << '\n' // true
+              << s.checkTwoChessboards("a1", "h3") << '\n'; // false
+    return 0;
+}
+*/
 ```
 
 ---
 
-## 3️⃣  Blog Post – *The Good, The Bad, and The Ugly*
+<a name="complexity"></a>
+## 5. Complexity Analysis  
 
-> **SEO Title:**  
-> *LeetCode 3274 – “Check if Two Chessboard Squares Have the Same Color” – Java, Python, C++ Solutions & Interview‑Ready Guide*  
-
-> **Meta Description:**  
-> Solve LeetCode 3274 in under 5 minutes. Read clean, efficient Java, Python, and C++ code, plus the intuition behind the math trick. Learn how to ace coding interviews!
-
-### 3.1  The Good – Why This Problem Is a *Starter* Success Story
-
-1. **O(1) Time, O(1) Space** – Ideal for interviewers looking for constant‑time solutions.  
-2. **Mathematical Insight** – Highlights the candidate’s ability to see patterns (ASCII + numeric parity).  
-3. **Language‑agnostic** – The same logic works in Java, Python, C++, Go, etc.  
-4. **Clean Code** – A 3‑liner demonstrates readability and precision.
-
-> *“I solved 3274 in 3 minutes during my last interview. The interviewer was impressed by the math trick.”* – *Alex, Senior Software Engineer*
-
-### 3.2  The Bad – Common Pitfalls to Avoid
-
-| Pitfall | Why It Matters | Fix |
-|---------|----------------|-----|
-| **Using `int` vs `char` conversions incorrectly** | `coordinate[0]` is a `char`; adding it to an `int` without converting the second digit to a number will produce ASCII + ASCII (e.g., `97 + 49` for `"a1"`) | Convert the digit properly (`int(coordinate[1]) - '0'` in C++/Java or `int(coordinate[1])` in Python). |
-| **Off‑by‑one errors** | Forgetting that rows start at `'1'` → need to subtract `'0'` or use `int()` | Use `Character.getNumericValue()` or `int()` in Python. |
-| **Misreading the problem** | Thinking “same color” means same *letter* or same *number* | Remember that both parts matter; the parity trick ensures that. |
-| **Performance mis‑tuning** | Using `% 2` instead of bitwise `& 1` (not critical but nice) | Replace with `(v & 1)` for speed. |
-
-### 3.3  The Ugly – Over‑Engineering and Wrong Directions
-
-1. **Simulating the Chessboard** – Building an 8×8 matrix and filling it with colors is overkill.  
-2. **Recursive or DP Approach** – No recursion needed; a constant‑time check is all that’s required.  
-3. **String Parsing Overkill** – Using regex or substring operations adds unnecessary overhead.  
-4. **Using Complex Data Structures** – Maps, Sets, or Enums to store colors add noise.
-
-> *“I spent 20 minutes writing a class Chessboard with `getColor(row, col)` before realizing the parity trick.”* – *Jordan, Mid‑Level Developer*
-
-### 3.4  How to Nail It in a Real Interview
-
-1. **Explain the Insight First**  
-   - “I notice that each square’s color can be deduced from the parity of the sum of its column ASCII code and row number.”
-2. **Show the Math**  
-   - Provide the simple equation: `color = (col + row) % 2`.
-3. **Write the Code**  
-   - Keep it concise, comment minimally, but do mention the conversion for clarity.
-4. **Run Quick Test Cases**  
-   - `"a1", "c3"` → true  
-   - `"a1", "h3"` → false  
-   - `"d4", "f6"` → true
-5. **Talk About Complexity**  
-   - O(1) time, O(1) space.  
+| Metric | Calculation |
+|--------|-------------|
+| **Time** | `O(1)` – constant operations (2 char accesses, 2 conversions, 2 adds, 2 mods). |
+| **Space** | `O(1)` – only a few integer variables. |
 
 ---
 
-## 4️⃣  Takeaway – Why You Should Master This Problem
+<a name="pitfalls"></a>
+## 6. Common Pitfalls & Edge Cases  
 
-- **Shows Pattern Recognition** – The interviewer likes candidates who can spot the hidden algebraic trick.  
-- **Demonstrates Code Cleanliness** – A 3‑liner is elegant and maintainable.  
-- **Builds Confidence** – A small win boosts your morale for the next, harder problem.  
-
-### Final Code Repository
-
-| Language | Link |
-|----------|------|
-| Java | https://github.com/yourrepo/leetcode3274-java |
-| Python | https://github.com/yourrepo/leetcode3274-python |
-| C++ | https://github.com/yourrepo/leetcode3274-cpp |
-
-> *Push your code, commit often, and use clear commit messages – this practice impresses hiring managers.*
+| Issue | Fix |
+|-------|-----|
+| Using `Integer.parseInt` on `"01"` | Convert the digit directly (`coordinate[1] - '0'`) to avoid leading‑zero pitfalls. |
+| Forgetting that `'0'` is ASCII 48 | Subtract `'0'` to get the numeric value. |
+| Off‑by‑one errors when treating the letter as index | Use ASCII code directly; no mapping array needed. |
+| Misinterpreting parity (even=black vs. even=white) | Either convention works as long as both squares use the same rule. |
 
 ---
 
-### Call‑to‑Action
+<a name="extensions"></a>
+## 7. Extending the Idea  
 
-> **Ready for the next challenge?**  
-> Practice this pattern‑recognition trick on other “color” or “parity” problems like *“Number of Steps to Reduce a Number”* or *“Kth Smallest Pair Distance”*.  
-> Add the solution to your portfolio and tag it with **#leetcode**.  
+1. **Multiple Squares** – Extend to a list of coordinates and check if all share the same color.  
+2. **Color Mapping** – Return `"black"` or `"white"` instead of a boolean.  
+3. **Board Variants** – Support larger boards (`a1`‑`z100`) with the same parity trick.  
 
-Happy coding, and good luck with your next interview!
+---
+
+<a name="conclusion"></a>
+## 8. Conclusion & Job‑Search Tips  
+
+*The 3‑line solution showcases:*
+
+- **Mathematical insight** (parity)  
+- **Clean coding** (no extra data structures)  
+- **Efficiency** (O(1) time & space)  
+
+When preparing for coding interviews, highlight such tricks:
+
+- Emphasize *why* the solution works, not just *how*.  
+- Be ready to discuss *edge cases* (even/odd, ASCII vs. numeric).  
+- Show the ability to write idiomatic code in multiple languages (Java, Python, C++).  
+
+**SEO‑Friendly Hook**: “Learn the 3‑line Java/Python/C++ solution to LeetCode 3274 and boost your interview score.”
+
+---
+
+<a name="seo"></a>
+## 9. Meta & SEO Checklist  
+
+| SEO Element | Implementation |
+|-------------|----------------|
+| **Title** | “LeetCode 3274 – 3‑Line Java/Python/C++ Solution: Check if Two Chessboard Squares Have the Same Color” |
+| **Meta Description** | “Solve LeetCode 3274 in just 3 lines of code. This guide covers Java, Python, and C++ implementations, a deep dive into the parity trick, and interview‑ready insights.” |
+| **Keywords** | `leetcode 3274`, `chessboard color same`, `check two chessboard squares`, `java solution`, `python solution`, `c++ solution`, `parity trick`, `O(1) solution` |
+| **Headers** | H1 (Title), H2 (Problem Recap, Intuition, etc.) |
+| **Internal Links** | Link to related LeetCode topics: “Array”, “String”, “Math”. |
+| **External Links** | Reference LeetCode problem URL and solution discussions. |
+| **Alt Text for Images** | If including a chessboard diagram, alt: “Chessboard with a1, c3, h3 squares highlighted.” |
+
+> *With a well‑structured article, clear code snippets, and targeted keywords, you’ll rank higher in search results and impress hiring managers looking for concise, elegant problem‑solving skills.*

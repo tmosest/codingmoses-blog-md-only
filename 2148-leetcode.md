@@ -7,92 +7,67 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ---
+        # 2148. Count Elements With Strictly Smaller and Greater Elements  
+**The Good, The Bad, and The Ugly – A Complete Interview‑Ready Guide**
 
-## 🚀 LeetCode 2148: Count Elements With Strictly Smaller and Greater Elements  
-*The “Good, the Bad, and the Ugly” – Java | Python | C++*  
-
-**Meta‑Description**  
-Learn how to solve LeetCode 2148 in O(N) time with a clean O(1) space solution. Get Java, Python, and C++ code, an in‑depth explanation, edge‑case discussion, and SEO‑friendly blog post that’ll help you ace your coding interviews and land your dream job.
-
----
-
-### 📌 Problem Statement (LeetCode 2148)
-
-> **Count Elements With Strictly Smaller and Greater Elements**  
-> **Difficulty:** Easy  
-> **Constraints**  
-> - 1 ≤ nums.length ≤ 100  
-> - -10⁵ ≤ nums[i] ≤ 10⁵  
-
-> **Given** an integer array `nums`, return the number of elements that have *both* a strictly smaller **and** a strictly greater element present somewhere in the array.
-
-> **Example**  
-> ```
-> Input:  nums = [11, 7, 2, 15]
-> Output: 2
-> Explanation: 7 and 11 satisfy the condition.
-> ```
+| Topic | Details |
+|-------|---------|
+| **Difficulty** | Easy |
+| **Languages** | Java, Python, C++ |
+| **Time** | O(n) |
+| **Space** | O(1) |
+| **Key Insight** | An element has a strictly smaller and a strictly greater element iff it lies **strictly between** the global minimum and the global maximum of the array. |
 
 ---
 
-### 🏗️ Why This Problem Is a “Great Interview Bite”
+## 📌 Problem Statement (LeetCode 2148)
 
-- **Low‑Complexity & Conceptual Depth** – The trick lies in recognizing that *only the global minimum and maximum matter*.  
-- **Edge‑Case Handling** – Duplicates, all‑equal arrays, or single‑element arrays test your understanding of “strictly” versus “non‑strict”.  
-- **Language‑agnostic Approach** – The same logic translates to Java, Python, C++, or even JavaScript.  
+> Given an integer array `nums`, return the number of elements that have **both** a strictly smaller and a strictly greater element appearing somewhere in `nums`.
 
----
+**Examples**
 
-## ✅ Solution Overview (Good)
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[11,7,2,15]` | `2` | `7` and `11` each have both a smaller (`2` or `7`) and a greater (`11` or `15`) element. |
+| `[-3,3,3,90]` | `2` | Both occurrences of `3` satisfy the condition. |
 
-1. **Find the global minimum (`minVal`) and maximum (`maxVal`)** in one pass.  
-2. **Count elements that lie strictly between** `minVal` and `maxVal`.  
-   - An element `x` qualifies if `minVal < x < maxVal`.  
-3. Return the count.
+**Constraints**
 
-> **Why this is “Good”**  
-> *Linear time*, *constant extra space*, and *no sorting* – the most efficient approach.
+- `1 <= nums.length <= 100`
+- `-10^5 <= nums[i] <= 10^5`
 
 ---
 
-## ⚠️ Common Pitfalls (Bad)
+## 🛠️ Solution Idea
 
-| Pitfall | What It Looks Like | Fix |
-|---------|--------------------|-----|
-| **Sorting the array** | Using `Arrays.sort()` then iterating – adds O(N log N) time unnecessarily. | Skip sorting; just track min & max. |
-| **Using `<=` instead of `<`** | Counts elements equal to `minVal` or `maxVal` erroneously. | Strictly compare with `<` and `>`. |
-| **Ignoring duplicates** | Thinking duplicates reduce the answer; they don’t matter. | Treat each occurrence independently. |
+1. **Find the global minimum (`minVal`) and maximum (`maxVal`) of the array.**  
+   *An element cannot have a strictly smaller value if it equals the minimum, and cannot have a strictly greater value if it equals the maximum.*
 
----
+2. **Count every element that satisfies** `minVal < num < maxVal`.
 
-## 😱 Edge Cases (Ugly)
-
-- **All elements equal** → `count = 0`.  
-- **Only one element** → `count = 0`.  
-- **Array of two elements** → `count = 0` (no element can have both sides).  
-- **Negative numbers** – min and max logic still holds.  
-- **Large numbers** (±10⁵) – no overflow risk with `int` in Java/C++ or `int` in Python.
+That’s it—no sorting, no extra data structures, just a couple of linear passes.
 
 ---
 
-## 💻 Code Implementations
+## 📦 Code Implementations
 
-### 1️⃣ Java (Optimal + Easy)
+Below are concise, production‑ready solutions in **Java, Python, and C++**. All three share the same O(n) time / O(1) space complexity.
+
+### Java
 
 ```java
-public class Solution {
+class Solution {
     public int countElements(int[] nums) {
         int minVal = Integer.MAX_VALUE;
         int maxVal = Integer.MIN_VALUE;
 
-        // First pass: find min & max
+        // 1st pass: find min and max
         for (int num : nums) {
             if (num < minVal) minVal = num;
             if (num > maxVal) maxVal = num;
         }
 
-        // Second pass: count strictly between
+        // 2nd pass: count elements strictly between min and max
         int count = 0;
         for (int num : nums) {
             if (num > minVal && num < maxVal) count++;
@@ -102,11 +77,13 @@ public class Solution {
 }
 ```
 
-> **Complexity** – `O(n)` time, `O(1)` auxiliary space.
+> **Why this is optimal**  
+> Two passes, no sorting, constant auxiliary space.  
+> Works for negative numbers and duplicates without any extra checks.
 
 ---
 
-### 2️⃣ Python
+### Python
 
 ```python
 class Solution:
@@ -114,14 +91,16 @@ class Solution:
         min_val = min(nums)
         max_val = max(nums)
 
-        return sum(1 for x in nums if min_val < x < max_val)
+        # Count elements strictly between min and max
+        return sum(min_val < x < max_val for x in nums)
 ```
 
-> **Complexity** – `O(n)` time, `O(1)` space (aside from input list).
+> **Pythonic touches**  
+> `min()`/`max()` are highly optimized in CPython, giving the same O(n) performance as the manual loop.
 
 ---
 
-### 3️⃣ C++
+### C++
 
 ```cpp
 class Solution {
@@ -135,54 +114,67 @@ public:
             maxVal = max(maxVal, x);
         }
 
-        int cnt = 0;
+        int count = 0;
         for (int x : nums) {
-            if (x > minVal && x < maxVal) cnt++;
+            if (x > minVal && x < maxVal) ++count;
         }
-        return cnt;
+        return count;
     }
 };
 ```
 
-> **Complexity** – `O(n)` time, `O(1)` auxiliary space.
+> **Fast and clean**  
+> `INT_MAX`/`INT_MIN` from `<climits>` guarantee full range coverage.
 
 ---
 
-## 📚 How to Explain This in a Job Interview
+## 🏆 Complexity Analysis
 
-1. **State the Problem Clearly** – Mention the need for *strictly smaller* and *strictly greater* elements.  
-2. **Explain the Observation** – Only the global min and max matter; any element outside that range cannot satisfy the condition.  
-3. **Show the Two‑Pass Algorithm** – Talk about time/space trade‑offs.  
-4. **Address Edge Cases** – Highlight duplicates, single‑element arrays, etc.  
-5. **Optional** – Mention that a single pass is possible with a `minSeen` & `maxSeen` strategy but two passes are simpler and perfectly acceptable for `n ≤ 100`.  
+| Complexity | Explanation |
+|------------|-------------|
+| **Time**   | Two linear scans → **O(n)** |
+| **Space**  | Constant auxiliary variables → **O(1)** |
 
----
-
-## 📈 SEO‑Optimized Summary
-
-| Keyword | Usage |
-|---------|-------|
-| LeetCode 2148 | Title, headings, intro |
-| Count Elements With Strictly Smaller and Greater Elements | Problem description |
-| Java solution LeetCode 2148 | Java code block & section |
-| Python solution LeetCode 2148 | Python code block & section |
-| C++ solution LeetCode 2148 | C++ code block & section |
-| LeetCode interview question | Blog intro |
-| algorithm time complexity | Complexity section |
-| coding interview tips | Conclusion |
-| data structures | Mention arrays |
-
-> **Final SEO‑friendly tagline**  
-> *“Master LeetCode 2148 with Java, Python, and C++ solutions – quick, clean, and interview‑ready.”*
+Even for the maximum `n = 100`, this solution runs in microseconds and is trivially fast on any modern machine.
 
 ---
 
-### 🎉 Wrap‑Up
+## 🔍 Edge‑Case & Debugging Checklist
 
-- **Good**: Linear time, constant space, no sorting.  
-- **Bad**: Over‑engineering with sorting or misuse of comparison operators.  
-- **Ugly**: Forgetting duplicates or handling of edge cases.  
+| Edge Case | Why it matters | Typical Pitfall |
+|-----------|----------------|-----------------|
+| Array length = 1 | No element can have both smaller and greater values | Returning 0 automatically handles this |
+| All elements equal | min == max → no element satisfies condition | Need to check `minVal < x < maxVal`, not `<=` |
+| Negative numbers | Still work because min/max logic is agnostic | Forgetting to handle negatives in manual min/max loop |
+| Duplicate min/max values | Only elements strictly between are counted | Counting min or max erroneously |
 
-Implement the simple two‑pass approach and you’ll get the perfect solution every time—ready for your next coding interview or to impress your hiring manager.
+When debugging, always print `minVal`, `maxVal`, and the intermediate `count` to confirm logic.
 
-Happy coding! 🚀
+---
+
+## 🎯 How This Helps You Land Your Next Software Engineer Role
+
+1. **Clear Problem‑Solving Strategy** – The blog demonstrates how to distill a problem to its core logic (finding min & max).  
+2. **Multiple Language Mastery** – Showcasing Java, Python, and C++ implementations proves versatility – a key trait recruiters look for.  
+3. **Optimal Complexity** – Highlighting O(n) time and O(1) space showcases algorithmic efficiency.  
+4. **Clean, Production‑Ready Code** – Adheres to coding standards (naming, comments, readability) – exactly what hiring managers expect.  
+5. **SEO‑Optimized Content** – By targeting keywords such as *LeetCode 2148, Java solution, Python algorithm, C++ interview*, your article becomes a valuable resource for candidates and recruiters alike, driving traffic and establishing authority.
+
+---
+
+## 📚 Takeaway
+
+The “Count Elements With Strictly Smaller and Greater Elements” problem is deceptively simple. A single‑line observation—every qualifying element must lie strictly between the global minimum and maximum—lets you solve it with two linear passes. Implementing this in Java, Python, and C++ demonstrates algorithmic fluency across languages, while the concise, production‑grade code satisfies interviewers’ expectations.
+
+Good luck on your next interview—remember: a solid understanding of core concepts plus clean, cross‑language implementations is your secret weapon. Happy coding! 🚀
+
+---
+
+### 📖 Further Reading & Resources
+
+- LeetCode 2148: <https://leetcode.com/problems/count-elements-with-strictly-smaller-and-greater-elements>
+- Java `Math.min`/`Math.max` docs
+- Python `min()`/`max()` docs
+- C++ `<algorithm>` and `<climits>` documentation
+
+Feel free to adapt the snippets to your own coding style or project. Good luck!
