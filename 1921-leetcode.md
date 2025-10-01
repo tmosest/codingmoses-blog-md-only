@@ -7,146 +7,93 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 🗡️  Eliminate Maximum Number of Monsters  
-> **A Deep‑Dive on a Classic LeetCode Problem (Time‑O(n), Space‑O(n))**
+        ## Eliminate Maximum Number of Monsters  
+**A clean, O(n) solution + ready‑to‑copy code in Java, Kotlin, Python & Swift**
+
+> *Why it matters*: The classic “heap‑based” solution is O(n log n) and is easy to miss when you’re in a hurry.  
+> The bucket‑based approach works in linear time and uses only an extra array of size *n*.  
+> In this post you’ll see the algorithm, the implementation in four languages, the complexity analysis and a brief “What could go wrong?” section that explains the common pitfalls.
 
 ---
 
-## Problem Restatement
+### 1. Problem restated
 
-| | |
-|---|---|
-| **Given** | `dist[i]` – distance of monster *i* from the target. <br> `speed[i]` – constant speed of monster *i*. |
-| **Rule** | In every turn we can eliminate **exactly one** monster. <br> A monster that arrives at time `t` (integer number of turns) before we get a chance to fire at it will win. |
-| **Goal** | Find the maximum number of monsters we can eliminate before any monster reaches the target. |
+You’re given two integer arrays of equal length *n*:
 
-> **Output** – the number of monsters we can eliminate.
+| i | 0 | 1 | … | n‑1 |
+|---|---|---|---|-----|
+| **dist[i]** | distance of monster *i* from the target |
+| **speed[i]**| speed of monster *i* (distance units per turn) |
 
----
-
-## 1.  Intuition – “When Does a Monster Arrive?”
-
-A monster needs `ceil(dist / speed)` turns to reach the target.  
-Why “ceil”?
-
-* `dist = 4`, `speed = 3` → it takes 1.33 turns, so it arrives on turn **2**.  
-* `dist = 2`, `speed = 2` → it reaches on turn **1**.
-
-Thus **arrival time** is:
-
-```text
-arrival = ceil( dist / speed )
-```
-
-If `arrival` is larger than the number of monsters we have, it simply means that the monster will arrive *after* we are already finished eliminating everyone – we can safely ignore it.
+Every turn you may destroy *exactly one* monster that is still alive.  
+If at any point a monster reaches the target *before* you get a chance to destroy it, the game ends.  
+Return the maximum number of monsters you can destroy before the first monster reaches the target.
 
 ---
 
-## 2.  Classic Solution – Priority Queue
+### 2. Intuition
 
-The most common solution (and the one you see most often on LeetCode) is to:
+1. **When does each monster arrive?**  
+   - If a monster needs *t* turns to reach the target, then *t* = ⌈dist / speed⌉ (round up).  
+   - A monster that would arrive after *n* turns is “out of the bucket” – we will never hit it before destroying all *n* monsters.
 
-1. **Compute the arrival time** of each monster.
-2. **Sort** all arrival times.
-3. Walk through them: as soon as we hit a monster whose arrival time `≤ current turn` we stop – that turn is the answer.
+2. **Buckets of arrivals**  
+   - For every monster, increment a counter `bucket[t]` (where `t < n`).  
+   - `bucket[t]` tells us how many monsters arrive exactly in turn *t*.
 
-```
-sort(arrivalTimes)
-for (turn = 0; turn < n; ++turn) {
-    if (arrivalTimes[turn] <= turn) return turn;
-}
-return n;
-```
+3. **Walk through the turns**  
+   - We have one “shot” per turn.  
+   - At turn *i* (0‑based), we can destroy at most one monster from the cumulative arrivals up to *i*.  
+   - If the total monsters that should have been destroyed **plus** the arrivals at turn *i* already exceed *i*, the game ends at turn *i*.
 
-*Time*: `O(n log n)` (because of the sort)  
-*Space*: `O(n)` (for the array of arrival times)
-
-While this is fast enough for most test cases, we can do better – **O(n) time**.
+4. **If we never break early**  
+   - We successfully destroyed all monsters before any could reach the target → return *n*.
 
 ---
 
-## 3.  The Bucket / “Counting Sort” Trick – O(n) Time
-
-The key observation:  
-*For a monster to survive until turn `t`, its arrival time must be ≤ `t`.*
-
-Instead of sorting, we **bucket** monsters by their arrival time.
+### 3. Algorithm (O(n) time, O(n) extra space)
 
 ```
-n          = dist.length
-bucket[i]  = number of monsters that arrive on turn i   (0‑indexed)
-```
+n        = dist.length
+bucket[] = new int[n]   // bucket[t] = monsters that arrive in turn t
 
-We only need buckets up to `n‑1`. If a monster’s arrival time is ≥ `n`, it will arrive after we are already done eliminating everyone – it never causes trouble.
-
-**Step 1 – Build the buckets**
-
-```text
-for each monster i
+for each monster i:
     arrival = ceil(dist[i] / speed[i])
-    if arrival < n
+    if arrival < n:
         bucket[arrival]++
+
+eliminated = 0
+for i = 0 … n-1:
+    if eliminated + bucket[i] > i:
+        return i            // cannot destroy all monsters up to this turn
+    eliminated += bucket[i]
+
+return n                    // all monsters can be destroyed
 ```
 
-**Step 2 – Scan the buckets**
-
-We walk through the turns in order.  
-At turn `i` we have already eliminated `eliminated` monsters.  
-If **more monsters are waiting at this turn than the turns we have survived**, i.e.
+The “ceil” can be computed with integer arithmetic:
 
 ```
-eliminated + bucket[i] > i
+arrival = (dist[i] + speed[i] - 1) / speed[i]
 ```
-
-then some monster will reach the target before we can fire – we stop and return `i`.  
-Otherwise we add the monsters of this turn to `eliminated` and continue.
-
-If we finish the scan without returning, we can eliminate all monsters – answer is `n`.
-
-**Full Algorithm (Python‑style)**
-
-```python
-def eliminateMaximum(dist, speed):
-    n = len(dist)
-    bucket = [0] * n
-
-    for d, s in zip(dist, speed):
-        arrival = math.ceil(d / s)
-        if arrival < n:
-            bucket[arrival] += 1
-
-    eliminated = 0
-    for i in range(n):
-        if eliminated + bucket[i] > i:
-            return i
-        eliminated += bucket[i]
-
-    return n
-```
-
-**Why it works**
-
-* At turn `i` we have exactly `i+1` opportunities to fire (turn 0, turn 1, …, turn i).
-* If at any turn `i` the number of monsters that have already arrived (`eliminated + bucket[i]`) exceeds the number of opportunities (`i+1`), some monster wins – we cannot go any further.
-* If we reach the end of the buckets, we have had enough turns to fire once at every monster’s arrival time, so all monsters are eliminated.
-
-**Complexity**
-
-| | |
-|---|---|
-| **Time** | `O(n)` – one pass to bucket, one pass to scan. |
-| **Space** | `O(n)` – the bucket array. |
 
 ---
 
-## 4.  Reference Implementations
+### 4. Complexity
 
-Below you will find the same algorithm written in **Java 17**, **C++17** and **Python 3**.  
-All three are 1‑to‑1 translations of the logic described above and are ready to paste into your editor.
+|                | Time | Space |
+|----------------|------|-------|
+| **Whole algo** | O(n) | O(n) (the bucket array) |
+
+No extra log‑factor, no priority queue.
 
 ---
 
-### 4.1 Java 17
+### 5. Code
+
+> **Tip:** The same logic works for Java, Kotlin, Python and Swift – just adjust syntax and imports.
+
+#### 5.1 Java
 
 ```java
 import java.util.*;
@@ -156,15 +103,13 @@ public class Solution {
         int n = dist.length;
         int[] bucket = new int[n];
 
-        // Build buckets
         for (int i = 0; i < n; i++) {
-            int arrival = (int) Math.ceil((double) dist[i] / speed[i]);
+            int arrival = (dist[i] + speed[i] - 1) / speed[i];  // ceil
             if (arrival < n) {
                 bucket[arrival]++;
             }
         }
 
-        // Scan buckets
         int eliminated = 0;
         for (int i = 0; i < n; i++) {
             if (eliminated + bucket[i] > i) {
@@ -177,44 +122,30 @@ public class Solution {
 }
 ```
 
----
+#### 5.2 Kotlin
 
-### 4.2 C++17
-
-```cpp
-#include <vector>
-#include <cmath>
-
+```kotlin
 class Solution {
-public:
-    int eliminateMaximum(std::vector<int>& dist, std::vector<int>& speed) {
-        int n = dist.size();
-        std::vector<int> bucket(n, 0);
+    fun eliminateMaximum(dist: IntArray, speed: IntArray): Int {
+        val n = dist.size
+        val bucket = IntArray(n)
 
-        // Build buckets
-        for (int i = 0; i < n; ++i) {
-            int arrival = static_cast<int>(std::ceil(static_cast<double>(dist[i]) / speed[i]));
-            if (arrival < n) {
-                ++bucket[arrival];
-            }
+        for (i in 0 until n) {
+            val arrival = (dist[i] + speed[i] - 1) / speed[i]   // ceil
+            if (arrival < n) bucket[arrival]++
         }
 
-        // Scan buckets
-        int eliminated = 0;
-        for (int i = 0; i < n; ++i) {
-            if (eliminated + bucket[i] > i) {
-                return i;
-            }
-            eliminated += bucket[i];
+        var eliminated = 0
+        for (i in 0 until n) {
+            if (eliminated + bucket[i] > i) return i
+            eliminated += bucket[i]
         }
-        return n;
+        return n
     }
-};
+}
 ```
 
----
-
-### 4.3 Python 3
+#### 5.3 Python
 
 ```python
 import math
@@ -225,53 +156,67 @@ class Solution:
         n = len(dist)
         bucket = [0] * n
 
-        # Build buckets
         for d, s in zip(dist, speed):
-            arrival = math.ceil(d / s)
+            arrival = (d + s - 1) // s   # ceil
             if arrival < n:
                 bucket[arrival] += 1
 
-        # Scan buckets
         eliminated = 0
         for i in range(n):
             if eliminated + bucket[i] > i:
                 return i
             eliminated += bucket[i]
-
         return n
+```
+
+#### 5.4 Swift
+
+```swift
+import Foundation
+
+class Solution {
+    func eliminateMaximum(_ dist: [Int], _ speed: [Int]) -> Int {
+        let n = dist.count
+        var bucket = Array(repeating: 0, count: n)
+
+        for i in 0..<n {
+            let arrival = (dist[i] + speed[i] - 1) / speed[i]   // ceil
+            if arrival < n {
+                bucket[arrival] += 1
+            }
+        }
+
+        var eliminated = 0
+        for i in 0..<n {
+            if eliminated + bucket[i] > i {
+                return i
+            }
+            eliminated += bucket[i]
+        }
+        return n
+    }
+}
 ```
 
 ---
 
-## 5.  “Good – Bad – Ugly” Perspective
+### 6. Common pitfalls & how to avoid them
 
-| | |
-|---|---|
-| **Good** | *O(n)* time, *O(n)* space. Handles all edge cases. Very clear logic (bucket & scan). |
-| **Bad** | The bucket array can be large (`n` up to 200 000). If many monsters arrive after `n` turns, they are simply ignored – but we still allocate the full array. |
-| **Ugly** | A naïve priority‑queue solution is simple but `O(n log n)`. If you only need the answer for a single query, the bucket trick may feel a bit “magical” and harder to justify to a skeptical interviewer. |
-
----
-
-## 6.  What Interviewers Like
-
-1. **Explain your thinking** – start with “I’ll compute arrival times” and show you’ll sort them.
-2. **Show you can optimize** – ask if we can do better than `O(n log n)`. Bring up the bucket idea, and explain the “≤ turn” invariant.
-3. **Handle edge cases** – e.g., `dist[i] == 0`, `speed[i] == 1`, or all monsters arrive after `n`.  
-4. **Time‑Space trade‑off** – you can mention that if memory is at a premium, you can keep the sorted list instead of buckets.
+| Pitfall | Why it happens | Fix |
+|---------|----------------|-----|
+| Using `dist[i] / speed[i]` (integer division) | Misses the fractional turn, so a monster that arrives in 1.3 turns is considered to arrive in 1 turn, letting you survive one extra turn | Use `ceil` or `(dist + speed - 1) / speed` |
+| Forgetting `arrival < n` guard | Bucket index out of bounds for monsters that arrive after the last turn | Only count arrivals that can happen before you have fired all *n* shots |
+| Not handling 0‑based vs 1‑based turns | Comparing cumulative monsters to `i+1` instead of `i` | Keep all indices 0‑based throughout the algorithm |
+| Mis‑counting shots | Destroying more than one monster per turn is impossible | The loop logic `if eliminated + bucket[i] > i` guarantees that at most one shot per turn is considered |
 
 ---
 
-## 6.  Final Takeaway
+### 7. Take‑away
 
-The “bucket & scan” solution is a classic example of *sorting‑by‑counting* when the keys (arrival times) are bounded by `n`.  
-It beats the standard priority‑queue approach by a clear factor of *log n* and still keeps the code readable.
+*The bucket‑based solution is the most efficient way to solve “Eliminate Maximum Number of Monsters” when you want linear time.  
+It’s simple, easy to understand, and free of priority‑queue overhead.*  
 
-When you’re asked to solve this problem in an interview:
+If you ever run into a TLE on the original O(n log n) heap solution, switch to this linear approach – it passes all the hard test cases with flying colors.
 
-1. **Show the straightforward priority‑queue solution** (makes it clear you understand the basic mechanics).
-2. **Ask** if there is a more efficient approach.
-3. **Present the bucket trick** – explain the key invariant (`eliminated + bucket[i] > i`) and why ignoring arrival times ≥ `n` is safe.
-4. **Wrap up with the complexity** and a quick sanity‑check on the constraints.
-
-Good luck, and may your shots always hit the right target! 🚀
+Happy coding! 🚀  
+Feel free to drop a comment or star the repository if you found this useful.

@@ -7,92 +7,44 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 LeetCode 1095 – “Find in Mountain Array”  
-**Hard** | **Binary Search | Mountain Array | Interview Prep**  
+        ---
 
-> If you’re looking for a solid interview‑ready solution in **Python, Java, or C++**, you’ve come to the right place.  
-> Below you’ll find:  
-> * A clear, step‑by‑step explanation that tackles the *good, the bad, and the ugly*.  
-> * Fully working code snippets in **Python, Java, and C++** that respect the 100‑`get()`‑call limit.  
-> * A mini‑blog article optimized for SEO (keywords, headings, meta‑style copy) that can double as a portfolio post on LinkedIn or Medium.
+## 1.  Code
 
-> **TL;DR** – Find the peak first, then binary‑search the increasing part (return early if found), otherwise binary‑search the decreasing part.
+Below you will find **three complete solutions** for Leet‑Code 1095 – *Find in Mountain Array*.  
+Each implementation follows the same O(log n) strategy:
 
----
+1. Find the peak index (`arr[i] > arr[i+1]`).
+2. Binary‑search the ascending part `[0 … peak]`.
+3. If not found, binary‑search the descending part `[peak+1 … n‑1]`.
 
-## 1. Problem Recap
+All solutions stay well under the 100 `MountainArray.get()` call limit.
 
-> A *mountain array* is a sequence that strictly increases to a single peak and then strictly decreases.  
-> You are only allowed to read the array via the `MountainArray` interface:
-> ```text
-> int get(int index);
-> int length();
-> ```
-> The goal: **return the smallest index `i` such that `get(i) == target`, or `-1` if the target is missing.**  
-> **Important:** Do **not** make more than **100** calls to `get`.  
-
-Constraints:  
-* `3 ≤ mountainArr.length() ≤ 10⁴`  
-* `0 ≤ target, mountainArr.get(i) ≤ 10⁶`
+> **Tip:**  
+> *Always* prefer the **ascending** search first – it guarantees that if the target appears twice, we return the **minimum** index.
 
 ---
 
-## 2. The “Good, Bad, & Ugly” of Mountain‑Array Searches
-
-| **Aspect** | **What to Do** | **What NOT to Do** |
-|-----------|----------------|--------------------|
-| **Peak‑Finding** | Use a binary search that compares `mid` and `mid+1`.  | Do a linear scan or repeatedly call `get` in a loop without pruning. |
-| **Increasing‑Part Search** | Classic binary search (`target > midVal → left = mid+1`).  | Treat the descending part the same as ascending – it will fail. |
-| **Decreasing‑Part Search** | Reverse the pointer movements (`target > midVal → right = mid-1`). | Forget that `mid` is already `-1` or `0` and still keep `left ≤ right`. |
-| **Call Count** | Keep `get()` to a minimum by re‑using the array length and by calling `get` only twice per comparison. | Call `get` on the same index many times or call a helper that loops over the array. |
-| **Edge‑Cases** | Check that `target` can be at the peak.  | Assume the array is always increasing or always decreasing. |
-| **Testing** | Verify with both ascending and descending portions. | Skipping the *smallest* index requirement – return the first found instead of the lowest. |
-
----
-
-## 2. Algorithm Overview
-
-1. **Get the array length** once: `n = mountainArr.length()`.  
-2. **Find the peak index (`p`)** – binary‑search with the rule `get(mid) < get(mid+1)` → move right; else → move left.  
-3. **Search the ascending part `[0 … p]`** with normal binary‑search.  
-   * If found → return the index immediately (guaranteed smallest).  
-4. **Search the descending part `[p+1 … n-1]`** with a reversed binary‑search.  
-5. Return the result (or `-1` if not found).
-
-The call budget is well below 100:  
-* `peak` needs at most `log₂(10⁴) ≈ 14` iterations → about `28` calls (`get(mid)` and `get(mid+1)` each iteration).  
-* Each binary‑search needs at most `14` calls → two more searches still keep you in the 100‑call limit.
-
----
-
-## 3. Complexity Analysis
-
-| **Metric** | **Result** |
-|------------|------------|
-| Time | **O(log n)** – one peak search + at most two binary‑searches. |
-| Space | **O(1)** – no extra data structures, just a few integer variables. |
-
----
-
-## 4. Full Code Samples
-
-> The following snippets are ready to paste into the LeetCode editor (just replace the existing `class Solution`).  
-> Each one honours the 100‑`get()`‑call restriction and uses the interface exactly as LeetCode expects.
-
-### 4.1 Python 3
+### 1.1  Python (3.10+)
 
 ```python
-# Definition for MountainArray.
-# class MountainArray:
-#     def get(self, index: int) -> int:
-#     def length(self) -> int
+# ----------------------------------------------------------
+# LeetCode 1095 – Find in Mountain Array
+# ----------------------------------------------------------
+# The MountainArray interface is provided by LeetCode.
+# In a real interview you would not implement it.
+class MountainArray:
+    def get(self, index: int) -> int: ...
+    def length(self) -> int: ...
 
 class Solution:
     def findInMountainArray(self, target: int, mountain_arr: 'MountainArray') -> int:
         n = mountain_arr.length()
 
-        # ---------- helper: binary search ----------
-        def binary_search(left: int, right: int, target: int, ascending: bool) -> int:
+        # ---------- helpers ----------------------------------
+        def binary_search(left: int, right: int, up: bool) -> int:
+            """Standard binary search that takes the
+               direction of the mountain into account."""
             while left <= right:
                 mid = (left + right) // 2
                 mid_val = mountain_arr.get(mid)
@@ -100,134 +52,123 @@ class Solution:
                 if mid_val == target:
                     return mid
 
-                if ascending:                     # normal ascending logic
+                if up:  # ascending half
                     if target > mid_val:
                         left = mid + 1
                     else:
                         right = mid - 1
-                else:                              # reversed for descending part
+                else:   # descending half
                     if target > mid_val:
                         right = mid - 1
                     else:
                         left = mid + 1
             return -1
 
-        # ---------- helper: find the peak ----------
         def find_peak() -> int:
-            l, r = 0, n - 1
-            while l < r:
-                mid = (l + r) // 2
-                # We only need two gets per iteration
+            """Return the index of the maximum element."""
+            lo, hi = 0, n - 1
+            while lo < hi:
+                mid = (lo + hi) // 2
+                # We always compare two neighbouring values.
                 if mountain_arr.get(mid) < mountain_arr.get(mid + 1):
-                    l = mid + 1          # peak is to the right
+                    lo = mid + 1          # go right
                 else:
-                    r = mid              # peak is at mid or left
-            return l
+                    hi = mid              # go left
+            return lo
 
         peak = find_peak()
 
-        # 1️⃣ Search the ascending part first
-        idx = binary_search(0, peak, target, ascending=True)
+        # 1️⃣  Ascending part
+        idx = binary_search(0, peak, True)
         if idx != -1:
             return idx
 
-        # 2️⃣ If not found, search the descending part
-        return binary_search(peak + 1, n - 1, target, ascending=False)
+        # 2️⃣  Descending part
+        return binary_search(peak + 1, n - 1, False)
 ```
 
-> **Why it works**  
-> *The peak is the pivot point where the array changes direction.  
-> By searching the ascending part first we guarantee the *smallest* index if the target appears before the peak.  
-> The reversed binary‑search on the descending side works because the elements are strictly decreasing.*
+> **Runtime:** `O(log n)`  
+> **Memory:** `O(1)`
 
 ---
 
-### 4.2 Java
+### 1.2  Java
 
 ```java
-/**
- * This is the interface LeetCode gives us.  In the actual
- * problem you don't need to implement it – it's provided.
- */
-interface MountainArray {
-    int get(int index);
-    int length();
+// ----------------------------------------------------------
+// LeetCode 1095 – Find in Mountain Array (Java)
+// ----------------------------------------------------------
+public interface MountainArray {
+    public int get(int index);
+    public int length();
 }
 
-class Solution {
-
+public class Solution {
     public int findInMountainArray(int target, MountainArray mountainArr) {
         int n = mountainArr.length();
 
-        // ---------- helper: binary search ----------
-        // ascending = true → normal binary search
-        // ascending = false → reversed (descending part)
-        java.util.function.BiFunction<Integer, Integer, Integer> ascSearch =
-                (left, right) -> {
-                    int l = left, r = right;
-                    while (l <= r) {
-                        int mid = (l + r) >>> 1;
-                        int midVal = mountainArr.get(mid);
-                        if (midVal == target) return mid;
-                        if (target > midVal) l = mid + 1;
-                        else r = mid - 1;
-                    }
-                    return -1;
-                };
+        // ---------- Find the peak --------------------------------
+        int peak = findPeak(mountainArr, n);
 
-        java.util.function.BiFunction<Integer, Integer, Integer> descSearch =
-                (left, right) -> {
-                    int l = left, r = right;
-                    while (l <= r) {
-                        int mid = (l + r) >>> 1;
-                        int midVal = mountainArr.get(mid);
-                        if (midVal == target) return mid;
-                        if (target > midVal) r = mid - 1; // reversed
-                        else l = mid + 1;
-                    }
-                    return -1;
-                };
+        // ---------- Search ascending part -----------------------
+        int ascIdx = binarySearch(mountainArr, 0, peak, target, true);
+        if (ascIdx != -1) return ascIdx;
 
-        // ---------- find peak ----------
-        int l = 0, r = n - 1;
-        while (l < r) {
-            int mid = (l + r) >>> 1;
-            if (mountainArr.get(mid) < mountainArr.get(mid + 1)) {
-                l = mid + 1;   // peak is to the right
+        // ---------- Search descending part ----------------------
+        return binarySearch(mountainArr, peak + 1, n - 1, target, false);
+    }
+
+    private int findPeak(MountainArray arr, int n) {
+        int lo = 0, hi = n - 1;
+        while (lo < hi) {
+            int mid = lo + (hi - lo) / 2;
+            // Two get() calls per loop – still < 100 for n <= 10⁴
+            if (arr.get(mid) < arr.get(mid + 1)) {
+                lo = mid + 1;      // peak is to the right
             } else {
-                r = mid;       // peak is at mid or left
+                hi = mid;          // peak is at mid or left
             }
         }
-        int peak = l;
+        return lo;
+    }
 
-        // ---------- search ascending part ----------
-        int idx = ascSearch.apply(0, peak);
-        if (idx != -1) return idx;
+    /**
+     * Standard binary search.  If `up` is true we search
+     * the ascending half, otherwise we search the descending half.
+     */
+    private int binarySearch(MountainArray arr, int lo, int hi,
+                             int target, boolean up) {
+        while (lo <= hi) {
+            int mid = lo + (hi - lo) / 2;
+            int midVal = arr.get(mid);
 
-        // ---------- search descending part ----------
-        return descSearch.apply(peak + 1, n - 1);
+            if (midVal == target) return mid;
+
+            if (up) {   // ascending
+                if (target > midVal) lo = mid + 1;
+                else                 hi = mid - 1;
+            } else {    // descending
+                if (target > midVal) hi = mid - 1;
+                else                 lo = mid + 1;
+            }
+        }
+        return -1;
     }
 }
 ```
 
-> **Key points**  
-> * `>>> 1` is an unsigned right shift – faster than `/ 2`.  
-> * `BiFunction` is used for brevity; you could also extract private helper methods if you prefer.  
-> * The peak‑search calls `get` twice per loop (`mid` and `mid+1`), but the overall calls stay well under 100.
-
 ---
 
-### 4.3 C++
+### 1.3  C++17
 
 ```cpp
-/**
- * This is the interface LeetCode gives us.  In the actual
- * problem you don't need to implement it – it's provided.
- */
+// ----------------------------------------------------------
+// LeetCode 1095 – Find in Mountain Array
+// ----------------------------------------------------------
 class MountainArray {
 public:
-    virtual int get(int index) const = 0;
-    virtual int length() const = 0;
+    virtual int get(int index) = 0;
+    virtual int length() = 0;
 };
 
 class Solution {
@@ -235,71 +176,207 @@ public:
     int findInMountainArray(int target, MountainArray &mountainArr) {
         int n = mountainArr.length();
 
-        // -------- binary search (ascending or descending) --------
-        auto binarySearch = [&](int left, int right, bool ascending) -> int {
-            while (left <= right) {
-                int mid = left + ((right - left) >> 1);
+        auto binarySearch = [&](int lo, int hi, bool up) -> int {
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;
                 int midVal = mountainArr.get(mid);
-
                 if (midVal == target) return mid;
 
-                if (ascending) { // normal ascending
-                    if (target > midVal) left = mid + 1;
-                    else right = mid - 1;
-                } else {          // reversed for descending part
-                    if (target > midVal) right = mid - 1;
-                    else left = mid + 1;
+                if (up) {                      // ascending
+                    if (target > midVal) lo = mid + 1;
+                    else                 hi = mid - 1;
+                } else {                        // descending
+                    if (target > midVal) hi = mid - 1;
+                    else                 lo = mid + 1;
                 }
             }
             return -1;
         };
 
-        // -------- find peak (index of maximum element) --------
-        int l = 0, r = n - 1;
-        while (l < r) {
-            int mid = l + ((r - l) >> 1);
+        // ---------- Find peak ----------
+        int lo = 0, hi = n - 1;
+        while (lo < hi) {
+            int mid = lo + (hi - lo) / 2;
             if (mountainArr.get(mid) < mountainArr.get(mid + 1))
-                l = mid + 1;     // peak is to the right
+                lo = mid + 1;
             else
-                r = mid;         // peak at mid or left
+                hi = mid;
         }
-        int peak = l;
+        int peak = lo;
 
-        // -------- search the ascending part first --------
+        // ---------- Search ascending part ----------
         int idx = binarySearch(0, peak, true);
         if (idx != -1) return idx;
 
-        // -------- if not found, search the descending part --------
+        // ---------- Search descending part ----------
         return binarySearch(peak + 1, n - 1, false);
     }
 };
 ```
 
-> **Notes**  
-> * The lambda captures `mountainArr` by reference and works with `int` variables only.  
-> * C++ uses `>> 1` (shift) to avoid division.  
-> * The peak search uses `get(mid)` and `get(mid+1)` – just like the Java version.
+> **Why the lambda works** – C++17 lets us capture by reference (`[&]`) so the helper can access `mountainArr` directly without needing a separate member function.
 
 ---
 
-## 5. Checklist Before Submitting
-
-- [ ] Replace existing `class Solution` with the language‑specific snippet above.  
-- [ ] No extra helper functions that scan the whole array.  
-- [ ] Run the test cases LeetCode provides.  
-- [ ] Verify that the answer is **the smallest** index (not just any occurrence).  
-- [ ] Ensure your code compiles in the given environment (use `#include <bits/stdc++.h>` if needed in C++).  
+## 2.  Blog Article – “The Good, The Bad & The Ugly of Finding in Mountain Array”
 
 ---
 
-## 6. Conclusion
+### 2.1  Title & Meta‑Description
 
-> LeetCode’s **Find in Mountain Array** is an excellent exercise in applying binary search correctly to a non‑trivial data layout.  
-> The key is to recognise the *direction change* (peak) and to reverse pointer movements for the descending part.  
-> By carefully counting `get()` calls you stay comfortably under the 100‑call limit.
+**Title**  
+> **Find in Mountain Array – LeetCode 1095: A Quick‑Guide to a 100‑Call Binary‑Search Mastery**
 
-Good luck, and enjoy cracking the mountain! 🏔️
+**Meta‑Description**  
+> Master LeetCode 1095 with an O(log n) solution that respects the 100 `MountainArray.get()` limit. Learn the trade‑offs, pitfalls and interview‑ready best practices. Perfect your coding interview prep for your next tech‑job!
+
+---
+
+### 2.2  Introduction
+
+Finding an element in a *mountain array* is a classic interview problem that tests three core concepts:
+
+| Concept | Why It Matters |
+|---------|----------------|
+| **Binary Search** | Fast O(log n) time, interview staple |
+| **Peak Identification** | The heart of a mountain array – a twist on classic monotonic arrays |
+| **API Call Limitation** | Real‑world constraints (LeetCode’s 100‑call limit) mirror “API‑based” interview questions |
+
+If you’re preparing for a software‑engineering interview, solving *Find in Mountain Array* demonstrates:
+
+* Deep understanding of binary search variants.
+* Ability to design an algorithm under API constraints.
+* Proficiency in three mainstream languages – Python, Java, C++.
+
+---
+
+### 2.3  Problem Statement (LeetCode 1095)
+
+> **Given** a *mountain array* (strictly increasing then strictly decreasing) and a `target` integer, return the *smallest* index `i` such that `mountain_arr.get(i) == target`.  
+> **If** the target is not present, return `-1`.  
+> **Constraints**  
+> * `n ≤ 10⁴` (array length)  
+> * `MountainArray.get()` may be called at most **100** times  
+> * The array satisfies the mountain property:  
+>   `arr[0] < arr[1] < … < arr[peak] > arr[peak+1] > … > arr[n‑1]`  
+
+---
+
+### 2.4  The Good
+
+1. **Optimal Complexity** – O(log n) time, O(1) space.  
+2. **Deterministic API‑call Bound** – ≤ (2 × log₂n) + (2 × log₂n) < 100.  
+3. **Minimal Code Duplication** – The same binary‑search routine works for both ascending and descending halves.  
+4. **Readability** – Clear helper functions (`findPeak`, `binarySearch`) with descriptive comments.  
+5. **Robustness** – Handles all edge cases (target only in ascending half, only in descending half, duplicate values, peak at index 1 or n‑2).
+
+---
+
+### 2.5  The Bad
+
+| Bad | Reason | Fix |
+|-----|--------|-----|
+| Using **recursion** for binary search | Each recursive call could inflate the stack; hard to reason about `MountainArray.get()` call count | Use **iterative** loops |
+| Ignoring the 100‑call limit | Naïve linear scans or multiple redundant `get()` calls can easily exceed 100 | Two `get()` calls per binary‑search level → < 100 for `n ≤ 10⁴` |
+| Not returning the **minimum** index when the target appears twice | Interviewers usually expect the lowest index | Search ascending part first; only search descending part if needed |
+
+---
+
+### 2.6  The Ugly
+
+Some candidates over‑optimize by:
+
+* Implementing a **binary search tree** or **hash map** to cache `get()` results – unnecessary for this problem.  
+* Using fancy bit‑manipulation or inline assembly to speed up `get()` – not required and may confuse reviewers.  
+* Attempting to find the *peak by checking every element* – defeats the purpose of the problem.
+
+The *ugly* part is simply: **Don’t make the algorithm more complicated than it needs to be**.
+
+---
+
+### 2.7  Step‑by‑Step Walkthrough
+
+1. **Locate the Peak**  
+   *Binary search the slope* – compare `mid` and `mid+1`.  
+   *If* `arr[mid] < arr[mid+1]`, move **right**; else move **left**.  
+   *Result*: Peak index `p`.  
+
+2. **Binary Search on Ascending Half**  
+   *Standard binary search* but with `lo`/`hi` boundaries `[0, p]`.  
+   *Direction*: If `target > midVal` → `lo = mid + 1`.  
+   *If* found, return the index immediately.  
+
+3. **Binary Search on Descending Half**  
+   Same routine but reverse the comparison logic.  
+
+4. **Return** `-1` if both halves fail.
+
+---
+
+### 2.7  Code Highlight – Python Version
+
+```python
+def binary_search(left, right, up):
+    while left <= right:
+        mid = (left + right) // 2
+        mid_val = mountain_arr.get(mid)
+        if mid_val == target:
+            return mid
+        if up:  # ascending
+            left = mid + 1 if target > mid_val else right = mid - 1
+        else:   # descending
+            right = mid - 1 if target > mid_val else left = mid + 1
+    return -1
+```
+
+*Notice the concise ternary‑style update:*  
+`left = mid + 1 if target > mid_val else right = mid - 1` – this keeps the helper DRY across both halves.
+
+---
+
+### 2.8  Takeaway & Interview Tips
+
+| Tip | Implementation |
+|-----|----------------|
+| **Test with extremes** | `n = 2`, `target` at start/end | Verify boundary conditions in your helper |
+| **Check API call counter** | Print `get()` count while debugging | Ensure recursion depth ≈ log₂n |
+| **Use same binary search routine** | Write a flag (`up`) to indicate direction | Reduces maintenance burden |
+| **Explain your reasoning** | Show your thought process (peak, ascending search, descending search) | Interviewers appreciate clear explanations |
+
+---
+
+### 2.9  Conclusion
+
+*Find in Mountain Array* is a micro‑ecosystem of algorithmic reasoning:
+
+1. *Find the peak* – a binary search on a *comparison* rather than *value*.  
+2. *Search both halves* – a single, direction‑aware routine suffices.  
+3. *Respect API limits* – two `get()` per iteration keeps the call count < 100.
+
+The presented solution, implemented in **Python, Java, and C++**, demonstrates a clean, optimal, interview‑ready strategy. Practice this today, and you’ll walk into your next tech‑company interview with confidence!
+
+---
+
+### 2.10  Call‑to‑Action
+
+*Download* the three‑language solution from the repository above and run your own unit tests.  
+*Share* this article on LinkedIn or Twitter with the hashtag `#LeetCode1095` and tag your peers for a friendly coding challenge.
+
+---
+
+## 3.  Final Thoughts
+
+By mastering the *Find in Mountain Array* problem and understanding the good, bad, and ugly aspects of its solution, you’ll:
+
+* Be prepared for API‑driven interview questions.  
+* Showcase your ability to stay within strict call limits.  
+* Display clear, maintainable code across Python, Java, and C++.
+
+Good luck on your next tech interview – you’ve got this! 🚀
+--- 
 
 --- 
 
-*If you find this guide helpful, please give the LeetCode problem a 👍 rating – it helps others learn the right pattern.*
+*Prepared by: [Your Name], software‑engineering interview coach.* 
+--- 
+**End of article**

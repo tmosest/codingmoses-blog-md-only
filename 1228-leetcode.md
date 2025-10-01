@@ -7,235 +7,277 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # Missing Number in Arithmetic Progression – LeetCode 1228  
-**Java, Python & C++ solutions + interview‑ready guide**
+        ## 1. Problem Recap
+
+**LeetCode 1228 – Missing Number In Arithmetic Progression**
+
+> In an array that originally formed an arithmetic progression (AP) one element (never the first or last) was removed.  
+> Given the shortened array `arr`, return the missing value.
+
+**Constraints**
+
+| Constraint | Value |
+|------------|-------|
+| `3 ≤ arr.length ≤ 1000` | ✅ |
+| `0 ≤ arr[i] ≤ 10⁵` | ✅ |
+| Array is guaranteed to be valid | ✅ |
+
+**Examples**
+
+| Input | Output | Explanation |
+|-------|--------|-------------|
+| `[5,7,11,13]` | `9` | Original AP: `[5,7,9,11,13]` |
+| `[15,13,12]` | `14` | Original AP: `[15,14,13,12]` |
 
 ---
 
-## 1. Introduction
+## 2. Solution Overview
 
-> **LeetCode 1228 – “Missing Number in Arithmetic Progression”**  
-> *A single number was removed from a strictly increasing or decreasing arithmetic progression (AP). Find the missing element.*
+*An arithmetic progression of length `N+1` has a constant common difference `d`.  
+With one element removed, the remaining length is `N`. The correct difference can be derived as*  
 
-The problem is a classic interview question that tests your understanding of arithmetic sequences, edge‑case handling and constant‑time logic. Mastering it gives you a clean solution to show on your résumé, a solid answer for technical interviews, and confidence when tackling harder “gap‑filling” problems.
+\[
+d = \frac{arr[N-1] - arr[0]}{N}
+\]
 
----
+*We then scan once for the first index where the difference deviates from `d`. The missing number is `arr[i] + d`.*
 
-## 2. Problem Statement
+### Key Observations
 
-```text
-Given an integer array arr that contains all elements of a strictly monotonic arithmetic progression of length n+1
-except one element that was removed (not the first or last element), find the missing number.
+1. **Only one gap is wrong** – all other adjacent differences equal `d`.  
+2. **Missing number is not first/last**, so the wrong gap will always be found in the scan.  
+3. `d` can be negative (decreasing AP) – integer division works because `(arr[N-1] - arr[0])` is always divisible by `N` for a valid input.
 
-Return the missing number.
-```
+### Complexity
 
-| Field | Description |
-|-------|-------------|
-| `arr` | array of size `n` (n ≥ 3) |
-| `n`   | length of the input array |
-| `n+1` | original size of the AP before removal |
-
-> **Examples**  
-> • `arr = [5, 7, 11, 13]` → output `9`  
-> • `arr = [15, 13, 12]` → output `14`
+| Metric | Java / Python / C++ |
+|--------|---------------------|
+| Time   | **O(N)**            |
+| Space  | **O(1)**            |
 
 ---
 
-## 3. Constraints
+## 3. Code Implementations
 
-| Parameter | Minimum | Maximum | Notes |
-|-----------|---------|---------|-------|
-| `n`       | 3 | 10⁵ | The input size can be large; O(n) is required. |
-| `arr[i]`  | -10⁹ | 10⁹ | 32‑bit signed integers. |
-| The progression is **strictly monotonic** (increasing or decreasing). |
-| The missing element is **never the first or the last** of the original sequence. |
+Below are clean, self‑contained implementations in **Java**, **Python**, and **C++**.
 
 ---
 
-## 4. Understanding the Problem
-
-An arithmetic progression (AP) has a constant difference `d`.  
-If we delete one element from a progression of length `k+1`, the resulting array has `k` elements, and **exactly one adjacent pair will have a gap of `2·d`** – the place where the deletion happened.
-
-*Why only one such pair?*  
-Because every other adjacent pair in the remaining array is still consecutive in the original AP and therefore differs by exactly `d`.
-
-The task reduces to:
-1. **Determine the true difference `d`.**  
-   In an array of ≥ 4 elements, we can look at the first three differences and choose the one that appears at least twice.
-2. **Locate the anomalous pair** where the difference is `2·d` and compute the missing number as `previous + d`.
-
-Edge cases:  
-- **`n = 3`** – the “majority” rule cannot be applied because we have only two differences. The smaller magnitude difference is the real `d`.  
-- **Negative `d`** – the AP may be decreasing; the algorithm handles signs naturally.
-
----
-
-## 5. Approach (O(n) time, O(1) space)
-
-1. **Compute the first three differences** (`diff1`, `diff2`, `diff3`).
-2. **Identify the correct difference `d`**:
-   *If `diff1 == diff2` or `diff1 == diff3` → `d = diff1`; otherwise `d = diff2`.*
-3. **Scan once** from the second element to the second‑to‑last:
-   *When `arr[i] - arr[i-1] != d`, the missing number is `arr[i-1] + d`.  
-   The loop terminates immediately – no need to check the last element because the missing element cannot be at the array’s ends.*
-4. **Special‑case `n = 3`**:  
-   *The two available differences give `d` as the one with smaller absolute value.  
-   If the first difference equals `2·d`, the missing number lies after the first element; otherwise it lies after the second.*
-
-The algorithm never modifies the input array and runs in a single linear pass.
-
----
-
-## 6. Implementations
-
-Below are clean, interview‑ready implementations in **Java, Python, and C++**.
-
----
-
-### 6.1 Java
+### 3.1 Java
 
 ```java
-import java.util.*;
-
-class Solution {
-    public int missingNumber(int[] arr) {
+// Java 17
+public class Solution {
+    public int missingNumberInArithmeticProgression(int[] arr) {
         int n = arr.length;
-        if (n == 3) {
-            int diff1 = arr[1] - arr[0];
-            int diff2 = arr[2] - arr[1];
-            int d = Math.abs(diff1) < Math.abs(diff2) ? diff1 : diff2;
-            if (diff1 == 2 * d) {
-                return arr[0] + d;          // missing after arr[0]
-            } else {
-                return arr[1] + d;          // missing after arr[1]
+        int d = (arr[n - 1] - arr[0]) / n;          // common difference of the original AP
+
+        for (int i = 0; i < n - 1; i++) {
+            if (arr[i + 1] - arr[i] != d) {         // wrong gap found
+                return arr[i] + d;                 // missing number
             }
         }
-
-        int diff1 = arr[1] - arr[0];
-        int diff2 = arr[2] - arr[1];
-        int diff3 = arr[3] - arr[2];
-
-        int d = (diff1 == diff2 || diff1 == diff3) ? diff1 : diff2;
-
-        for (int i = 1; i < n - 1; i++) {
-            if (arr[i] - arr[i - 1] != d) {
-                return arr[i - 1] + d;
-            }
-        }
-        return -1; // should never reach here
+        // The input guarantees that a missing number exists in the middle,
+        // so this line will never be reached.
+        throw new IllegalArgumentException("Invalid input");
     }
 }
 ```
 
 ---
 
-### 6.2 Python
+### 3.2 Python
 
 ```python
-from typing import List
-
+# Python 3
 class Solution:
-    def missingNumber(self, arr: List[int]) -> int:
+    def missingNumberInArithmeticProgression(self, arr: list[int]) -> int:
         n = len(arr)
-        if n == 3:
-            diff1 = arr[1] - arr[0]
-            diff2 = arr[2] - arr[1]
-            d = diff1 if abs(diff1) < abs(diff2) else diff2
-            return arr[0] + d if diff1 == 2 * d else arr[1] + d
+        d = (arr[-1] - arr[0]) // n          # common difference
 
-        diff1 = arr[1] - arr[0]
-        diff2 = arr[2] - arr[1]
-        diff3 = arr[3] - arr[2]
-        d = diff1 if diff1 == diff2 or diff1 == diff3 else diff2
-
-        for i in range(1, n - 1):
-            if arr[i] - arr[i - 1] != d:
-                return arr[i - 1] + d
-        return -1   # never reached
+        for i in range(n - 1):
+            if arr[i + 1] - arr[i] != d:
+                return arr[i] + d
+        raise ValueError("Invalid input")     # should never happen for valid LeetCode cases
 ```
 
 ---
 
-### 6.3 C++
+### 3.3 C++
 
 ```cpp
-#include <vector>
-#include <cmath>
-
+// C++17
 class Solution {
 public:
-    int missingNumber(std::vector<int>& arr) {
+    int missingNumberInArithmeticProgression(vector<int>& arr) {
         int n = arr.size();
-        if (n == 3) {
-            int diff1 = arr[1] - arr[0];
-            int diff2 = arr[2] - arr[1];
-            int d = std::abs(diff1) < std::abs(diff2) ? diff1 : diff2;
-            if (diff1 == 2 * d) return arr[0] + d;
-            else                 return arr[1] + d;
-        }
+        int d = (arr.back() - arr.front()) / n;  // common difference
 
-        int diff1 = arr[1] - arr[0];
-        int diff2 = arr[2] - arr[1];
-        int diff3 = arr[3] - arr[2];
-        int d = (diff1 == diff2 || diff1 == diff3) ? diff1 : diff2;
-
-        for (int i = 1; i < n - 1; ++i) {
-            if (arr[i] - arr[i - 1] != d) return arr[i - 1] + d;
+        for (int i = 0; i < n - 1; ++i) {
+            if (arr[i + 1] - arr[i] != d) {
+                return arr[i] + d;              // missing number
+            }
         }
-        return -1;   // unreachable
+        throw std::invalid_argument("Invalid input");
     }
 };
 ```
 
 ---
 
-## 7. Alternative (Brute‑Force) – why not?
+## 4. Blog Article – “Missing Number In Arithmetic Progression: The Good, The Bad, and The Ugly”
 
-A naive solution tries every possible number between `arr[0]` and `arr[n-1]` and checks if it fits an AP.  
-It is **O(n²)** and will TLE on large inputs. It’s useful for practice, but **never** for production or an interview.
-
----
-
-## 8. Test‑Driven Edge Cases
-
-| Input | Expected | Why it works |
-|-------|----------|--------------|
-| `[1, 4, 7, 10]` | `13` | d = 3; gap after last element, but the rule guarantees we’ll catch it before the end. |
-| `[10, 8, 6, 4]` | `2` | Decreasing AP; d = ‑2, anomalous pair is `10–4 = 6` (2·d). |
-| `[5, 15, 25]` | `10` | Increasing AP with d = 10; the middle pair is 10. |
-| `[2, 1, 0]` | `-1` | Decreasing AP with d = ‑1; missing after first element. |
-| `[3, 3]` | *invalid* | The array length must be ≥ 3 (problem guarantees this). |
+> **Meta‑Description:**  
+> Master LeetCode 1228 with a step‑by‑step guide. Learn the O(N) solution, Java/Python/C++ implementations, edge‑case handling, and interview‑friendly insights. Perfect your coding interview prep and land that dream job.
 
 ---
 
-## 9. Why This Solution Rocks for Interviews
+### Introduction
 
-1. **Zero‑memory** – Constant extra space.  
-2. **Single scan** – Linear time, which matches the required complexity.  
-3. **Handles both increasing & decreasing APs** – The sign of `d` is preserved.  
-4. **Clear logic** – You can explain “majority difference” and “anomalous gap” in a few sentences.  
-5. **Extensible** – The same pattern solves “find the second missing element” or “find the missing index in a binary search tree” with slight tweaks.
+Every coding interviewer loves a problem that forces you to **think mathematically** and **write clean code**. LeetCode 1228 – *Missing Number In Arithmetic Progression* is exactly that. It’s rated “Easy” but packs a twist: one element (not the first or last) is removed from an AP.  
 
----
+In this article, we’ll:
 
-## 10. Variations & Extensions
-
-| Variation | How to adapt |
-|-----------|--------------|
-| **Find two missing numbers** | Two gaps will be `2·d` and `3·d`. Detect both and compute the two missing elements. |
-| **Non‑monotonic progression** | Compute the average difference `d = (arr[-1] - arr[0]) / n` (integer division). Then proceed with the scan. |
-| **Large integers (64‑bit)** | Use `long` in Java/C++ or `int` in Python (Python’s int is unbounded). |
+1. Break down the problem in plain English.  
+2. Reveal the key observation that turns a “guess‑and‑check” approach into a **one‑pass O(N) solution**.  
+3. Share production‑ready implementations in **Java, Python, and C++**.  
+4. Discuss pitfalls (“the ugly”), best‑practice code patterns (“the good”), and common interview traps (“the bad”).  
+5. Offer SEO‑friendly keywords so recruiters searching for “LeetCode 1228 solutions” see this post.
 
 ---
 
-## 11. Final Thoughts
+### 1. Problem Statement (Plain Language)
 
-*Missing Number in Arithmetic Progression* is a deceptively simple problem that hides a subtle pattern.  
-Mastering this pattern:
-- Builds a **solid foundation** for solving “gap” problems (e.g., missing subsequence, missing element in a sorted array).  
-- Demonstrates **algorithmic clarity** to hiring managers.  
-- Gives you a reusable snippet for any interview that involves arithmetic sequences or linear‑time scans.
+> *You have an array that used to be a perfect arithmetic progression. Someone removed a middle element. Find that missing number.*
 
-Happy coding and good luck on your next interview! 🚀
+**Key facts**
+
+| Fact | Why it matters |
+|------|----------------|
+| Length is at least 3 | We’re guaranteed a middle element exists |
+| First and last are unchanged | They anchor the original progression |
+| Array is valid | We can rely on integer arithmetic, no corrupt data |
+
+---
+
+### 2. The Good: A One‑Line Insight
+
+The missing element creates **exactly one “bad” gap** between consecutive numbers. Every other gap equals the common difference `d`.
+
+> **Observation:**  
+> `d = (arr[last] - arr[first]) / originalLength`  
+> Since the original length was `N+1` but we have only `N` elements, `originalLength = N`.
+
+Once we know `d`, we scan once to find the first index `i` where `arr[i+1] - arr[i] != d`.  
+The missing number is simply `arr[i] + d`.
+
+This yields a **linear‑time, constant‑space** solution – perfect for interviews and production.
+
+---
+
+### 3. The Bad: Common Mistakes
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| Using `arr[i+1] - arr[i]` to infer `d` blindly | Wrong `d` if the missing element is near the start | Compute `d` from *first* and *last* elements and divide by `N` |
+| Not handling negative differences | Wrong answer for decreasing AP | Use integer division; works for negative numbers as long as the difference is divisible by `N` |
+| Failing to check the *last* index | Runtime error on tiny arrays | Loop until `N-2`; the missing element is never first or last |
+
+---
+
+### 4. The Ugly: Edge Cases that Trip You Up
+
+1. **All numbers equal** – AP with `d = 0`. The formula still works; `d` becomes `0`, and the missing number equals any element.
+2. **Large values** – `arr[last] - arr[first]` can reach `10^5`, still comfortably within 32‑bit int.
+3. **Negative `d`** – Decreasing sequences (e.g., `[15,13,12]`) produce `d = -1`. Integer division in most languages keeps the sign, so no extra handling needed.
+
+---
+
+### 5. Code Walk‑through (Java)
+
+```java
+public int missingNumberInArithmeticProgression(int[] arr) {
+    int n = arr.length;
+    int d = (arr[n - 1] - arr[0]) / n;          // common difference
+
+    for (int i = 0; i < n - 1; i++) {
+        if (arr[i + 1] - arr[i] != d) {         // bad gap found
+            return arr[i] + d;                 // missing number
+        }
+    }
+    throw new IllegalArgumentException("Invalid input");
+}
+```
+
+- **Time**: `O(N)` – single pass.  
+- **Space**: `O(1)` – only a few integers.
+
+The same logic applies to the Python and C++ snippets shown earlier.
+
+---
+
+### 6. Interview‑Friendly Tips
+
+- **Explain your thought process**: Mention “common difference” and “only one bad gap” before coding.  
+- **Ask clarifying questions**: Confirm that the missing element is never first or last.  
+- **Write clean code**: Use descriptive variable names (`commonDiff`, `missing`).  
+- **Test edge cases**: Include decreasing AP, zero difference, and small arrays.
+
+---
+
+### 7. SEO & Job‑Search Takeaways
+
+| Keyword | Why it matters | How to use |
+|---------|----------------|------------|
+| “LeetCode 1228” | Exact problem ID searches | Title, heading, meta tags |
+| “Missing Number In Arithmetic Progression” | Long‑tail search | Body, FAQs |
+| “Java solution” / “Python solution” / “C++ solution” | Language‑specific queries | Sub‑headings |
+| “Coding interview” | Recruiter search | Intro, conclusion |
+| “O(N) time” | Complexity focus | Complexity analysis section |
+
+**Pro‑Tip:** Add a “Frequently Asked Questions” section at the end with variations of the problem; recruiters love depth.
+
+---
+
+### 8. FAQ
+
+| Question | Answer |
+|----------|--------|
+| What if the array is already a perfect AP? | By definition, one element is removed, so this cannot happen. |
+| Does integer division always give the correct `d`? | Yes, because `(last - first)` is guaranteed divisible by `N` in a valid input. |
+| Can the missing number be negative? | No. `arr[i]` are in `[0, 10⁵]`. The missing number will also lie in that range. |
+| Is this approach optimal? | For the given constraints, yes. It cannot be better than `O(N)` because you must inspect each element. |
+
+---
+
+### 9. Final Words
+
+LeetCode 1228 is a **great training ground** for mathematical thinking and quick coding. Mastering it gives you a solid O(N) example you can drop into any coding interview. The implementations above are ready for **coding platforms, GitHub gists, or interview prep notes**.
+
+Now you’re not just solving a problem—you’re **speaking the recruiter’s language**. Good luck on your next interview, and may the *missing number* always reveal itself! 🚀
+
+---
+
+**Call to Action:**  
+*If you found this guide helpful, share it with your network and drop a comment below with any twists you’ve encountered on similar problems.*  
+
+---  
+
+**Author:** [Your Name], Software Engineer & Interview Coach.  
+**LinkedIn:** https://linkedin.com/in/yourprofile  
+**GitHub:** https://github.com/yourrepo
+
+--- 
+
+*Happy coding!* 🚀
+
+--- 
+
+*End of article.*  
+
+---  
+
+**© 2024 All Rights Reserved.**  
+--- 
+
+> *Feel free to adapt, remix, or redistribute this article under the MIT license.*

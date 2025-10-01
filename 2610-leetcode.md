@@ -7,66 +7,80 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1. Code – Three Languages
+        ## 🚀 LeetCode 2610 – Convert an Array Into a 2‑D Array With Conditions  
+**Languages:** Java | Python | C++  
 
-Below are clean, production‑ready solutions for LeetCode 2610  
-`Convert an Array Into a 2D Array With Conditions`.  
-All three solutions run in **O(n)** time and use **O(n)** auxiliary space.
+> **Goal:** Transform a 1‑D array `nums` into a 2‑D array such that  
+> * each row contains **distinct** integers,  
+> * all elements of `nums` are used,  
+> * the number of rows is **minimal**.  
 
-> **Key Insight**  
-> If a number appears `k` times in `nums`, it has to occupy `k` *different* rows.  
-> Therefore, the **maximum frequency** of any element is exactly the minimum
-> number of rows the resulting matrix must contain.
-
-| Language | Time | Space | Why it’s good |
-|----------|------|-------|----------------|
-| **Java** | O(n) | O(n) | Uses a `HashMap` for counting and a list of lists for the result. |
-| **Python** | O(n) | O(n) | Leverages `collections.Counter` and list‑of‑lists. |
-| **C++** | O(n) | O(n) | Uses `unordered_map` and a `vector<vector<int>>`. |
-
-> The code below implements the *frequency‑based* algorithm described in the
-> official editorial.  
-> It is easier to understand, requires no extra libraries, and guarantees the
-> minimal number of rows.
+Below you’ll find three production‑ready implementations (Java, Python, C++) followed by a full‑blown blog post that explains the *good, the bad, and the ugly* of this problem – SEO‑optimized and ready to land you that next interview call.
 
 ---
 
-### 1.1 Java
+## 📊 Problem Summary
+
+- `1 ≤ nums.length ≤ 200`  
+- `1 ≤ nums[i] ≤ nums.length`  
+
+You must return a list of lists (or vector of vectors) that satisfies the conditions. Any valid answer is accepted.
+
+---
+
+## 🔑 Core Insight
+
+If a value `x` appears `k` times in `nums`, `x` **must** occupy `k` different rows.  
+Therefore the **maximum frequency** of any number determines the **minimum** number of rows required.
+
+---
+
+## 🛠️ Two Clean Solutions
+
+### 1️⃣ Frequency‑Map + Row‑By‑Row Decrease
+
+| Language | Code |
+|---|---|
+| **Java** | <details><summary>Click to expand</summary>
 
 ```java
 import java.util.*;
 
 public class Solution {
     public List<List<Integer>> findMatrix(int[] nums) {
-        // 1. Count frequencies
+        // 1. Count frequency of each number
         Map<Integer, Integer> freq = new HashMap<>();
-        int maxFreq = 0;
-        for (int x : nums) {
-            int f = freq.getOrDefault(x, 0) + 1;
-            freq.put(x, f);
-            if (f > maxFreq) maxFreq = f;
+        for (int num : nums) {
+            freq.put(num, freq.getOrDefault(num, 0) + 1);
         }
 
-        // 2. Prepare empty rows (min number of rows = maxFreq)
-        List<List<Integer>> result = new ArrayList<>();
-        for (int i = 0; i < maxFreq; i++) result.add(new ArrayList<>());
+        // 2. Build rows until all frequencies are 0
+        List<List<Integer>> res = new ArrayList<>();
+        while (!freq.isEmpty()) {
+            List<Integer> row = new ArrayList<>();
+            List<Integer> toRemove = new ArrayList<>();
 
-        // 3. Distribute numbers into rows
-        for (Map.Entry<Integer, Integer> entry : freq.entrySet()) {
-            int val = entry.getKey(), cnt = entry.getValue();
-            for (int i = 0; i < cnt; i++) {
-                result.get(i).add(val);          // put into the i‑th row
+            for (Map.Entry<Integer, Integer> e : freq.entrySet()) {
+                row.add(e.getKey());
+                int newCnt = e.getValue() - 1;
+                if (newCnt == 0) {
+                    toRemove.add(e.getKey());
+                } else {
+                    e.setValue(newCnt);
+                }
             }
-        }
 
-        return result;
+            // Remove exhausted keys
+            for (int k : toRemove) freq.remove(k);
+            res.add(row);
+        }
+        return res;
     }
 }
 ```
 
----
-
-### 1.2 Python
+</details> |
+| **Python** | <details><summary>Click to expand</summary>
 
 ```python
 from collections import Counter
@@ -74,192 +88,316 @@ from typing import List
 
 class Solution:
     def findMatrix(self, nums: List[int]) -> List[List[int]]:
-        # 1. Frequency count
         freq = Counter(nums)
-        max_freq = max(freq.values())
+        result = []
 
-        # 2. Create empty rows
-        result = [[] for _ in range(max_freq)]
-
-        # 3. Fill rows – each number occupies distinct rows
-        for val, cnt in freq.items():
-            for i in range(cnt):
-                result[i].append(val)
+        while freq:
+            row = []
+            to_del = []
+            for val, cnt in freq.items():
+                row.append(val)
+                if cnt == 1:
+                    to_del.append(val)
+                else:
+                    freq[val] = cnt - 1
+            for val in to_del:
+                del freq[val]
+            result.append(row)
 
         return result
 ```
 
----
-
-### 1.3 C++
+</details> |
+| **C++** | <details><summary>Click to expand</summary>
 
 ```cpp
 #include <vector>
 #include <unordered_map>
-#include <algorithm>
+using namespace std;
 
 class Solution {
 public:
-    std::vector<std::vector<int>> findMatrix(std::vector<int>& nums) {
-        // 1. Count frequencies
-        std::unordered_map<int, int> freq;
-        int maxFreq = 0;
-        for (int x : nums) {
-            int f = ++freq[x];
-            maxFreq = std::max(maxFreq, f);
+    vector<vector<int>> findMatrix(vector<int>& nums) {
+        unordered_map<int, int> freq;
+        for (int v : nums) ++freq[v];
+
+        vector<vector<int>> ans;
+        while (!freq.empty()) {
+            vector<int> row;
+            vector<int> toRemove;
+            for (auto &p : freq) {
+                row.push_back(p.first);
+                if (--p.second == 0) toRemove.push_back(p.first);
+            }
+            for (int v : toRemove) freq.erase(v);
+            ans.push_back(row);
         }
-
-        // 2. Prepare result with 'maxFreq' rows
-        std::vector<std::vector<int>> res(maxFreq);
-
-        // 3. Distribute each value across rows
-        for (auto &p : freq) {
-            int val = p.first, cnt = p.second;
-            for (int i = 0; i < cnt; ++i)
-                res[i].push_back(val);          // put into i‑th row
-        }
-
-        return res;
+        return ans;
     }
 };
 ```
 
----
+</details> |
 
-## 2. Blog Article – “The Good, The Bad, and The Ugly of LeetCode 2610”
+### 2️⃣ Row‑Index‑Based Placement (O(n) time, O(n) space)
 
-> **SEO Keywords** – Leetcode 2610, Convert an Array Into a 2D Array, Java solution, Python solution, C++ solution, job interview coding, algorithm interview, software engineer interview tips, minimal rows, frequency algorithm
+This method avoids scanning the map on every iteration.
 
----
+| Language | Code |
+|---|---|
+| **Java** | <details><summary>Click to expand</summary>
 
-### Introduction
+```java
+import java.util.*;
 
-You’ve just solved **LeetCode 2610 – Convert an Array Into a 2D Array With Conditions**.  
-The problem sounds deceptively simple: “Put numbers in rows, no duplicates per row.”  
-But the real challenge is to do it *efficiently* and *with minimal rows*.  
-In this article, I’ll walk you through the *good* (why the problem is great), the *bad* (common pitfalls), and the *ugly* (why naïve approaches fail), plus the clean, production‑ready solution that’s job‑interview ready.
+public class Solution {
+    public List<List<Integer>> findMatrix(int[] nums) {
+        // frequency array – nums[i] <= nums.length
+        int[] freq = new int[nums.length + 1];
+        List<List<Integer>> rows = new ArrayList<>();
 
----
+        for (int v : nums) {
+            // Ensure we have enough rows for this occurrence
+            while (freq[v] >= rows.size())
+                rows.add(new ArrayList<>());
 
-### The Good – Why It Matters
-
-| Why It’s Good | Interview Takeaway |
-|---------------|--------------------|
-| **Conceptual Clarity** – It forces you to think about *frequency* vs. *row count*. | Talk about how “frequency = number of times an element must appear in distinct rows” – demonstrates insight. |
-| **Scalable Solution** – O(n) time, O(n) space. | Interviewers love solutions that scale; you can easily explain the algorithmic complexity. |
-| **Real‑World Analogy** – Scheduling tasks across workers without conflicts. | Connect to real‑world systems like job schedulers, resource allocation. |
-| **Language‑agnostic** – Easy to implement in Java, Python, C++. | Show that you can port the logic across languages – a strong signal of a well‑understood algorithm. |
-
----
-
-### The Bad – Common Mistakes
-
-1. **Treating it as a Sorting Problem**  
-   - *Mistake*: Sort the array and then try to split it.  
-   - *Why it fails*: Sorting does nothing to reduce the number of rows; you’ll still need `maxFrequency` rows.
-2. **Over‑complicating with Nested Loops**  
-   - *Mistake*: Double‑loop to add elements row by row, reducing counters inside.  
-   - *Result*: O(n²) time – unacceptable for 200‑length arrays when interviews expect linear solutions.
-3. **Ignoring the “Minimal Rows” Requirement**  
-   - *Mistake*: Allocate as many rows as there are distinct elements.  
-   - *Why it’s wrong*: You’re not using the *maximum frequency* as the true row limit.
-
----
-
-### The Ugly – Why Naïve Distributions Crash
-
-Consider a naïve implementation:
-
-```text
-for each row i:
-    for each element j:
-        if count[j] > 0:
-            put element j into row i
-            count[j]--
+            rows.get(freq[v]).add(v);
+            freq[v]++;          // next time this value goes to a lower row
+        }
+        return rows;
+    }
+}
 ```
 
-This works *in theory*, but the inner `for each element` loop runs over *all distinct elements* for every row, which leads to a complexity of `O(maxFreq * distinctElements)`.  
-When `maxFreq` equals `n`, the worst case becomes `O(n²)`.  
-In an interview setting, such a solution will trigger red flags: “Why did you write an O(n²) algorithm when the problem is trivial for O(n)?”
+</details> |
+| **Python** | <details><summary>Click to expand</summary>
 
----
+```python
+from typing import List
 
-### The Ugly – Why You Should Avoid the `unordered_map`‑only Approach
+class Solution:
+    def findMatrix(self, nums: List[int]) -> List[List[int]]:
+        freq = [0] * (len(nums) + 1)
+        rows: List[List[int]] = []
 
-Another tempting approach is to keep a simple `unordered_map` (or `Counter`) and, for each row, iterate over *all* keys, decrementing when you place a value.  
-That yields a perfectly correct result but it still has `O(maxFreq * distinct)` complexity.  
-In practice, you can hit the upper bound (n = 200) in milliseconds, but the interview panel wants **clear, linear‑time reasoning** – the clean frequency‑distribution trick beats it.
-
----
-
-### The Clean Solution – Frequency‑Based Distribution
-
-**Step 1 – Count frequencies**
-
-```text
-freq[value] = number of occurrences of value
-maxFreq = maximum of all freq values
+        for v in nums:
+            while freq[v] >= len(rows):
+                rows.append([])
+            rows[freq[v]].append(v)
+            freq[v] += 1
+        return rows
 ```
 
-**Step 2 – Pre‑allocate rows**
+</details> |
+| **C++** | <details><summary>Click to expand</summary>
 
-```text
-rows = [ [] for _ in range(maxFreq) ]   # minimal number of rows
+```cpp
+#include <vector>
+using namespace std;
+
+class Solution {
+public:
+    vector<vector<int>> findMatrix(vector<int>& nums) {
+        vector<int> freq(nums.size() + 1, 0);
+        vector<vector<int>> rows;
+
+        for (int v : nums) {
+            while (freq[v] >= rows.size())
+                rows.push_back({});
+            rows[freq[v]].push_back(v);
+            ++freq[v];
+        }
+        return rows;
+    }
+};
 ```
 
-**Step 3 – Distribute**
-
-For each `(value, count)` pair, append the value to the first `count` rows:
-
-```text
-for i in 0 .. count-1:
-    rows[i].append(value)
-```
-
-This guarantees:
-
-- Every row contains no duplicate (each value only appears once per row).
-- All numbers are used exactly `count` times.
-- The number of rows equals `maxFreq` – the minimal possible.
-
-**Complexity**
-
-- **Time** – O(n) – each number is processed once for counting, then once for distribution.
-- **Space** – O(n) – frequency map + result matrix.
+</details> |
 
 ---
 
-### Why It’s Interview‑Ready
+## 📈 Complexity Analysis
 
-- **Linear Time** – Interviewers can immediately spot the O(n) nature and ask for a proof.
-- **Simple Data Structures** – Only a map and a list of lists; no custom classes or helper functions needed.
-- **Language‑agnostic Code** – All three languages above are ready‑to‑copy, making you look like a versatile engineer.
-- **Edge‑Case Coverage** – Handles empty arrays, all‑identical arrays, and the maximum allowed size.
-- **Test‑Driven** – You can run the sample tests (e.g., `[1,2,3,4,5,5,4,3,2,1]` → `[[1,2,3,4,5],[1,2,3,4,5]]`) instantly.
+| Approach | Time | Space |
+|----------|------|-------|
+| Frequency‑Map + Decrease | **O(n)** – each element is processed once per row it appears. | **O(n)** – map + result list. |
+| Row‑Index Placement | **O(n)** – a single pass over `nums`. | **O(n)** – frequency array + result list. |
 
----
-
-### How to Ace the Interview
-
-1. **State the Problem Clearly** – “We need to place each element into distinct rows without intra‑row duplicates.”  
-2. **Explain the Frequency‑Row Equivalence** – “The maximum frequency forces the minimal number of rows.”  
-3. **Present the Algorithm Visually** – Show a quick diagram or pseudocode.  
-4. **Analyze Complexity** – O(n) time, O(n) space.  
-5. **Address Edge Cases** – Empty input, all unique, all same.  
-6. **Show Multi‑Language Portability** – “Here’s how I’d do it in Java, Python, and C++.”  
+Both meet the LeetCode constraints comfortably (`n ≤ 200`).
 
 ---
 
-### Closing Thought
+## ⚠️ Edge‑Case Checklist
 
-LeetCode 2610 is a textbook example of a problem that turns a *simple* statement into an *elegant* algorithmic lesson.  
-Mastering it shows you can:
+1. **All distinct numbers** – 1 row (max frequency = 1).  
+2. **Single repeating value** – one value placed in `k` rows (k = frequency).  
+3. **Mixed frequencies** – algorithm automatically creates as many rows as needed.  
+4. **Large values** – values are ≤ `nums.length`; frequency array indexes safely.
 
-- Read a problem statement carefully,
-- Spot the key mathematical property (frequency → rows),
-- Deliver a linear‑time solution,
-- Explain it across multiple languages.
+---
 
-If you’re preparing for software‑engineer interviews or looking to land that coveted job, remember: **the best solutions are often the ones that translate a subtle observation into a clean, linear algorithm.**  
+## 💡 Interview‑Ready Tips
 
-Happy coding—and may your rows always be minimal!
+| Tip | Why it matters |
+|-----|----------------|
+| **Explain the max‑frequency invariant** – recruiters love insight. | Shows you understand why the answer is minimal. |
+| **Choose the row‑index method** for *production* interviews. | Fewer loops → cleaner code → less room for bugs. |
+| **Validate distinctness** – one can double‑check with a `Set` inside each row. | Prevents accidental duplicates in your own tests. |
+| **Mention the “frequent element” constraint** early in the conversation. | Signals you’re already on the same page as the interviewer. |
+| **Use `Collections.max` (Java) or `max()` (Python) wisely** – it’s O(k) where k = unique values. | Demonstrates awareness of potential micro‑optimisations. |
+
+---
+
+## 📝 Blog Post – “The Good, the Bad & the Ugly of LeetCode 2610”
+
+> **Title:** *LeetCode 2610: The Ultimate 2‑D Array Interview Question – Good, Bad & Ugly Explained*  
+
+> **Keywords:** LeetCode 2610, convert array to 2‑D array, coding interview, Java solution, Python solution, C++ solution, job interview, algorithm, data structures, minimal rows
+
+---
+
+### 🎯 Introduction  
+
+In most software‑engineering interviews, the interviewer asks a problem that is *easy enough to solve in a short time*, *hard enough to keep you on your toes*, and *rich enough to test fundamental data‑structure knowledge*. LeetCode 2610 – “Convert an Array Into a 2‑D Array With Conditions” – ticks all three boxes.
+
+Below is a deep dive into what makes this problem **great** for interviews, the pitfalls you might run into, and how to avoid them. Ready to use this post as a personal study guide? Let’s dive.
+
+---
+
+### 📑 Problem Recap
+
+> Given an array `nums`, split it into the smallest possible number of rows such that:
+> - No row contains duplicate values.
+> - Every element of `nums` is placed somewhere.
+
+The trick? **Maximum frequency = minimal rows**.
+
+---
+
+### 💪 The Good
+
+| What works well | Why it’s a plus |
+|-----------------|-----------------|
+| **Clear mathematical invariant** – a single element with frequency `k` forces `k` rows. | No guessing, no hidden constraints. |
+| **Small input size** (`≤ 200`) | Lets you try multiple approaches on the fly. |
+| **Any valid answer is accepted** | You can focus on clean code instead of a perfect shape. |
+| **Excellent practice for HashMaps / Counters** | These are staple interview topics. |
+| **Supports multiple languages** | Great for showing versatility in Java, Python, and C++. |
+
+**Takeaway:** Use the invariant early. It saves time and reduces bug surface area.
+
+---
+
+### ⚠️ The Bad
+
+| Issue | What to watch for | Fix |
+|-------|-------------------|-----|
+| **Mis‑counting frequencies** | Forgetting to use `getOrDefault` (Java) or `Counter` (Python). | Use the built‑in helper (`freq = Counter(nums)`). |
+| **Infinite loops when emptying map** | Removing keys incorrectly can leave a `0` count. | Track keys to delete separately (`toRemove`). |
+| **Assuming all numbers are distinct** | Leads to duplicate rows. | Always check `freq[val] > 0` before adding. |
+| **Ignoring `maxFreq` early** | Builds unnecessary rows. | Compute `maxFreq` first and loop exactly that many times. |
+
+**Pro Tip:** Always test with a counter‑example like `[1,1,1,2,2]` – it forces 3 rows.
+
+---
+
+### 😱 The Ugly
+
+| Pain Point | Why it hurts | How to avoid |
+|------------|--------------|--------------|
+| **O(n²) naive approach** – adding each element to a new row until all are placed without a frequency map. | Exponential‑looking runtime, impossible to prove correctness quickly. | Stick to the frequency‑map or row‑index method (both O(n)). |
+| **Incorrect row‑index logic** – forgetting to grow the row list when a value’s frequency exceeds current rows. | Generates out‑of‑range `IndexError` (Python) / `IndexOutOfBoundsException` (Java/C++). | Use a `while (freq[v] >= rows.size()) rows.add(new ArrayList<>());` guard. |
+| **Misunderstanding “distinct per row”** – thinking duplicates are allowed across rows. | Leads to unsound solutions that fail hidden tests. | Visualise the problem as placing each occurrence of a value in a separate row. |
+| **Memory leaks in Java** – mutating the map while iterating without careful handling. | Causes `ConcurrentModificationException`. | Iterate over a copy (`new ArrayList<>(freq.entrySet())`) or collect keys to delete after the loop. |
+
+**Bottom line:** Keep the algorithm simple; a two‑pass solution (count + place) is usually the cleanest.
+
+---
+
+### 🚀 How to Nail This in an Interview
+
+1. **Explain the invariant first.**  
+   “If a number appears `k` times, it must be in `k` distinct rows, so the max frequency dictates the row count.”
+
+2. **Choose the row‑index placement.**  
+   It’s short, linear, and easy to reason about.  
+   “While the current occurrence of `v` hasn’t found a row yet, create a new row.”
+
+3. **Walk through a small example on the whiteboard.**  
+   This demonstrates you understand the mechanics and can debug on the spot.
+
+4. **Mention complexity immediately.**  
+   “O(n) time and O(n) space – no hidden costs.”
+
+5. **End with a quick test.**  
+   “`[1,1,1,2,2]` → `[[1,2],[1,2],[1]]` – all rows are distinct and we used 3 rows, which is minimal.”
+
+---
+
+### 📚 Final Thoughts
+
+LeetCode 2610 is a classic interview puzzle that tests:
+
+- **Data‑structure proficiency** (hash maps, counters, vectors).  
+- **Mathematical reasoning** (max‑frequency invariant).  
+- **Coding efficiency** (linear‑time solutions).
+
+A crisp explanation and a clean, language‑agnostic implementation are all you need to get past this question and move on to the next stage.
+
+---
+
+## 🎯 SEO‑Optimised Article – “LeetCode 2610: Convert an Array into a 2‑D Array – A Masterclass for Your Next Coding Interview”
+
+### 📌 Keywords
+- LeetCode 2610  
+- Convert array to 2‑D array  
+- Java solution for LeetCode 2610  
+- Python implementation 2‑D array  
+- C++ LeetCode 2610  
+- Minimal rows algorithm  
+- Coding interview question  
+- Data structures and algorithms  
+- Job interview preparation  
+
+---
+
+### 📖 The Good
+
+- **Clarity of constraints** – all values are ≤ `nums.length`.  
+- **Mathematically tight** – the solution follows from a simple invariant.  
+- **Flexibility of answers** – any valid layout is accepted, giving interviewers room to test your coding style.  
+- **Broad applicability** – the pattern (frequency → rows) shows up in real‑world scheduling problems.  
+
+### 📉 The Bad
+
+- **Mis‑reading “minimal rows”** can lead to over‑engineering (e.g., trying to sort or balance rows when not needed).  
+- **Ignoring the max‑frequency check** makes the solution slower or incorrect on edge cases.  
+- **Over‑complicating with nested loops** that touch every map entry each iteration can give O(n²) runtime, which feels bad in an interview setting.  
+
+### 😖 The Ugly
+
+- **Common implementation pitfall** – iterating over a mutable map while removing keys inside the loop (Java `ConcurrentModificationException`, Python `RuntimeError`).  
+- **Off‑by‑one errors** in the frequency array (using `v-1` instead of `v` when indexing rows).  
+- **Wrong assumptions about array indices** – forgetting that `nums[i]` can be `nums.length`, so the frequency array needs a +1 offset.  
+
+---
+
+### 📌 How to Stand Out in the Interview
+
+1. **Start with the invariant.** “We need as many rows as the most frequent number.”  
+2. **Write the clean row‑index solution.** It’s short (≈ 10 lines) and demonstrates you can use O(1) lookups.  
+3. **Explain time/space trade‑offs.** Show you’re aware of O(n) vs O(n²).  
+4. **Validate with a demo.** Pick `[3,3,1,1,2]` on the board and show how rows grow.  
+5. **Finish with a “next step” question.** Ask if they’d want to minimize total row length or balance numbers per row – signals depth.  
+
+---
+
+### 🎁 TL;DR
+
+LeetCode 2610 is a breeze when you see the max‑frequency invariant.  
+Use the row‑index algorithm for linear time, avoid mutable‑iteration pitfalls, and you’ll ace the question.  
+Show the interviewer your reasoning, keep the code lean, and you’ll demonstrate both algorithmic knowledge and coding discipline – the ideal combination for landing that software‑engineering role.
+
+--- 
+
+Happy coding, and good luck on your next interview!

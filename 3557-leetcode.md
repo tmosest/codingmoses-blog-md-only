@@ -7,250 +7,233 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 1.  The Code (Java | Python | C++)
+        ## 3557. Find Maximum Number of Non‑Intersecting Substrings  
+**Medium – LeetCode**
 
-Below are three completely self‑contained solutions that all run in **O(n)** time and **O(1)** extra space.  
-They all use the *greedy* idea that we can always “commit” to a substring as soon as we see a valid one, because any later substring that starts inside the current one would necessarily overlap it.
+> **Problem**  
+> Given a string `word`, return the maximum number of *non‑intersecting* substrings that  
+> 1. are at least 4 characters long  
+> 2. start and end with the same letter.  
+
+> **Constraints**  
+> * `1 ≤ word.length ≤ 2·10⁵`  
+> * `word` consists of lowercase English letters.
+
+---
+
+### Why this problem matters for coding interviews
+* It blends **string manipulation**, **dynamic programming** and **greedy reasoning** – all core interview topics.  
+* The input size (200 000) forces you to think about **linear‑time** solutions.  
+* The problem is a perfect example of “pick the earliest finishing interval” – a classic greedy pattern.
+
+---
+
+## 1.  The Easy Greedy Solution (O(n) time, O(1) space)
+
+### Observation
+If you keep track of the *first* occurrence of every letter since the last time you “cut” a substring, then whenever the same letter reappears at a distance **≥ 3** (length ≥ 4) you have found a valid substring.  
+Because the substring must be non‑overlapping, we can immediately “reset” the tracking after counting it – the next substring must start after this one ends.
+
+### Algorithm
+```text
+result = 0
+last[26] = { -1 }   // last occurrence of each letter
+mask = 0            // bitmask of letters seen since the last reset
+
+for i = 0 … n-1
+    c = word[i] - 'a'
+    if (mask & (1 << c)) == 0          // first time we see this letter
+        last[c] = i
+        mask |= (1 << c)               // mark it as seen
+    else if (i - last[c] + 1 >= 4)     // same letter again, enough length
+        result += 1
+        mask = 0                       // reset – start new interval
+return result
+```
+
+* **Time** – One pass over the string: **O(n)**.  
+* **Space** – Fixed array of 26 ints + one bitmask: **O(1)**.
+
+### Edge Cases
+* Multiple occurrences of the same letter before we reach length 4 – ignored until we hit the length requirement.  
+* If the string ends without completing a valid substring, it is simply discarded – we never count it.
+
+---
+
+## 2.  The Dynamic‑Programming Knapsack Solution (O(n) time, O(n) space)
+
+If you want to “play it safe” and compute the optimum via DP:
+
+* `dp[i]` – maximum number of substrings in `word[0…i‑1]`.  
+* For each position `i`, look at all previous indices `j` where the same character appears.  
+* If `word[j…i‑1]` is valid (`i‑j+1 ≥ 4`), update `dp[i] = max(dp[i], dp[j] + 1)`.
+
+Implementation tricks:
+* Keep for each character a deque of its last four indices (any earlier indices cannot help because we only need the most recent one to form the shortest valid substring).  
+* The deque guarantees **O(1)** per character, thus overall **O(n)** time.
+
+---
+
+## 3.  Full Code (Java, Python, C++)
+
+> All implementations below use the greedy approach – the simplest, fastest, and most interview‑friendly.
+
+### Java (O(n) time, O(1) space)
 
 ```java
-// ---------- Java ----------
 import java.util.*;
 
-class Solution {
+public class Solution {
     public int maxSubstrings(String word) {
+        int n = word.length();
+        int[] last = new int[26];
+        Arrays.fill(last, -1);
+        int mask = 0;          // bitmask of seen letters since last reset
         int res = 0;
-        Map<Character, Integer> first = new HashMap<>();
-        for (int i = 0; i < word.length(); i++) {
-            char c = word.charAt(i);
-            if (!first.containsKey(c)) {            // first time we see c
-                first.put(c, i);
-            } else if (i - first.get(c) + 1 >= 4) {  // valid non‑overlapping substring
+
+        for (int i = 0; i < n; i++) {
+            int c = word.charAt(i) - 'a';
+            if ((mask & (1 << c)) == 0) {          // first time this letter
+                last[c] = i;
+                mask |= (1 << c);
+            } else if (i - last[c] + 1 >= 4) {      // valid substring found
                 res++;
-                first.clear();                     // start over – no overlap allowed
+                mask = 0;                            // reset for next interval
             }
         }
         return res;
     }
+
+    // Simple test harness
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        System.out.println(s.maxSubstrings("abcdeafdef")); // 2
+        System.out.println(s.maxSubstrings("bcdaaaab"));   // 1
+    }
 }
 ```
 
+### Python (O(n) time, O(1) space)
+
 ```python
-# ---------- Python ----------
-def maxSubstrings(word: str) -> int:
-    res = 0
-    first = {}
-    for i, c in enumerate(word):
-        if c not in first:
-            first[c] = i
-        elif i - first[c] + 1 >= 4:      # valid substring found
-            res += 1
-            first.clear()                # reset – no overlap
-    return res
+class Solution:
+    def maxSubstrings(self, word: str) -> int:
+        last = [-1] * 26
+        mask = 0
+        res = 0
+        for i, ch in enumerate(word):
+            c = ord(ch) - 97
+            if (mask & (1 << c)) == 0:          # first time we see this letter
+                last[c] = i
+                mask |= (1 << c)
+            elif i - last[c] + 1 >= 4:          # found a valid substring
+                res += 1
+                mask = 0                        # reset for next interval
+        return res
+
+
+if __name__ == "__main__":
+    sol = Solution()
+    print(sol.maxSubstrings("abcdeafdef"))  # 2
+    print(sol.maxSubstrings("bcdaaaab"))    # 1
 ```
 
+### C++ (O(n) time, O(1) space)
+
 ```cpp
-// ---------- C++ ----------
 #include <bits/stdc++.h>
 using namespace std;
 
-int maxSubstrings(string word) {
-    int res = 0;
-    unordered_map<char,int> first;
-    for (int i = 0; i < (int)word.size(); ++i) {
-        char c = word[i];
-        if (!first.count(c)) {
-            first[c] = i;                 // first occurrence
-        } else if (i - first[c] + 1 >= 4) { // a valid substring ends here
-            ++res;
-            first.clear();                 // reset – no overlap allowed
+class Solution {
+public:
+    int maxSubstrings(string word) {
+        int last[26] = {0};
+        memset(last, -1, sizeof(last));
+        int mask = 0;
+        int res = 0;
+        for (int i = 0; i < (int)word.size(); ++i) {
+            int c = word[i] - 'a';
+            if ((mask & (1 << c)) == 0) {       // first time this letter
+                last[c] = i;
+                mask |= (1 << c);
+            } else if (i - last[c] + 1 >= 4) {   // found a valid substring
+                ++res;
+                mask = 0;                        // reset
+            }
         }
+        return res;
     }
-    return res;
+};
+
+int main() {
+    Solution s;
+    cout << s.maxSubstrings("abcdeafdef") << endl; // 2
+    cout << s.maxSubstrings("bcdaaaab")   << endl; // 1
 }
 ```
 
-All three snippets compile with the standard‑library only and produce the same answer for every test case.
+---
+
+## 4.  The Good, The Bad, The Ugly
+
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Algorithm** | Greedy: simple, fast, one pass | DP: works for all, but overkill | Bit‑mask version (too fancy) |
+| **Complexity** | `O(n)` time, `O(1)` space | `O(n)` time, `O(n)` space | Still `O(n)` time, but unnecessary constants |
+| **Implementation** | Tiny, 9–12 lines | More lines, careful indices | Requires bit‑twiddling that may confuse interviewers |
+| **Intuition** | “Earliest ending interval” | Classic knapsack DP | Uses masks like a puzzle – hard to explain |
+| **Interview‑friendly** | Very high | Medium | Low (unless you’re a power‑user) |
+
+> **Bottom line:** Stick with the greedy solution. It’s short, elegant, and guarantees optimality. The DP solution is useful if you need to demonstrate a deeper understanding of dynamic programming, but for this problem it’s a *nice-to-know* rather than *must‑know*.
 
 ---
 
-## 2.  Blog Article – “The Good, The Bad, and The Ugly of LeetCode 3557”
+## 5.  Testing Your Solution
 
-> **LeetCode 3557 – *Find Maximum Number of Non‑Intersecting Substrings***  
-> *A deep dive into DP vs Greedy, why the greedy is the sweet spot, and how you can nail it in an interview.*
+| Test | Expected | Reason |
+|------|----------|--------|
+| `"aaaa"` | 1 | Single valid substring. |
+| `"abcdaaaab"` | 1 | Only `"aaaa"` fits. |
+| `"abcdabcd"` | 1 | Only `"abcd"` or `"abcd"` (but overlapping). |
+| `"abcaabcd"` | 2 | `"abca"` and `"abcd"`. |
+| `"abcd"` | 0 | Length < 4. |
+| `"aaabaaa"` | 1 | `"aaaa"` in the middle. |
+| `"xyzabcabcyz"` | 2 | `"abc...abcy"` and `"xyz...yz"`. |
 
----
-
-### Table of Contents
-1. [Problem Overview](#problem-overview)
-2. [Why This Problem Matters](#why-this-problem-matters)
-3. [Brute‑Force / Intuition](#brute-force--intuition)
-4. [Dynamic Programming (The “Bad” Path)](#dynamic-programming-the-bad-path)
-5. [Greedy (The “Good” Path)](#greedy-the-good-path)
-6. [Edge Cases & Pitfalls](#edge-cases--pitfalls)
-7. [Testing Your Solution](#testing-your-solution)
-8. [Take‑aways & Interview Tips](#take-aways--interview-tips)
-9. [Further Reading & Resources](#further-reading--resources)
-10. [Conclusion](#conclusion)
+Run a quick unit‑test in your favourite language and make sure all edge cases pass.
 
 ---
 
-### Problem Overview <a name="problem-overview"></a>
+## 6.  Interview Tips
 
-You are given a string `word` (1 ≤ |word| ≤ 2 × 10⁵) consisting of lowercase English letters.  
-Return the **maximum** number of *non‑overlapping* substrings that satisfy:
-
-* Length ≥ 4  
-* Starts and ends with the same letter  
-
-Example  
-```
-word = "abcdeafdef"
-→ ["abcdea", "fdef"]   (answer = 2)
-```
+1. **Explain the greedy idea clearly** – “the first time we see a letter, remember it; if the same letter shows up later with enough distance, we cut here and reset.”  
+2. **Why it’s optimal** – Any valid substring must end at the *last* position of its final character. Choosing the earliest finishing one never hurts the remaining string.  
+3. **Talk about the bitmask** – Show that you’re comfortable with bit‑wise ops, but don’t over‑explain.  
+4. **Complexity talk** – Emphasise that one pass over 200 000 chars is perfectly fine.  
+5. **Edge‑case safety** – Mention that we ignore incomplete substrings at the end.
 
 ---
 
-### Why This Problem Matters <a name="why-this-problem-matters"></a>
+## 6.  Take‑away for Your Next Coding Interview
 
-- **Pattern‑matching** + **interval scheduling** → core CS skills.  
-- Constraints push you toward **O(n)** solutions.  
-- Many interviewers love problems where a *greedy* choice is actually optimal – it tests your ability to reason about optimality, not just coding.
-
----
-
-### Brute‑Force / Intuition <a name="brute-force--intuition"></a>
-
-A naive approach enumerates all substrings, checks validity, and then does an interval‑packing DP.  
-Complexity: **O(n²)** time, **O(n²)** memory – impossible for 200 000 length strings.
-
-Key insight: *Any valid substring is defined by a pair of equal characters at distance ≥ 3*.  
-Thus we only need to track **first occurrences** of each letter.
+* **Look for “interval” patterns** – a lot of interview questions boil down to selecting non‑overlapping segments.  
+* **Track only what you need** – here, the first occurrence per letter is all we need.  
+* **Prefer greedy over DP when the constraints are large** – interviewers love O(n) solutions that are also concise.  
+* **Always double‑check the *non‑overlap* requirement** – it’s the “killer” part of the problem.  
 
 ---
 
-### Dynamic Programming (The “Bad” Path) <a name="dynamic-programming-the-bad-path"></a>
+### SEO Meta‑Description  
+> “3557 LeetCode – Find maximum number of non‑intersecting substrings (length ≥ 4, same start/end letter). Linear‑time greedy solution in Java, Python, and C++ with O(n) time and O(1) space. Dynamic‑programming backup – interview‑ready guide.”
 
-A clean DP formulation:
+### Suggested Keywords  
+* 3557 Find Maximum Number of Non‑Intersecting Substrings  
+* LeetCode Medium problem  
+* greedy algorithm string manipulation  
+* O(n) time, O(1) space  
+* interview coding challenge  
+* dynamic programming solution  
+* non‑overlapping intervals  
+* coding interview tips  
 
-```
-dp[i] = max number of valid substrings in word[0 … i-1]
-```
-
-Transition:
-
-```
-dp[i+1] = max(dp[i+1], dp[j] + 1)   for all j where word[j]==word[i] and i-j+1 >= 4
-```
-
-Implementation uses a queue per letter to keep only the *last four* occurrences, reducing the inner loop to at most 4 checks per character.  
-**Time:** O(n)  
-**Space:** O(n) for dp array, O(n) for queues in worst case → **O(n)**
-
-While correct, the DP’s extra array and bookkeeping make it heavier than necessary.  
-Interviewers often prefer the cleaner greedy solution.
-
----
-
-### Greedy (The “Good” Path) <a name="greedy-the-good-path"></a>
-
-#### Observation
-
-If we see a character `c` again and the distance between the two occurrences is ≥ 4, we *can* claim the substring between them **without loss of optimality**.  
-Why?  
-Because any substring that starts inside this candidate would have to end before the next character `c` (otherwise it would overlap), forcing it to be shorter than 4 – impossible.
-
-#### Algorithm
-
-1. Scan from left to right.  
-2. For each letter store the **first index** where it appeared (`first[c]`).  
-3. When the same letter appears again at index `i`:
-   * If `i - first[c] + 1 ≥ 4` → **commit** to the substring `[first[c], i]`, increment answer, **clear all stored first indices** (no overlap allowed).  
-   * Else → simply keep the earliest index (no commit yet).
-
-The clear‑reset step guarantees the *no‑overlap* rule: every new substring starts after the previous one ends.
-
-#### Why It Works
-
-It is essentially the classic *interval scheduling by earliest finish time* proof:  
-the earliest finish time (the earliest possible `i` that gives a valid substring) never hurts you because it leaves the maximum possible room for later substrings.
-
-#### Code Snippets
-
-The greedy is exactly the code we listed in section 1 (Java/Python/C++).  
-Notice the **O(1)** space usage: only a tiny hash‑map of 26 keys that we empty every time we “commit”.
-
----
-
-### Edge Cases & Pitfalls <a name="edge-cases--pitfalls"></a>
-
-| Edge | What to watch out for | Fix |
-|------|-----------------------|-----|
-| `"aaaaa"` | The same letter appears 5 times → two substrings? | Greedy will commit on the *first* repeat that is ≥ 4, clearing everything – still optimal. |
-| `"abcd"` | No equal letters at distance ≥ 3 → answer 0 | Your code must return 0 if no valid substring is found. |
-| Repeated resets | Resetting the hash‑map on each commit is O(26) → trivial overhead. | If you use bit‑mask + arrays, resetting 26 entries is fine; if you use a vector per letter, you must clear all queues each time. |
-| Large inputs | Use fast I/O if your language needs it (Java: `BufferedReader`, Python: `sys.stdin.read()`). | In the snippet we use `enumerate(word)` – already linear in CPython. |
-
----
-
-### Testing Your Solution <a name="testing-your-solution"></a>
-
-1. **Sample tests** (from the prompt).  
-2. **Random tests**: generate strings of random length up to 10 000, brute‑force with a slow solver for correctness.  
-3. **Stress tests**: a long string of 200 000 characters, e.g. `word = 'a'*200000` → answer = 50000.  
-4. **Edge cases**: `"abcd"`, `"abc"`, `"a"*4`.
-
-Example Python stress test:
-
-```python
-import random, string, time
-def brute(word):
-    n=len(word); best=0
-    # O(n^2) brute – only for tiny strings
-    for i in range(n):
-        for j in range(i+3, n):
-            if word[i]==word[j]:
-                best=max(best,1)
-    return best
-
-for _ in range(1000):
-    s=''.join(random.choice(string.ascii_lowercase) for _ in range(random.randint(1,20)))
-    assert maxSubstrings(s)==brute(s)
-print("All random tests passed")
-```
-
----
-
-### Take‑aways & Interview Tips <a name="take-aways--interview-tips"></a>
-
-| What to Emphasise | Why |
-|-------------------|-----|
-| **Explain the greedy argument** | Shows you understood the problem, not just wrote code. |
-| **Mention constraints → O(n) required** | Interviewers love it when you talk about complexity early. |
-| **Show both DP & Greedy** | Demonstrates breadth of knowledge. |
-| **Highlight the reset step** | It is the only “ugly” part that needs careful handling. |
-| **Test edge cases live** | It makes your solution robust and shows analytical thinking. |
-
-**TL;DR** – Use the hash‑map version, clear on success, and be ready to explain *why* this commit is safe.
-
----
-
-### Further Reading & Resources <a name="further-reading--resources"></a>
-
-- **Interval Scheduling** – classic greedy textbook problem.  
-- **LeetCode Solutions (C++, Java, Python)** – practice similar problems like *Longest Repeating Substring* or *Maximum Number of Non‑Overlapping Segments*.  
-- **Dynamic Programming** – if you want to deepen DP knowledge, check “Top‑Down vs Bottom‑Up DP” on LeetCode.  
-
----
-
-### Conclusion <a name="conclusion"></a>
-
-LeetCode 3557 is a *pattern matching + interval scheduling* puzzle that sits at the intersection of DP and Greedy.  
-The greedy solution is both **simpler** and **more efficient** for interview settings, while the DP version showcases a classic “full‑blown” approach.
-
-By mastering this problem you’ll not only solve the question itself but also learn how to:
-
-* **Choose the right algorithm** under tight constraints.  
-* **Justify optimality** with a clean proof.  
-* **Write clean, cross‑language code** that can be shown to a panel of interviewers.
-
-Good luck on your next coding interview – and remember: sometimes the simplest choice is the most powerful!
+Feel free to copy the code into your own IDE or submit it directly on LeetCode – you’re all set for a smooth interview pass!
