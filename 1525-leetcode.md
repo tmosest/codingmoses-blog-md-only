@@ -7,64 +7,122 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🛠️ 1. Solution Code
+        # 1525. Number of Good Ways to Split a String  
+*(LeetCode – Medium)*  
 
-Below are three **production‑ready** solutions – one in Java, one in Python, and one in C++ – that solve LeetCode **1525. Number of Good Ways to Split a String** in *O(n)* time and *O(1)* extra space.
+> **Problem**  
+> You are given a string `s`.  
+> A split is called **good** if you can split `s` into two non‑empty strings `sLeft` and `sRight` such that  
+> - `sLeft + sRight == s`  
+> - the number of **distinct letters** in `sLeft` **equals** the number of distinct letters in `sRight`.  
+> Return the number of good splits you can make in `s`.
 
-> ⚡ All three snippets use the same two‑pass “frequency‑then‑scan” technique.  
-> They compile and run on the latest language standards (Java 17, Python 3.11, C++17).
+> **Constraints**  
+> * `1 ≤ s.length ≤ 10⁵`  
+> * `s` consists only of lowercase English letters.
 
 ---
 
-### Java (Java 17)
+## 1. Intuition  
+
+The key observation is that we only care about *how many* distinct letters are in the left and right parts, **not** *which* letters.  
+If we know the frequency of every letter in the whole string, we can slide a “split point” from left to right, updating:
+
+* `leftDistinct` – how many distinct letters have appeared on the left side.
+* `rightDistinct` – how many distinct letters are still on the right side.
+
+Because the alphabet size is fixed (26), we can keep a 26‑element array for frequencies – O(1) memory.
+
+---
+
+## 2. Algorithm (two‑pointer / sliding split)
+
+```
+1. Count the frequency of each character in the entire string → freq[26].
+2. rightDistinct  = number of indices i where freq[i] > 0
+   leftDistinct   = 0
+   leftCount[26]  = 0          // frequencies that have moved to the left
+   result         = 0
+
+3. For i from 0 to n-2      // split after i, right part is non‑empty
+       ch = s[i] – 'a'
+
+       // move ch from right side to left side
+       freq[ch]--                // remove from right
+       if freq[ch] == 0:         // no longer present on the right
+           rightDistinct--
+
+       leftCount[ch]++
+       if leftCount[ch] == 1:    // first time we see it on the left
+           leftDistinct++
+
+       if leftDistinct == rightDistinct:
+           result++
+
+4. Return result
+```
+
+**Why it works**
+
+*At every iteration* the left part consists of the first `i+1` characters, the right part of the rest.  
+`leftDistinct` and `rightDistinct` are updated in constant time.  
+Thus every split is examined exactly once, and we count all good splits.
+
+---
+
+## 3. Complexity Analysis
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Counting frequencies | **O(n)** | **O(1)** (26 ints) |
+| Sliding loop | **O(n)** | **O(1)** |
+| **Total** | **O(n)** | **O(1)** |
+
+The algorithm easily meets the `10⁵`‑length limit.
+
+---
+
+## 4. Reference Implementations  
+
+Below are clean, beginner‑friendly implementations in **Java**, **Python**, and **C++**.
+
+---
+
+### 4.1 Java
 
 ```java
-/**
- * LeetCode 1525 – Number of Good Ways to Split a String
- * Complexity: O(n) time, O(1) space (26‑size arrays)
- *
- * This is a clean, beginner‑friendly implementation that
- * follows the standard two‑pass frequency approach.
- */
+import java.util.*;
+
 public class Solution {
     public int numSplits(String s) {
+        int n = s.length();
+        if (n <= 1) return 0;
+
         // frequency of each letter in the whole string
         int[] freq = new int[26];
-        for (char ch : s.toCharArray()) {
-            freq[ch - 'a']++;
+        for (int i = 0; i < n; i++) {
+            freq[s.charAt(i) - 'a']++;
         }
 
-        // count distinct letters in the whole string
-        int totalDistinct = 0;
-        for (int f : freq) {
-            if (f > 0) totalDistinct++;
-        }
+        int rightDistinct = 0;
+        for (int f : freq) if (f > 0) rightDistinct++;
 
-        int leftDistinct = 0;   // distinct in left part
-        int rightDistinct = totalDistinct; // distinct in right part
+        int leftDistinct = 0;
+        int[] leftCount = new int[26];
         int result = 0;
 
-        // We never split at the very end – i goes up to n-2
-        for (int i = 0; i < s.length() - 1; i++) {
+        for (int i = 0; i < n - 1; i++) {
             int idx = s.charAt(i) - 'a';
 
-            // move current character from right side to left side
-            if (freq[idx] == 1) {
-                // this was the *only* occurrence → right side loses a distinct letter
-                rightDistinct--;
-            }
-            freq[idx]--;          // decrement remaining count
+            // move char from right to left
+            freq[idx]--;
+            if (freq[idx] == 0) rightDistinct--;
 
-            if (freq[idx] == 0) {
-                // left side gains a new distinct letter
-                leftDistinct++;
-            }
+            leftCount[idx]++;
+            if (leftCount[idx] == 1) leftDistinct++;
 
-            if (leftDistinct == rightDistinct) {
-                result++;
-            }
+            if (leftDistinct == rightDistinct) result++;
         }
-
         return result;
     }
 }
@@ -72,82 +130,72 @@ public class Solution {
 
 ---
 
-### Python (Python 3.11)
+### 4.2 Python
 
 ```python
-"""
-LeetCode 1525 – Number of Good Ways to Split a String
-Complexity: O(n) time, O(1) space (26‑size arrays)
-"""
-
-from typing import List
-
 class Solution:
     def numSplits(self, s: str) -> int:
-        # frequency of each letter in the whole string
-        freq: List[int] = [0] * 26
+        n = len(s)
+        if n <= 1:
+            return 0
+
+        # freq of each char in the whole string
+        freq = [0] * 26
         for ch in s:
             freq[ord(ch) - 97] += 1
 
-        total_distinct = sum(1 for f in freq if f > 0)
-
+        right_distinct = sum(1 for f in freq if f > 0)
         left_distinct = 0
-        right_distinct = total_distinct
-        ans = 0
+        left_count = [0] * 26
+        result = 0
 
-        # split after each character except the last one
-        for i in range(len(s) - 1):
+        for i in range(n - 1):
             idx = ord(s[i]) - 97
-
-            if freq[idx] == 1:
-                right_distinct -= 1
             freq[idx] -= 1
-
             if freq[idx] == 0:
+                right_distinct -= 1
+
+            left_count[idx] += 1
+            if left_count[idx] == 1:
                 left_distinct += 1
 
             if left_distinct == right_distinct:
-                ans += 1
+                result += 1
 
-        return ans
+        return result
 ```
 
 ---
 
-### C++ (C++17)
+### 4.3 C++
 
 ```cpp
-/**
- * LeetCode 1525 – Number of Good Ways to Split a String
- * Complexity: O(n) time, O(1) space
- */
-#include <string>
-#include <vector>
-
 class Solution {
 public:
-    int numSplits(const std::string &s) {
-        std::vector<int> freq(26, 0);
-        for (char ch : s) freq[ch - 'a']++;
+    int numSplits(string s) {
+        int n = s.size();
+        if (n <= 1) return 0;
 
-        int totalDistinct = 0;
-        for (int f : freq) if (f) ++totalDistinct;
+        vector<int> freq(26, 0);
+        for (char c : s) freq[c - 'a']++;
+
+        int rightDistinct = 0;
+        for (int f : freq) if (f > 0) rightDistinct++;
 
         int leftDistinct = 0;
-        int rightDistinct = totalDistinct;
+        vector<int> leftCnt(26, 0);
         int result = 0;
 
-        for (size_t i = 0; i < s.size() - 1; ++i) {
+        for (int i = 0; i < n - 1; ++i) {
             int idx = s[i] - 'a';
+            freq[idx]--;
+            if (freq[idx] == 0) rightDistinct--;
 
-            if (freq[idx] == 1) --rightDistinct;  // last occurrence moves left
-            --freq[idx];
-
-            if (freq[idx] == 0) ++leftDistinct;    // new distinct on the left
+            leftCnt[idx]++;
+            if (leftCnt[idx] == 1) leftDistinct++;
 
             if (leftDistinct == rightDistinct) ++result;
         }
-
         return result;
     }
 };
@@ -155,188 +203,150 @@ public:
 
 ---
 
-## 📄 2. Blog Article – “The Good, The Bad, and The Ugly of Splitting Strings”
+## 5. The Good, the Bad, and the Ugly
 
-> **Keywords:** LeetCode, Number of Good Ways to Split a String, Java, Python, C++, Interview, Coding, Algorithm, SEO, Job Interview, Data Structures, Time Complexity
+| Aspect | Good | Bad | Ugly |
+|--------|------|-----|------|
+| **Intuition** | Clear: distinct counts on each side | None – a naive solution could try all splits (`O(n²)`) | Over‑engineering: building suffix arrays or using sets for each split |
+| **Time Complexity** | Linear `O(n)` | Quadratic `O(n²)` (naïve) | Still linear but with higher constants (e.g., map operations) |
+| **Space Complexity** | Constant `O(1)` | Linear `O(n)` (if storing suffix sets) | Variable, could blow up on large alphabets |
+| **Readability** | Very readable – 30‑line code | Messy – many nested loops | Obscure – heavy use of STL containers |
 
----
-
-### 🚀 Introduction
-
-When you’re hunting for a software‑engineering role, one of the first hurdles you’ll encounter is the *coding interview*. LeetCode has become the de‑facto playground for these challenges, and **1525. Number of Good Ways to Split a String** is a prime example of a problem that tests both your *algorithmic thinking* and *language fluency*.
-
-In this article we’ll dissect the problem, walk through a clean O(n) solution, and highlight the **good**, **bad**, and **ugly** aspects of common approaches. Along the way you’ll learn interview‑specific tips and see why the code we provide is a strong addition to your portfolio.
-
----
-
-### 📌 Problem Statement (Short)
-
-Given a string `s` of lowercase English letters, a *good split* is a position that divides `s` into two non‑empty parts `left` and `right` such that the number of **distinct letters** in `left` equals that in `right`.  
-Return the number of good splits.
-
-*Example:*  
-`"aacaba"` → 2 good splits (`"aac" | "aba"` and `"aaca" | "ba"`).
+> **Bottom line**: The sliding split with two frequency arrays is the sweet spot – fast, memory‑light, and easy to understand.
 
 ---
 
-### ⚙️ Algorithm Overview
+## 6. SEO‑Optimized Blog Article
 
-The canonical solution follows a **two‑pass frequency technique**:
+> **Title:**  
+> *Cracking LeetCode 1525 – Number of Good Ways to Split a String (Java, Python, C++)*  
 
-1. **Frequency Count Pass** – Build a frequency array for all 26 letters in `s`.  
-   This gives us the total number of distinct letters in the *entire* string (`totalDistinct`).
-
-2. **Scan Pass** – Walk the string from left to right, moving one character at a time from the *right* side to the *left* side.
-   - Decrement its count in the frequency array.
-   - Update `leftDistinct` (new distinct letter discovered) and `rightDistinct` (lost last occurrence) accordingly.
-   - When `leftDistinct == rightDistinct`, increment the answer.
-
-Because we only use constant‑size arrays and a single linear scan, the algorithm runs in **O(n)** time and **O(1)** space.
+> **Meta‑Description:**  
+> Learn how to solve LeetCode 1525 in Java, Python, and C++ with a linear‑time algorithm. Discover the trick that makes this “good split” problem a breeze for your next coding interview.
 
 ---
 
-### 🧠 Detailed Walkthrough
+### 6.1 Introduction  
 
-Let’s take `s = "aacaba"`.
+If you’re hunting for a job in software engineering, you’ll run into LeetCode problems that test both your algorithmic mindset and your coding style. One of the more subtle yet elegant questions is **1525. Number of Good Ways to Split a String**.  
 
-| Step | i | Char | freq[char] before | freq[char] after | leftDistinct | rightDistinct | good split? |
-|------|---|------|-------------------|------------------|--------------|---------------|-------------|
-| 1 | 0 | 'a' | 3 | 2 | 1 (new) | 3 (unchanged) | No |
-| 2 | 1 | 'a' | 2 | 1 | 1 (unchanged) | 3 (unchanged) | No |
-| 3 | 2 | 'c' | 1 | 0 | 2 (new) | 2 (lost last) | Yes |
-| 4 | 3 | 'a' | 0 | 0 | 2 (unchanged) | 2 (unchanged) | Yes |
-| 5 | 4 | 'b' | 1 | 0 | 3 (new) | 1 (lost last) | No |
-
-The algorithm correctly counts the two good splits.
+In this article, we’ll walk through the problem statement, unpack the intuition, craft a clean solution, and provide ready‑to‑copy code in **Java**, **Python**, and **C++**. We’ll also discuss common pitfalls, why the sliding‑split approach is preferable, and how to present this solution in an interview.
 
 ---
 
-### 🛠️ Code Implementations
+### 6.2 Problem Recap  
 
-#### Java
+> *You’re given a string `s`. A split is **good** if you can divide `s` into two non‑empty parts such that the number of distinct letters in each part is equal. Return the count of all good splits.*  
 
-*(See code section above)*
-
-#### Python
-
-*(See code section above)*
-
-#### C++
-
-*(See code section above)*
+The string can be up to `10⁵` characters long and contains only lowercase letters.  
 
 ---
 
-### 📈 Complexity Analysis
+### 6.3 Why This Problem Is Interview‑Friendly  
 
-| Approach | Time | Space |
-|----------|------|-------|
-| Two‑pass frequency + single scan | **O(n)** | **O(1)** (26‑element arrays) |
-| Brute‑force (check every split, O(n²)) | O(n²) | O(1) |
-| Using hash‑sets for each prefix/suffix | O(n) | O(n) (worst‑case distinct letters) |
-
-The two‑pass approach dominates the leaderboard and is the most interview‑friendly solution.
+1. **Array Manipulation** – Shows your comfort with fixed‑size arrays.  
+2. **Two‑Pointer / Sliding Window** – A classic interview pattern.  
+3. **Space Optimization** – The solution uses `O(1)` memory.  
+4. **Edge‑Case Awareness** – Handling strings of length 1, all identical letters, etc.  
 
 ---
 
-### 🌟 The Good
+### 6.4 The “Good” Part: The Sliding‑Split Algorithm  
 
-- **Simplicity** – No fancy data structures; just arrays.
-- **Performance** – Linear time, constant memory; safe for `n = 10⁵`.
-- **Language‑agnostic** – Easy to translate between Java, Python, and C++.
-- **Explain‑ability** – You can walk the interviewer through the scan step‑by‑step.
+**Step 1: Count the whole string**  
+*Why?*  
+We need to know how many distinct letters exist on the right side initially.  
 
----
+**Step 2: Move a split point**  
+*Why?*  
+When the split moves rightward, a character moves from the right side to the left side.  
+We update:
 
-### ⚠️ The Bad
+* `leftDistinct` – increment when a character appears on the left for the first time.  
+* `rightDistinct` – decrement when a character’s count on the right falls to zero.  
 
-- **Early‑termination pitfalls** – Some naive solutions forget to exclude the last character (`n-1`), counting an invalid split.
-- **Misunderstanding “distinct”** – Counting occurrences instead of unique letters leads to wrong results.
-- **Complexity confusion** – A “set‑per‑prefix” approach is tempting but adds O(n) space.
+Because there are only 26 letters, the update is `O(1)`.  
 
----
-
-### 🐛 The Ugly
-
-- **Off‑by‑one bugs** – Forgetting that the split must be *between* characters.
-- **Mutable frequency array mistakes** – Decrementing before or after the equality check can flip the answer.
-- **Large input overflow** – In languages like C++ using `int` for counters is fine; in C# you’d need `long`.
+**Step 3: Compare and count**  
+If `leftDistinct == rightDistinct`, we’ve found a good split.
 
 ---
 
-### 🧑‍💻 Interview‑Specific Tips
+### 6.5 The “Bad” Part: Naïve Approaches
 
-1. **Talk through constraints** – Mention `s.length ≤ 10⁵` and that you’re using constant‑size arrays.  
-2. **Clarify the definition** – Distinct vs. frequency; ask the interviewer to confirm.
-3. **Walk through the scan mentally** – Show how you update `leftDistinct`/`rightDistinct` at each step.
-4. **Handle edge cases first** – Empty string, single character string; quickly return 0.
-5. **Explain why we use `s.length() - 1`** – Emphasize that the split cannot be at the very end.
-
----
-
-### 🎯 Takeaway for Job Hunting
-
-- **Add this solution to your GitHub repo** – Mark the language, time, and space complexity in the README.  
-- **Use the blog snippet** as a talking point in your coding‑interview portfolio.  
-- **Practice explaining the scan** – Interviewers love a clear, step‑wise narrative.
-
-With this problem, you’ve showcased *O(n) reasoning*, *constant‑space optimization*, and *cross‑language prowess*—all skills that top tech companies look for.
+| Approach | Complexity | Why It Fails in Interviews |
+|----------|------------|----------------------------|
+| Try every split, build `Set` for each part | `O(n²)` | Too slow for `10⁵` |
+| Use a `HashMap` for suffix counts | `O(n)` time, `O(n)` space | Unnecessary memory; still fine but less elegant |
+| Precompute suffix arrays of distinct counts | `O(n)` time, `O(n)` space | Works, but hides the core idea |
 
 ---
 
-### 📣 Closing Thoughts
+### 6.6 The “Ugly” Part: Over‑Engineering
 
-The *Number of Good Ways to Split a String* problem may look simple, but mastering it gives you a **versatile tool** for a wide range of interview questions involving **prefix/suffix analysis** and **distinct‑character counts**.  
+> *When people get excited about complexity, they sometimes throw in fancy data structures that only add noise.*  
+Examples:
 
-Keep the clean code in your toolkit, and when you see a string‑splitting question, you’ll know exactly why this O(n) solution is both elegant and effective.
+* Building a new `unordered_set` in each iteration in C++ (high constant overhead).  
+* Using recursion with memoization but ignoring that the alphabet is fixed.
 
-Good luck on your next interview—*you’ve got the code, now show it off!* 🚀
-
----
-
-
----
-
-> **Need help preparing for your next interview?**  
-> Follow me on LinkedIn & Twitter for more interview‑ready explanations, coding challenges, and career‑growth resources. Happy coding! 💻
----
-
-
-> *© 2024 by Open Source Contributor. All rights reserved.*  
+These can impress at first glance but risk losing the interviewer's attention.
 
 ---
 
+### 6.7 Interview Tips
 
-### 🔍 Why This Article is SEO‑Optimized
-
-- **Rich content** – 1000+ words with relevant headers (`h1`, `h2`, `h3`).
-- **Structured data** – Problem description, code examples, complexity tables.
-- **Internal/external links** – “Java”, “Python”, “C++” links to language‑specific blogs.
-- **Meta description** – Short, keyword‑dense snippet appears in search results.
-
-Search engines love such structure—your article will surface when recruiters search for “LeetCode split string solution”, “Java O(n) string split”, or similar queries. 🎯
+* **Explain the invariant** – “Every time the split moves, we’re just re‑balancing the two counters.”  
+* **Show a dry run** – Pick `s = "ababa"` and walk through the loop.  
+* **Mention edge cases** – Single‑character strings return `0`; strings like `"aaaa"` return `n-1`.  
+* **Ask clarifying questions** – “Do we count the split after the last character?” – Helps avoid off‑by‑one errors.
 
 ---
 
+### 6.8 Code Snippets
 
-**Ready to nail the interview?** Copy the code, practice explaining the scan, and remember the *good, bad, ugly* checklist. You’ll walk away with a clean solution, a well‑structured article, and the confidence to ace the next coding interview. Happy coding! 🎉
+> **Java** – 30‑line solution that compiles in Java 17  
+> **Python** – O(1) memory with simple lists  
+> **C++** – STL vectors but still constant space  
 
----
-
-
-*End of article.*
-
-
----
-
-
-### 🗂️ Appendix – Reference for Future Projects
-
-- **Test harnesses** (JUnit, pytest, C++ GoogleTest) – Use them to validate edge cases quickly.  
-- **LeetCode sandbox** – Paste the code directly; the platform runs the tests in seconds.  
-- **GitHub Gist** – All three snippets are available at <https://gist.github.com/your-username/1525-split-strings>.
+*(See Section 4 for full code.)*
 
 ---
 
+### 6.9 Wrap‑Up  
 
-> **Follow me on LinkedIn** for more interview‑ready insights and **subscribe** for updates on the latest coding challenges!
+LeetCode 1525 is a prime example of how a solid understanding of array counters and a two‑pointer mindset yields a solution that is **fast, memory‑efficient, and easy to explain**.  
+
+If you can articulate this algorithm and deliver clean Java/Python/C++ code, you’ll not only solve the problem in a fraction of a second but also impress interviewers with your clarity of thought.
+
+Good luck on your coding journey!
+
+---
+
+### 6.10 Closing  
+
+Remember:  
+* Keep solutions **linear** whenever possible.  
+* Prefer **constant‑space** tricks for problems with a fixed alphabet.  
+* Always walk through edge cases before coding.  
+
+Happy coding, and best of luck landing that dream role!  
+
+--- 
+
+*Feel free to bookmark this article and revisit it before your next interview. Happy interviewing!*  
+
+--- 
+
+**Author:**  
+[Your Name] – Passionate about algorithms and mentoring aspiring software engineers.  
+
+**Tags:** #LeetCode1525 #CodingInterview #Java #Python #C++ #Algorithm #TwoPointer #DataStructures  
+
+--- 
+
+*If you liked this article, subscribe to my newsletter for weekly LeetCode walkthroughs and interview prep tips.* 
+
+--- 
+
+That concludes the full, interview‑ready guide to solving LeetCode 1525. Feel free to adapt the style and structure for your own portfolio or blog!

@@ -7,92 +7,87 @@ author: moses
 tags: []
 hideToc: true
 ---
-        # 2585 – Number of Ways to Earn Points  
-> **Hard** – LeetCode  
+        ## 1.  Problem Recap  
+
+**LeetCode 2585 – Number of Ways to Earn Points**  
+
+> You have `n` types of questions.  
+> `types[i] = [countᵢ, markᵢ]` means there are `countᵢ` indistinguishable questions of the *i‑th* type and each question is worth `markᵢ` points.  
+> You are given an integer `target`.  
+> Return the number of different ways to earn **exactly** `target` points.  
+> Because the answer can be huge, return it modulo `10⁹ + 7`.  
+
+`target ≤ 1000`, `n ≤ 50`, `countᵢ, markᵢ ≤ 50`.  
 
 ---
 
-## 1.  Problem Recap  
+## 2.  Intuition – A bounded knapsack
 
-You’re given
+Every type of question behaves like a **bounded item** in a classic 0/1‑knapsack:
 
-* `target` – the total points you want to score (`1 ≤ target ≤ 1000`).
-* `types[i] = [countᵢ, markᵢ]` –  
-  * there are `countᵢ` indistinguishable questions of type `i`  
-  * each such question is worth `markᵢ` points  
-  * `1 ≤ countᵢ, markᵢ ≤ 50`, `1 ≤ n = types.length ≤ 50`
+| item | weight | value | bound |
+|------|--------|-------|-------|
+| type *i* | `markᵢ` | `markᵢ` | `countᵢ` |
 
-How many different ways can you reach **exactly** `target` points?  
-Return the answer modulo `1 000 000 007`.
+We do **not** care about the “value” (points earned), only about how many ways we can fill a knapsack of capacity `target` using at most `countᵢ` copies of each item.  
+Thus the problem is exactly a **bounded knapsack counting** problem.
 
-> **Example**  
-> `target = 6, types = [[6,1],[3,2],[2,3]]` → **7** ways.
+The most common way to solve this in interview settings is a **bottom‑up DP** that iterates over the items and updates the DP table in *reverse* order, so that each item is used at most once per DP state.
 
 ---
 
-## 2.  High‑Level Idea – Bounded Knapsack DP
+## 3.  Bottom‑Up DP (Iterative) – The “good” solution
 
-The problem is a classic *bounded knapsack* (or “limited coins”) counting problem.  
-We need to count, for each possible point value `p` from `0` to `target`, how many ways we can obtain exactly `p` points using the available question types, respecting the per‑type limit (`countᵢ`).
+### 3.1  DP definition  
 
-Let  
+`dp[s]` – number of ways to reach a score of `s` using the processed types.
+
+Initialize:  
+`dp[0] = 1` – there is one way to score zero points (solve nothing).  
+All other entries start at `0`.
+
+### 3.2  Transition  
+
+For each type `(cnt, mark)`:
 
 ```
-dp[p] = number of ways to reach exactly p points
-```
-
-Initialize `dp[0] = 1` (there is one way to reach 0 points – take no questions).
-
-For each question type `(cnt, val)` we update the DP **in reverse**:
-
-```text
-for i from target down to 0:
+for s from target down to 1:
     for k from 1 to cnt:
-        if i >= k * val:
-            dp[i] += dp[i - k * val]
+        if s - k*mark < 0: break
+        dp[s] = (dp[s] + dp[s - k*mark]) mod M
 ```
 
-Reversing the outer loop guarantees that when we read `dp[i - k * val]` we’re still using the values from the *previous* type, not the ones we’re currently writing.  
-All operations are performed modulo `MOD = 1 000 000 007`.
+Why iterate **backwards**?  
+If we updated `dp` forwards we would reuse the same type more than `cnt` times within the same iteration.  
+The reverse loop guarantees that every update uses a state that *does not yet* include the current type.
 
-The time complexity is  
-`O(target * n * max(countᵢ)) ≤ 1000 * 50 * 50 = 2.5 × 10⁶`,  
-well within the limits.  
-The space complexity is `O(target)`.
+### 3.3  Complexity  
 
----
+*Time*: `O(target × n × max(countᵢ))` – worst case `≈ 1000 × 50 × 50 = 2.5 M` operations.  
+*Space*: `O(target)` – one 1‑D array of length `target+1`.
 
-## 3.  Code
+The solution passes comfortably within the limits and is easy to reason about in an interview.
 
-Below are clean, production‑ready implementations in **Java**, **Python**, and **C++**.
-
-> *All three solutions use the same DP logic – only the syntax differs.*
-
----
-
-### 3.1  Java
+### 3.4  Code
 
 ```java
-import java.util.*;
-
-class Solution {
+// Java 17
+public class Solution {
     private static final int MOD = 1_000_000_007;
 
     public int waysToReachTarget(int target, int[][] types) {
         int[] dp = new int[target + 1];
-        dp[0] = 1;
+        dp[0] = 1;                      // base case
 
         for (int[] t : types) {
-            int count = t[0];
-            int mark  = t[1];
+            int cnt  = t[0];
+            int mark = t[1];
 
-            // reverse order: from target down to 0
-            for (int i = target; i >= 0; i--) {
-                // try taking k questions of this type
-                for (int k = 1; k <= count; k++) {
-                    int cost = k * mark;
-                    if (i < cost) break;            // cannot take k questions
-                    dp[i] = (dp[i] + dp[i - cost]) % MOD;
+            for (int s = target; s >= 1; s--) {
+                for (int k = 1; k <= cnt; k++) {
+                    int prev = s - k * mark;
+                    if (prev < 0) break;
+                    dp[s] = (dp[s] + dp[prev]) % MOD;
                 }
             }
         }
@@ -101,11 +96,8 @@ class Solution {
 }
 ```
 
----
-
-### 3.2  Python
-
 ```python
+# Python 3.11
 class Solution:
     MOD = 1_000_000_007
 
@@ -113,43 +105,38 @@ class Solution:
         dp = [0] * (target + 1)
         dp[0] = 1
 
-        for cnt, val in types:
-            # reverse order
-            for i in range(target, -1, -1):
+        for cnt, mark in types:
+            for s in range(target, 0, -1):
                 for k in range(1, cnt + 1):
-                    cost = k * val
-                    if i < cost:
+                    prev = s - k * mark
+                    if prev < 0:
                         break
-                    dp[i] = (dp[i] + dp[i - cost]) % self.MOD
+                    dp[s] = (dp[s] + dp[prev]) % self.MOD
 
         return dp[target]
 ```
 
----
-
-### 3.3  C++
-
 ```cpp
+// C++17
 #include <bits/stdc++.h>
 using namespace std;
 
 class Solution {
-    static constexpr int MOD = 1'000'000'007;
-
 public:
+    static constexpr int MOD = 1'000'000'007;
     int waysToReachTarget(int target, vector<vector<int>>& types) {
         vector<int> dp(target + 1, 0);
         dp[0] = 1;
 
-        for (const auto &t : types) {
-            int count = t[0];
-            int mark  = t[1];
-
-            for (int i = target; i >= 0; --i) {          // reverse order
-                for (int k = 1; k <= count; ++k) {
-                    int cost = k * mark;
-                    if (i < cost) break;
-                    dp[i] = (dp[i] + dp[i - cost]) % MOD;
+        for (auto &t : types) {
+            int cnt  = t[0];
+            int mark = t[1];
+            for (int s = target; s >= 1; --s) {
+                for (int k = 1; k <= cnt; ++k) {
+                    int prev = s - k * mark;
+                    if (prev < 0) break;
+                    dp[s] += dp[prev];
+                    if (dp[s] >= MOD) dp[s] -= MOD;
                 }
             }
         }
@@ -160,114 +147,310 @@ public:
 
 ---
 
-## 4.  Blog Article – “Knapsack, DP & Why This Matters for Your Next Job”
+## 4.  Top‑Down DP + Memoization – The “bad” solution that still works
 
-> **Length:** ~1,200 words  
-> **Audience:** Software engineers preparing for LeetCode or system‑design interviews  
-> **Tone:** Friendly, insightful, sprinkled with interview‑hints
-
----
-
-# 5.  “Bounded Knapsack”: The Good, The Bad, and the Ugly
-
-> *What every recruiter looks for in a candidate’s code: clarity, efficiency, and a dash of cleverness.*
-
----
-
-### 5.1  The Good – Why Bounded Knapsack Wins
-
-| **Aspect** | **Why It’s Good** | **What Recruiters Love** |
-|------------|-------------------|---------------------------|
-| **Time‑Complexity** | `O(target · n · maxCount)` = 2.5 M operations | Shows you can solve *Hard* LeetCode in < 0.1 s |
-| **Space‑Efficiency** | `O(target)` memory (≤ 4 KB in Java/C++/Python) | Demonstrates low‑footprint mindset |
-| **Scalability** | Works for 1000 points, 50 types, 50 questions each | Handles worst‑case constraints |
-| **Determinism** | DP guarantees correct counting | Avoids pitfalls of back‑tracking explosion |
-
----
-
-### 5.2  The Bad – Common Pitfalls
-
-1. **Updating DP in the wrong order**  
-   *If you loop `i` from `0` to `target`, you’ll double‑count* (each type can be reused unlimited times).  
-   **Fix:** reverse the loop.
-
-2. **Using `int` without modulus**  
-   The raw count can grow astronomically (`C(50, 0) * …`).  
-   **Fix:** always `dp[i] %= MOD`.
-
-3. **Ignoring per‑type limits**  
-   A naïve “unbounded” coin DP would over‑count.  
-   **Fix:** nested loop over `k = 1 … cnt`.
-
-4. **Recursion + Memoization overhead**  
-   Recursion depth may hit 51 (safe), but Python’s recursion limit is 1000 – still fine, but DP is more cache‑friendly and faster.
-
----
-
-### 5.3  The Ugly – A Less‑Efficient Brute‑Force
-
-> *A straightforward DFS that tries every combination is O(`cntᵢ^n`)*.  
-> Not feasible for `target = 1000, n = 50`.
+If you are more comfortable with recursion, the **DFS + memoization** version is very readable:
 
 ```python
-def bad_solution(target, types):
-    from functools import lru_cache
+# Python 3.11
+from functools import lru_cache
 
-    @lru_cache(None)
-    def dfs(idx, remaining):
-        if remaining == 0:
-            return 1
-        if idx == len(types) or remaining < 0:
-            return 0
-        cnt, val = types[idx]
-        return sum(dfs(idx + 1, remaining - k * val) for k in range(cnt + 1)) % MOD
+class Solution:
+    MOD = 1_000_000_007
 
-    return dfs(0, target)
+    def waysToReachTarget(self, target: int, types: List[List[int]]) -> int:
+        @lru_cache(None)
+        def dfs(i: int, remaining: int) -> int:
+            if remaining == 0:
+                return 1
+            if i == len(types) or remaining < 0:
+                return 0
+
+            cnt, mark = types[i]
+            total = 0
+            for k in range(cnt + 1):            # 0 … cnt copies of current type
+                total += dfs(i + 1, remaining - k * mark)
+            return total % self.MOD
+
+        return dfs(0, target)
 ```
 
-While *nice to read*, this approach would time‑out on large inputs – a classic “ugly” trade‑off.
+**Pros**  
+* Intuitive recursion + memoization (state = `(i, remaining)`).
+
+**Cons**  
+* Requires `O(target × n)` memory for the cache (about 50 k integers in the worst case) – still fine, but more overhead than the iterative 1‑D array.  
+* May be slower in tight runtime environments because of function call overhead.
 
 ---
 
-## 6.  Why This Problem (and Solution) is a Great Interview Show‑stopper
+## 5.  “The ugly” – A naive 3‑nested‑loop that breaks the constraints
 
-1. **Demonstrates Mastery of DP**  
-   Bounded knapsack is a staple. Solving it correctly shows you can handle *state* and *transition* design.
-
-2. **Shows Attention to Constraints**  
-   Using reverse DP to respect limits rather than a naïve approach speaks to thoughtful optimization.
-
-3. **Highlights Clean Coding Practices**  
-   Modular, constant‑time modular arithmetic, and clear loops make your code readable to reviewers.
-
-4. **Cross‑Language Versatility**  
-   Being able to translate the same logic to Java, Python, or C++ proves language agnosticism—valuable in polyglot teams.
-
----
-
-## 7.  SEO‑Friendly Wrap‑Up (Target Keywords: “bounded knapsack”, “LeetCode 2585”, “DP interview”, “earn points DP”, “bounded coin change”)
-
-> **Title**: *Master LeetCode 2585 – Bounded Knapsack DP for “Number of Ways to Earn Points”*  
-> **Meta Description**: *Solve LeetCode 2585 (Number of Ways to Earn Points) in Java, Python, and C++ using an efficient bounded knapsack DP. Learn the algorithm, complexity, and interview‑friendly code.*  
-> **Tags**: #DynamicProgramming #Knapsack #LeetCode #Interview #CodingInterview #Algorithm
-
----
-
-### 8.  TL;DR (One‑Line Summary)
-
-Use a reverse‑order bounded‑knapsack DP:
-
-```text
-dp[0] = 1
-for each type (cnt, val):
-    for i = target … 0:
-        for k = 1 … cnt:
-            if i >= k*val:
-                dp[i] = (dp[i] + dp[i-k*val]) % MOD
+```java
+// Wrong: O(target² × n) – far too slow for the limits
+for (int i = 0; i < n; i++) {
+    for (int s = 0; s <= target; s++) {
+        for (int k = 0; k <= types[i][0]; k++) {   // reuse the same type many times
+            if (s + k*mark <= target) {
+                dp[s + k*mark] += dp[s];
+            }
+        }
+    }
+}
 ```
 
-This runs in ~2.5 M ops and uses `O(target)` memory – perfect for LeetCode 2585.
+- This forward update **over‑counts** because the same type is reused in the same iteration.  
+- It also has a cubic factor (`target × target × n`), which is too big for `target = 1000`.
+
+**Never** show this in an interview unless you have time to correct it on the spot.
 
 ---
 
-Happy coding! 🚀
+## 6.  Which solution should you bring to the interview?
+
+| Situation | Recommended approach |
+|-----------|----------------------|
+| *Time is tight, interviewer wants a quick idea* | Bottom‑up iterative DP (reverse loops). |
+| *You want to show elegance and use recursion* | Top‑down DP + `@lru_cache` (Python) or memoized recursion (Java/C++). |
+| *The interviewer specifically asks for “bounded knapsack”* | Discuss the analogy, then present the reverse‑loop transition. |
+
+**Tip** – Always mention the **reverse‑order trick** for bounded items; interviewers love to see that you know how to prevent double‑counting.
+
+---
+
+## 7.  Interview‑Ready Checklist
+
+1. **Clarify the “indistinguishable” assumption** – we are counting *combinations*, not permutations.  
+2. **Explain the DP state** (`dp[s]` – ways to reach score `s`).  
+3. **Show the reverse iteration** – “Why do we iterate backwards? It guarantees that each type is used at most its bound.”  
+4. **Mention modulo handling** – `dp[s] = (dp[s] + dp[prev]) % MOD`.  
+5. **Give complexity** – `O(target * n * maxCount)` time, `O(target)` space.  
+6. **Optional** – If asked, present the top‑down version as a cleaner, albeit slightly slower, alternative.
+
+---
+
+## 8.  SEO‑Optimized Blog Title & Structure
+
+### Title  
+**“Number of Ways to Earn Points – The Good, The Bad, and The Ugly of Solving LeetCode 2585”**
+
+### Headings & Keywords  
+
+| Heading | SEO Keywords |
+|---------|--------------|
+| `# The Good: Bottom‑Up DP (Bounded Knapsack)` | Number of Ways to Earn Points, bounded knapsack, LeetCode 2585, interview algorithm |
+| `# The Bad: Naïve Forward DP` | bad solution, naive DP, time complexity, interview pitfalls |
+| `# The Ugly: Recursion Overkill` | ugly solution, recursion, memoization, recursion depth, stack overflow |
+| `# Real‑World Application` | job interview, software engineer interview, LeetCode practice, coding interview tips |
+| `# Summary` | algorithm, complexity, time, space, LeetCode 2585 |
+
+Using Markdown headings with `#` and `##` keeps the article easy to scan.  
+Including the problem title, “bounded knapsack,” and “LeetCode” in the first paragraph pulls in readers searching for those terms.
+
+---
+
+## 9.  The Blog Post (Full Text)
+
+> **NOTE** – The code snippets below are ready‑to‑paste for Java, Python, and C++.
+
+```markdown
+# Number of Ways to Earn Points – The Good, The Bad, and The Ugly
+
+**LeetCode 2585** is a classic interview puzzle that tests your ability to model a bounded knapsack problem and count the number of ways to reach a target score.  
+Below we dissect the problem, show the best‑practice solution, highlight common pitfalls, and finish with a quick‑reference cheat sheet that you can flash before a coding interview.
+
+---
+
+## 📌 Problem Statement
+
+> Given an array `types`, where `types[i] = [countᵢ, markᵢ]` (there are `countᵢ` indistinguishable questions each worth `markᵢ` points) and an integer `target`, return the number of ways to earn **exactly** `target` points.  
+> Modulo `10⁹ + 7`.
+
+---
+
+## ✅ The Good: Bottom‑Up DP (Bounded Knapsack)
+
+### 1️⃣ DP State  
+`dp[s]` – ways to score exactly `s` points after processing some question types.
+
+### 2️⃣ Transition  
+For each `(cnt, mark)` iterate scores **backwards** and add all feasible copies:
+
+```pseudo
+for s = target .. 1:
+    for k = 1 .. cnt:
+        if s - k*mark < 0: break
+        dp[s] = (dp[s] + dp[s - k*mark]) % MOD
+```
+
+### 3️⃣ Complexity  
+*Time* `O(target × n × max(count))` – ≈ 2.5 M ops.  
+*Space* `O(target)`.
+
+### 4️⃣ Java 17 Code
+
+```java
+public class Solution {
+    private static final int MOD = 1_000_000_007;
+    public int waysToReachTarget(int target, int[][] types) {
+        int[] dp = new int[target + 1];
+        dp[0] = 1;
+        for (int[] t : types) {
+            int cnt = t[0], mark = t[1];
+            for (int s = target; s >= 1; s--) {
+                for (int k = 1; k <= cnt; k++) {
+                    int prev = s - k * mark;
+                    if (prev < 0) break;
+                    dp[s] = (dp[s] + dp[prev]) % MOD;
+                }
+            }
+        }
+        return dp[target];
+    }
+}
+```
+
+### 5️⃣ Python 3.11 Code
+
+```python
+from typing import List
+
+class Solution:
+    MOD = 1_000_000_007
+    def waysToReachTarget(self, target: int, types: List[List[int]]) -> int:
+        dp = [0] * (target + 1)
+        dp[0] = 1
+        for cnt, mark in types:
+            for s in range(target, 0, -1):
+                for k in range(1, cnt + 1):
+                    prev = s - k * mark
+                    if prev < 0:
+                        break
+                    dp[s] = (dp[s] + dp[prev]) % self.MOD
+        return dp[target]
+```
+
+### 6️⃣ C++17 Code
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+class Solution {
+public:
+    static constexpr int MOD = 1'000'000'007;
+    int waysToReachTarget(int target, vector<vector<int>>& types) {
+        vector<int> dp(target + 1, 0);
+        dp[0] = 1;
+        for (auto &t : types) {
+            int cnt = t[0], mark = t[1];
+            for (int s = target; s >= 1; --s) {
+                for (int k = 1; k <= cnt; ++k) {
+                    int prev = s - k * mark;
+                    if (prev < 0) break;
+                    dp[s] += dp[prev];
+                    if (dp[s] >= MOD) dp[s] -= MOD;
+                }
+            }
+        }
+        return dp[target];
+    }
+};
+```
+
+---
+
+## ⚠️ The Bad: Naïve Forward DP
+
+If you mistakenly iterate scores **forwards** you’ll double‑count combinations and explode the runtime:
+
+```java
+for (int s = 0; s <= target; s++) {
+    for (int k = 0; k <= cnt; k++) {
+        if (s + k*mark <= target) dp[s + k*mark] += dp[s];
+    }
+}
+```
+
+*Why it fails* – forward updates let the same question type be reused in the same iteration.  
+Time: `O(target² × n)` – infeasible for `target = 1000`.
+
+---
+
+## 👿 The Ugly: Deep Recursion
+
+Recursion is clean but may hit stack limits.  Use memoization to keep it efficient:
+
+```python
+@lru_cache(None)
+def dfs(i, remaining):
+    ...
+```
+
+The overhead of function calls and a larger memo table (≈ 50 k ints) makes it a less attractive choice when speed matters.
+
+---
+
+## 📋 Cheat Sheet
+
+| Step | What to explain | Code snippet (Java) |
+|------|----------------|--------------------|
+| 1 | Clarify “combinations, not permutations.” | `dp[0] = 1;` |
+| 2 | DP state definition | `int[] dp = new int[target + 1];` |
+| 3 | Reverse iteration rationale | `for (int s = target; s >= 1; s--)` |
+| 4 | Add all valid copies | `for (int k = 1; k <= cnt; k++)` |
+| 5 | Modulo handling | `dp[s] = (dp[s] + dp[prev]) % MOD;` |
+| 6 | Complexity | `O(target × n × max(count))` |
+
+---
+
+## 🔗 Related Resources
+
+- [Top‑Down DP with Memoization in Python](https://docs.python.org/3/library/functools.html#functools.lru_cache)
+- [Bounded Knapsack Problem](https://en.wikipedia.org/wiki/Knapsack_problem)
+- [LeetCode 2585 Solutions (Java/Python/C++)](https://leetcode.com/problems/number-of-ways-to-earn-100-points)
+
+---
+
+## 🎯 Summary
+
+* The **reverse‑loop DP** is your go‑to solution for LeetCode 2585.  
+* The **naïve forward DP** is a common mistake to avoid.  
+* **Recursion + memoization** is acceptable but slower.  
+* Always mod the answer by `10⁹ + 7`.
+
+Good luck crushing your next coding interview – and remember: think bounded knapsack, reverse loops, and you’re golden! 🚀
+```
+
+---
+
+## 10.  Final Takeaway
+
+- **Bottom‑up iterative DP** is the most efficient, readable, and interview‑friendly solution.  
+- Recursion + memoization is a good “clean‑code” alternative.  
+- Avoid forward‑looping naive DP unless you can spot and fix the double‑counting immediately.
+
+Use the cheat sheet to stay sharp, and the blog post to reinforce the core concepts in your mind before tackling **LeetCode 2585** or any similar bounded knapsack problem. Happy coding! 🚀
+
+```
+
+---
+
+### End of blog post
+
+---
+
+## 10.  Ready to ship
+
+You now have:
+
+1. The **best‑practice solution** for all three languages.  
+2. A quick‑reference cheat sheet that covers the good, bad, and ugly.  
+3. A fully‑SEO‑friendly Markdown article ready to be published on a blog or shared on GitHub.
+
+Drop these snippets in your interview, follow the checklist, and you’ll ace **LeetCode 2585** in no time. Good luck!
+```
+
+---
+
+That completes the **solution and the SEO‑optimized blog post**. Happy interviewing!

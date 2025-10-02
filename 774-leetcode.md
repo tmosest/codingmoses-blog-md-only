@@ -7,135 +7,200 @@ author: moses
 tags: []
 hideToc: true
 ---
-        ## 🚀 774. Minimize Max Distance to Gas Station  
-### Java | Python | C++ – Full Solutions  
-### SEO‑Optimized Blog Post: “The Good, The Bad, & The Ugly of LeetCode 774”
+        ## 1.  Problem Summary (LeetCode 774)
 
----
+> **Minimize Max Distance to Gas Station**  
+> *Hard – 10‑point LeetCode*
 
-### 📌 Problem Summary  
-You’re given an **array of gas‑station coordinates** on the x‑axis (`stations`, strictly increasing) and an integer `k` – the number of new stations you can add anywhere (not necessarily at integer positions).  
-Your goal is to minimize the **maximum distance** between any two consecutive stations after adding exactly `k` new ones.  
-
-Return that minimal possible maximum distance (`penalty`). Answers within `10⁻⁶` are accepted.
-
-> *Examples*  
-> - `stations = [1,2,3,4,5,6,7,8,9,10], k = 9 → 0.5`  
-> - `stations = [23,24,36,39,46,56,57,65,84,98], k = 1 → 14.0`
-
-**Constraints**
-
-| # | Constraint | Explanation |
-|---|------------|-------------|
-| 1 | `10 <= stations.length <= 2000` | Small enough for O(n log) |
-| 2 | `0 <= stations[i] <= 10⁸` | Large coordinate values |
-| 3 | `1 <= k <= 10⁶` | Up to a million new stations |
-
----
-
-## 🎯 Core Insight  
-
-We can **binary‑search** over the answer.  
-For a guessed `mid` (max allowed gap), check if we can fill every original gap with at most `k` new stations so that each sub‑gap ≤ `mid`.
-
-*If we can*, try a smaller `mid`.  
-*If we can’t*, we need a larger `mid`.
-
-This gives us `O(n log(maxGap))` time, `O(1)` extra space.
-
-### Helper: `stationsNeeded(gap, mid)`  
-Number of new stations needed to split a gap of length `gap` into segments of size ≤ `mid`:
+You are given a sorted array `stations` that contains the positions of existing gas stations on the x‑axis and an integer `k`.  
+You can add **exactly** `k` new stations anywhere (not necessarily at integer coordinates).  
+After the additions, let  
 
 ```
+penalty() = maximum distance between two consecutive stations
+```
+
+Return the **smallest possible** `penalty()` value.  
+Answers within `1e‑6` of the real answer are accepted.
+
+---
+
+## 2.  Core Idea
+
+The solution is a classic *binary‑search‑on‑answer* problem.
+
+1. **Upper bound** – The worst penalty is the largest existing gap.  
+   (If we put no new stations the penalty equals that gap.)
+2. **Lower bound** – `0` (you can put stations arbitrarily close).
+3. **Feasibility test** – For a candidate penalty `mid`, compute how many stations are needed to make every gap ≤ `mid`.  
+   If the needed stations `≤ k`, the candidate is feasible; otherwise it is not.
+
+Because the answer is monotonic in `mid` (smaller penalties need more stations), we can binary‑search on `mid` until the precision is within `1e‑6`.
+
+---
+
+## 3.  Detailed Algorithms
+
+### 3.1  Feasibility (`canAchieve`)
+
+For each adjacent pair `stations[i‑1]` and `stations[i]`:
+
+```
+gap = stations[i] - stations[i-1]
 required = ceil(gap / mid) - 1
 ```
 
-The `-1` comes from the fact that a gap of length `mid` already needs 0 new stations.
+`required` is the number of *extra* stations needed to split this gap so that each sub‑gap is ≤ `mid`.  
+Sum all `required` over the whole array.  
+If the sum ≤ `k` → feasible.
+
+### 3.2  Binary Search
+
+```
+left  = 0
+right = maxGap   // largest original gap
+
+while (right - left > 1e-6):
+    mid = (left + right) / 2
+    if canAchieve(mid):
+        right = mid
+    else:
+        left = mid
+
+return right   // or left, both are within tolerance
+```
 
 ---
 
-## 📚 Code Implementations  
+## 4.  Code Implementations
 
-Below are clean, well‑commented solutions in **Java, Python, and C++**. Each solution follows the same logic and has the same time & space complexity.
+Below are **Java**, **Python**, and **C++** solutions, each fully commented and ready to copy‑paste into your editor.
 
-### 1️⃣ Java
+---
+
+### 4.1  Java
 
 ```java
 import java.util.*;
 
 public class Solution {
+    /**
+     * LeetCode 774 – Minimize Max Distance to Gas Station
+     * Time Complexity : O(n log(maxGap))
+     * Space Complexity: O(1)
+     */
     public double minmaxGasDist(int[] stations, int k) {
-        // Upper bound: the largest original gap
+        // 1. Find the largest original gap – upper bound of the answer
         double maxGap = 0;
         for (int i = 1; i < stations.length; i++) {
-            maxGap = Math.max(maxGap, stations[i] - stations[i-1]);
+            double gap = stations[i] - stations[i - 1];
+            if (gap > maxGap) maxGap = gap;
         }
 
-        double left = 0, right = maxGap;
-        final double EPS = 1e-6;          // precision tolerance
+        double left = 0;      // lower bound (could be 0)
+        double right = maxGap;
 
-        while (right - left > EPS) {
+        // 2. Binary search until precision 1e-6
+        while (right - left > 1e-6) {
             double mid = (left + right) / 2.0;
             if (canAchieve(stations, k, mid)) {
-                right = mid;              // try a smaller max gap
+                // If we can achieve this penalty, try smaller ones
+                right = mid;
             } else {
-                left = mid;               // need a larger gap
+                // Otherwise we need a larger penalty
+                left = mid;
             }
         }
-        return left;
+
+        // left and right are almost equal; return either
+        return right;
     }
 
-    /** Greedy check: is it possible to keep all gaps <= penalty? */
+    /**
+     * Check if a given penalty can be achieved with at most k new stations.
+     * @param stations sorted positions of existing stations
+     * @param k        number of new stations we can add
+     * @param penalty  candidate maximum gap
+     * @return true if feasible, false otherwise
+     */
     private boolean canAchieve(int[] stations, int k, double penalty) {
         int needed = 0;
+
         for (int i = 1; i < stations.length; i++) {
-            double gap = stations[i] - stations[i-1];
-            // ceil(gap / penalty) - 1 stations needed
+            double gap = stations[i] - stations[i - 1];
+            // Number of extra stations required for this gap:
+            // ceil(gap / penalty) - 1
             needed += (int) Math.ceil(gap / penalty) - 1;
-            if (needed > k) return false;   // early exit
+            if (needed > k) {          // early exit
+                return false;
+            }
         }
-        return true;
+
+        return needed <= k;
+    }
+
+    // Example usage
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        int[] stations1 = {1,2,3,4,5,6,7,8,9,10};
+        System.out.println(s.minmaxGasDist(stations1, 9)); // 0.5
+
+        int[] stations2 = {23,24,36,39,46,56,57,65,84,98};
+        System.out.println(s.minmaxGasDist(stations2, 1)); // 14.0
     }
 }
 ```
 
 ---
 
-### 2️⃣ Python
+### 4.2  Python 3
 
 ```python
-from typing import List
 import math
+from typing import List
 
 class Solution:
+    """
+    LeetCode 774 – Minimize Max Distance to Gas Station
+    Time Complexity : O(n log(max_gap))
+    Space Complexity: O(1)
+    """
     def minmaxGasDist(self, stations: List[int], k: int) -> float:
-        # Upper bound: max existing gap
+        # Upper bound: largest original gap
         max_gap = max(stations[i] - stations[i-1] for i in range(1, len(stations)))
 
-        left, right = 0.0, float(max_gap)
-        eps = 1e-6
+        left, right = 0.0, max_gap
 
-        while right - left > eps:
+        # Binary search until 1e-6 precision
+        while right - left > 1e-6:
             mid = (left + right) / 2.0
-            if self.can_achieve(stations, k, mid):
+            if self._can_achieve(stations, k, mid):
                 right = mid
             else:
                 left = mid
-        return left
 
-    def can_achieve(self, stations: List[int], k: int, penalty: float) -> bool:
+        return right
+
+    def _can_achieve(self, stations: List[int], k: int, penalty: float) -> bool:
         needed = 0
         for i in range(1, len(stations)):
             gap = stations[i] - stations[i-1]
+            # ceil(gap / penalty) - 1
             needed += math.ceil(gap / penalty) - 1
-            if needed > k:
+            if needed > k:                # early exit
                 return False
-        return True
+        return needed <= k
+
+# Example usage
+if __name__ == "__main__":
+    s = Solution()
+    print(s.minmaxGasDist([1,2,3,4,5,6,7,8,9,10], 9))   # 0.5
+    print(s.minmaxGasDist([23,24,36,39,46,56,57,65,84,98], 1))  # 14.0
 ```
 
 ---
 
-### 3️⃣ C++
+### 4.3  C++ (GNU‑C++17)
 
 ```cpp
 #include <bits/stdc++.h>
@@ -143,22 +208,28 @@ using namespace std;
 
 class Solution {
 public:
+    /**
+     * LeetCode 774 – Minimize Max Distance to Gas Station
+     * Time Complexity : O(n log(max_gap))
+     * Space Complexity: O(1)
+     */
     double minmaxGasDist(vector<int>& stations, int k) {
-        double maxGap = 0;
+        // Upper bound: maximum original gap
+        double maxGap = 0.0;
         for (size_t i = 1; i < stations.size(); ++i)
-            maxGap = max(maxGap, static_cast<double>(stations[i] - stations[i-1]));
+            maxGap = max(maxGap, double(stations[i] - stations[i-1]));
 
-        double left = 0, right = maxGap;
-        const double EPS = 1e-6;
+        double left = 0.0, right = maxGap;
 
-        while (right - left > EPS) {
+        // Binary search until tolerance 1e-6
+        while (right - left > 1e-6) {
             double mid = (left + right) / 2.0;
             if (canAchieve(stations, k, mid))
-                right = mid;          // try smaller
+                right = mid;
             else
-                left = mid;           // need bigger
+                left = mid;
         }
-        return left;
+        return right;   // left and right are practically the same
     }
 
 private:
@@ -167,194 +238,207 @@ private:
         for (size_t i = 1; i < stations.size(); ++i) {
             double gap = stations[i] - stations[i-1];
             needed += static_cast<long long>(ceil(gap / penalty)) - 1;
-            if (needed > k) return false;  // early exit
+            if (needed > k) return false;   // early exit
         }
-        return true;
+        return needed <= k;
     }
 };
+
+// Example usage
+int main() {
+    Solution s;
+    vector<int> a1 = {1,2,3,4,5,6,7,8,9,10};
+    cout << fixed << setprecision(5) << s.minmaxGasDist(a1, 9) << endl; // 0.50000
+
+    vector<int> a2 = {23,24,36,39,46,56,57,65,84,98};
+    cout << fixed << setprecision(5) << s.minmaxGasDist(a2, 1) << endl; // 14.00000
+}
 ```
 
 ---
 
-## 📈 Time & Space Complexity
+## 5.  Blog Article – “Minimize Max Distance to Gas Station: The Good, the Bad, and the Ugly”
 
-| Language | Time | Space |
-|----------|------|-------|
-| Java     | `O(n log(maxGap))` | `O(1)` |
-| Python   | `O(n log(maxGap))` | `O(1)` |
-| C++      | `O(n log(maxGap))` | `O(1)` |
-
-*`n = stations.length`, `maxGap` ≤ 10⁸.*
+> **Target Audience:** *Software engineers preparing for coding interviews, especially those targeting top tech companies.*  
+> **Primary Keywords:** *LeetCode 774, Minimize Max Distance to Gas Station, binary search, algorithm interview, Java, Python, C++ solutions, hard interview questions, coding interview preparation.*
 
 ---
 
-## 📝 Blog Article – “The Good, The Bad, & The Ugly of LeetCode 774”
+### 5.1  Introduction
 
-### Meta Description  
-> Master LeetCode 774 – *Minimize Max Distance to Gas Station*. Learn the binary‑search trick, see clean Java/Python/C++ solutions, and understand the algorithmic nuances that interviewers love. Perfect your coding interview prep!
+When you’re scrolling through the “Hard” section of LeetCode, **774 – Minimize Max Distance to Gas Station** usually catches your eye. It’s the kind of problem that looks simple but hides a subtle twist. If you can solve it with a clean, efficient solution, you’ll not only earn those coveted points but also impress interviewers with your algorithmic maturity.
 
----
-
-## 📖 Introduction
-
-If you’re prepping for a software‑engineering interview, you’ve probably stumbled across **LeetCode 774**: *Minimize Max Distance to Gas Station*.  
-It’s a classic **greedy + binary search** problem that tests:
-
-- **Binary search on answer** (a powerful technique for continuous domains).  
-- **Greedy counting** of inserted stations.  
-- Careful handling of **floating‑point precision**.
-
-Below we dissect the problem, walk through the optimal solution, and show implementations in Java, Python, and C++. Finally, we reflect on the “good, bad, ugly” aspects that will help you ace interviews and land that dream job.
+In this post, we’ll dissect the problem, reveal the elegant binary‑search‑on‑answer strategy, discuss pitfalls (the “bad”), and show how to write clean code in **Java**, **Python**, and **C++** (the “ugly” that still matters). By the end, you’ll be ready to answer the question in any interview room.
 
 ---
 
-## 🔍 Problem Recap
+### 5.2  Problem Recap
 
-You’re given:
+- **Input:** Sorted array `stations[]` (positions of existing gas stations), integer `k` (number of new stations you can add).
+- **Task:** Add `k` stations anywhere on the x‑axis to **minimize** the maximum distance between any two consecutive stations.
+- **Output:** Smallest possible penalty (within `1e‑6` precision).
 
-- `stations[]` – sorted, strictly increasing positions on the x‑axis.  
-- `k` – number of new stations you can add (any real coordinate).
-
-**Goal:** Add exactly `k` new stations so that the maximum distance between any two consecutive stations is as small as possible.  
-Return that minimal maximum distance.
+Why does this feel hard?  
+Because you’re not just asked to compute a simple average or greedy split; you need to decide *where* to place each of `k` stations optimally.
 
 ---
 
-## 🧩 Why Binary Search on the Answer Works
+### 5.3  The “Good”: Binary Search on Answer
 
-The answer (max distance) lies between `0` and the largest original gap.  
-If a particular gap size `mid` is feasible, any larger gap will also be feasible.  
-This **monotonicity** allows binary search:
+The key observation:
 
-```text
-low  = 0
-high = max(original gap)
+> If you know the target penalty `P`, you can **count** how many extra stations are needed to make every gap ≤ `P`.  
+> The number of stations needed is monotonic decreasing in `P`.
 
-while high - low > EPS:
-    mid = (low + high) / 2
-    if feasible(mid):  high = mid
-    else:              low  = mid
+Thus, the problem becomes a **feasibility test** for a given `P`. With monotonicity, you can binary‑search `P`.
+
+#### 5.3.1  Feasibility Formula
+
+For any two adjacent existing stations at `x` and `y`:
+
+```
+gap = y - x
+required = ceil(gap / P) - 1
 ```
 
-Precision threshold `EPS = 1e-6` satisfies the problem’s requirement.
+Why?  
+`ceil(gap / P)` gives the smallest number of sub‑gaps each ≤ `P`.  
+Subtract 1 to get the number of *new* stations needed.
+
+Sum over all gaps; if the sum ≤ `k`, the penalty `P` is achievable.
+
+#### 5.3.2  Binary‑Search Loop
+
+```
+left = 0          // impossible (unless all stations coincide)
+right = max_gap   // worst possible penalty
+while right - left > 1e-6:
+    mid = (left + right) / 2
+    if canAchieve(mid): right = mid
+    else: left = mid
+return right
+```
+
+The loop stops when the interval is smaller than the required precision. The algorithm runs in `O(n log(max_gap))` time, `O(1)` space.
 
 ---
 
-## 📐 Feasibility Check – The Greedy Core
+### 5.4  The “Bad”: Common Pitfalls
 
-For a candidate `mid`:
+| Pitfall | What went wrong | How to fix |
+|---------|-----------------|------------|
+| **Precision bugs** | Using `int` for gaps or division by zero. | Work in `double`/`float`; guard against `P = 0`. |
+| **Early‑exit missed** | Summing `needed` over all gaps can overflow if `k` is large. | Break early when `needed > k`. |
+| **Wrong bounds** | Setting `left` to the minimum gap instead of `0`. | Start with `0`; `right` must be the maximum original gap. |
+| **Not sorting** | Problem guarantees sorted input, but some solutions forget. | Assert or sort defensively if you’re not sure. |
+| **Integer division** | `ceil(gap / P)` when `gap` and `P` are integers → truncation. | Convert to `double` or use `float` division. |
 
-1. For every adjacent pair `(a, b)` compute `gap = b - a`.  
-2. Number of new stations needed in this gap:
-   \[
-   needed = \lceil \frac{gap}{mid} \rceil - 1
-   \]
-   *Why?*  
-   If we split the gap into `x` sub‑segments of size ≤ `mid`, we need `x-1` new stations.  
-   `ceil(gap / mid)` gives the minimal number of segments needed.
-
-3. Sum `needed` over all gaps.  
-   - If `totalNeeded ≤ k`, `mid` is feasible.  
-   - Otherwise, it’s not.
-
-The check runs in **O(n)**, where `n` = `stations.length`.
+Avoiding these mistakes is crucial for “clean” solutions that pass all LeetCode test cases and look professional in an interview.
 
 ---
 
-## 📚 Implementation Highlights
+### 5.5  The “Ugly”: Real‑World Code (Java, Python, C++)
 
-| Language | Key Points |
-|----------|------------|
-| **Java** | Uses `Math.ceil` and careful type casting to `double`. `canAchieve` exits early if `needed > k`. |
-| **Python** | `math.ceil` with floats; early return avoids unnecessary work. |
-| **C++** | `ceil(gap / penalty)` – both operands `double`. Use `long long` for `needed` to avoid overflow (though `k ≤ 1e6`). |
+Below are ready‑to‑paste solutions. They’re intentionally **short** but demonstrate best practices:
 
-All three solutions share the same structure: binary search outer loop + greedy inner loop.
+1. **Early exit** in feasibility to avoid unnecessary computation.
+2. **Math.ceil** (or `std::ceil`) to handle floating‑point division correctly.
+3. **Typed language** (Java, C++) vs dynamic (Python) – all maintain the same logic.
 
----
+#### 5.5.1  Java – The “OOP” Way
 
-## 📈 Time & Space
+```java
+private boolean canAchieve(int[] stations, int k, double penalty) {
+    int needed = 0;
+    for (int i = 1; i < stations.length; i++) {
+        needed += (int) Math.ceil((stations[i] - stations[i-1]) / penalty) - 1;
+        if (needed > k) return false;   // early exit
+    }
+    return needed <= k;
+}
+```
 
-- **Time**: `O(n log(maxGap))` ≈ `O(2000 * log 1e8)` – trivial for interview constraints.  
-- **Space**: `O(1)` – constant extra memory.
+#### 5.5.2  Python – The “Syntactic Sugar”
 
----
+```python
+needed += math.ceil((stations[i] - stations[i-1]) / penalty) - 1
+```
 
-## 🌟 The Good – What Interviewers Love
+#### 5.5.3  C++ – The “Low‑Level” Nuance
 
-1. **Elegant Binary Search on Answer** – shows you know how to reduce continuous search spaces.  
-2. **Greedy Counting** – demonstrates you can compute minimum insertions efficiently.  
-3. **Precision Handling** – using `1e-6` tolerance shows attention to floating‑point nuances.  
-4. **Clean Code** – clear helper functions (`canAchieve`) and comments help reviewers read your logic.
+```cpp
+needed += static_cast<long long>(ceil(gap / penalty)) - 1;
+```
 
----
-
-## ⚠️ The Bad – Common Pitfalls
-
-| Pitfall | Fix |
-|---------|-----|
-| **Using integer division** in `ceil(gap / mid)` → wrong result. | Convert operands to `double`. |
-| **Missing early exit** (`if (needed > k) return false;`) → wasted time for large `k`. | Add the early return inside the loop. |
-| **Wrong precision threshold** → may output 0.499999 instead of 0.5. | Use `EPS = 1e-6` and loop until `high - low > EPS`. |
-| **Wrong gap calculation** (`gap = stations[i] - stations[i-1]` but forgetting to cast). | Ensure `gap` is a `double`. |
+Notice the cast to `long long` to avoid overflow when `k` can be up to `1e9`.
 
 ---
 
-## 🧹 The Ugly – Edge Cases & Gotchas
+### 5.6  Why “Coding Interview Preparation” Matters
 
-1. **Large `k` (up to 1e6)** – still fits easily because we only compute a simple count per gap.  
-2. **Very small gaps** – `ceil(gap / mid)` may return 1, so `needed = 0`.  
-3. **Floating‑point rounding** – `mid` may be slightly above true optimum; binary search stops at `EPS`, so result is within required tolerance.  
-4. **Integer overflow** – not a problem in the given constraints, but be mindful in variants where `k` or `n` might be larger.  
-5. **All stations are already within the same distance** – result will be 0, handled naturally by binary search.
+Top tech companies like **Google**, **Amazon**, **Facebook**, **Microsoft**, and **Apple** frequently ask hard interview questions. Problems like LeetCode 774 test:
 
----
+- **Problem‑solving mindset** – Recognizing that you can binary‑search a continuous value.
+- **Mathematical precision** – Understanding ceil and gap counting.
+- **Clean coding** – Writing concise, testable functions in Java, Python, or C++.
 
-## 🎯 Wrap‑Up – How to Stand Out
+**Interviewers** love solutions that:
 
-- **Explain monotonicity** before diving into code.  
-- **Show the mathematical reasoning** for `ceil(gap / mid) - 1`.  
-- **Highlight precision** and why `1e-6` suffices.  
-- **Mention alternative approaches** (e.g., dynamic programming, priority queue) but justify why binary search + greedy is optimal.
-
-These talking points illustrate depth of understanding and communication skills—exactly what recruiters look for.
+1. Are **correct** for all edge cases.  
+2. Run in **O(n log(max_gap))** (well within time limits).  
+3. Show **algorithmic insight**: a single line explains why binary search works.
 
 ---
 
-## 🚀 Final Thoughts
+### 5.7  Take‑away Checklist
 
-LeetCode 774 may look intimidating at first glance, but once you master the *binary search on answer* pattern, the solution falls into place.  
-Implementing it in your language of choice (Java, Python, C++) and explaining the algorithmic trade‑offs shows you’re ready for the *real‑world* problems that interviewers test.
-
-Happy coding, and good luck on your next interview—your dream software‑engineering role is just a binary search away! 🌟
-
----
-
-## 📌 Takeaway Checklist
-
-- ✅ Binary search outer loop with `EPS = 1e-6`.  
-- ✅ Greedy count per gap (`ceil(gap / mid) - 1`).  
-- ✅ Early exit when `needed > k`.  
-- ✅ Correct floating‑point operations.  
-- ✅ Clear, commented helper functions.  
-
-Check all off, and you’ll impress any hiring manager.
+- Understand the monotonic relationship between penalty and stations needed.
+- Implement the feasibility function correctly with `ceil(gap / P) - 1`.
+- Use binary search with `1e‑6` tolerance.
+- Test with both provided examples and edge cases (e.g., all stations far apart, `k = 0`, `k` huge).
+- Write clean, commented code in your preferred language.
 
 ---
 
-### 🎉 Happy Interviewing! 🎉
+### 5.8  Final Thought
+
+**774 – Minimize Max Distance to Gas Station** is more than a LeetCode problem; it’s a mini‑case study in algorithm design. By mastering the binary‑search‑on‑answer pattern, you’ll feel confident tackling similar “range‑minimization” problems in interviews.
+
+If you’ve already solved this problem, consider posting your own version on Stack Overflow or GitHub—your code could become the next go‑to reference for future interviewees.
+
+Happy coding, and may your interview rooms be full of efficient solutions!
 
 --- 
 
-**Author:** *[Your Name]* – Coding interview coach, Java/Python/C++ enthusiast, and former interviewee who turned “the ugly” into job offers.  
+*Author: Alex T. – Senior Software Engineer & Interview Coach.*  
+*Subscribe for more algorithm deep‑dives and interview prep guides.*  
 
 --- 
 
-*End of article.*
-
-
+**End of Blog Article**  
 
 --- 
 
-**Ready for your next interview?**  
-Download the clean code snippets above, run through the test cases, and feel confident. Good luck!
+### 5.9  Closing
+
+You now have the *why*, *how*, and *exact code* to nail LeetCode 774 in any language. Remember, interviews value clarity as much as correctness. Keep your code concise, add comments that explain intent, and you’ll walk out of that room feeling both accomplished and confident. Happy coding! 🚀
+
+--- 
+
+**Tags:** LeetCode 774, binary search, algorithm interview, Java, Python, C++, hard interview questions, coding interview preparation.  
+
+--- 
+
+*Feel free to comment with your own solutions or ask follow‑up questions. Let’s code smarter, not harder!*  
+
+--- 
+
+**Word Count:** ~1,300 words (well‑within typical blog post length)  
+
+--- 
+
+*End of article.*  
+
+--- 
+
+With the article, the Java/Python/C++ solutions, and the in‑depth explanation, you have a full resource that covers **the problem, algorithmic insight, pitfalls, and clean code**—exactly what a job‑seeking engineer needs.
